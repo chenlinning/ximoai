@@ -24,12 +24,12 @@
       <!-- Platform-specific content -->
       <template v-else>
         <!-- Description -->
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+        <p class="text-sm text-accent-600 dark:text-accent-400">
           {{ platformDescription }}
         </p>
 
         <!-- Client Tabs -->
-        <div v-if="clientTabs.length" class="border-b border-gray-200 dark:border-dark-700">
+        <div v-if="clientTabs.length" class="border-b border-accent-200 dark:border-dark-700">
           <nav class="-mb-px flex space-x-6" aria-label="Client">
             <button
               v-for="tab in clientTabs"
@@ -39,7 +39,7 @@
                 'whitespace-nowrap py-2.5 px-1 border-b-2 font-medium text-sm transition-colors',
                 activeClientTab === tab.id
                   ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-accent-500 hover:text-accent-700 hover:border-accent-300 dark:text-accent-400 dark:hover:text-accent-300'
               ]"
             >
               <span class="flex items-center gap-2">
@@ -51,7 +51,7 @@
         </div>
 
         <!-- OS/Shell Tabs -->
-        <div v-if="showShellTabs" class="border-b border-gray-200 dark:border-dark-700">
+        <div v-if="showShellTabs" class="border-b border-accent-200 dark:border-dark-700">
           <nav class="-mb-px flex space-x-4" aria-label="Tabs">
             <button
               v-for="tab in currentTabs"
@@ -61,7 +61,7 @@
                 'whitespace-nowrap py-2.5 px-1 border-b-2 font-medium text-sm transition-colors',
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  : 'border-transparent text-accent-500 hover:text-accent-700 hover:border-accent-300 dark:text-accent-400 dark:hover:text-accent-300'
               ]"
             >
               <span class="flex items-center gap-2">
@@ -84,16 +84,16 @@
               <Icon name="exclamationCircle" size="sm" class="flex-shrink-0" />
               {{ file.hint }}
             </p>
-            <div class="bg-gray-900 dark:bg-dark-900 rounded-xl overflow-hidden">
+            <div class="bg-accent-900 dark:bg-dark-900 rounded-xl overflow-hidden">
               <!-- Code Header -->
-              <div class="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-dark-800 border-b border-gray-700 dark:border-dark-700">
-                <span class="text-xs text-gray-400 font-mono">{{ file.path }}</span>
+              <div class="flex items-center justify-between px-4 py-2 bg-accent-800 dark:bg-dark-800 border-b border-accent-700 dark:border-dark-700">
+                <span class="text-xs text-accent-400 font-mono">{{ file.path }}</span>
                 <button
                   @click="copyContent(file.content, index)"
                   class="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors"
                   :class="copiedIndex === index
                     ? 'bg-green-500/20 text-green-400'
-                    : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white'"
+                    : 'bg-accent-700 hover:bg-accent-600 text-accent-300 hover:text-white'"
                 >
                   <svg v-if="copiedIndex === index" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -105,7 +105,7 @@
                 </button>
               </div>
               <!-- Code Content -->
-              <pre class="p-4 text-sm font-mono text-gray-100 overflow-x-auto"><code v-if="file.highlighted" v-html="file.highlighted"></code><code v-else v-text="file.content"></code></pre>
+              <pre class="p-4 text-sm font-mono text-accent-100 overflow-x-auto"><code v-if="file.highlighted" v-html="file.highlighted"></code><code v-else v-text="file.content"></code></pre>
             </div>
           </div>
         </div>

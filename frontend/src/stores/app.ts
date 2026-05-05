@@ -25,7 +25,7 @@ export const useAppStore = defineStore('app', () => {
   // Public settings cache state
   const publicSettingsLoaded = ref<boolean>(false)
   const publicSettingsLoading = ref<boolean>(false)
-  const siteName = ref<string>('Sub2API')
+  const siteName = ref<string>('XimoAi')
   const siteLogo = ref<string>('')
   const siteVersion = ref<string>('')
   const contactInfo = ref<string>('')
@@ -292,7 +292,7 @@ export const useAppStore = defineStore('app', () => {
       window.__APP_CONFIG__ = { ...config }
     }
     cachedPublicSettings.value = config
-    siteName.value = config.site_name || 'Sub2API'
+    siteName.value = config.site_name || 'XimoAi'
     siteLogo.value = config.site_logo || ''
     siteVersion.value = config.version || ''
     contactInfo.value = config.contact_info || ''
@@ -334,6 +334,7 @@ export const useAppStore = defineStore('app', () => {
         contact_info: contactInfo.value,
         doc_url: docUrl.value,
         home_content: '',
+        home_providers: '',
         hide_ccs_import_button: false,
         payment_enabled: false,
         table_default_page_size: 20,

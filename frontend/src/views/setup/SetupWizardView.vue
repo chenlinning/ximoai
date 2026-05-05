@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:from-dark-900 dark:to-dark-800"
+    class="flex min-h-screen items-center justify-center bg-gradient-to-br from-accent-50 to-accent-100 p-4 dark:from-dark-900 dark:to-dark-800"
   >
     <div class="w-full max-w-2xl">
       <!-- Logo & Title -->
@@ -10,8 +10,8 @@
         >
           <Icon name="cog" size="xl" class="text-white" />
         </div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ t('setup.title') }}</h1>
-        <p class="mt-2 text-gray-500 dark:text-dark-400">{{ t('setup.description') }}</p>
+        <h1 class="text-3xl font-bold text-accent-900 dark:text-white">{{ t('setup.title') }}</h1>
+        <p class="mt-2 text-accent-500 dark:text-dark-400">{{ t('setup.description') }}</p>
       </div>
 
       <!-- Progress Steps -->
@@ -26,7 +26,7 @@
                     ? 'bg-primary-500 text-white'
                     : currentStep === index
                       ? 'bg-primary-500 text-white ring-4 ring-primary-100 dark:ring-primary-900'
-                      : 'bg-gray-200 text-gray-500 dark:bg-dark-700 dark:text-dark-400'
+                      : 'bg-accent-200 text-accent-500 dark:bg-dark-700 dark:text-dark-400'
                 ]"
               >
                 <Icon
@@ -41,8 +41,8 @@
                 class="ml-2 text-sm font-medium"
                 :class="
                   currentStep >= index
-                    ? 'text-gray-900 dark:text-white'
-                    : 'text-gray-400 dark:text-dark-500'
+                    ? 'text-accent-900 dark:text-white'
+                    : 'text-accent-400 dark:text-dark-500'
                 "
               >
                 {{ step.title }}
@@ -51,7 +51,7 @@
             <div
               v-if="index < steps.length - 1"
               class="mx-3 h-0.5 w-12"
-              :class="currentStep > index ? 'bg-primary-500' : 'bg-gray-200 dark:bg-dark-700'"
+              :class="currentStep > index ? 'bg-primary-500' : 'bg-accent-200 dark:bg-dark-700'"
             ></div>
           </template>
         </div>
@@ -62,10 +62,10 @@
         <!-- Step 1: Database -->
         <div v-if="currentStep === 0" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-accent-900 dark:text-white">
               {{ t('setup.database.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-accent-500 dark:text-dark-400">
               {{ t('setup.database.description') }}
             </p>
           </div>
@@ -91,12 +91,12 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-dark-700">
+          <div class="flex items-center justify-between rounded-xl border border-accent-200 p-3 dark:border-dark-700">
             <div>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">
+              <p class="text-sm font-medium text-accent-900 dark:text-white">
                 {{ t("setup.redis.enableTls") }}
               </p>
-              <p class="text-xs text-gray-500 dark:text-dark-400">
+              <p class="text-xs text-accent-500 dark:text-dark-400">
                 {{ t("setup.redis.enableTlsHint") }}
               </p>
             </div>
@@ -131,7 +131,7 @@
                 v-model="formData.database.dbname"
                 type="text"
                 class="input"
-                placeholder="sub2api"
+                placeholder="XimoAi"
               />
             </div>
             <div>
@@ -187,10 +187,10 @@
         <!-- Step 2: Redis -->
         <div v-if="currentStep === 1" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-accent-900 dark:text-white">
               {{ t('setup.redis.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-accent-500 dark:text-dark-400">
               {{ t('setup.redis.description') }}
             </p>
           </div>
@@ -237,12 +237,12 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-dark-700">
+          <div class="flex items-center justify-between rounded-xl border border-accent-200 p-3 dark:border-dark-700">
             <div>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">
+              <p class="text-sm font-medium text-accent-900 dark:text-white">
                 {{ t("setup.redis.enableTls") }}
               </p>
-              <p class="text-xs text-gray-500 dark:text-dark-400">
+              <p class="text-xs text-accent-500 dark:text-dark-400">
                 {{ t("setup.redis.enableTlsHint") }}
               </p>
             </div>
@@ -294,10 +294,10 @@
         <!-- Step 3: Admin -->
         <div v-if="currentStep === 2" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-accent-900 dark:text-white">
               {{ t('setup.admin.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-accent-500 dark:text-dark-400">
               {{ t('setup.admin.description') }}
             </p>
           </div>
@@ -342,40 +342,40 @@
         <!-- Step 4: Complete -->
         <div v-if="currentStep === 3" class="space-y-6">
           <div class="mb-6 text-center">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 class="text-xl font-semibold text-accent-900 dark:text-white">
               {{ t('setup.ready.title') }}
             </h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">
+            <p class="mt-1 text-sm text-accent-500 dark:text-dark-400">
               {{ t('setup.ready.description') }}
             </p>
           </div>
 
           <div class="space-y-4">
-            <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-700">
-              <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-dark-400">
+            <div class="rounded-xl bg-accent-50 p-4 dark:bg-dark-700">
+              <h3 class="mb-2 text-sm font-medium text-accent-500 dark:text-dark-400">
                 {{ t('setup.ready.database') }}
               </h3>
-              <p class="text-gray-900 dark:text-white">
+              <p class="text-accent-900 dark:text-white">
                 {{ formData.database.user }}@{{ formData.database.host }}:{{
                   formData.database.port
                 }}/{{ formData.database.dbname }}
               </p>
             </div>
 
-            <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-700">
-              <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-dark-400">
+            <div class="rounded-xl bg-accent-50 p-4 dark:bg-dark-700">
+              <h3 class="mb-2 text-sm font-medium text-accent-500 dark:text-dark-400">
                 {{ t('setup.ready.redis') }}
               </h3>
-              <p class="text-gray-900 dark:text-white">
+              <p class="text-accent-900 dark:text-white">
                 {{ formData.redis.host }}:{{ formData.redis.port }}
               </p>
             </div>
 
-            <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-700">
-              <h3 class="mb-2 text-sm font-medium text-gray-500 dark:text-dark-400">
+            <div class="rounded-xl bg-accent-50 p-4 dark:bg-dark-700">
+              <h3 class="mb-2 text-sm font-medium text-accent-500 dark:text-dark-400">
                 {{ t('setup.ready.adminEmail') }}
               </h3>
-              <p class="text-gray-900 dark:text-white">{{ formData.admin.email }}</p>
+              <p class="text-accent-900 dark:text-white">{{ formData.admin.email }}</p>
             </div>
           </div>
         </div>

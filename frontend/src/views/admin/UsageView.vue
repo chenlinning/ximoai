@@ -7,7 +7,7 @@
         <div class="card p-4">
           <div class="flex flex-wrap items-center gap-4">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.timeRange') }}:</span>
+              <span class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.dashboard.timeRange') }}:</span>
               <DateRangePicker
                 v-model:start-date="startDate"
                 v-model:end-date="endDate"
@@ -15,7 +15,7 @@
               />
             </div>
             <div class="ml-auto flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.dashboard.granularity') }}:</span>
+              <span class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.dashboard.granularity') }}:</span>
               <div class="w-28">
                 <Select v-model="granularity" :options="granularityOptions" @change="loadChartData" />
               </div>
@@ -79,13 +79,13 @@
             </button>
             <div
               v-if="showColumnDropdown"
-              class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
+              class="absolute right-0 top-full z-50 mt-1 max-h-80 w-48 overflow-y-auto rounded-lg border border-accent-200 bg-white py-1 shadow-lg dark:border-dark-600 dark:bg-dark-800"
             >
               <button
                 v-for="col in toggleableColumns"
                 :key="col.key"
                 @click="toggleColumn(col.key)"
-                class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-dark-700"
+                class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-accent-700 hover:bg-accent-100 dark:text-accent-300 dark:hover:bg-dark-700"
               >
                 <span>{{ col.label }}</span>
                 <Icon

@@ -55,7 +55,7 @@
             {{ t('admin.channelMonitor.form.useMyKey') }}
           </button>
         </div>
-        <p v-if="editing && editing.api_key_masked" class="mt-1 text-xs text-gray-400">{{ editing.api_key_masked }}</p>
+        <p v-if="editing && editing.api_key_masked" class="mt-1 text-xs text-accent-400">{{ editing.api_key_masked }}</p>
       </div>
 
       <div>
@@ -88,7 +88,7 @@
       <div>
         <label class="input-label">{{ t('admin.channelMonitor.form.intervalSeconds') }} <span class="text-red-500">*</span></label>
         <input v-model.number="form.interval_seconds" type="number" min="15" max="3600" required class="input" />
-        <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.form.intervalSecondsHint') }}</p>
+        <p class="mt-1 text-xs text-accent-400">{{ t('admin.channelMonitor.form.intervalSecondsHint') }}</p>
       </div>
 
       <div class="flex items-center justify-between">
@@ -97,11 +97,11 @@
       </div>
 
       <!-- 高级设置区：请求模板 + 自定义 headers/body -->
-      <details class="rounded-lg border border-gray-200 bg-gray-50/50 p-3 dark:border-dark-700 dark:bg-dark-900/30">
-        <summary class="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+      <details class="rounded-lg border border-accent-200 bg-accent-50/50 p-3 dark:border-dark-700 dark:bg-dark-900/30">
+        <summary class="cursor-pointer text-sm font-medium text-accent-700 dark:text-accent-300">
           {{ t('admin.channelMonitor.advanced.section') }}
         </summary>
-        <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.advanced.sectionHint') }}</p>
+        <p class="mt-1 text-xs text-accent-400">{{ t('admin.channelMonitor.advanced.sectionHint') }}</p>
 
         <div class="mt-4 space-y-4">
           <div>
@@ -111,7 +111,7 @@
               :options="templateOptions"
               :placeholder="t('admin.channelMonitor.templateField.placeholder')"
             />
-            <p class="mt-1 text-xs text-gray-400">{{ t('admin.channelMonitor.templateField.applyHint') }}</p>
+            <p class="mt-1 text-xs text-accent-400">{{ t('admin.channelMonitor.templateField.applyHint') }}</p>
           </div>
 
           <MonitorAdvancedRequestConfig

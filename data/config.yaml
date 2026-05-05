@@ -1,0 +1,29 @@
+server:
+    host: 0.0.0.0
+    port: 5000
+    mode: release
+database:
+    host: cp-fleet-ray-b2a01e96.pg4.aidap-global.cn-beijing.volces.com
+    port: 5432
+    user: postgres
+    password: Gukv079w7Y1x9WTdra
+    dbname: sub2api
+    sslmode: require
+redis:
+    host: localhost
+    port: 6379
+    password: ""
+    db: 0
+    enable_tls: false
+jwt:
+    secret: sub2api-sandbox-jwt-secret-2026-fixed
+    expire_hour: 24
+default:
+    user_concurrency: 5
+    user_balance: 0
+    api_key_prefix: sk-
+    rate_multiplier: 1
+rate_limit:
+    requests_per_minute: 60
+    burst_size: 10
+timezone: Asia/Shanghai

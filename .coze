@@ -1,0 +1,10 @@
+[project]
+requires = ["nodejs-24"]
+
+[dev]
+build = ["bash", "-c", "echo 'Build complete'"]
+run = ["bash", "-c", "redis-server --daemonize yes --port 6379 2>/dev/null; cd /workspace/projects/sub2api-src && DATA_DIR=/workspace/projects/sub2api-src/data /workspace/projects/sub2api-src/bin/sub2api"]
+
+[deploy]
+build = ["bash", "-c", "echo 'Build complete'"]
+run = ["bash", "-c", "redis-server --daemonize yes --port 6379 2>/dev/null; cd /workspace/projects/sub2api-src && DATA_DIR=/workspace/projects/sub2api-src/data /workspace/projects/sub2api-src/bin/sub2api"]

@@ -357,54 +357,54 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-900/60">
+  <section class="rounded-2xl border border-accent-200 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-900/60">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h3 class="text-sm font-bold text-gray-900 dark:text-white">系统日志</h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">默认按最新时间倒序，支持筛选搜索与按条件清理。</p>
+        <h3 class="text-sm font-bold text-accent-900 dark:text-white">系统日志</h3>
+        <p class="mt-1 text-xs text-accent-500 dark:text-accent-400">默认按最新时间倒序，支持筛选搜索与按条件清理。</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 text-xs">
-        <span class="rounded-md bg-gray-100 px-2 py-1 text-gray-700 dark:bg-dark-700 dark:text-gray-200">队列 {{ health.queue_depth }}/{{ health.queue_capacity }}</span>
-        <span class="rounded-md bg-gray-100 px-2 py-1 text-gray-700 dark:bg-dark-700 dark:text-gray-200">写入 {{ health.written_count }}</span>
+        <span class="rounded-md bg-accent-100 px-2 py-1 text-accent-700 dark:bg-dark-700 dark:text-accent-200">队列 {{ health.queue_depth }}/{{ health.queue_capacity }}</span>
+        <span class="rounded-md bg-accent-100 px-2 py-1 text-accent-700 dark:bg-dark-700 dark:text-accent-200">写入 {{ health.written_count }}</span>
         <span class="rounded-md bg-amber-100 px-2 py-1 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">丢弃 {{ health.dropped_count }}</span>
         <span class="rounded-md bg-red-100 px-2 py-1 text-red-700 dark:bg-red-900/30 dark:text-red-300">失败 {{ health.write_failed_count }}</span>
       </div>
     </div>
 
-    <div class="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-dark-700 dark:bg-dark-800/70">
+    <div class="mb-4 rounded-xl border border-accent-200 bg-accent-50 p-3 dark:border-dark-700 dark:bg-dark-800/70">
       <div class="mb-2 flex items-center justify-between">
-        <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">运行时日志配置（实时生效）</div>
-        <span v-if="runtimeLoading" class="text-xs text-gray-500">加载中...</span>
+        <div class="text-xs font-semibold text-accent-700 dark:text-accent-200">运行时日志配置（实时生效）</div>
+        <span v-if="runtimeLoading" class="text-xs text-accent-500">加载中...</span>
       </div>
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-        <label class="text-xs text-gray-600 dark:text-gray-300">
+        <label class="text-xs text-accent-600 dark:text-accent-300">
           级别
           <Select v-model="runtimeConfig.level" class="mt-1" :options="runtimeLevelOptions" />
         </label>
-        <label class="text-xs text-gray-600 dark:text-gray-300">
+        <label class="text-xs text-accent-600 dark:text-accent-300">
           堆栈阈值
           <Select v-model="runtimeConfig.stacktrace_level" class="mt-1" :options="stacktraceLevelOptions" />
         </label>
-        <label class="text-xs text-gray-600 dark:text-gray-300">
+        <label class="text-xs text-accent-600 dark:text-accent-300">
           采样初始
           <input v-model.number="runtimeConfig.sampling_initial" type="number" min="1" class="input mt-1" />
         </label>
-        <label class="text-xs text-gray-600 dark:text-gray-300">
+        <label class="text-xs text-accent-600 dark:text-accent-300">
           采样后续
           <input v-model.number="runtimeConfig.sampling_thereafter" type="number" min="1" class="input mt-1" />
         </label>
-        <label class="text-xs text-gray-600 dark:text-gray-300">
+        <label class="text-xs text-accent-600 dark:text-accent-300">
           保留天数
           <input v-model.number="runtimeConfig.retention_days" type="number" min="1" max="3650" class="input mt-1" />
         </label>
         <div class="md:col-span-2 xl:col-span-6">
           <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+              <label class="inline-flex items-center gap-2 text-xs text-accent-600 dark:text-accent-300">
                 <input v-model="runtimeConfig.caller" type="checkbox" />
                 caller
               </label>
-              <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+              <label class="inline-flex items-center gap-2 text-xs text-accent-600 dark:text-accent-300">
                 <input v-model="runtimeConfig.enable_sampling" type="checkbox" />
                 sampling
               </label>
@@ -424,51 +424,51 @@ onMounted(async () => {
     </div>
 
     <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-5">
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         时间范围
         <Select v-model="filters.time_range" class="mt-1" :options="timeRangeOptions" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         开始时间（可选）
         <input v-model="filters.start_time" type="datetime-local" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         结束时间（可选）
         <input v-model="filters.end_time" type="datetime-local" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         级别
         <Select v-model="filters.level" class="mt-1" :options="filterLevelOptions" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         组件
         <input v-model="filters.component" type="text" class="input mt-1" placeholder="如 http.access" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         request_id
         <input v-model="filters.request_id" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         client_request_id
         <input v-model="filters.client_request_id" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         user_id
         <input v-model="filters.user_id" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         account_id
         <input v-model="filters.account_id" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         平台
         <input v-model="filters.platform" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         模型
         <input v-model="filters.model" type="text" class="input mt-1" />
       </label>
-      <label class="text-xs text-gray-600 dark:text-gray-300">
+      <label class="text-xs text-accent-600 dark:text-accent-300">
         关键词
         <input v-model="filters.q" type="text" class="input mt-1" placeholder="消息/request_id" />
       </label>
@@ -481,27 +481,27 @@ onMounted(async () => {
       <button type="button" class="btn btn-secondary btn-sm" @click="fetchHealth">刷新健康指标</button>
     </div>
 
-    <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-dark-700">
-      <div v-if="loading" class="px-4 py-8 text-center text-sm text-gray-500">加载中...</div>
-      <div v-else-if="!hasData" class="px-4 py-8 text-center text-sm text-gray-500">暂无系统日志</div>
+    <div class="overflow-hidden rounded-xl border border-accent-200 dark:border-dark-700">
+      <div v-if="loading" class="px-4 py-8 text-center text-sm text-accent-500">加载中...</div>
+      <div v-else-if="!hasData" class="px-4 py-8 text-center text-sm text-accent-500">暂无系统日志</div>
       <div v-else class="overflow-auto">
-        <table class="min-w-full table-fixed divide-y divide-gray-200 dark:divide-dark-700">
-          <thead class="bg-gray-50 dark:bg-dark-900">
+        <table class="min-w-full table-fixed divide-y divide-accent-200 dark:divide-dark-700">
+          <thead class="bg-accent-50 dark:bg-dark-900">
             <tr>
-              <th class="w-[170px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500">时间</th>
-              <th class="w-[80px] px-3 py-2 text-left text-[11px] font-semibold text-gray-500">级别</th>
-              <th class="px-3 py-2 text-left text-[11px] font-semibold text-gray-500">日志详细信息</th>
+              <th class="w-[170px] px-3 py-2 text-left text-[11px] font-semibold text-accent-500">时间</th>
+              <th class="w-[80px] px-3 py-2 text-left text-[11px] font-semibold text-accent-500">级别</th>
+              <th class="px-3 py-2 text-left text-[11px] font-semibold text-accent-500">日志详细信息</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-dark-800">
+          <tbody class="divide-y divide-accent-100 dark:divide-dark-800">
             <tr v-for="row in logs" :key="row.id" class="align-top">
-              <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300">{{ formatTime(row.created_at) }}</td>
+              <td class="px-3 py-2 text-xs text-accent-700 dark:text-accent-300">{{ formatTime(row.created_at) }}</td>
               <td class="px-3 py-2 text-xs">
                 <span class="inline-flex rounded-full px-2 py-0.5 font-semibold" :class="levelBadgeClass(row.level)">
                   {{ row.level }}
                 </span>
               </td>
-              <td class="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 whitespace-normal break-all">
+              <td class="px-3 py-2 text-xs text-accent-700 dark:text-accent-300 whitespace-normal break-all">
                 {{ formatSystemLogDetail(row) }}
               </td>
             </tr>

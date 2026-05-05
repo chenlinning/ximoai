@@ -43,7 +43,7 @@
 
     <!-- Cancel Confirm Dialog -->
     <BaseDialog :show="!!cancelTargetId" :title="t('payment.orders.cancel')" width="narrow" @close="cancelTargetId = null">
-      <p class="text-sm text-gray-600 dark:text-gray-300">{{ t('payment.confirmCancel') }}</p>
+      <p class="text-sm text-accent-600 dark:text-accent-300">{{ t('payment.confirmCancel') }}</p>
       <template #footer>
         <div class="flex justify-end gap-3">
           <button class="btn btn-secondary" @click="cancelTargetId = null">{{ t('common.cancel') }}</button>
@@ -55,14 +55,14 @@
     <!-- Refund Dialog -->
     <BaseDialog :show="!!refundTarget" :title="t('payment.orders.requestRefund')" @close="refundTarget = null">
       <div v-if="refundTarget" class="space-y-4">
-        <div class="rounded-xl bg-gray-50 p-4 dark:bg-dark-800">
+        <div class="rounded-xl bg-accent-50 p-4 dark:bg-dark-800">
           <div class="flex justify-between text-sm">
-            <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderId') }}</span>
-            <span class="font-mono text-gray-900 dark:text-white">#{{ refundTarget.id }}</span>
+            <span class="text-accent-500 dark:text-accent-400">{{ t('payment.orders.orderId') }}</span>
+            <span class="font-mono text-accent-900 dark:text-white">#{{ refundTarget.id }}</span>
           </div>
           <div class="mt-2 flex justify-between text-sm">
-            <span class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.amount') }}</span>
-            <span class="text-gray-900 dark:text-white">${{ refundTarget.amount.toFixed(2) }}</span>
+            <span class="text-accent-500 dark:text-accent-400">{{ t('payment.orders.amount') }}</span>
+            <span class="text-accent-900 dark:text-white">${{ refundTarget.amount.toFixed(2) }}</span>
           </div>
         </div>
         <div>

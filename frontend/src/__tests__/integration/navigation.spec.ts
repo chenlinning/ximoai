@@ -44,7 +44,7 @@ vi.mock('@/stores/auth', () => ({
 
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({
-    siteName: 'Test Site'
+    siteName: 'XimoAi'
   })
 }))
 
