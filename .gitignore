@@ -136,3 +136,8 @@ docs/*
 frontend/coverage/
 aicodex
 output/
+
+# Large binary files
+bin/
+backend/bin/
+backend/repository.test
