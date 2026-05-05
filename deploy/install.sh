@@ -111,12 +111,39 @@ echo -e "${GREEN}下载完成${NC}"
 # --------------- 5. 启动 PostgreSQL + Redis ---------------
 echo -e "${YELLOW}[5/7] 启动 PostgreSQL + Redis (Docker)...${NC}"
 
-# 停止旧的
-docker compose -f $INSTALL_DIR/docker-compose.lite.yml down 2>/dev/null || true
+# 写入 docker-compose.lite.yml (内联，不依赖脚本路径)
+cat > $INSTALL_DIR/docker-compose.lite.yml << 'DOCKEREOF'
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: ximoai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ximoai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ximoai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-# 复制 docker-compose 文件
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cp "$SCRIPT_DIR/docker-compose.lite.yml" $INSTALL_DIR/
+  redis:
+    image: redis:8-alpine
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server $${REDIS_PASSWORD:+--requirepass $$REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+DOCKEREOF
 
 # 启动
 cd $INSTALL_DIR && docker compose -f docker-compose.lite.yml up -d
