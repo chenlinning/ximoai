@@ -383,6 +383,7 @@ export default {
     channelMonitor: 'Channel Monitor',
     channelStatus: 'Channel Status',
     riskControl: 'Risk Control',
+    modelPlaza: 'Model Plaza',
   },
 
   // Auth

@@ -68,18 +68,18 @@
         <div
           v-for="model in filteredModels"
           :key="model.uniqueKey"
-          class="card group relative overflow-hidden transition-shadow hover:shadow-lg"
+          class="card group relative overflow-hidden border border-transparent transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-current/10 dark:hover:border-current/10"
           :class="[platformBorderClass(model.platform)]"
         >
-          <!-- Accent bar at top -->
-          <div class="h-1" :class="[platformAccentBarClass(model.platform)]"></div>
+          <!-- Accent bar at top - expands on hover -->
+          <div class="h-1 w-0 transition-all duration-500 ease-out group-hover:w-full" :class="[platformAccentBarClass(model.platform)]"></div>
 
           <div class="p-4">
             <!-- Model name + copy button -->
             <div class="mb-3 flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
                 <h3
-                  class="cursor-pointer truncate text-sm font-semibold text-accent-900 dark:text-white"
+                  class="cursor-pointer truncate text-sm font-semibold text-accent-900 transition-all duration-300 group-hover:translate-x-0.5 group-hover:text-accent-700 dark:text-white dark:group-hover:text-accent-200"
                   :title="model.name"
                 >
                   {{ model.name }}
@@ -87,7 +87,7 @@
               </div>
               <button
                 @click="copyModelName(model.name)"
-                class="flex-shrink-0 rounded-md p-1 text-accent-400 transition-colors hover:bg-accent-100 hover:text-accent-600 dark:hover:bg-dark-700 dark:hover:text-accent-300"
+                class="flex-shrink-0 rounded-md p-1 text-accent-400 transition-all duration-300 hover:bg-accent-100 hover:text-accent-600 opacity-0 group-hover:opacity-100 hover:scale-110 dark:hover:bg-dark-700 dark:hover:text-accent-300"
                 :title="t('modelPlaza.copyModelName')"
               >
                 <Icon name="copy" size="sm" />
@@ -164,7 +164,7 @@
                 <span
                   v-for="g in model.groups"
                   :key="g.id"
-                  class="inline-flex items-center rounded px-1.5 py-0.5 text-[11px]"
+                  class="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] transition-transform duration-200 hover:scale-105"
                   :class="g.isExclusive
                     ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
                     : 'bg-accent-100 text-accent-600 dark:bg-dark-700 dark:text-accent-300'"
@@ -476,5 +476,24 @@ onMounted(loadData)
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Subtle glow pulse on card hover */
+.card {
+  transition: transform 0.3s ease-out, box-shadow 0.3s ease-out, border-color 0.3s ease-out;
+}
+.card:hover {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 4px 10px -6px rgb(0 0 0 / 0.04); }
+  50% { box-shadow: 0 12px 30px -5px rgb(0 0 0 / 0.12), 0 6px 15px -6px rgb(0 0 0 / 0.06); }
+}
+:is(.dark *) .card:hover {
+  animation: glow-pulse-dark 2s ease-in-out infinite;
+}
+@keyframes glow-pulse-dark {
+  0%, 100% { box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.3), 0 4px 10px -6px rgb(0 0 0 / 0.2); }
+  50% { box-shadow: 0 12px 30px -5px rgb(0 0 0 / 0.45), 0 6px 15px -6px rgb(0 0 0 / 0.3); }
 }
 </style>
