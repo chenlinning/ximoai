@@ -57,7 +57,7 @@
       </div>
 
       <!-- Model Grid: 4 columns -->
-      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-else class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))">
         <div
           v-for="model in filteredModels"
           :key="model.name"
