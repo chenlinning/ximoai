@@ -356,6 +356,7 @@ export default {
     groups: 'Groups',
     channels: 'Channels',
     availableChannels: 'Available Channels',
+    modelPlaza: 'Model Plaza',
     subscriptions: 'Subscriptions',
     accounts: 'Accounts',
     proxies: 'Proxies',
@@ -986,6 +987,26 @@ export default {
       unitPerMillion: '/ 1M tokens',
       unitPerRequest: '/ request'
     }
+  },
+
+  // Model Plaza (user-facing)
+  modelPlaza: {
+    title: 'Model Plaza',
+    description: 'View model pricing and group rate multipliers',
+    subtitle: 'Browse pricing for all models with rate multipliers across groups',
+    searchPlaceholder: 'Search model name...',
+    allPlatforms: 'All Platforms',
+    empty: 'No priced models available',
+    noResults: 'No matching models found',
+    noPricing: 'No pricing configured',
+    copyModelName: 'Copy model name',
+    copied: 'Copied',
+    inputPrice: 'Input',
+    outputPrice: 'Output',
+    cacheReadPrice: 'Cache Read',
+    perRequestPrice: 'Per Request',
+    imagePrice: 'Image Output',
+    groupRates: 'Group Rates',
   },
 
   affiliate: {

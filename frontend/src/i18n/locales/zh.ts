@@ -356,6 +356,7 @@ export default {
     groups: '分组管理',
     channels: '渠道管理',
     availableChannels: '可用渠道',
+    modelPlaza: '模型广场',
     subscriptions: '订阅管理',
     accounts: '账号管理',
     proxies: 'IP管理',
@@ -990,6 +991,26 @@ export default {
       unitPerMillion: '/ 1M token',
       unitPerRequest: '/ 次'
     }
+  },
+
+  // Model Plaza (user-facing)
+  modelPlaza: {
+    title: '模型广场',
+    description: '查看模型定价与分组倍率',
+    subtitle: '查看所有已定价模型的定价信息与不同分组的倍率',
+    searchPlaceholder: '搜索模型名称...',
+    allPlatforms: '全部平台',
+    empty: '暂无已定价模型',
+    noResults: '未找到匹配的模型',
+    noPricing: '未配置定价',
+    copyModelName: '复制模型名',
+    copied: '已复制',
+    inputPrice: '输入价格',
+    outputPrice: '输出价格',
+    cacheReadPrice: '缓存读取',
+    perRequestPrice: '每次请求',
+    imagePrice: '图片输出',
+    groupRates: '分组倍率',
   },
 
   affiliate: {
