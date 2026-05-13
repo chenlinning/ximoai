@@ -54,7 +54,7 @@
       <!-- Empty -->
       <div v-else-if="modelList.length === 0" class="flex flex-col items-center py-20">
         <Icon name="inbox" size="xl" class="mb-3 h-12 w-12 text-accent-400" />
-        <p class="text-sm text-accent-500 dark:text-accent-400">{{ t('modelPlaza.empty') }}</p>
+        <p class="text-sm text-accent-500 dark:text-accent-400">{{ t('modelPlaza.noModels') }}</p>
       </div>
 
       <!-- No results after filter -->
@@ -114,21 +114,21 @@
                   <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.inputPrice') }}</span>
                   <span :class="[platformTextClass(model.platform)]" class="font-medium">
                     {{ formatScaled(model.pricing.input_price, perMillionScale) }}
-                    <span class="text-accent-400 dark:text-accent-500">/1M</span>
+                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
                   </span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.outputPrice') }}</span>
                   <span :class="[platformTextClass(model.platform)]" class="font-medium">
                     {{ formatScaled(model.pricing.output_price, perMillionScale) }}
-                    <span class="text-accent-400 dark:text-accent-500">/1M</span>
+                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
                   </span>
                 </div>
                 <div v-if="model.pricing.cache_read_price != null" class="flex justify-between">
                   <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.cacheReadPrice') }}</span>
                   <span class="font-medium text-accent-600 dark:text-accent-300">
                     {{ formatScaled(model.pricing.cache_read_price, perMillionScale) }}
-                    <span class="text-accent-400 dark:text-accent-500">/1M</span>
+                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
                   </span>
                 </div>
               </template>
@@ -137,7 +137,7 @@
                   <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.perRequestPrice') }}</span>
                   <span :class="[platformTextClass(model.platform)]" class="font-medium">
                     {{ formatScaled(model.pricing.per_request_price, 1) }}
-                    <span class="text-accent-400 dark:text-accent-500">/req</span>
+                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perRequestUnit') }}</span>
                   </span>
                 </div>
               </template>
@@ -146,7 +146,7 @@
                   <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.imagePrice') }}</span>
                   <span :class="[platformTextClass(model.platform)]" class="font-medium">
                     {{ formatScaled(model.pricing.image_output_price, 1) }}
-                    <span class="text-accent-400 dark:text-accent-500">/img</span>
+                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perImageUnit') }}</span>
                   </span>
                 </div>
               </template>
