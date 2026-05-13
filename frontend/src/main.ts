@@ -5,6 +5,7 @@ import router from './router'
 import i18n, { initI18n } from './i18n'
 import { useAppStore } from '@/stores/app'
 import './style.css'
+import '@/extensions'
 
 function initThemeClass() {
   const savedTheme = localStorage.getItem('theme')
@@ -36,15 +37,6 @@ async function bootstrap() {
 
   app.use(router)
   app.use(i18n)
-
-  // Expose router & i18n for independent extensions (read-only access, no source modification)
-  ;(window as any).__APP_ROUTER__ = router
-  ;(window as any).__APP_I18N__ = i18n
-
-  // XimoAi extensions — must load BEFORE router.isReady() so that
-  // dynamically added routes (e.g. /model-plaza) are registered
-  // before the initial navigation resolves
-  await import('./extensions/index')
 
   // 等待路由器完成初始导航后再挂载，避免竞态条件导致的空白渲染
   await router.isReady()

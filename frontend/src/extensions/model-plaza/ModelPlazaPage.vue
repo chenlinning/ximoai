@@ -56,8 +56,8 @@
         <p>{{ t('modelPlaza.noResults') }}</p>
       </div>
 
-      <!-- Model Grid: 4 columns -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <!-- Model Grid: 4 columns, ~80% width -->
+      <div v-else class="mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style="max-width: 80%;">
         <div
           v-for="model in filteredModels"
           :key="model.name"
@@ -73,7 +73,7 @@
             <!-- Model name + copy -->
             <div class="mb-2 flex items-start justify-between gap-2">
               <h3
-                class="truncate text-sm font-semibold text-accent-900 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-accent-50"
+                class="truncate text-base font-semibold text-accent-900 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-accent-50"
                 :title="model.name"
               >
                 {{ model.name }}
@@ -91,7 +91,7 @@
               <span
                 v-for="pe in model.platformEntries"
                 :key="pe.platform"
-                :class="[platformBadgeClass(pe.platform), 'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium']"
+                :class="[platformBadgeClass(pe.platform), 'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium']"
               >
                 <PlatformIcon :platform="pe.platform as GroupPlatform" size="xs" />
                 {{ pe.platform }}
@@ -101,16 +101,16 @@
             <!-- Group rate table -->
             <div
               v-if="model.visibleGroups.length > 0"
-              class="space-y-1.5 text-[11px]"
+              class="space-y-1.5 text-xs"
             >
               <div
                 v-for="g in model.visibleGroups"
                 :key="g.id"
-                class="group/rate rounded-md border border-accent-100 px-2 py-1 dark:border-accent-700/50 transition-transform duration-150 hover:scale-[1.02]"
+                class="group/rate rounded-md border border-accent-100 px-2.5 py-1.5 dark:border-accent-700/50 transition-transform duration-150 hover:scale-[1.02]"
               >
                 <div class="flex items-center justify-between">
-                  <span class="truncate text-accent-600 dark:text-accent-400">{{ g.name }}</span>
-                  <span :class="getMultiplierColor(g.effectiveRate)" class="font-medium">
+                  <span class="truncate text-sm text-accent-600 dark:text-accent-400">{{ g.name }}</span>
+                  <span :class="getMultiplierColor(g.effectiveRate)" class="text-sm font-medium">
                     ×{{ g.effectiveRate }}
                   </span>
                 </div>
@@ -165,7 +165,7 @@
                 </template>
               </div>
             </div>
-            <div v-else class="text-[11px] text-accent-400 dark:text-accent-500">
+            <div v-else class="text-xs text-accent-400 dark:text-accent-500">
               —
             </div>
           </div>
