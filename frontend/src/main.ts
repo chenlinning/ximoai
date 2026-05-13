@@ -40,6 +40,14 @@ async function bootstrap() {
   // 等待路由器完成初始导航后再挂载，避免竞态条件导致的空白渲染
   await router.isReady()
   app.mount('#app')
+
+  // Expose router & i18n for independent extensions (read-only access, no source modification)
+  ;(window as any).__APP_ROUTER__ = router
+  ;(window as any).__APP_I18N__ = i18n
+
+  // XimoAi extensions — independent modules, no source-project file modifications
+  // Dynamic import ensures window globals are available before extension init
+  await import('./extensions/index')
 }
 
 bootstrap()
