@@ -171,7 +171,7 @@
                 >
                   {{ g.name }}
                   <span class="ml-1 font-semibold" :class="getMultiplierColor(g.effectiveRate)">
-                    ×{{ g.effectiveRate.toFixed(2) }}
+                    x{{ g.effectiveRate.toFixed(2) }}
                   </span>
                 </span>
               </div>
@@ -203,11 +203,13 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import userChannelsAPI, {
-  type UserAvailableChannel,
   type UserAvailableGroup,
   type UserSupportedModelPricing,
 } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
+import adminChannelsAPI from '@/api/admin/channels'
+import adminGroupsAPI from '@/api/admin/groups'
+import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatScaled } from '@/utils/pricing'
@@ -222,16 +224,15 @@ import {
   BILLING_MODE_PER_REQUEST,
   BILLING_MODE_IMAGE,
 } from '@/constants/channel'
-import type { GroupPlatform } from '@/types'
+import type { GroupPlatform, AdminGroup } from '@/types'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const appStore = useAppStore()
 
 const perMillionScale = 1_000_000
 
 // ── State ──────────────────────────────────────────────────────────
-const channels = ref<UserAvailableChannel[]>([])
-const userGroupRates = ref<Record<number, number>>({})
 const loading = ref(false)
 const searchQuery = ref('')
 const selectedPlatform = ref('')
@@ -256,53 +257,7 @@ interface FlatModel {
   groups: ModelGroup[]
 }
 
-const modelList = computed<FlatModel[]>(() => {
-  const result: FlatModel[] = []
-  const seen = new Map<string, FlatModel>()
-
-  for (const channel of channels.value) {
-    for (const section of channel.platforms) {
-      for (const m of section.supported_models) {
-        const key = `${m.platform}::${m.name}`
-        const existing = seen.get(key)
-
-        const groups: ModelGroup[] = section.groups.map((g: UserAvailableGroup) => {
-          const userRate = userGroupRates.value[g.id] ?? null
-          const effectiveRate = userRate !== null ? userRate : g.rate_multiplier
-          return {
-            id: g.id,
-            name: g.name,
-            rateMultiplier: g.rate_multiplier,
-            userRateMultiplier: userRate,
-            isExclusive: g.is_exclusive,
-            effectiveRate,
-          }
-        })
-
-        if (existing) {
-          // Merge groups from different channels for the same model
-          for (const g of groups) {
-            if (!existing.groups.some((eg) => eg.id === g.id)) {
-              existing.groups.push(g)
-            }
-          }
-        } else {
-          const flat: FlatModel = {
-            uniqueKey: key,
-            name: m.name,
-            platform: m.platform,
-            pricing: m.pricing,
-            groups,
-          }
-          seen.set(key, flat)
-          result.push(flat)
-        }
-      }
-    }
-  }
-
-  return result
-})
+const modelList = ref<FlatModel[]>([])
 
 // ── Platform options for filter ────────────────────────────────────
 const platformOptions = computed(() => {
@@ -349,7 +304,6 @@ async function copyModelName(name: string) {
       copiedModel.value = null
     }, 1200)
   } catch {
-    // Fallback for older browsers
     const textarea = document.createElement('textarea')
     textarea.value = name
     textarea.style.position = 'fixed'
@@ -366,19 +320,144 @@ async function copyModelName(name: string) {
   }
 }
 
-// ── Data loading ───────────────────────────────────────────────────
+// ── Admin data loading ─────────────────────────────────────────────
+async function loadAdminData() {
+  const [channelsResp, allGroups] = await Promise.all([
+    adminChannelsAPI.list(1, 200),
+    adminGroupsAPI.getAll().catch(() => [] as AdminGroup[]),
+  ])
+
+  const channels = channelsResp.items
+  const groupMap = new Map<number, AdminGroup>()
+  for (const g of allGroups) {
+    groupMap.set(g.id, g)
+  }
+
+  const result: FlatModel[] = []
+  const seen = new Map<string, FlatModel>()
+
+  for (const channel of channels) {
+    if (channel.status !== 'active') continue
+
+    const channelGroupIds = channel.group_ids || []
+    const channelGroups: ModelGroup[] = channelGroupIds
+      .map((gid: number) => {
+        const g = groupMap.get(gid)
+        if (!g) return null as ModelGroup | null
+        return {
+          id: g.id,
+          name: g.name,
+          rateMultiplier: g.rate_multiplier,
+          userRateMultiplier: null as number | null,
+          isExclusive: g.is_exclusive ?? false,
+          effectiveRate: g.rate_multiplier,
+        } as ModelGroup
+      })
+      .filter((g: ModelGroup | null): g is ModelGroup => g !== null)
+
+    for (const mp of channel.model_pricing || []) {
+      const pricing: UserSupportedModelPricing = {
+        billing_mode: mp.billing_mode,
+        input_price: mp.input_price,
+        output_price: mp.output_price,
+        cache_write_price: mp.cache_write_price,
+        cache_read_price: mp.cache_read_price,
+        image_output_price: mp.image_output_price ?? null,
+        per_request_price: mp.per_request_price ?? null,
+        intervals: [],
+      }
+
+      for (const modelName of mp.models || []) {
+        const key = `${mp.platform}::${modelName}`
+        const existing = seen.get(key)
+
+        if (existing) {
+          for (const g of channelGroups) {
+            if (!existing.groups.some((eg) => eg.id === g.id)) {
+              existing.groups.push(g)
+            }
+          }
+        } else {
+          const flat: FlatModel = {
+            uniqueKey: key,
+            name: modelName,
+            platform: mp.platform,
+            pricing,
+            groups: [...channelGroups],
+          }
+          seen.set(key, flat)
+          result.push(flat)
+        }
+      }
+    }
+  }
+
+  modelList.value = result
+}
+
+// ── User data loading ──────────────────────────────────────────────
+async function loadUserData() {
+  const [list, rates] = await Promise.all([
+    userChannelsAPI.getAvailable(),
+    userGroupsAPI.getUserGroupRates().catch(() => ({} as Record<number, number>)),
+  ])
+
+  const userGroupRates = rates as Record<number, number>
+  const result: FlatModel[] = []
+  const seen = new Map<string, FlatModel>()
+
+  for (const channel of list) {
+    for (const section of channel.platforms) {
+      for (const m of section.supported_models) {
+        const key = `${m.platform}::${m.name}`
+        const existing = seen.get(key)
+
+        const groups: ModelGroup[] = section.groups.map((g: UserAvailableGroup) => {
+          const userRate = userGroupRates[g.id] ?? null
+          const effectiveRate = userRate !== null ? userRate : g.rate_multiplier
+          return {
+            id: g.id,
+            name: g.name,
+            rateMultiplier: g.rate_multiplier,
+            userRateMultiplier: userRate,
+            isExclusive: g.is_exclusive,
+            effectiveRate,
+          }
+        })
+
+        if (existing) {
+          for (const g of groups) {
+            if (!existing.groups.some((eg) => eg.id === g.id)) {
+              existing.groups.push(g)
+            }
+          }
+        } else {
+          const flat: FlatModel = {
+            uniqueKey: key,
+            name: m.name,
+            platform: m.platform,
+            pricing: m.pricing,
+            groups,
+          }
+          seen.set(key, flat)
+          result.push(flat)
+        }
+      }
+    }
+  }
+
+  modelList.value = result
+}
+
+// ── Data loading dispatcher ────────────────────────────────────────
 async function loadData() {
   loading.value = true
   try {
-    const [list, rates] = await Promise.all([
-      userChannelsAPI.getAvailable(),
-      userGroupsAPI.getUserGroupRates().catch((err: unknown) => {
-        console.error('Failed to load user group rates:', err)
-        return {} as Record<number, number>
-      }),
-    ])
-    channels.value = list
-    userGroupRates.value = rates
+    if (authStore.isAdmin) {
+      await loadAdminData()
+    } else {
+      await loadUserData()
+    }
   } catch (err: unknown) {
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
   } finally {
