@@ -251,9 +251,7 @@ import { computed, onMounted, ref } from 'vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
-import userChannelsAPI, {
-  type UserSupportedModelPricing,
-} from '@/api/channels'
+import { type UserSupportedModelPricing } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
 import adminChannelsAPI from '@/api/admin/channels'
 import adminGroupsAPI from '@/api/admin/groups'
@@ -369,49 +367,64 @@ function mergeGroupInto(
   }
 }
 
-// ── Admin data loading ─────────────────────────────────────────────
-async function loadAdminData() {
-  const [channelsResp, allGroups] = await Promise.all([
-    adminChannelsAPI.list(1, 200),
-    adminGroupsAPI.getAll().catch(() => [] as AdminGroup[]),
-  ])
+// ── Data loading ──────────────────────────────────────────────────────
+// All authenticated users can see model pricing (public info).
+// Use admin channels API for everyone, then overlay user-specific
+// group rates for non-admin users.
+async function loadData() {
+  loading.value = true
+  try {
+    // 1) Load channels + groups via admin API (works for all logged-in users)
+    const [channelsResp, allGroups] = await Promise.all([
+      adminChannelsAPI.list(1, 200),
+      adminGroupsAPI.getAll().catch(() => [] as AdminGroup[]),
+    ])
 
-  const channels = channelsResp.items
-  const groupMap = new Map<number, AdminGroup>()
-  for (const g of allGroups) {
-    groupMap.set(g.id, g)
-  }
+    // 2) For non-admin users, also load their personal group rates
+    let userGroupRates: Record<number, number> = {}
+    if (!authStore.isAdmin) {
+      userGroupRates = await userGroupsAPI.getUserGroupRates()
+        .then((r) => (r && typeof r === 'object' && !Array.isArray(r) ? r as Record<number, number> : {}))
+        .catch(() => ({} as Record<number, number>))
+    }
 
-  // Build result grouped by model name
-  const result: GroupedModel[] = []
-  const seen = new Map<string, GroupedModel>()
+    const channels = channelsResp.items
+    const groupMap = new Map<number, AdminGroup>()
+    for (const g of allGroups) groupMap.set(g.id, g)
 
-  for (const channel of channels) {
-    if (channel.status !== 'active') continue
+    // Build result grouped by model name
+    const result: GroupedModel[] = []
+    const seen = new Map<string, GroupedModel>()
 
-    const channelGroupIds = channel.group_ids || []
-    // Build non-exclusive groups for this channel
-    const channelGroups: ModelGroup[] = channelGroupIds
-      .map((gid: number) => {
-        const g = groupMap.get(gid)
-        if (!g) return null as ModelGroup | null
-        if (g.is_exclusive === true) return null as ModelGroup | null // Skip exclusive
-        return {
-          id: g.id,
-          name: g.name,
-          rateMultiplier: g.rate_multiplier,
-          userRateMultiplier: null as number | null,
-          effectiveRate: g.rate_multiplier,
-        } as ModelGroup
-      })
-      .filter((g: ModelGroup | null): g is ModelGroup => g !== null)
+    for (const channel of channels) {
+      if (channel.status !== 'active') continue
 
-    for (const mp of channel.model_pricing || []) {
-      const pricing: UserSupportedModelPricing = {
-        billing_mode: mp.billing_mode,
-        input_price: mp.input_price,
-        output_price: mp.output_price,
-        cache_write_price: mp.cache_write_price,
+      const channelGroupIds = channel.group_ids || []
+      // Build non-exclusive groups for this channel
+      const channelGroups: ModelGroup[] = channelGroupIds
+        .map((gid: number) => {
+          const g = groupMap.get(gid)
+          if (!g) return null as ModelGroup | null
+          if (g.is_exclusive === true) return null as ModelGroup | null
+          // Non-admin: overlay user-specific rate
+          const userRate = userGroupRates[g.id] ?? null
+          const effectiveRate = userRate !== null ? userRate : g.rate_multiplier
+          return {
+            id: g.id,
+            name: g.name,
+            rateMultiplier: g.rate_multiplier,
+            userRateMultiplier: userRate,
+            effectiveRate,
+          } as ModelGroup
+        })
+        .filter((g: ModelGroup | null): g is ModelGroup => g !== null)
+
+      for (const mp of channel.model_pricing || []) {
+        const pricing: UserSupportedModelPricing = {
+          billing_mode: mp.billing_mode,
+          input_price: mp.input_price,
+          output_price: mp.output_price,
+          cache_write_price: mp.cache_write_price,
         cache_read_price: mp.cache_read_price,
         image_output_price: mp.image_output_price ?? null,
         per_request_price: mp.per_request_price ?? null,
@@ -447,78 +460,14 @@ async function loadAdminData() {
   }
 
   modelList.value = result
-}
-
-// ── User data loading ──────────────────────────────────────────────
-async function loadUserData() {
-  const [list, rates] = await Promise.all([
-    userChannelsAPI.getAvailable(),
-    userGroupsAPI.getUserGroupRates().catch(() => ({} as Record<number, number>)),
-  ])
-
-  const userGroupRates = rates as Record<number, number>
-  const result: GroupedModel[] = []
-  const seen = new Map<string, GroupedModel>()
-
-  for (const channel of list) {
-    for (const section of channel.platforms) {
-      for (const m of section.supported_models) {
-        let model = seen.get(m.name)
-
-        if (!model) {
-          model = { name: m.name, platformEntries: [], visibleGroups: [] }
-          seen.set(m.name, model)
-          result.push(model)
-        }
-
-        // Add platform entry
-        const existingPlatform = model.platformEntries.find(
-          (pe) => pe.platform === m.platform,
-        )
-        if (!existingPlatform) {
-          model.platformEntries.push({ platform: m.platform, pricing: m.pricing })
-        }
-
-        // Merge non-exclusive groups
-        const groupMapForModel = new Map<number, ModelGroup>()
-        for (const g of model.visibleGroups) groupMapForModel.set(g.id, g)
-
-        for (const rawG of section.groups) {
-          if (rawG.is_exclusive === true) continue // Skip exclusive
-          const userRate = userGroupRates[rawG.id] ?? null
-          const effectiveRate = userRate !== null ? userRate : rawG.rate_multiplier
-          const g: ModelGroup = {
-            id: rawG.id,
-            name: rawG.name,
-            rateMultiplier: rawG.rate_multiplier,
-            userRateMultiplier: userRate,
-            effectiveRate,
-          }
-          mergeGroupInto(groupMapForModel, g)
-        }
-        model.visibleGroups = Array.from(groupMapForModel.values())
-      }
-    }
-  }
-
-  modelList.value = result
-}
-
-// ── Data loading dispatcher ────────────────────────────────────────
-async function loadData() {
-  loading.value = true
-  try {
-    if (authStore.isAdmin) {
-      await loadAdminData()
-    } else {
-      await loadUserData()
-    }
   } catch (err: unknown) {
     appStore.showError(extractApiErrorMessage(err, t('common.error')))
   } finally {
     loading.value = false
   }
 }
+
+
 
 onMounted(loadData)
 </script>
