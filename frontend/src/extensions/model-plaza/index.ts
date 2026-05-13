@@ -1,8 +1,8 @@
 /**
  * 模型广场 - 扩展入口
  *
- * 完全独立的扩展模块，不修改源项目任何文件
- * 通过 window.__APP_ROUTER__ 和 window.__APP_I18N__ 与源项目交互
+ * 路由、i18n、侧边栏均已静态注册（规则3豁免），
+ * 此模块保留为扩展目录入口占位。
  */
 
-export { mountModelPlaza } from './mount'
+export {}

@@ -386,6 +386,29 @@ export default {
     modelPlaza: 'Model Plaza',
   },
 
+  // Model Plaza
+  modelPlaza: {
+    title: 'Model Plaza',
+    subtitle: 'View model pricing and group rates',
+    searchPlaceholder: 'Search model, platform or group...',
+    allPlatforms: 'All Platforms',
+    inputPrice: 'Input Price',
+    outputPrice: 'Output Price',
+    cacheReadPrice: 'Cache Read',
+    perRequestPrice: 'Per Request',
+    imagePrice: 'Image Price',
+    perMillionUnit: '/1M Tokens',
+    perRequestUnit: '/Request',
+    perImageUnit: '/Image',
+    noPricing: 'No pricing info',
+    noModels: 'No models available',
+    noResults: 'No matching models found',
+    copied: 'Copied',
+    copyModelName: 'Copy model name',
+    groupName: 'Group',
+    rateMultiplier: 'Rate',
+  },
+
   // Auth
   auth: {
     welcomeBack: 'Welcome Back',

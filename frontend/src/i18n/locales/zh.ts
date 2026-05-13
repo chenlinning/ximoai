@@ -386,6 +386,29 @@ export default {
     modelPlaza: '模型广场',
   },
 
+  // Model Plaza
+  modelPlaza: {
+    title: '模型广场',
+    subtitle: '查看模型定价与分组倍率',
+    searchPlaceholder: '搜索模型名、平台或分组...',
+    allPlatforms: '全部平台',
+    inputPrice: '输入价格',
+    outputPrice: '输出价格',
+    cacheReadPrice: '缓存读取',
+    perRequestPrice: '按次计费',
+    imagePrice: '图片价格',
+    perMillionUnit: '/百万Token',
+    perRequestUnit: '/次',
+    perImageUnit: '/张',
+    noPricing: '暂无定价',
+    noModels: '暂无可用模型',
+    noResults: '未找到匹配的模型',
+    copied: '已复制',
+    copyModelName: '复制模型名',
+    groupName: '分组',
+    rateMultiplier: '倍率',
+  },
+
   // Auth
   auth: {
     welcomeBack: '欢迎回来',

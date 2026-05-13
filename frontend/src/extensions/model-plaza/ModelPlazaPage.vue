@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="w-full px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mx-auto px-4 py-6 sm:px-6 lg:px-8" style="max-width: 80%;">
       <!-- Header -->
       <div class="mb-6">
         <h1 class="text-2xl font-bold text-accent-900 dark:text-accent-50">
@@ -13,7 +13,7 @@
 
       <!-- Search + Platform Filter -->
       <div class="mb-6 flex flex-wrap items-center gap-3">
-        <div class="relative flex-1 min-w-[200px]">
+        <div class="relative w-64 shrink-0">
           <Icon name="search" size="sm" class="absolute left-3 top-1/2 -translate-y-1/2 text-accent-400" />
           <input
             v-model="searchQuery"
@@ -56,8 +56,8 @@
         <p>{{ t('modelPlaza.noResults') }}</p>
       </div>
 
-      <!-- Model Grid: 4 columns, ~80% width -->
-      <div v-else class="mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" style="max-width: 80%;">
+      <!-- Model Grid -->
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
         <div
           v-for="model in filteredModels"
           :key="model.name"
@@ -69,17 +69,17 @@
             :class="[platformBadgeClass(model.platformEntries[0].platform), 'h-1 w-0 group-hover:w-full transition-all duration-500']"
           ></div>
 
-          <div class="p-4">
+          <div class="p-5">
             <!-- Model name + copy -->
-            <div class="mb-2 flex items-start justify-between gap-2">
+            <div class="mb-3 flex items-start justify-between gap-2">
               <h3
-                class="truncate text-base font-semibold text-accent-900 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-accent-50"
+                class="truncate text-lg font-bold text-accent-900 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-accent-50"
                 :title="model.name"
               >
                 {{ model.name }}
               </h3>
               <button
-                class="shrink-0 rounded-md p-1 text-accent-400 opacity-0 transition-all duration-200 hover:scale-110 hover:bg-accent-100 hover:text-accent-600 group-hover:opacity-100 dark:hover:bg-accent-700 dark:hover:text-accent-300"
+                class="shrink-0 rounded-md p-1.5 text-accent-400 opacity-0 transition-all duration-200 hover:scale-110 hover:bg-accent-100 hover:text-accent-600 group-hover:opacity-100 dark:hover:bg-accent-700 dark:hover:text-accent-300"
                 @click="copyModelName(model.name)"
               >
                 <Icon name="copy" size="sm" />
@@ -87,11 +87,11 @@
             </div>
 
             <!-- Platform badges -->
-            <div class="mb-3 flex flex-wrap gap-1.5">
+            <div class="mb-4 flex flex-wrap gap-1.5">
               <span
                 v-for="pe in model.platformEntries"
                 :key="pe.platform"
-                :class="[platformBadgeClass(pe.platform), 'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium']"
+                :class="[platformBadgeClass(pe.platform), 'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold']"
               >
                 <PlatformIcon :platform="pe.platform as GroupPlatform" size="xs" />
                 {{ pe.platform }}
@@ -101,61 +101,69 @@
             <!-- Group rate table -->
             <div
               v-if="model.visibleGroups.length > 0"
-              class="space-y-1.5 text-xs"
+              class="space-y-3"
             >
               <div
                 v-for="g in model.visibleGroups"
                 :key="g.id"
-                class="group/rate rounded-md border border-accent-100 px-2.5 py-1.5 dark:border-accent-700/50 transition-transform duration-150 hover:scale-[1.02]"
+                class="group/rate rounded-lg border border-accent-100 px-3 py-2.5 dark:border-accent-700/50 transition-transform duration-150 hover:scale-[1.01]"
               >
-                <div class="flex items-center justify-between">
-                  <span class="truncate text-sm text-accent-600 dark:text-accent-400">{{ g.name }}</span>
-                  <span :class="getMultiplierColor(g.effectiveRate)" class="text-sm font-medium">
-                    ×{{ g.effectiveRate }}
+                <!-- Group name + rate multiplier -->
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="flex items-center gap-1.5">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-accent-400 dark:text-accent-500">{{ t('modelPlaza.groupName') }}</span>
+                    <span class="text-sm font-bold text-emerald-700 dark:text-emerald-400">{{ g.name }}</span>
+                  </span>
+                  <span class="flex items-center gap-1">
+                    <span class="text-xs font-semibold uppercase tracking-wide text-accent-400 dark:text-accent-500">{{ t('modelPlaza.rateMultiplier') }}</span>
+                    <span :class="getMultiplierColor(g.effectiveRate)" class="text-sm font-bold">
+                      ×{{ g.effectiveRate }}
+                    </span>
                   </span>
                 </div>
+                <!-- Pricing details -->
                 <template v-if="peHasPricing(model, g)">
                   <template v-for="pe in model.platformEntries" :key="pe.platform + '-pricing'">
                     <template v-if="pe.pricing">
-                      <div class="mt-1 space-y-0.5" :class="platformTextClass(pe.platform)">
+                      <div class="space-y-1" :class="platformTextClass(pe.platform)">
                         <template v-if="pe.pricing.billing_mode === BILLING_MODE_TOKEN">
-                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
-                            <span>{{ t('modelPlaza.inputPrice') }}</span>
-                            <span class="font-medium text-accent-700 dark:text-accent-200">
-                              {{ formatScaled((pe.pricing.input_price ?? 0) * g.effectiveRate, perMillionScale) }}
-                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                          <div class="flex items-center justify-between">
+                            <span class="text-xs text-accent-500 dark:text-accent-400">{{ t('modelPlaza.inputPrice') }}</span>
+                            <span class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                              ${{ formatScaled((pe.pricing.input_price ?? 0) * g.effectiveRate, perMillionScale) }}
+                              <span class="text-xs font-normal text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
                             </span>
                           </div>
-                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
-                            <span>{{ t('modelPlaza.outputPrice') }}</span>
-                            <span class="font-medium text-accent-700 dark:text-accent-200">
-                              {{ formatScaled((pe.pricing.output_price ?? 0) * g.effectiveRate, perMillionScale) }}
-                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                          <div class="flex items-center justify-between">
+                            <span class="text-xs text-accent-500 dark:text-accent-400">{{ t('modelPlaza.outputPrice') }}</span>
+                            <span class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                              ${{ formatScaled((pe.pricing.output_price ?? 0) * g.effectiveRate, perMillionScale) }}
+                              <span class="text-xs font-normal text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
                             </span>
                           </div>
-                          <div v-if="pe.pricing.cache_read_price" class="flex justify-between text-accent-500 dark:text-accent-400">
-                            <span>{{ t('modelPlaza.cacheReadPrice') }}</span>
-                            <span class="font-medium text-accent-700 dark:text-accent-200">
-                              {{ formatScaled((pe.pricing.cache_read_price ?? 0) * g.effectiveRate, perMillionScale) }}
-                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                          <div v-if="pe.pricing.cache_read_price" class="flex items-center justify-between">
+                            <span class="text-xs text-accent-500 dark:text-accent-400">{{ t('modelPlaza.cacheReadPrice') }}</span>
+                            <span class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                              ${{ formatScaled((pe.pricing.cache_read_price ?? 0) * g.effectiveRate, perMillionScale) }}
+                              <span class="text-xs font-normal text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
                             </span>
                           </div>
                         </template>
                         <template v-else-if="pe.pricing.billing_mode === BILLING_MODE_PER_REQUEST">
-                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
-                            <span>{{ t('modelPlaza.perRequestPrice') }}</span>
-                            <span class="font-medium text-accent-700 dark:text-accent-200">
-                              {{ formatScaled((pe.pricing.per_request_price ?? 0) * g.effectiveRate, 1) }}
-                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perRequestUnit') }}</span>
+                          <div class="flex items-center justify-between">
+                            <span class="text-xs text-accent-500 dark:text-accent-400">{{ t('modelPlaza.perRequestPrice') }}</span>
+                            <span class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                              ${{ formatScaled((pe.pricing.per_request_price ?? 0) * g.effectiveRate, 1) }}
+                              <span class="text-xs font-normal text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perRequestUnit') }}</span>
                             </span>
                           </div>
                         </template>
                         <template v-else-if="pe.pricing.billing_mode === BILLING_MODE_IMAGE">
-                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
-                            <span>{{ t('modelPlaza.imagePrice') }}</span>
-                            <span class="font-medium text-accent-700 dark:text-accent-200">
-                              {{ formatScaled((pe.pricing.image_output_price ?? 0) * g.effectiveRate, 1) }}
-                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perImageUnit') }}</span>
+                          <div class="flex items-center justify-between">
+                            <span class="text-xs text-accent-500 dark:text-accent-400">{{ t('modelPlaza.imagePrice') }}</span>
+                            <span class="text-sm font-bold text-orange-600 dark:text-orange-400">
+                              ${{ formatScaled((pe.pricing.image_output_price ?? 0) * g.effectiveRate, 1) }}
+                              <span class="text-xs font-normal text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perImageUnit') }}</span>
                             </span>
                           </div>
                         </template>
@@ -165,7 +173,7 @@
                 </template>
               </div>
             </div>
-            <div v-else class="text-xs text-accent-400 dark:text-accent-500">
+            <div v-else class="py-2 text-xs text-accent-400 dark:text-accent-500">
               —
             </div>
           </div>
@@ -174,7 +182,7 @@
           <Transition name="fade">
             <div
               v-if="copiedModel === model.name"
-              class="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-dark-900/80"
+              class="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80 dark:bg-dark-900/80"
             >
               <span class="flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                 <Icon name="check" size="sm" />
@@ -290,7 +298,7 @@ const filteredModels = computed(() => {
 // ── Color for rate multiplier ──────────────────────────────────────
 function getMultiplierColor(rate: number): string {
   if (rate <= 1) return 'text-emerald-600 dark:text-emerald-400'
-  if (rate <= 1.5) return 'text-accent-600 dark:text-accent-300'
+  if (rate <= 1.5) return 'text-amber-600 dark:text-amber-400'
   if (rate <= 3) return 'text-orange-600 dark:text-orange-400'
   return 'text-red-600 dark:text-red-400'
 }
