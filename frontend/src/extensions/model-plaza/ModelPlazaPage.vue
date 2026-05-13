@@ -26,14 +26,6 @@
               class="input pl-10"
             />
           </div>
-          <!-- Platform filter -->
-          <select
-            v-model="selectedPlatform"
-            class="input w-auto min-w-[140px]"
-          >
-            <option value="">{{ t('modelPlaza.allPlatforms') }}</option>
-            <option v-for="p in platformOptions" :key="p" :value="p">{{ p }}</option>
-          </select>
           <!-- Refresh -->
           <button
             @click="loadData"
@@ -64,15 +56,14 @@
       </div>
 
       <!-- Model Cards Grid -->
-      <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div
           v-for="model in filteredModels"
-          :key="model.uniqueKey"
-          class="card group relative overflow-hidden border border-transparent transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-current/10 dark:hover:border-current/10"
-          :class="[platformBorderClass(model.platform)]"
+          :key="model.name"
+          class="card group relative overflow-hidden rounded-lg border border-transparent bg-white transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:border-current/10 dark:bg-dark-800 dark:hover:border-current/10"
         >
           <!-- Accent bar at top - expands on hover -->
-          <div class="h-1 w-0 transition-all duration-500 ease-out group-hover:w-full" :class="[platformAccentBarClass(model.platform)]"></div>
+          <div class="h-1 w-0 transition-all duration-500 ease-out group-hover:w-full bg-gradient-to-r from-accent-500 to-accent-400"></div>
 
           <div class="p-4">
             <!-- Model name + copy button -->
@@ -94,86 +85,145 @@
               </button>
             </div>
 
-            <!-- Platform badge -->
-            <div class="mb-3">
-              <span
-                :class="[
-                  'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase',
-                  platformBadgeClass(model.platform),
-                ]"
+            <!-- Platform entries -->
+            <div class="space-y-3">
+              <div
+                v-for="pe in model.platformEntries"
+                :key="pe.platform"
+                class="rounded-md border border-accent-100 p-3 dark:border-dark-700"
               >
-                <PlatformIcon :platform="model.platform as GroupPlatform" size="xs" />
-                {{ model.platform }}
-              </span>
+                <!-- Platform badge -->
+                <div class="mb-2">
+                  <span
+                    :class="[
+                      'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium uppercase',
+                      platformBadgeClass(pe.platform),
+                    ]"
+                  >
+                    <PlatformIcon :platform="pe.platform as GroupPlatform" size="xs" />
+                    {{ pe.platform }}
+                  </span>
+                </div>
+
+                <!-- Pricing info -->
+                <div v-if="pe.pricing" class="space-y-1.5 text-xs">
+                  <template v-if="pe.pricing.billing_mode === BILLING_MODE_TOKEN">
+                    <div class="flex justify-between">
+                      <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.inputPrice') }}</span>
+                      <span :class="[platformTextClass(pe.platform)]" class="font-medium">
+                        {{ formatScaled(pe.pricing.input_price, perMillionScale) }}
+                        <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                      </span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.outputPrice') }}</span>
+                      <span :class="[platformTextClass(pe.platform)]" class="font-medium">
+                        {{ formatScaled(pe.pricing.output_price, perMillionScale) }}
+                        <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                      </span>
+                    </div>
+                    <div v-if="pe.pricing.cache_read_price != null" class="flex justify-between">
+                      <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.cacheReadPrice') }}</span>
+                      <span class="font-medium text-accent-600 dark:text-accent-300">
+                        {{ formatScaled(pe.pricing.cache_read_price, perMillionScale) }}
+                        <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else-if="pe.pricing.billing_mode === BILLING_MODE_PER_REQUEST">
+                    <div class="flex justify-between">
+                      <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.perRequestPrice') }}</span>
+                      <span :class="[platformTextClass(pe.platform)]" class="font-medium">
+                        {{ formatScaled(pe.pricing.per_request_price, 1) }}
+                        <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perRequestUnit') }}</span>
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else-if="pe.pricing.billing_mode === BILLING_MODE_IMAGE">
+                    <div class="flex justify-between">
+                      <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.imagePrice') }}</span>
+                      <span :class="[platformTextClass(pe.platform)]" class="font-medium">
+                        {{ formatScaled(pe.pricing.image_output_price, 1) }}
+                        <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perImageUnit') }}</span>
+                      </span>
+                    </div>
+                  </template>
+                </div>
+                <div v-else class="text-xs text-accent-400 dark:text-accent-500">
+                  {{ t('modelPlaza.noPricing') }}
+                </div>
+              </div>
             </div>
 
-            <!-- Pricing info -->
-            <div v-if="model.pricing" class="space-y-1.5 text-xs">
-              <template v-if="model.pricing.billing_mode === BILLING_MODE_TOKEN">
-                <div class="flex justify-between">
-                  <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.inputPrice') }}</span>
-                  <span :class="[platformTextClass(model.platform)]" class="font-medium">
-                    {{ formatScaled(model.pricing.input_price, perMillionScale) }}
-                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
-                  </span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.outputPrice') }}</span>
-                  <span :class="[platformTextClass(model.platform)]" class="font-medium">
-                    {{ formatScaled(model.pricing.output_price, perMillionScale) }}
-                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
-                  </span>
-                </div>
-                <div v-if="model.pricing.cache_read_price != null" class="flex justify-between">
-                  <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.cacheReadPrice') }}</span>
-                  <span class="font-medium text-accent-600 dark:text-accent-300">
-                    {{ formatScaled(model.pricing.cache_read_price, perMillionScale) }}
-                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
-                  </span>
-                </div>
-              </template>
-              <template v-else-if="model.pricing.billing_mode === BILLING_MODE_PER_REQUEST">
-                <div class="flex justify-between">
-                  <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.perRequestPrice') }}</span>
-                  <span :class="[platformTextClass(model.platform)]" class="font-medium">
-                    {{ formatScaled(model.pricing.per_request_price, 1) }}
-                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perRequestUnit') }}</span>
-                  </span>
-                </div>
-              </template>
-              <template v-else-if="model.pricing.billing_mode === BILLING_MODE_IMAGE">
-                <div class="flex justify-between">
-                  <span class="text-accent-500 dark:text-accent-400">{{ t('modelPlaza.imagePrice') }}</span>
-                  <span :class="[platformTextClass(model.platform)]" class="font-medium">
-                    {{ formatScaled(model.pricing.image_output_price, 1) }}
-                    <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perImageUnit') }}</span>
-                  </span>
-                </div>
-              </template>
-            </div>
-            <div v-else class="text-xs text-accent-400 dark:text-accent-500">
-              {{ t('modelPlaza.noPricing') }}
-            </div>
-
-            <!-- Group rate multipliers -->
-            <div v-if="model.groups.length > 0" class="mt-3 border-t border-accent-100 pt-3 dark:border-dark-700">
-              <div class="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-accent-500 dark:text-accent-400">
+            <!-- Group pricing: show each group's effective price -->
+            <div v-if="model.visibleGroups.length > 0" class="mt-3 border-t border-accent-100 pt-3 dark:border-dark-700">
+              <div class="mb-2 text-[10px] font-medium uppercase tracking-wider text-accent-500 dark:text-accent-400">
                 {{ t('modelPlaza.groupRates') }}
               </div>
-              <div class="flex flex-wrap gap-1">
-                <span
-                  v-for="g in model.groups"
+              <div class="space-y-2">
+                <div
+                  v-for="g in model.visibleGroups"
                   :key="g.id"
-                  class="inline-flex items-center rounded px-1.5 py-0.5 text-[11px] transition-transform duration-200 hover:scale-105"
-                  :class="g.isExclusive
-                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
-                    : 'bg-accent-100 text-accent-600 dark:bg-dark-700 dark:text-accent-300'"
+                  class="rounded-md border border-accent-100 p-2 dark:border-dark-700"
                 >
-                  {{ g.name }}
-                  <span class="ml-1 font-semibold" :class="getMultiplierColor(g.effectiveRate)">
-                    x{{ g.effectiveRate.toFixed(2) }}
-                  </span>
-                </span>
+                  <!-- Group name + multiplier -->
+                  <div class="mb-1.5 flex items-center justify-between">
+                    <span class="text-xs font-medium text-accent-700 dark:text-accent-200">
+                      {{ g.name }}
+                    </span>
+                    <span class="text-[11px] font-semibold" :class="getMultiplierColor(g.effectiveRate)">
+                      x{{ g.effectiveRate.toFixed(2) }}
+                    </span>
+                  </div>
+                  <!-- Effective prices for each group -->
+                  <div class="space-y-1 text-[11px]">
+                    <template v-for="pe in model.platformEntries" :key="pe.platform">
+                      <template v-if="pe.pricing">
+                        <template v-if="pe.pricing.billing_mode === BILLING_MODE_TOKEN">
+                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
+                            <span>{{ t('modelPlaza.inputPrice') }}</span>
+                            <span class="font-medium text-accent-700 dark:text-accent-200">
+                              {{ formatScaled((pe.pricing.input_price ?? 0) * g.effectiveRate, perMillionScale) }}
+                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                            </span>
+                          </div>
+                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
+                            <span>{{ t('modelPlaza.outputPrice') }}</span>
+                            <span class="font-medium text-accent-700 dark:text-accent-200">
+                              {{ formatScaled((pe.pricing.output_price ?? 0) * g.effectiveRate, perMillionScale) }}
+                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                            </span>
+                          </div>
+                          <div v-if="pe.pricing.cache_read_price != null" class="flex justify-between text-accent-500 dark:text-accent-400">
+                            <span>{{ t('modelPlaza.cacheReadPrice') }}</span>
+                            <span class="font-medium text-accent-700 dark:text-accent-200">
+                              {{ formatScaled((pe.pricing.cache_read_price ?? 0) * g.effectiveRate, perMillionScale) }}
+                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perMillionUnit') }}</span>
+                            </span>
+                          </div>
+                        </template>
+                        <template v-else-if="pe.pricing.billing_mode === BILLING_MODE_PER_REQUEST">
+                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
+                            <span>{{ t('modelPlaza.perRequestPrice') }}</span>
+                            <span class="font-medium text-accent-700 dark:text-accent-200">
+                              {{ formatScaled((pe.pricing.per_request_price ?? 0) * g.effectiveRate, 1) }}
+                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perRequestUnit') }}</span>
+                            </span>
+                          </div>
+                        </template>
+                        <template v-else-if="pe.pricing.billing_mode === BILLING_MODE_IMAGE">
+                          <div class="flex justify-between text-accent-500 dark:text-accent-400">
+                            <span>{{ t('modelPlaza.imagePrice') }}</span>
+                            <span class="font-medium text-accent-700 dark:text-accent-200">
+                              {{ formatScaled((pe.pricing.image_output_price ?? 0) * g.effectiveRate, 1) }}
+                              <span class="text-accent-400 dark:text-accent-500">{{ t('modelPlaza.perImageUnit') }}</span>
+                            </span>
+                          </div>
+                        </template>
+                      </template>
+                    </template>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -202,7 +252,6 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import userChannelsAPI, {
-  type UserAvailableGroup,
   type UserSupportedModelPricing,
 } from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
@@ -214,8 +263,6 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import { formatScaled } from '@/utils/pricing'
 import {
   platformBadgeClass,
-  platformBorderClass,
-  platformAccentBarClass,
   platformTextClass,
 } from '@/utils/platformColors'
 import {
@@ -235,55 +282,43 @@ const perMillionScale = 1_000_000
 // ── State ──────────────────────────────────────────────────────────
 const loading = ref(false)
 const searchQuery = ref('')
-const selectedPlatform = ref('')
 const copiedModel = ref<string | null>(null)
 let copyTimer: ReturnType<typeof setTimeout> | null = null
 
-// ── Flattened model list with group info ───────────────────────────
+// ── Grouped model: one card per model name ─────────────────────────
 interface ModelGroup {
   id: number
   name: string
   rateMultiplier: number
   userRateMultiplier: number | null
-  isExclusive: boolean
   effectiveRate: number
 }
 
-interface FlatModel {
-  uniqueKey: string
-  name: string
+interface PlatformEntry {
   platform: string
   pricing: UserSupportedModelPricing | null
-  groups: ModelGroup[]
 }
 
-const modelList = ref<FlatModel[]>([])
+interface GroupedModel {
+  name: string
+  platformEntries: PlatformEntry[]
+  /** All non-exclusive groups this model is available in */
+  visibleGroups: ModelGroup[]
+}
 
-// ── Platform options for filter ────────────────────────────────────
-const platformOptions = computed(() => {
-  const platforms = new Set(modelList.value.map((m) => m.platform))
-  return Array.from(platforms).sort()
-})
+const modelList = ref<GroupedModel[]>([])
 
 // ── Filtered models ────────────────────────────────────────────────
 const filteredModels = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  let result = modelList.value
+  if (!q) return modelList.value
 
-  if (selectedPlatform.value) {
-    result = result.filter((m) => m.platform === selectedPlatform.value)
-  }
-
-  if (q) {
-    result = result.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.platform.toLowerCase().includes(q) ||
-        m.groups.some((g) => g.name.toLowerCase().includes(q)),
-    )
-  }
-
-  return result
+  return modelList.value.filter(
+    (m) =>
+      m.name.toLowerCase().includes(q) ||
+      m.platformEntries.some((pe) => pe.platform.toLowerCase().includes(q)) ||
+      m.visibleGroups.some((g) => g.name.toLowerCase().includes(q)),
+  )
 })
 
 // ── Color for rate multiplier ──────────────────────────────────────
@@ -320,6 +355,20 @@ async function copyModelName(name: string) {
   }
 }
 
+// ── Helper: merge group into map, skip exclusive ──────────────────
+function mergeGroupInto(
+  map: Map<number, ModelGroup>,
+  g: ModelGroup,
+) {
+  if (g.rateMultiplier === 0 && g.userRateMultiplier === null) return
+  // Skip exclusive groups
+  // (isExclusive is already filtered before calling this, but double-check)
+  const existing = map.get(g.id)
+  if (!existing) {
+    map.set(g.id, { ...g })
+  }
+}
+
 // ── Admin data loading ─────────────────────────────────────────────
 async function loadAdminData() {
   const [channelsResp, allGroups] = await Promise.all([
@@ -333,23 +382,25 @@ async function loadAdminData() {
     groupMap.set(g.id, g)
   }
 
-  const result: FlatModel[] = []
-  const seen = new Map<string, FlatModel>()
+  // Build result grouped by model name
+  const result: GroupedModel[] = []
+  const seen = new Map<string, GroupedModel>()
 
   for (const channel of channels) {
     if (channel.status !== 'active') continue
 
     const channelGroupIds = channel.group_ids || []
+    // Build non-exclusive groups for this channel
     const channelGroups: ModelGroup[] = channelGroupIds
       .map((gid: number) => {
         const g = groupMap.get(gid)
         if (!g) return null as ModelGroup | null
+        if (g.is_exclusive === true) return null as ModelGroup | null // Skip exclusive
         return {
           id: g.id,
           name: g.name,
           rateMultiplier: g.rate_multiplier,
           userRateMultiplier: null as number | null,
-          isExclusive: g.is_exclusive ?? false,
           effectiveRate: g.rate_multiplier,
         } as ModelGroup
       })
@@ -368,26 +419,29 @@ async function loadAdminData() {
       }
 
       for (const modelName of mp.models || []) {
-        const key = `${mp.platform}::${modelName}`
-        const existing = seen.get(key)
+        let model = seen.get(modelName)
 
-        if (existing) {
-          for (const g of channelGroups) {
-            if (!existing.groups.some((eg) => eg.id === g.id)) {
-              existing.groups.push(g)
-            }
-          }
-        } else {
-          const flat: FlatModel = {
-            uniqueKey: key,
-            name: modelName,
-            platform: mp.platform,
-            pricing,
-            groups: [...channelGroups],
-          }
-          seen.set(key, flat)
-          result.push(flat)
+        if (!model) {
+          model = { name: modelName, platformEntries: [], visibleGroups: [] }
+          seen.set(modelName, model)
+          result.push(model)
         }
+
+        // Add platform entry if not already present for this platform
+        const existingPlatform = model.platformEntries.find(
+          (pe) => pe.platform === mp.platform,
+        )
+        if (!existingPlatform) {
+          model.platformEntries.push({ platform: mp.platform, pricing })
+        }
+
+        // Merge non-exclusive groups
+        const groupMapForModel = new Map<number, ModelGroup>()
+        for (const g of model.visibleGroups) groupMapForModel.set(g.id, g)
+        for (const g of channelGroups) {
+          mergeGroupInto(groupMapForModel, g)
+        }
+        model.visibleGroups = Array.from(groupMapForModel.values())
       }
     }
   }
@@ -403,45 +457,46 @@ async function loadUserData() {
   ])
 
   const userGroupRates = rates as Record<number, number>
-  const result: FlatModel[] = []
-  const seen = new Map<string, FlatModel>()
+  const result: GroupedModel[] = []
+  const seen = new Map<string, GroupedModel>()
 
   for (const channel of list) {
     for (const section of channel.platforms) {
       for (const m of section.supported_models) {
-        const key = `${m.platform}::${m.name}`
-        const existing = seen.get(key)
+        let model = seen.get(m.name)
 
-        const groups: ModelGroup[] = section.groups.map((g: UserAvailableGroup) => {
-          const userRate = userGroupRates[g.id] ?? null
-          const effectiveRate = userRate !== null ? userRate : g.rate_multiplier
-          return {
-            id: g.id,
-            name: g.name,
-            rateMultiplier: g.rate_multiplier,
+        if (!model) {
+          model = { name: m.name, platformEntries: [], visibleGroups: [] }
+          seen.set(m.name, model)
+          result.push(model)
+        }
+
+        // Add platform entry
+        const existingPlatform = model.platformEntries.find(
+          (pe) => pe.platform === m.platform,
+        )
+        if (!existingPlatform) {
+          model.platformEntries.push({ platform: m.platform, pricing: m.pricing })
+        }
+
+        // Merge non-exclusive groups
+        const groupMapForModel = new Map<number, ModelGroup>()
+        for (const g of model.visibleGroups) groupMapForModel.set(g.id, g)
+
+        for (const rawG of section.groups) {
+          if (rawG.is_exclusive === true) continue // Skip exclusive
+          const userRate = userGroupRates[rawG.id] ?? null
+          const effectiveRate = userRate !== null ? userRate : rawG.rate_multiplier
+          const g: ModelGroup = {
+            id: rawG.id,
+            name: rawG.name,
+            rateMultiplier: rawG.rate_multiplier,
             userRateMultiplier: userRate,
-            isExclusive: g.is_exclusive,
             effectiveRate,
           }
-        })
-
-        if (existing) {
-          for (const g of groups) {
-            if (!existing.groups.some((eg) => eg.id === g.id)) {
-              existing.groups.push(g)
-            }
-          }
-        } else {
-          const flat: FlatModel = {
-            uniqueKey: key,
-            name: m.name,
-            platform: m.platform,
-            pricing: m.pricing,
-            groups,
-          }
-          seen.set(key, flat)
-          result.push(flat)
+          mergeGroupInto(groupMapForModel, g)
         }
+        model.visibleGroups = Array.from(groupMapForModel.values())
       }
     }
   }
