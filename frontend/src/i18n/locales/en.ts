@@ -6730,6 +6730,8 @@ export default {
     outputPrice: 'Output',
     cacheReadPrice: 'Cache Read',
     perMillionUnit: '/M Tokens',
+    perRequestPrice: 'Per Request',
+    perRequestUnit: '/request',
     noModels: 'No models found',
     copySuccess: 'Copied',
     copyFail: 'Copy Failed',

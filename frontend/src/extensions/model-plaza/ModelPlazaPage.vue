@@ -94,19 +94,25 @@
                   <span :class="['text-sm font-bold', rateColorClass(group.rate)]">×{{ group.rate }}</span>
                 </div>
               </div>
-              <div class="space-y-1">
+              <!-- Token billing -->
+              <template v-if="group.billing_mode === BILLING_MODE_TOKEN">
                 <div v-if="group.input_price != null" class="flex justify-between text-xs">
                   <span class="text-accent-500">{{ t('modelPlaza.inputPrice') }}</span>
-                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPrice(group.input_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
+                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatTokenPrice(group.input_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
                 </div>
                 <div v-if="group.output_price != null" class="flex justify-between text-xs">
                   <span class="text-accent-500">{{ t('modelPlaza.outputPrice') }}</span>
-                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPrice(group.output_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
+                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatTokenPrice(group.output_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
                 </div>
                 <div v-if="group.cache_read_price != null" class="flex justify-between text-xs">
                   <span class="text-accent-500">{{ t('modelPlaza.cacheReadPrice') }}</span>
-                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPrice(group.cache_read_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
+                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatTokenPrice(group.cache_read_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
                 </div>
+              </template>
+              <!-- Per-request billing -->
+              <div v-if="group.billing_mode === BILLING_MODE_PER_REQUEST && group.per_request_price != null" class="flex justify-between text-xs">
+                <span class="text-accent-500">{{ t('modelPlaza.perRequestPrice') }}</span>
+                <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPerRequestPrice(group.per_request_price) }} {{ t('modelPlaza.perRequestUnit') }}</span>
               </div>
             </div>
           </div>
@@ -141,16 +147,25 @@ const appStore = useAppStore()
 
 /** Format per-token price to per-million-token display (e.g. 0.000003 → "$3") */
 const PER_MILLION = 1_000_000
-function formatPrice(value: number | null): string {
+function formatTokenPrice(value: number | null): string {
   return formatScaled(value, PER_MILLION)
 }
+/** Format per-request price (no scaling) */
+function formatPerRequestPrice(value: number | null): string {
+  return formatScaled(value, 1)
+}
+
+const BILLING_MODE_TOKEN = 'token'
+const BILLING_MODE_PER_REQUEST = 'per_request'
 
 interface ModelGroup {
   name: string
   rate: number
+  billing_mode: string
   input_price: number | null
   output_price: number | null
   cache_read_price: number | null
+  per_request_price: number | null
 }
 
 interface ModelEntry {
@@ -267,9 +282,11 @@ async function loadAdminData() {
     for (const mp of ch.model_pricing) {
       const platform = mp.platform || 'unknown'
       const modelNames: string[] = mp.models || []
+      const billingMode = mp.billing_mode || BILLING_MODE_TOKEN
       const inputPrice = mp.input_price ?? null
       const outputPrice = mp.output_price ?? null
       const cacheReadPrice = mp.cache_read_price ?? null
+      const perRequestPrice = mp.per_request_price ?? null
 
       for (const modelName of modelNames) {
         if (!modelName) continue
@@ -285,9 +302,11 @@ async function loadAdminData() {
             entry.groups.push({
               name: cg.name,
               rate: cg.rate,
+              billing_mode: billingMode,
               input_price: inputPrice,
               output_price: outputPrice,
               cache_read_price: cacheReadPrice,
+              per_request_price: perRequestPrice,
             })
           }
         }
@@ -342,9 +361,11 @@ async function loadUserData() {
             entry.groups.push({
               name: g.name,
               rate,
+              billing_mode: pricing?.billing_mode || BILLING_MODE_TOKEN,
               input_price: pricing?.input_price ?? null,
               output_price: pricing?.output_price ?? null,
               cache_read_price: pricing?.cache_read_price ?? null,
+              per_request_price: pricing?.per_request_price ?? null,
             })
           }
         }
