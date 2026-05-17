@@ -34,12 +34,12 @@
               </div>
 
               <!-- Title -->
-              <h2 class="mb-2 text-2xl font-bold leading-tight text-accent-900 dark:text-white">
+              <h2 class="mb-2 text-2xl font-bold leading-tight text-gray-900 dark:text-white">
                 {{ announcementStore.currentPopup.title }}
               </h2>
 
               <!-- Time -->
-              <div class="flex items-center gap-1.5 text-sm text-accent-600 dark:text-accent-400">
+              <div class="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -62,7 +62,7 @@
           </div>
 
           <!-- Footer -->
-          <div class="border-t border-accent-100 bg-accent-50/50 px-8 py-5 dark:border-dark-700 dark:bg-dark-900/30">
+          <div class="border-t border-gray-100 bg-gray-50/50 px-8 py-5 dark:border-dark-700 dark:bg-dark-900/30">
             <div class="flex items-center justify-end">
               <button
                 @click="handleDismiss"

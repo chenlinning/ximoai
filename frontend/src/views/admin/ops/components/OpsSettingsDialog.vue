@@ -202,7 +202,7 @@ async function saveAllSettings() {
 
 <template>
   <BaseDialog :show="show" :title="t('admin.ops.settings.title')" width="extra-wide" @close="emit('close')">
-    <div v-if="loading" class="py-10 text-center text-sm text-accent-500">
+    <div v-if="loading" class="py-10 text-center text-sm text-gray-500">
       {{ t('common.loading') }}
     </div>
 
@@ -216,8 +216,8 @@ async function saveAllSettings() {
       </div>
 
       <!-- 数据采集频率 -->
-      <div class="rounded-2xl bg-accent-50 p-4 dark:bg-dark-700/50">
-        <h4 class="mb-3 text-sm font-semibold text-accent-900 dark:text-white">{{ t('admin.ops.settings.dataCollection') }}</h4>
+      <div class="rounded-2xl bg-gray-50 p-4 dark:bg-dark-700/50">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.ops.settings.dataCollection') }}</h4>
         <div>
           <label class="input-label">{{ t('admin.ops.settings.evaluationInterval') }}</label>
           <input
@@ -227,18 +227,18 @@ async function saveAllSettings() {
             max="86400"
             class="input"
           />
-          <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.evaluationIntervalHint') }}</p>
+          <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.evaluationIntervalHint') }}</p>
         </div>
       </div>
 
       <!-- 预警配置 -->
-      <div class="rounded-2xl bg-accent-50 p-4 dark:bg-dark-700/50">
-        <h4 class="mb-3 text-sm font-semibold text-accent-900 dark:text-white">{{ t('admin.ops.settings.alertConfig') }}</h4>
+      <div class="rounded-2xl bg-gray-50 p-4 dark:bg-dark-700/50">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.ops.settings.alertConfig') }}</h4>
 
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <div>
-              <label class="font-medium text-accent-900 dark:text-white">{{ t('admin.ops.settings.enableAlert') }}</label>
+              <label class="font-medium text-gray-900 dark:text-white">{{ t('admin.ops.settings.enableAlert') }}</label>
             </div>
             <Toggle v-model="emailConfig.alert.enabled" />
           </div>
@@ -267,7 +267,7 @@ async function saveAllSettings() {
                 <button type="button" class="text-blue-700/80 hover:text-blue-900" @click="removeRecipient('alert', email)">×</button>
               </span>
             </div>
-            <p class="mt-2 text-xs text-accent-500 dark:text-accent-400">
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.ops.settings.recipientsHint') }}
             </p>
           </div>
@@ -280,13 +280,13 @@ async function saveAllSettings() {
       </div>
 
       <!-- 评估报告配置 -->
-      <div class="rounded-2xl bg-accent-50 p-4 dark:bg-dark-700/50">
-        <h4 class="mb-3 text-sm font-semibold text-accent-900 dark:text-white">{{ t('admin.ops.settings.reportConfig') }}</h4>
+      <div class="rounded-2xl bg-gray-50 p-4 dark:bg-dark-700/50">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.ops.settings.reportConfig') }}</h4>
 
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <div>
-              <label class="font-medium text-accent-900 dark:text-white">{{ t('admin.ops.settings.enableReport') }}</label>
+              <label class="font-medium text-gray-900 dark:text-white">{{ t('admin.ops.settings.enableReport') }}</label>
             </div>
             <Toggle v-model="emailConfig.report.enabled" />
           </div>
@@ -315,21 +315,21 @@ async function saveAllSettings() {
                 <button type="button" class="text-blue-700/80 hover:text-blue-900" @click="removeRecipient('report', email)">×</button>
               </span>
             </div>
-            <p class="mt-2 text-xs text-accent-500 dark:text-accent-400">
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.ops.settings.recipientsHint') }}
             </p>
           </div>
 
           <div v-if="emailConfig.report.enabled" class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div class="flex items-center justify-between">
-              <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.dailySummary') }}</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.dailySummary') }}</label>
               <Toggle v-model="emailConfig.report.daily_summary_enabled" />
             </div>
             <div v-if="emailConfig.report.daily_summary_enabled">
               <input v-model="emailConfig.report.daily_summary_schedule" type="text" class="input" placeholder="0 9 * * *" />
             </div>
             <div class="flex items-center justify-between">
-              <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.weeklySummary') }}</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.weeklySummary') }}</label>
               <Toggle v-model="emailConfig.report.weekly_summary_enabled" />
             </div>
             <div v-if="emailConfig.report.weekly_summary_enabled">
@@ -340,9 +340,9 @@ async function saveAllSettings() {
       </div>
 
       <!-- 指标阈值配置 -->
-      <div class="rounded-2xl bg-accent-50 p-4 dark:bg-dark-700/50">
-        <h4 class="mb-3 text-sm font-semibold text-accent-900 dark:text-white">{{ t('admin.ops.settings.metricThresholds') }}</h4>
-        <p class="mb-4 text-xs text-accent-500 dark:text-accent-400">{{ t('admin.ops.settings.metricThresholdsHint') }}</p>
+      <div class="rounded-2xl bg-gray-50 p-4 dark:bg-dark-700/50">
+        <h4 class="mb-3 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.ops.settings.metricThresholds') }}</h4>
+        <p class="mb-4 text-xs text-gray-500 dark:text-gray-400">{{ t('admin.ops.settings.metricThresholdsHint') }}</p>
 
         <div class="space-y-4">
           <div>
@@ -355,7 +355,7 @@ async function saveAllSettings() {
               step="0.1"
               class="input"
             />
-            <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.slaMinPercentHint') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.slaMinPercentHint') }}</p>
           </div>
 
 
@@ -368,7 +368,7 @@ async function saveAllSettings() {
               step="50"
               class="input"
             />
-            <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.ttftP99MaxMsHint') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.ttftP99MaxMsHint') }}</p>
           </div>
 
           <div>
@@ -381,7 +381,7 @@ async function saveAllSettings() {
               step="0.1"
               class="input"
             />
-            <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.requestErrorRateMaxPercentHint') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.requestErrorRateMaxPercentHint') }}</p>
           </div>
 
           <div>
@@ -394,23 +394,23 @@ async function saveAllSettings() {
               step="0.1"
               class="input"
             />
-            <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.upstreamErrorRateMaxPercentHint') }}</p>
+            <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.upstreamErrorRateMaxPercentHint') }}</p>
           </div>
         </div>
       </div>
 
       <!-- 高级设置 -->
-      <details class="rounded-2xl bg-accent-50 dark:bg-dark-700/50">
-        <summary class="cursor-pointer p-4 text-sm font-semibold text-accent-900 dark:text-white">
+      <details class="rounded-2xl bg-gray-50 dark:bg-dark-700/50">
+        <summary class="cursor-pointer p-4 text-sm font-semibold text-gray-900 dark:text-white">
           {{ t('admin.ops.settings.advancedSettings') }}
         </summary>
         <div class="space-y-4 px-4 pb-4">
           <!-- 数据保留策略 -->
           <div class="space-y-3">
-            <h5 class="text-xs font-semibold text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.dataRetention') }}</h5>
+            <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.dataRetention') }}</h5>
 
             <div class="flex items-center justify-between">
-              <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.enableCleanup') }}</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.enableCleanup') }}</label>
               <Toggle v-model="advancedSettings.data_retention.cleanup_enabled" />
             </div>
 
@@ -422,7 +422,7 @@ async function saveAllSettings() {
                 class="input"
                 placeholder="0 2 * * *"
               />
-              <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.cleanupScheduleHint') }}</p>
+              <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.cleanupScheduleHint') }}</p>
             </div>
 
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -457,17 +457,17 @@ async function saveAllSettings() {
                 />
               </div>
             </div>
-            <p class="text-xs text-accent-500">{{ t('admin.ops.settings.retentionDaysHint') }}</p>
+            <p class="text-xs text-gray-500">{{ t('admin.ops.settings.retentionDaysHint') }}</p>
           </div>
 
           <!-- 预聚合任务 -->
           <div class="space-y-3">
-            <h5 class="text-xs font-semibold text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.aggregation') }}</h5>
+            <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.aggregation') }}</h5>
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.enableAggregation') }}</label>
-                <p class="mt-1 text-xs text-accent-500">{{ t('admin.ops.settings.aggregationHint') }}</p>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.enableAggregation') }}</label>
+                <p class="mt-1 text-xs text-gray-500">{{ t('admin.ops.settings.aggregationHint') }}</p>
               </div>
               <Toggle v-model="advancedSettings.aggregation.aggregation_enabled" />
             </div>
@@ -475,12 +475,12 @@ async function saveAllSettings() {
 
           <!-- Error Filtering -->
           <div class="space-y-3">
-            <h5 class="text-xs font-semibold text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.errorFiltering') }}</h5>
+            <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.errorFiltering') }}</h5>
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.ignoreCountTokensErrors') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreCountTokensErrors') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.ignoreCountTokensErrorsHint') }}
                 </p>
               </div>
@@ -489,8 +489,8 @@ async function saveAllSettings() {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.ignoreContextCanceled') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreContextCanceled') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.ignoreContextCanceledHint') }}
                 </p>
               </div>
@@ -499,8 +499,8 @@ async function saveAllSettings() {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.ignoreNoAvailableAccounts') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreNoAvailableAccounts') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.ignoreNoAvailableAccountsHint') }}
                 </p>
               </div>
@@ -509,8 +509,8 @@ async function saveAllSettings() {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.ignoreInvalidApiKeyErrors') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreInvalidApiKeyErrors') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.ignoreInvalidApiKeyErrorsHint') }}
                 </p>
               </div>
@@ -519,8 +519,8 @@ async function saveAllSettings() {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.ignoreInsufficientBalanceErrors') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.ignoreInsufficientBalanceErrors') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.ignoreInsufficientBalanceErrorsHint') }}
                 </p>
               </div>
@@ -530,12 +530,12 @@ async function saveAllSettings() {
 
           <!-- Auto Refresh -->
           <div class="space-y-3">
-            <h5 class="text-xs font-semibold text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.autoRefresh') }}</h5>
+            <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.autoRefresh') }}</h5>
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.enableAutoRefresh') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.enableAutoRefresh') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.enableAutoRefreshHint') }}
                 </p>
               </div>
@@ -557,12 +557,12 @@ async function saveAllSettings() {
 
           <!-- Dashboard Cards -->
           <div class="space-y-3">
-            <h5 class="text-xs font-semibold text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.dashboardCards') }}</h5>
+            <h5 class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.dashboardCards') }}</h5>
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.displayAlertEvents') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.displayAlertEvents') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.displayAlertEventsHint') }}
                 </p>
               </div>
@@ -571,8 +571,8 @@ async function saveAllSettings() {
 
             <div class="flex items-center justify-between">
               <div>
-                <label class="text-sm font-medium text-accent-700 dark:text-accent-300">{{ t('admin.ops.settings.displayOpenAITokenStats') }}</label>
-                <p class="mt-1 text-xs text-accent-500">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.ops.settings.displayOpenAITokenStats') }}</label>
+                <p class="mt-1 text-xs text-gray-500">
                   {{ t('admin.ops.settings.displayOpenAITokenStatsHint') }}
                 </p>
               </div>

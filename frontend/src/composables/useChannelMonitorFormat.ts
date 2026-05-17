@@ -22,7 +22,7 @@ import {
   STATUS_ERROR,
 } from '@/constants/channelMonitor'
 
-const NEUTRAL_BADGE = 'bg-accent-100 text-accent-800 dark:bg-dark-700 dark:text-accent-300'
+const NEUTRAL_BADGE = 'bg-gray-100 text-gray-800 dark:bg-dark-700 dark:text-gray-300'
 
 /** Availability HSL hue multiplier: 0%=red(0) / 50%=yellow(60) / 100%=green(120). */
 const HSL_HUE_PER_PERCENT = 1.2
@@ -86,19 +86,19 @@ export function useChannelMonitorFormat() {
       case PROVIDER_OPENAI:
         return active
           ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400'
-          : 'border-accent-200 bg-white text-accent-600 hover:border-emerald-300 hover:text-emerald-700 dark:border-dark-700 dark:bg-dark-800 dark:text-accent-400 dark:hover:border-emerald-500/50'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-300 hover:text-emerald-700 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400 dark:hover:border-emerald-500/50'
       case PROVIDER_ANTHROPIC:
         return active
           ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300 dark:border-orange-400'
-          : 'border-accent-200 bg-white text-accent-600 hover:border-orange-300 hover:text-orange-700 dark:border-dark-700 dark:bg-dark-800 dark:text-accent-400 dark:hover:border-orange-500/50'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-700 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400 dark:hover:border-orange-500/50'
       case PROVIDER_GEMINI:
         return active
           ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-400'
-          : 'border-accent-200 bg-white text-accent-600 hover:border-sky-300 hover:text-sky-700 dark:border-dark-700 dark:bg-dark-800 dark:text-accent-400 dark:hover:border-sky-500/50'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-sky-300 hover:text-sky-700 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400 dark:hover:border-sky-500/50'
       default:
         return active
-          ? 'border-accent-400 bg-accent-50 text-accent-700 dark:border-dark-500 dark:bg-dark-700 dark:text-accent-200'
-          : 'border-accent-200 bg-white text-accent-600 hover:border-accent-300 dark:border-dark-700 dark:bg-dark-800 dark:text-accent-400'
+          ? 'border-gray-400 bg-gray-50 text-gray-700 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-200'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-400'
     }
   }
 
@@ -167,6 +167,6 @@ export function providerGradient(provider: string): string {
     case PROVIDER_GEMINI:
       return 'bg-gradient-to-br from-sky-50 to-indigo-100 dark:from-sky-500/10 dark:to-indigo-500/20'
     default:
-      return 'bg-gradient-to-br from-accent-100 to-accent-200 dark:from-dark-700 dark:to-dark-600'
+      return 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600'
   }
 }

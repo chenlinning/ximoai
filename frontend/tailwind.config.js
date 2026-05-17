@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // 方案A"墨纸朱批"：几乎黑白，唯一强调色橄榄绿 #5A8B67
+        // 主色调 - 橄榄绿 #5A8B67
         // 灵感：宣纸、墨、建筑师绘图桌上的标注笔
         primary: {
           50: '#f2f5f3',
@@ -111,10 +111,6 @@ export default {
         }
       },
       backdropBlur: {
-        xs: '2px'
-      },
-      borderRadius: {
-        '4xl': '2rem'
       }
     }
   },

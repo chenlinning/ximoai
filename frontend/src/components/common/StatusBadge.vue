@@ -6,7 +6,7 @@
         variantClass
       ]"
     ></span>
-    <span class="text-sm text-accent-700 dark:text-accent-300">
+    <span class="text-sm text-gray-700 dark:text-gray-300">
       {{ label }}
     </span>
   </div>
@@ -33,7 +33,7 @@ const variantClass = computed(() => {
     case 'danger':
       return 'bg-red-500'
     default:
-      return 'bg-accent-400'
+      return 'bg-gray-400'
   }
 })
 </script>

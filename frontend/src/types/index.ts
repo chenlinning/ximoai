@@ -1,5 +1,5 @@
 /**
- * Core Type Definitions for XimoAi Frontend
+ * Core Type Definitions for Sub2API Frontend
  */
 
 // ==================== Common Types ====================
@@ -207,7 +207,6 @@ export interface PublicSettings {
   contact_info: string
   doc_url: string
   home_content: string
-  home_providers: string
   hide_ccs_import_button: boolean
   payment_enabled: boolean
   risk_control_enabled: boolean

@@ -59,6 +59,7 @@
 }
 
 @tailwind components;
+
 @layer components {
   /* ============ 按钮样式 ============ */
   .btn {
@@ -117,7 +118,7 @@
   .btn-airwallex {
     @apply bg-[#14171A] text-white shadow-md shadow-emerald-500/20;
     @apply hover:bg-[#20252a] hover:shadow-lg hover:shadow-emerald-500/25;
-    @apply dark:bg-[#7AF0C4] dark:text-gray-950 dark:shadow-emerald-500/20;
+    @apply dark:bg-[#7AF0C4] dark:text-accent-950 dark:shadow-emerald-500/20;
     @apply dark:hover:bg-[#62d9ad];
   }
 
@@ -250,23 +251,23 @@
   }
 
   .stat-icon-primary {
-    @apply bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400;
+    @apply bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400;
   }
 
   .stat-icon-success {
-    @apply bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400;
+    @apply bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400;
   }
 
   .stat-icon-warning {
-    @apply bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400;
+    @apply bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400;
   }
 
   .stat-icon-danger {
-    @apply bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400;
+    @apply bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400;
   }
 
   .stat-value {
-    @apply text-2xl font-bold text-accent-950 dark:text-white truncate;
+    @apply text-2xl font-bold text-accent-900 dark:text-white truncate;
   }
 
   .stat-label {
@@ -327,15 +328,15 @@
   }
 
   .badge-success {
-    @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
+    @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400;
   }
 
   .badge-warning {
-    @apply bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
+    @apply bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400;
   }
 
   .badge-danger {
-    @apply bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400;
+    @apply bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400;
   }
 
   .badge-gray {
@@ -343,7 +344,7 @@
   }
 
   .badge-purple {
-    @apply bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400;
+    @apply bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400;
   }
 
   /* ============ 下拉菜单 ============ */
@@ -360,7 +361,7 @@
   .dropdown-item {
     @apply px-4 py-2 text-sm;
     @apply text-accent-700 dark:text-accent-300;
-    @apply hover:bg-accent-50 dark:hover:bg-dark-700;
+    @apply hover:bg-accent-100 dark:hover:bg-dark-700;
     @apply cursor-pointer transition-colors;
     @apply flex items-center gap-2;
   }
@@ -389,7 +390,7 @@
   }
 
   .modal-title {
-    @apply text-lg font-semibold text-accent-950 dark:text-white;
+    @apply text-lg font-semibold text-accent-900 dark:text-white;
   }
 
   .modal-body {
@@ -543,7 +544,7 @@
     @apply text-sm font-medium;
     @apply text-accent-600 dark:text-dark-300;
     @apply transition-all duration-200;
-    @apply hover:bg-accent-50 dark:hover:bg-dark-800;
+    @apply hover:bg-accent-100 dark:hover:bg-dark-800;
     @apply hover:text-accent-900 dark:hover:text-white;
     padding-left: 1.0625rem;
     padding-right: 0.875rem;
@@ -571,7 +572,7 @@
   }
 
   .page-title {
-    @apply text-2xl font-bold text-accent-950 dark:text-white;
+    @apply text-2xl font-bold text-accent-900 dark:text-white;
   }
 
   .page-description {
@@ -590,7 +591,7 @@
   }
 
   .empty-state-title {
-    @apply mb-1 text-lg font-medium text-accent-950 dark:text-white;
+    @apply mb-1 text-lg font-medium text-accent-900 dark:text-white;
   }
 
   .empty-state-description {
@@ -627,7 +628,7 @@
 
   .tab-active {
     @apply bg-white dark:bg-dark-700;
-    @apply text-accent-950 dark:text-white;
+    @apply text-accent-900 dark:text-white;
     @apply shadow-sm;
   }
 
@@ -667,12 +668,12 @@
     @apply font-mono text-sm;
     @apply bg-accent-100 dark:bg-dark-800;
     @apply rounded px-1.5 py-0.5;
-    @apply text-primary-700 dark:text-primary-400;
+    @apply text-primary-600 dark:text-primary-400;
   }
 
   .code-block {
     @apply font-mono text-sm;
-    @apply bg-dark-900 text-accent-100;
+    @apply bg-accent-900 text-accent-100;
     @apply overflow-x-auto rounded-xl p-4;
   }
 
@@ -714,16 +715,17 @@
   }
 
   /* ============ 表格页面布局优化 ============ */
+  /* 表格容器 - 默认仅支持水平滚动 */
   .table-wrapper {
     overflow-x: auto;
   }
 
+  /* 表头固定时添加底部阴影，增强视觉层次 */
   .table-wrapper thead.sticky {
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
   }
 }
 
-@tailwind utilities;
 @layer utilities {
   /* 文字渐变 */
   .text-gradient {
@@ -753,3 +755,5 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+@tailwind utilities;

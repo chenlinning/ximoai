@@ -1,5 +1,5 @@
 /**
- * Vue Router configuration for XimoAi frontend
+ * Vue Router configuration for Sub2API frontend
  * Defines all application routes with lazy loading and navigation guards
  */
 
@@ -632,14 +632,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
-  // ==================== Model Plaza ====================
-  {
-    path: '/model-plaza',
-    name: 'ModelPlaza',
-    component: () => import('@/extensions/model-plaza/ModelPlazaPage.vue'),
-    meta: { title: 'Model Plaza' },
-  },
-
   // ==================== 404 Not Found ====================
   {
     path: '/:pathMatch(.*)*',
@@ -724,7 +716,7 @@ router.beforeEach((to, _from, next) => {
     const menuItem = publicItems.find((item) => item.id === id)
       ?? (authStore.isAdmin ? adminSettingsStore.customMenuItems.find((item) => item.id === id) : undefined)
     if (menuItem?.label) {
-      const siteName = appStore.siteName || 'XimoAi'
+      const siteName = appStore.siteName || 'Sub2API'
       document.title = `${menuItem.label} - ${siteName}`
     } else {
       document.title = resolveDocumentTitle(to.meta.title, appStore.siteName, to.meta.titleKey as string)

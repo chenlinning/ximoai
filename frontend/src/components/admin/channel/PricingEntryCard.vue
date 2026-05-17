@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-lg border border-accent-200 bg-accent-50 p-3 dark:border-dark-600 dark:bg-dark-800">
+  <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-dark-600 dark:bg-dark-800">
     <!-- Collapsed summary header (clickable) -->
     <div
       class="flex cursor-pointer select-none items-center gap-2"
@@ -9,7 +9,7 @@
         :name="collapsed ? 'chevronRight' : 'chevronDown'"
         size="sm"
         :stroke-width="2"
-        class="flex-shrink-0 text-accent-400 transition-transform duration-200"
+        class="flex-shrink-0 text-gray-400 transition-transform duration-200"
       />
 
       <!-- Summary: model tags + billing badge -->
@@ -26,13 +26,13 @@
           </span>
           <span
             v-if="entry.models.length > 3"
-            class="whitespace-nowrap text-xs text-accent-400"
+            class="whitespace-nowrap text-xs text-gray-400"
           >
             +{{ entry.models.length - 3 }}
           </span>
           <span
             v-if="entry.models.length === 0"
-            class="text-xs italic text-accent-400"
+            class="text-xs italic text-gray-400"
           >
             {{ t('admin.channels.form.noModels', '未添加模型') }}
           </span>
@@ -47,7 +47,7 @@
       </div>
 
       <!-- Expanded: show the label "Pricing Entry" or similar -->
-      <div v-else class="flex-1 text-xs font-medium text-accent-500 dark:text-accent-400">
+      <div v-else class="flex-1 text-xs font-medium text-gray-500 dark:text-gray-400">
         {{ t('admin.channels.form.pricingEntry', '定价配置') }}
       </div>
 
@@ -55,7 +55,7 @@
       <button
         type="button"
         @click.stop="emit('remove')"
-        class="flex-shrink-0 rounded p-1 text-accent-400 hover:text-red-500"
+        class="flex-shrink-0 rounded p-1 text-gray-400 hover:text-red-500"
       >
         <Icon name="trash" size="sm" />
       </button>
@@ -70,7 +70,7 @@
         <!-- Header: Models + Billing Mode -->
         <div class="mt-3 flex items-start gap-2">
           <div class="flex-1">
-            <label class="text-xs font-medium text-accent-500 dark:text-accent-400">
+            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
               {{ t('admin.channels.form.models', '模型列表') }} <span class="text-red-500">*</span>
             </label>
             <ModelTagInput
@@ -82,7 +82,7 @@
             />
           </div>
           <div class="w-40">
-            <label class="text-xs font-medium text-accent-500 dark:text-accent-400">
+            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
               {{ t('admin.channels.form.billingMode', '计费模式') }}
             </label>
             <Select
@@ -97,33 +97,33 @@
         <!-- Token mode -->
         <div v-if="entry.billing_mode === 'token'">
           <!-- Default prices (fallback when no interval matches) -->
-          <label class="mt-3 block text-xs font-medium text-accent-500 dark:text-accent-400">
+          <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {{ t('admin.channels.form.defaultPrices', '默认价格（未命中区间时使用）') }}
-            <span class="ml-1 font-normal text-accent-400">$/MTok</span>
+            <span class="ml-1 font-normal text-gray-400">$/MTok</span>
           </label>
           <div class="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-5">
             <div>
-              <label class="text-xs text-accent-400">{{ t('admin.channels.form.inputPrice', '输入') }}</label>
+              <label class="text-xs text-gray-400">{{ t('admin.channels.form.inputPrice', '输入') }}</label>
               <input :value="entry.input_price" @input="emitField('input_price', ($event.target as HTMLInputElement).value)"
                 type="number" step="any" min="0" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
             </div>
             <div>
-              <label class="text-xs text-accent-400">{{ t('admin.channels.form.outputPrice', '输出') }}</label>
+              <label class="text-xs text-gray-400">{{ t('admin.channels.form.outputPrice', '输出') }}</label>
               <input :value="entry.output_price" @input="emitField('output_price', ($event.target as HTMLInputElement).value)"
                 type="number" step="any" min="0" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
             </div>
             <div>
-              <label class="text-xs text-accent-400">{{ t('admin.channels.form.cacheWritePrice', '缓存写入') }}</label>
+              <label class="text-xs text-gray-400">{{ t('admin.channels.form.cacheWritePrice', '缓存写入') }}</label>
               <input :value="entry.cache_write_price" @input="emitField('cache_write_price', ($event.target as HTMLInputElement).value)"
                 type="number" step="any" min="0" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
             </div>
             <div>
-              <label class="text-xs text-accent-400">{{ t('admin.channels.form.cacheReadPrice', '缓存读取') }}</label>
+              <label class="text-xs text-gray-400">{{ t('admin.channels.form.cacheReadPrice', '缓存读取') }}</label>
               <input :value="entry.cache_read_price" @input="emitField('cache_read_price', ($event.target as HTMLInputElement).value)"
                 type="number" step="any" min="0" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
             </div>
             <div>
-              <label class="text-xs text-accent-400">{{ t('admin.channels.form.imageTokenPrice', '图片输出') }}</label>
+              <label class="text-xs text-gray-400">{{ t('admin.channels.form.imageTokenPrice', '图片输出') }}</label>
               <input :value="entry.image_output_price" @input="emitField('image_output_price', ($event.target as HTMLInputElement).value)"
                 type="number" step="any" min="0" class="input mt-0.5 text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
             </div>
@@ -132,9 +132,9 @@
           <!-- Token intervals -->
           <div class="mt-3">
             <div class="flex items-center justify-between">
-              <label class="text-xs font-medium text-accent-500 dark:text-accent-400">
+              <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
                 {{ t('admin.channels.form.intervals', '上下文区间定价（可选）') }}
-                <span class="ml-1 font-normal text-accent-400">(min, max]</span>
+                <span class="ml-1 font-normal text-gray-400">(min, max]</span>
               </label>
               <button type="button" @click="addInterval" class="text-xs text-primary-600 hover:text-primary-700">
                 + {{ t('admin.channels.form.addInterval', '添加区间') }}
@@ -156,9 +156,9 @@
         <!-- Per-request mode -->
         <div v-else-if="entry.billing_mode === 'per_request'">
           <!-- Default per-request price -->
-          <label class="mt-3 block text-xs font-medium text-accent-500 dark:text-accent-400">
+          <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {{ t('admin.channels.form.defaultPerRequestPrice', '默认单次价格（未命中层级时使用）') }}
-            <span class="ml-1 font-normal text-accent-400">$</span>
+            <span class="ml-1 font-normal text-gray-400">$</span>
           </label>
           <div class="mt-1 w-48">
             <input :value="entry.per_request_price" @input="emitField('per_request_price', ($event.target as HTMLInputElement).value)"
@@ -167,7 +167,7 @@
 
           <!-- Tiers -->
           <div class="mt-3 flex items-center justify-between">
-            <label class="text-xs font-medium text-accent-500 dark:text-accent-400">
+            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
               {{ t('admin.channels.form.requestTiers', '按次计费层级') }}
             </label>
             <button type="button" @click="addInterval" class="text-xs text-primary-600 hover:text-primary-700">
@@ -184,7 +184,7 @@
               @remove="removeInterval(idx)"
             />
           </div>
-          <div v-else class="mt-2 rounded border border-dashed border-accent-300 p-3 text-center text-xs text-accent-400 dark:border-dark-500">
+          <div v-else class="mt-2 rounded border border-dashed border-gray-300 p-3 text-center text-xs text-gray-400 dark:border-dark-500">
             {{ t('admin.channels.form.noTiersYet', '暂无层级，点击添加配置按次计费价格') }}
           </div>
         </div>
@@ -192,9 +192,9 @@
         <!-- Image mode -->
         <div v-else-if="entry.billing_mode === 'image'">
           <!-- Default image price (per-request, same as per_request mode) -->
-          <label class="mt-3 block text-xs font-medium text-accent-500 dark:text-accent-400">
+          <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
             {{ t('admin.channels.form.defaultImagePrice', '默认图片价格（未命中层级时使用）') }}
-            <span class="ml-1 font-normal text-accent-400">$</span>
+            <span class="ml-1 font-normal text-gray-400">$</span>
           </label>
           <div class="mt-1 w-48">
             <input :value="entry.per_request_price" @input="emitField('per_request_price', ($event.target as HTMLInputElement).value)"
@@ -203,7 +203,7 @@
 
           <!-- Image tiers -->
           <div class="mt-3 flex items-center justify-between">
-            <label class="text-xs font-medium text-accent-500 dark:text-accent-400">
+            <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
               {{ t('admin.channels.form.imageTiers', '图片计费层级（按次）') }}
             </label>
             <button type="button" @click="addImageTier" class="text-xs text-primary-600 hover:text-primary-700">
