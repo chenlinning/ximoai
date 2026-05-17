@@ -44,6 +44,6 @@ const displayValue = computed(() => {
 
 const colorStyle = computed(() => {
   const colour = hslForPct(props.value)
-  return colour ? { color: colour } : { color: 'rgb(156 148 138)' }
+  return colour ? { color: colour } : { color: 'rgb(176 170 160)' }
 })
 </script>

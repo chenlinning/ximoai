@@ -962,14 +962,14 @@ onMounted(() => {
   right: 0.75rem;
   top: 50%;
   height: 1px;
-  background: rgb(216 212 205);
+  background: rgb(232 229 223);
   opacity: 0;
   transform: translateY(-50%);
   transition: opacity 0.18s ease;
 }
 
 .dark .sidebar-section-title::after {
-  background: rgb(62 58 53);
+  background: rgb(62 60 57);
 }
 
 .sidebar-section-title-text-collapsed {
