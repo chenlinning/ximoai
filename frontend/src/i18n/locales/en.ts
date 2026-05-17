@@ -6730,7 +6730,7 @@ export default {
     outputPrice: 'Output',
     cacheReadPrice: 'Cache Read',
     perMillionUnit: '/M Tokens',
-    noData: 'No Data',
+    noModels: 'No models found',
     copySuccess: 'Copied',
     copyFail: 'Copy Failed',
     loading: 'Loading...',
