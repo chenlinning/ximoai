@@ -96,15 +96,15 @@
               <div class="space-y-1">
                 <div v-if="group.input_price != null" class="flex justify-between text-xs">
                   <span class="text-accent-500">{{ t('modelPlaza.inputPrice') }}</span>
-                  <span class="text-orange-600 dark:text-orange-400 font-bold">${{ group.input_price }} {{ t('modelPlaza.perMillionUnit') }}</span>
+                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPrice(group.input_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
                 </div>
                 <div v-if="group.output_price != null" class="flex justify-between text-xs">
                   <span class="text-accent-500">{{ t('modelPlaza.outputPrice') }}</span>
-                  <span class="text-orange-600 dark:text-orange-400 font-bold">${{ group.output_price }} {{ t('modelPlaza.perMillionUnit') }}</span>
+                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPrice(group.output_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
                 </div>
                 <div v-if="group.cache_read_price != null" class="flex justify-between text-xs">
                   <span class="text-accent-500">{{ t('modelPlaza.cacheReadPrice') }}</span>
-                  <span class="text-orange-600 dark:text-orange-400 font-bold">${{ group.cache_read_price }} {{ t('modelPlaza.perMillionUnit') }}</span>
+                  <span class="text-orange-600 dark:text-orange-400 font-bold">{{ formatPrice(group.cache_read_price) }} {{ t('modelPlaza.perMillionUnit') }}</span>
                 </div>
               </div>
             </div>
@@ -130,10 +130,17 @@ import userChannelsAPI from '@/api/channels'
 import userGroupsAPI from '@/api/groups'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
+import { formatScaled } from '@/utils/pricing'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+
+/** Format per-token price to per-million-token display (e.g. 0.000003 → "$3") */
+const PER_MILLION = 1_000_000
+function formatPrice(value: number | null): string {
+  return formatScaled(value, PER_MILLION)
+}
 
 interface ModelGroup {
   name: string
