@@ -1,4 +1,5 @@
 <template>
+  <AppLayout>
   <div class="p-6" style="max-width: 80%; margin: 0 auto">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
@@ -118,12 +119,14 @@
       </div>
     </div>
   </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
+import AppLayout from '@/components/layout/AppLayout.vue'
 import adminChannelsAPI from '@/api/admin/channels'
 import adminGroupsAPI from '@/api/admin/groups'
 import userChannelsAPI from '@/api/channels'

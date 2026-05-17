@@ -9005,7 +9005,7 @@ watch(
 
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-2xl border border-accent-200/80 bg-accent-50/90 p-1.5 backdrop-blur-xl dark:border-dark-600 dark:bg-dark-900;
+  @apply sticky z-20 -mx-1 rounded-2xl border border-accent-200/80 bg-accent-50/90 p-1.5 backdrop-blur-xl dark:border-dark-600 dark:bg-dark-800;
   top: 4.75rem;
   box-shadow:
     0 12px 28px rgb(42 41 39 / 0.07),
@@ -9014,8 +9014,8 @@ watch(
 
 :global(.dark) .settings-tabs-shell {
   box-shadow:
-    0 16px 36px rgb(0 0 0 / 0.28),
-    0 1px 0 rgb(62 60 57 / 0.3) inset;
+    0 8px 20px rgb(0 0 0 / 0.2),
+    0 1px 0 rgb(62 60 57 / 0.15) inset;
 }
 
 .settings-tabs-scroll {
@@ -9062,7 +9062,7 @@ watch(
 }
 
 :global(.dark) .settings-tab::before {
-  background: linear-gradient(135deg, rgb(44 44 44 / 0.95), rgb(44 44 44 / 0.7));
+  background: rgba(62, 60, 57, 0.5);
 }
 
 .settings-tab:focus-visible {
@@ -9077,12 +9077,12 @@ watch(
 }
 
 :global(.dark) .settings-tab-active {
-  border-color: rgb(62 60 57 / 0.5);
-  background: rgb(44 44 44);
-  color: rgb(176 170 160);
+  border-color: rgba(90, 139, 103, 0.4);
+  background: rgba(90, 139, 103, 0.12);
+  color: rgba(90, 139, 103, 0.9);
   box-shadow:
-    0 12px 26px rgb(0 0 0 / 0.22),
-    0 1px 0 rgb(62 60 57 / 0.3) inset;
+    0 4px 12px rgb(0 0 0 / 0.15),
+    0 1px 0 rgb(62 60 57 / 0.15) inset;
 }
 
 .settings-tab-active::before {
@@ -9114,8 +9114,8 @@ watch(
 }
 
 :global(.dark) .settings-tab-active .settings-tab-icon {
-  background: rgb(90 139 103 / 0.15);
-  color: rgb(90 139 103 / 0.85);
+  background: rgba(90, 139, 103, 0.15);
+  color: rgba(90, 139, 103, 0.85);
 }
 
 .settings-tab-label {
