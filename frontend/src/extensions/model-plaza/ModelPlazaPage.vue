@@ -217,43 +217,70 @@ async function loadData() {
   }
 }
 
+/**
+ * Admin data loading:
+ * - Channel has group_ids: number[] and model_pricing: ChannelModelPricing[]
+ * - Each ChannelModelPricing has platform: string, models: string[],
+ *   input_price/output_price/cache_read_price
+ * - AdminGroup has id, name, rate_multiplier, is_exclusive
+ */
 async function loadAdminData() {
   const [channelsRes, groups] = await Promise.all([
     adminChannelsAPI.list(1, 9999),
     adminGroupsAPI.getAll()
   ])
 
-  const channels: any[] = channelsRes?.items || channelsRes || []
+  const channels: any[] = channelsRes?.items || []
 
-  const groupMap = new Map<string, { rate: number; is_exclusive?: boolean }>()
+  // Build group lookup by ID
+  const groupById = new Map<number, { name: string; rate: number; is_exclusive: boolean }>()
   for (const g of groups) {
-    groupMap.set(g.name, { rate: g.rate_multiplier ?? 1, is_exclusive: g.is_exclusive })
+    groupById.set(g.id, { name: g.name, rate: g.rate_multiplier ?? 1, is_exclusive: g.is_exclusive })
   }
 
   const modelMap = new Map<string, ModelEntry>()
 
   for (const ch of channels) {
     if (!ch.model_pricing || ch.model_pricing.length === 0) continue
-    const chGroup = ch.group || ''
-    const groupInfo = groupMap.get(chGroup)
-    if (!groupInfo || groupInfo.is_exclusive) continue
 
-    for (const mp of ch.model_pricing) {
-      const modelName = mp.model_name || mp.model
-      if (!modelName) continue
-      if (!modelMap.has(modelName)) {
-        modelMap.set(modelName, { name: modelName, platform: ch.platform || 'unknown', groups: [] })
+    // Resolve this channel's non-exclusive groups
+    const channelGroups: { name: string; rate: number }[] = []
+    for (const gid of (ch.group_ids || [])) {
+      const gi = groupById.get(gid)
+      if (gi && !gi.is_exclusive) {
+        channelGroups.push({ name: gi.name, rate: gi.rate })
       }
-      const entry = modelMap.get(modelName)!
-      const existingGroup = entry.groups.find(g => g.name === chGroup)
-      if (!existingGroup) {
-        entry.groups.push({
-          name: chGroup,
-          rate: groupInfo.rate,
-          input_price: mp.input_price ?? null,
-          output_price: mp.output_price ?? null,
-          cache_read_price: mp.cache_read_price ?? null,
-        })
+    }
+    if (channelGroups.length === 0) continue
+
+    // Each model_pricing entry has platform + models[] + prices
+    for (const mp of ch.model_pricing) {
+      const platform = mp.platform || 'unknown'
+      const modelNames: string[] = mp.models || []
+      const inputPrice = mp.input_price ?? null
+      const outputPrice = mp.output_price ?? null
+      const cacheReadPrice = mp.cache_read_price ?? null
+
+      for (const modelName of modelNames) {
+        if (!modelName) continue
+        if (!modelMap.has(modelName)) {
+          modelMap.set(modelName, { name: modelName, platform, groups: [] })
+        }
+        const entry = modelMap.get(modelName)!
+
+        // Add this channel's groups to the model (if not already added)
+        for (const cg of channelGroups) {
+          const existing = entry.groups.find(g => g.name === cg.name)
+          if (!existing) {
+            entry.groups.push({
+              name: cg.name,
+              rate: cg.rate,
+              input_price: inputPrice,
+              output_price: outputPrice,
+              cache_read_price: cacheReadPrice,
+            })
+          }
+        }
       }
     }
   }
@@ -261,47 +288,56 @@ async function loadAdminData() {
   models.value = Array.from(modelMap.values()).sort((a, b) => a.name.localeCompare(b.name))
 }
 
+/**
+ * User data loading:
+ * - UserAvailableChannel has platforms: UserChannelPlatformSection[]
+ * - Each section has platform, groups: UserAvailableGroup[], supported_models: UserSupportedModel[]
+ * - getUserGroupRates() returns Record<number, number> (group_id → custom rate)
+ */
 async function loadUserData() {
-  const [channels, groupsData] = await Promise.all([
+  const [channels, userRates] = await Promise.all([
     userChannelsAPI.getAvailable(),
     userGroupsAPI.getUserGroupRates()
-  ]) as [any[], any]
-
-  const groupMap = new Map<string, { rate: number; is_exclusive?: boolean }>()
-  if (Array.isArray(groupsData)) {
-    for (const g of groupsData) {
-      groupMap.set(g.name, { rate: g.rate ?? 1, is_exclusive: g.is_exclusive })
-    }
-  } else if (typeof groupsData === 'object') {
-    for (const [name, rate] of Object.entries(groupsData)) {
-      groupMap.set(name, { rate: typeof rate === 'number' ? rate : 1 })
-    }
-  }
+  ])
 
   const modelMap = new Map<string, ModelEntry>()
 
   for (const ch of channels) {
-    if (!ch.model_pricing || ch.model_pricing.length === 0) continue
-    const chGroup = ch.group || ''
-    const groupInfo = groupMap.get(chGroup)
-    if (!groupInfo || groupInfo.is_exclusive) continue
+    if (!ch.platforms || ch.platforms.length === 0) continue
 
-    for (const mp of ch.model_pricing) {
-      const modelName = mp.model_name || mp.model
-      if (!modelName) continue
-      if (!modelMap.has(modelName)) {
-        modelMap.set(modelName, { name: modelName, platform: ch.platform || 'unknown', groups: [] })
-      }
-      const entry = modelMap.get(modelName)!
-      const existingGroup = entry.groups.find(g => g.name === chGroup)
-      if (!existingGroup) {
-        entry.groups.push({
-          name: chGroup,
-          rate: groupInfo.rate,
-          input_price: mp.input_price ?? null,
-          output_price: mp.output_price ?? null,
-          cache_read_price: mp.cache_read_price ?? null,
-        })
+    for (const section of ch.platforms) {
+      const platform = section.platform || 'unknown'
+
+      // Filter non-exclusive groups
+      const visibleGroups = (section.groups || []).filter((g: any) => !g.is_exclusive)
+      if (visibleGroups.length === 0) continue
+
+      // Process supported models
+      for (const sm of (section.supported_models || [])) {
+        const modelName = sm.name
+        if (!modelName) continue
+
+        if (!modelMap.has(modelName)) {
+          modelMap.set(modelName, { name: modelName, platform, groups: [] })
+        }
+        const entry = modelMap.get(modelName)!
+
+        // Add groups with their rates
+        for (const g of visibleGroups) {
+          const existing = entry.groups.find(eg => eg.name === g.name)
+          if (!existing) {
+            // Use user custom rate if available, otherwise group default
+            const rate = userRates[g.id] ?? g.rate_multiplier ?? 1
+            const pricing = sm.pricing
+            entry.groups.push({
+              name: g.name,
+              rate,
+              input_price: pricing?.input_price ?? null,
+              output_price: pricing?.output_price ?? null,
+              cache_read_price: pricing?.cache_read_price ?? null,
+            })
+          }
+        }
       }
     }
   }
