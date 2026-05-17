@@ -9005,7 +9005,7 @@ watch(
 
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-2xl border border-white/80 bg-white/90 p-1.5 backdrop-blur-xl;
+  @apply sticky z-20 -mx-1 rounded-2xl border border-accent-200/80 bg-accent-50/90 p-1.5 backdrop-blur-xl dark:border-dark-600 dark:bg-dark-900;
   top: 4.75rem;
   box-shadow:
     0 12px 28px rgb(42 41 39 / 0.07),
@@ -9013,8 +9013,6 @@ watch(
 }
 
 :global(.dark) .settings-tabs-shell {
-  border-color: rgb(62 60 57 / 0.45);
-  background: rgb(35 35 35 / 0.95);
   box-shadow:
     0 16px 36px rgb(0 0 0 / 0.28),
     0 1px 0 rgb(62 60 57 / 0.3) inset;
@@ -9035,7 +9033,7 @@ watch(
 }
 
 .settings-tab {
-  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 ease-out dark:text-gray-300;
+  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium text-accent-600 outline-none transition-colors duration-200 ease-out dark:text-accent-300;
 }
 
 @media (min-width: 768px) {
@@ -9100,12 +9098,12 @@ watch(
 }
 
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 dark:text-gray-400;
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-accent-500 transition-colors duration-200 dark:text-accent-400;
 }
 
 .settings-tab:hover .settings-tab-icon,
 .settings-tab:focus-visible .settings-tab-icon {
-  @apply text-gray-700 dark:text-gray-200;
+  @apply text-accent-700 dark:text-accent-200;
 }
 
 .settings-tab-active .settings-tab-icon {
