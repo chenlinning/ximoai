@@ -9013,8 +9013,8 @@ watch(
 }
 
 :global(.dark) .settings-tabs-shell {
-  border-color: rgb(51 65 85 / 0.65);
-  background: rgb(15 23 42 / 0.86);
+  border-color: rgb(68 64 60 / 0.65);
+  background: rgb(28 27 24 / 0.86);
   box-shadow:
     0 16px 36px rgb(0 0 0 / 0.28),
     0 1px 0 rgb(255 255 255 / 0.06) inset;
@@ -9064,7 +9064,7 @@ watch(
 }
 
 :global(.dark) .settings-tab::before {
-  background: linear-gradient(135deg, rgb(30 41 59 / 0.9), rgb(51 65 85 / 0.62));
+  background: linear-gradient(135deg, rgb(44 42 39 / 0.9), rgb(68 64 60 / 0.62));
 }
 
 .settings-tab:focus-visible {
