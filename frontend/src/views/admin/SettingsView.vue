@@ -9070,13 +9070,16 @@ watch(
 }
 
 .settings-tab-active {
-  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-800 dark:text-primary-200;
+  @apply border-primary-200/80 bg-accent-50 text-primary-700 shadow-sm;
   box-shadow:
     0 8px 18px rgb(42 41 39 / 0.08),
-    0 1px 0 rgb(255 255 255 / 0.92) inset;
+    0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
 :global(.dark) .settings-tab-active {
+  border-color: rgb(62 60 57 / 0.5);
+  background: rgb(44 44 44);
+  color: rgb(176 170 160);
   box-shadow:
     0 12px 26px rgb(0 0 0 / 0.22),
     0 1px 0 rgb(62 60 57 / 0.3) inset;
@@ -9107,7 +9110,12 @@ watch(
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-300;
+  @apply bg-primary-50 text-primary-600;
+}
+
+:global(.dark) .settings-tab-active .settings-tab-icon {
+  background: rgb(90 139 103 / 0.15);
+  color: rgb(90 139 103 / 0.85);
 }
 
 .settings-tab-label {
