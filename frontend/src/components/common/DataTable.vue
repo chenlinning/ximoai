@@ -783,7 +783,7 @@ tbody .sticky-col {
 }
 
 .dark tbody .sticky-col {
-  background-color: rgb(23 23 23);
+  background-color: rgb(35 35 35);
 }
 
 /* hover 状态保持 */

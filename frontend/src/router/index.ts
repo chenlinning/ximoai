@@ -632,6 +632,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+  // ==================== Model Plaza ====================
+  {
+    path: '/model-plaza',
+    name: 'ModelPlaza',
+    component: () => import('@/extensions/model-plaza/ModelPlazaPage.vue'),
+    meta: {
+      titleKey: 'nav.modelPlaza'
+    }
+  },
+
   // ==================== 404 Not Found ====================
   {
     path: '/:pathMatch(.*)*',

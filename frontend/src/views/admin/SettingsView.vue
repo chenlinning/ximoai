@@ -9064,7 +9064,7 @@ watch(
 }
 
 :global(.dark) .settings-tab::before {
-  background: linear-gradient(135deg, rgb(62 60 57 / 0.9), rgb(81 77 73 / 0.62));
+  background: linear-gradient(135deg, rgb(62 60 57 / 0.9), rgb(62 60 57 / 0.62));
 }
 
 .settings-tab:focus-visible {
@@ -9096,7 +9096,7 @@ watch(
   height: 2px;
   border-radius: 9999px;
   content: "";
-  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
+  background: linear-gradient(90deg, #5A8B67, #4A7A56);
 }
 
 .settings-tab-icon {

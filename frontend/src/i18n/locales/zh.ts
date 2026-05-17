@@ -342,6 +342,7 @@ export default {
   // Navigation
   nav: {
     dashboard: '仪表盘',
+    modelPlaza: '模型广场',
     announcements: '公告',
     apiKeys: 'API 密钥',
     usage: '使用记录',
@@ -6902,5 +6903,21 @@ export default {
       },
     },
   },
-
+  modelPlaza: {
+    title: '模型广场',
+    searchPlaceholder: '搜索模型名称...',
+    allPlatforms: '全部平台',
+    groupLabel: '分组',
+    rateLabel: '倍率',
+    rateUnit: '倍',
+    inputPrice: '输入',
+    outputPrice: '输出',
+    cacheReadPrice: '缓存读取',
+    perMillionUnit: '/百万Token',
+    noData: '暂无数据',
+    copySuccess: '已复制',
+    copyFail: '复制失败',
+    loading: '加载中...',
+    error: '加载失败，请稍后重试',
+  },
 }
