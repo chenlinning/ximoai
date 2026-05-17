@@ -674,8 +674,9 @@ const flagAdminPayment = () => adminSettingsStore.paymentEnabled
 // 可用渠道紧挨渠道状态之上，让用户"先看自己能用什么、再看对应状态"。
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
+  // 模型广场始终显示在第一位
+  items.push({ path: '/model-plaza', label: t('nav.modelPlaza'), icon: GridIcon })
   if (withDashboard) {
-    items.push({ path: '/model-plaza', label: t('nav.modelPlaza'), icon: GridIcon })
   items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
   }
   items.push(
