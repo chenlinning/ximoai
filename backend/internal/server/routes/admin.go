@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterAdminRoutes registers administrator routes.
+// RegisterAdminRoutes 注册管理员路由
 func RegisterAdminRoutes(
 	v1 *gin.RouterGroup,
 	h *handler.Handlers,
@@ -17,19 +17,19 @@ func RegisterAdminRoutes(
 	admin := v1.Group("/admin")
 	admin.Use(gin.HandlerFunc(adminAuth))
 	{
-		// 浠〃鐩?		registerDashboardRoutes(admin, h)
+		// 仪表盘
 		registerDashboardRoutes(admin, h)
 
-		// 鐢ㄦ埛绠＄悊
+		// 用户管理
 		registerUserManagementRoutes(admin, h)
 
-		// 鍒嗙粍绠＄悊
+		// 分组管理
 		registerGroupRoutes(admin, h)
 
-		// 璐﹀彿绠＄悊
+		// 账号管理
 		registerAccountRoutes(admin, h)
 
-		// 鍏憡绠＄悊
+		// 公告管理
 		registerAnnouncementRoutes(admin, h)
 
 		// OpenAI OAuth
@@ -41,64 +41,64 @@ func RegisterAdminRoutes(
 		// Antigravity OAuth
 		registerAntigravityOAuthRoutes(admin, h)
 
-		// 浠ｇ悊绠＄悊
+		// 代理管理
 		registerProxyRoutes(admin, h)
 
-		// 鍗″瘑绠＄悊
+		// 卡密管理
 		registerRedeemCodeRoutes(admin, h)
 
-		// 浼樻儬鐮佺鐞?		registerPromoCodeRoutes(admin, h)
+		// 优惠码管理
 		registerPromoCodeRoutes(admin, h)
 
-		// 绯荤粺璁剧疆
+		// 系统设置
 		registerSettingsRoutes(admin, h)
 
-		// 鏁版嵁绠＄悊
+		// 数据管理
 		registerDataManagementRoutes(admin, h)
 
-		// 鏁版嵁搴撳浠芥仮澶?		registerBackupRoutes(admin, h)
+		// 数据库备份恢复
 		registerBackupRoutes(admin, h)
 
-		// 杩愮淮鐩戞帶锛圤ps锛?		registerOpsRoutes(admin, h)
+		// 运维监控（Ops）
 		registerOpsRoutes(admin, h)
 
-		// 绯荤粺绠＄悊
+		// 系统管理
 		registerSystemRoutes(admin, h)
 
-		// 璁㈤槄绠＄悊
+		// 订阅管理
 		registerSubscriptionRoutes(admin, h)
 
-		// 浣跨敤璁板綍绠＄悊
+		// 使用记录管理
 		registerUsageRoutes(admin, h)
 
-		// 鐢ㄦ埛灞炴€х鐞?		registerUserAttributeRoutes(admin, h)
+		// 用户属性管理
 		registerUserAttributeRoutes(admin, h)
 
-		// 閿欒閫忎紶瑙勫垯绠＄悊
+		// 错误透传规则管理
 		registerErrorPassthroughRoutes(admin, h)
 
-		// TLS 鎸囩汗妯℃澘绠＄悊
+		// TLS 指纹模板管理
 		registerTLSFingerprintProfileRoutes(admin, h)
 
-		// API Key 绠＄悊
+		// API Key 管理
 		registerAdminAPIKeyRoutes(admin, h)
 
-		// 瀹氭椂娴嬭瘯璁″垝
+		// 定时测试计划
 		registerScheduledTestRoutes(admin, h)
 
-		// 娓犻亾绠＄悊
+		// 渠道管理
 		registerChannelRoutes(admin, h)
 
-		// 骞冲彴绠＄悊
+		// 平台管理
 		registerPlatformRoutes(admin, h)
 
-		// 娓犻亾鐩戞帶
+		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
 
-		// 椋庢帶涓績
+		// 风控中心
 		registerContentModerationRoutes(admin, h)
 
-		// 閭€璇疯繑鍒╋紙涓撳睘鐢ㄦ埛绠＄悊锛?		registerAffiliateRoutes(admin, h)
+		// 邀请返利（专属用户管理）
 		registerAffiliateRoutes(admin, h)
 	}
 }
@@ -177,22 +177,17 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		// Error logs (legacy)
 		ops.GET("/errors", h.Admin.Ops.GetErrorLogs)
 		ops.GET("/errors/:id", h.Admin.Ops.GetErrorLogByID)
-		ops.GET("/errors/:id/retries", h.Admin.Ops.ListRetryAttempts)
-		ops.POST("/errors/:id/retry", h.Admin.Ops.RetryErrorRequest)
 		ops.PUT("/errors/:id/resolve", h.Admin.Ops.UpdateErrorResolution)
 
 		// Request errors (client-visible failures)
 		ops.GET("/request-errors", h.Admin.Ops.ListRequestErrors)
 		ops.GET("/request-errors/:id", h.Admin.Ops.GetRequestError)
 		ops.GET("/request-errors/:id/upstream-errors", h.Admin.Ops.ListRequestErrorUpstreamErrors)
-		ops.POST("/request-errors/:id/retry-client", h.Admin.Ops.RetryRequestErrorClient)
-		ops.POST("/request-errors/:id/upstream-errors/:idx/retry", h.Admin.Ops.RetryRequestErrorUpstreamEvent)
 		ops.PUT("/request-errors/:id/resolve", h.Admin.Ops.ResolveRequestError)
 
 		// Upstream errors (independent upstream failures)
 		ops.GET("/upstream-errors", h.Admin.Ops.ListUpstreamErrors)
 		ops.GET("/upstream-errors/:id", h.Admin.Ops.GetUpstreamError)
-		ops.POST("/upstream-errors/:id/retry", h.Admin.Ops.RetryUpstreamError)
 		ops.PUT("/upstream-errors/:id/resolve", h.Admin.Ops.ResolveUpstreamError)
 
 		// Request drilldown (success + error)
@@ -316,7 +311,7 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		accounts.POST("/batch-clear-error", h.Admin.Account.BatchClearError)
 		accounts.POST("/batch-refresh", h.Admin.Account.BatchRefresh)
 
-		// Antigravity 榛樿妯″瀷鏄犲皠
+		// Antigravity 默认模型映射
 		accounts.GET("/antigravity/default-model-mapping", h.Admin.Account.GetAntigravityDefaultModelMapping)
 
 		// Claude OAuth routes
@@ -424,24 +419,31 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		adminSettings.PUT("", h.Admin.Setting.UpdateSettings)
 		adminSettings.POST("/test-smtp", h.Admin.Setting.TestSMTPConnection)
 		adminSettings.POST("/send-test-email", h.Admin.Setting.SendTestEmail)
-		// Admin API Key 绠＄悊
+		adminSettings.GET("/email-templates", h.Admin.Setting.ListEmailTemplates)
+		adminSettings.POST("/email-template-preview", h.Admin.Setting.PreviewEmailTemplate)
+		adminSettings.GET("/email-templates/:event/:locale", h.Admin.Setting.GetEmailTemplate)
+		adminSettings.PUT("/email-templates/:event/:locale", h.Admin.Setting.UpdateEmailTemplate)
+		adminSettings.POST("/email-templates/:event/:locale/restore-official", h.Admin.Setting.RestoreOfficialEmailTemplate)
+		// Admin API Key 管理
 		adminSettings.GET("/admin-api-key", h.Admin.Setting.GetAdminAPIKey)
 		adminSettings.POST("/admin-api-key/regenerate", h.Admin.Setting.RegenerateAdminAPIKey)
 		adminSettings.DELETE("/admin-api-key", h.Admin.Setting.DeleteAdminAPIKey)
-		// 529杩囪浇鍐峰嵈閰嶇疆
+		// 529过载冷却配置
 		adminSettings.GET("/overload-cooldown", h.Admin.Setting.GetOverloadCooldownSettings)
 		adminSettings.PUT("/overload-cooldown", h.Admin.Setting.UpdateOverloadCooldownSettings)
-		// 429榛樿鍥為伩閰嶇疆
+		// 429默认回避配置
 		adminSettings.GET("/rate-limit-429-cooldown", h.Admin.Setting.GetRateLimit429CooldownSettings)
 		adminSettings.PUT("/rate-limit-429-cooldown", h.Admin.Setting.UpdateRateLimit429CooldownSettings)
-		// 娴佽秴鏃跺鐞嗛厤缃?		adminSettings.GET("/stream-timeout", h.Admin.Setting.GetStreamTimeoutSettings)
+		// 流超时处理配置
+		adminSettings.GET("/stream-timeout", h.Admin.Setting.GetStreamTimeoutSettings)
 		adminSettings.PUT("/stream-timeout", h.Admin.Setting.UpdateStreamTimeoutSettings)
-		// 璇锋眰鏁存祦鍣ㄩ厤缃?		adminSettings.GET("/rectifier", h.Admin.Setting.GetRectifierSettings)
+		// 请求整流器配置
+		adminSettings.GET("/rectifier", h.Admin.Setting.GetRectifierSettings)
 		adminSettings.PUT("/rectifier", h.Admin.Setting.UpdateRectifierSettings)
-		// Beta 绛栫暐閰嶇疆
+		// Beta 策略配置
 		adminSettings.GET("/beta-policy", h.Admin.Setting.GetBetaPolicySettings)
 		adminSettings.PUT("/beta-policy", h.Admin.Setting.UpdateBetaPolicySettings)
-		// Web Search 妯℃嫙閰嶇疆
+		// Web Search 模拟配置
 		adminSettings.GET("/web-search-emulation", h.Admin.Setting.GetWebSearchEmulationConfig)
 		adminSettings.PUT("/web-search-emulation", h.Admin.Setting.UpdateWebSearchEmulationConfig)
 		adminSettings.POST("/web-search-emulation/test", h.Admin.Setting.TestWebSearchEmulation)
@@ -475,23 +477,23 @@ func registerDataManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 func registerBackupRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	backup := admin.Group("/backups")
 	{
-		// S3 瀛樺偍閰嶇疆
+		// S3 存储配置
 		backup.GET("/s3-config", h.Admin.Backup.GetS3Config)
 		backup.PUT("/s3-config", h.Admin.Backup.UpdateS3Config)
 		backup.POST("/s3-config/test", h.Admin.Backup.TestS3Connection)
 
-		// 瀹氭椂澶囦唤閰嶇疆
+		// 定时备份配置
 		backup.GET("/schedule", h.Admin.Backup.GetSchedule)
 		backup.PUT("/schedule", h.Admin.Backup.UpdateSchedule)
 
-		// 澶囦唤鎿嶄綔
+		// 备份操作
 		backup.POST("", h.Admin.Backup.CreateBackup)
 		backup.GET("", h.Admin.Backup.ListBackups)
 		backup.GET("/:id", h.Admin.Backup.GetBackup)
 		backup.DELETE("/:id", h.Admin.Backup.DeleteBackup)
 		backup.GET("/:id/download-url", h.Admin.Backup.GetDownloadURL)
 
-		// 鎭㈠鎿嶄綔
+		// 恢复操作
 		backup.POST("/:id/restore", h.Admin.Backup.RestoreBackup)
 	}
 }
@@ -520,10 +522,10 @@ func registerSubscriptionRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		subscriptions.DELETE("/:id", h.Admin.Subscription.Revoke)
 	}
 
-	// 鍒嗙粍涓嬬殑璁㈤槄鍒楄〃
+	// 分组下的订阅列表
 	admin.GET("/groups/:id/subscriptions", h.Admin.Subscription.ListByGroup)
 
-	// 鐢ㄦ埛涓嬬殑璁㈤槄鍒楄〃
+	// 用户下的订阅列表
 	admin.GET("/users/:id/subscriptions", h.Admin.Subscription.ListByUser)
 }
 
@@ -591,6 +593,7 @@ func registerChannelRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		channels.GET("", h.Admin.Channel.List)
 		channels.GET("/model-pricing", h.Admin.Channel.GetModelDefaultPricing)
+		channels.GET("/pricing/sync-models", h.Admin.Channel.SyncPricingModels)
 		channels.GET("/:id", h.Admin.Channel.GetByID)
 		channels.POST("", h.Admin.Channel.Create)
 		channels.PUT("/:id", h.Admin.Channel.Update)
@@ -632,7 +635,7 @@ func registerChannelMonitorRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	}
 }
 
-// registerAffiliateRoutes registers affiliate admin routes.
+// registerAffiliateRoutes 注册邀请返利的管理端路由（专属用户配置）
 func registerAffiliateRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	affiliates := admin.Group("/affiliates")
 	{

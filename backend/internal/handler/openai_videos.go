@@ -121,9 +121,9 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 	}
 
 	if isMultipartVideoContentType(c.GetHeader("Content-Type")) {
-		setOpsRequestContext(c, "", false, nil)
+		setOpsRequestContext(c, "", false)
 	} else {
-		setOpsRequestContext(c, "", false, body)
+		setOpsRequestContext(c, "", false)
 	}
 	parsed, err := h.gatewayService.ParseOpenAIVideoRequest(c, body, false)
 	if err != nil {
@@ -354,7 +354,7 @@ func (h *OpenAIGatewayHandler) handleVideoMutation(c *gin.Context, sourceVideoID
 	}
 
 	reqLog = reqLog.With(zap.String("model", parsed.Model), zap.String("source_video_id", sourceVideoID))
-	setOpsRequestContext(c, parsed.Model, false, body)
+	setOpsRequestContext(c, parsed.Model, false)
 	setOpsEndpointContext(c, "", int16(service.RequestTypeFromLegacy(false, false)))
 
 	if decision := h.checkContentModeration(c, reqLog, apiKey, subject, service.ContentModerationProtocolOpenAIImages, parsed.Model, body); decision != nil && decision.Blocked {
