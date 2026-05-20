@@ -173,6 +173,7 @@ import { useAppStore } from '@/stores/app'
 import { totpAPI } from '@/api'
 import type { TotpSetupResponse } from '@/types'
 import QRCode from 'qrcode'
+import { themeColor } from '@/utils/theme-colors'
 
 const emit = defineEmits<{
   close: []
@@ -230,8 +231,8 @@ watch(
           width: 200,
           margin: 2,
           color: {
-            dark: '#000000',
-            light: '#ffffff'
+            dark: themeColor('black'),
+            light: themeColor('white')
           }
         })
       } catch (err) {

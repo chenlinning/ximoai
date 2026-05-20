@@ -33,6 +33,7 @@ import {
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
+import { themeColor } from '@/utils/theme-colors'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
@@ -51,8 +52,8 @@ const chartData = computed(() => {
       {
         label: t('payment.admin.revenue'),
         data: props.data.map(d => d.amount),
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: themeColor('blue-500'),
+        backgroundColor: themeColor('blue-500', 0.1),
         fill: true,
         tension: 0.3,
         pointRadius: 3,
@@ -61,8 +62,8 @@ const chartData = computed(() => {
       {
         label: t('payment.admin.orderCount'),
         data: props.data.map(d => d.count),
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        borderColor: themeColor('emerald-500'),
+        backgroundColor: themeColor('emerald-500', 0.1),
         fill: false,
         tension: 0.3,
         pointRadius: 3,

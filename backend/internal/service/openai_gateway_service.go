@@ -39,23 +39,22 @@ const (
 	chatgptCodexURL = "https://chatgpt.com/backend-api/codex/responses"
 	// OpenAI Platform API for API Key accounts (fallback)
 	openaiPlatformAPIURL   = "https://api.openai.com/v1/responses"
-	openaiStickySessionTTL = time.Hour // 粘性会话TTL
+	openaiStickySessionTTL = time.Hour // 缂傚倸鍊搁崐椋庢閿熺姴绐楁俊銈呭閹冲矂姊绘笟鈧埀顒傚仜閼活垶宕濋鐐寸厱閻忕偛澧介惌宀勬煟濞戞牕鍔﹂柡宀嬬秮閹晠宕ｆ径濠庢П缂傚倷娴囨ご鎼佸煘瀵?
 	codexCLIUserAgent      = "codex_cli_rs/0.125.0"
-	// codex_cli_only 拒绝时单个请求头日志长度上限（字符）
+	// Maximum header value length included in Codex CLI debug logs.
 	codexCLIOnlyHeaderValueMaxBytes = 256
 
-	// OpenAIParsedRequestBodyKey 缓存 handler 侧已解析的请求体，避免重复解析。
+	// OpenAIParsedRequestBodyKey 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笒缁犱即鏌熼梻瀵稿妽闁?handler 濠电姷鏁搁崑鐐哄箰婵犳碍鍎嶆繝濠傜墕缁€鍐煏婵炲灝鍔滄い鎾炽偢濮婃椽鎳￠妶鍛€鹃梺鑽ゅ枙娴滎剙顕ユ繝鍐﹀亝闁告劏鏅涢埀顒勬涧闇夐柣妯烘▕閸庢劙鏌涙惔锛勑ч柡灞剧洴瀵挳濡搁妷锔惧蒋闂備焦鎮堕崐妤呭磻閻愬搫绠為柕濞炬櫆閸嬶繝鏌℃径濠勬皑闁稿鎸婚ˇ鐗堟償閿濆浂妲搁梺璇插嚱缂嶅棝宕板Δ鍛柧妞ゆ帒鍊甸崑鎾诲礂婢跺﹣澹曢梻浣告啞濞诧附绂嶉悙鍨潟婵鍩栭埛鎴犵磼鐎ｎ厽纭剁紒鐘冲缁辨帗寰勬繝鍕ㄩ悗瑙勬礃婵炲﹤鐣烽妸锔剧瘈闁稿本绮庨悰顕€鏌ｆ惔锛勭暛闁稿酣浜堕幃銏ゅ幢濞戞顔婂┑掳鍊愰崑鎾绘煕閹寸姴鈻堥柡宀€鍠栭獮宥夋惞椤愶絾绶梻?
 	OpenAIParsedRequestBodyKey = "openai_parsed_request_body"
-	// OpenAI WS Mode 失败后的重连次数上限（不含首次尝试）。
-	// 与 Codex 客户端保持一致：失败后最多重连 5 次。
+	// OpenAI WS Mode 濠电姷鏁告慨浼村垂濞差亜纾块柤娴嬫櫅閸ㄦ繈鏌涢幘妤€瀚弸鍌炴⒑閹稿孩绀€闁稿﹤鎽滈幉鎾晝閸屾氨顔愰柡澶婄墕婢х晫绮欐繝姘厽闁挎繂顦幉鐐叏婵犲啯銇濇鐐存崌楠炴帡寮┑鍕姢缂佽鲸甯炵槐鎺懳熺亸鏍潔闂備礁鐤囬褔鏌婇敐澶婃槬闁告洦鍨扮粈鍐煃閸濆嫬浜為柛鐔插亾濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繃銇勮箛鎾愁伌闁诲氦鍩栫换娑橆啅椤旇崵鍑归梺鍝勬媼閸撶喖寮诲☉銏╂晝闁挎繂娲ㄩ悡鍌炴⒑閼姐倕鏋戠紒璇茬墦瀵鈽夊鍡樺兊闂佺粯鎸哥花濂稿窗婵犲偆娓婚柕鍫濆€瑰▍鍫熴亜閺囧棗娲ら悡婵嬪箹濞ｎ剙濡奸柣蹇撶－閳ь剝顫夊ú鏍洪敃鍌ゆ晪婵炴垯鍨洪悡鐔兼煟濡搫绾у璺哄缁绘稑霉鐎ｎ偅鐝栧┑鈥冲级閸旀洟锝炲┑鍫熷磯濞?	// 濠?Codex 闂傚倷娴囬褎顨ラ崫銉т笉鐎广儱顦崹鍌涚箾瀹割喕绨婚柡鍕╁劜缁绘盯骞嬮悙瀵告闂佸憡顨嗙喊宥夊Φ閸曨垰鍐€闁靛ě鍕珮缂傚倷鑳舵慨宕囧垝濞嗘挸钃熼柣鏂垮悑閳锋劙鏌熼柇锕€寮炬俊顖氬€荤槐鎾存媴鐟欏嫧鎷归梺鐟版啞婵炲﹪鐛繝鍌楁婵炲棙鍔楃粔鍫曟⒑閸涘﹥瀵欓柛娑卞灠閻愬﹥绻濋悽闈浶為柛銊︽そ瀹曟洟鎳栭埡浣哥亰闂佸憡鎸嗛崟顐ｇ€梻浣瑰濞叉牠宕愰崫銉﹀枂闁挎洖鍊哥粻瑙勭箾閿濆骸澧柣蹇ｄ簻闇夐柣妯跨М椤忓牃鈧箓宕稿Δ浣告疂闂傚倸鐗婄粙鎴﹀箺閻㈠憡鈷戦梻鍫氭櫇閸掍即鏌熷ù瀣у亾閹颁胶鍔?5 婵犵數濮烽弫鎼佸磻濞戙垹鍑犻柟缁㈠枛缁犮儵鏌涢幇顖氱处濠?
 	openAIWSReconnectRetryLimit = 5
-	// OpenAI WS Mode 重连退避默认值（可由配置覆盖）。
+	// OpenAI WS Mode 闂傚倸鍊搁崐鐑芥倿閿曚降浜归柛鎰典簽閻挸顪冪€ｎ亜顒㈢€规洖寮剁换娑㈠箣濞嗗繒浠鹃梺缁樺笒椤兘寮诲鍫闂佸憡鎸鹃崰鏍ь嚕婵犳艾骞㈡繛鎴烇耿閺佹粌鈹戞幊閸婃洟宕銈囩當闁跨喓濮甸悡鐔兼煟濮椻偓娴滆泛顬婇悜鑺ョ厱濠电姴鍟粈瀣煕閳规儳浜炬俊鐐€栫敮鎺楀磹閸洖鐒垫い鎺嗗亾妞ゆ垵娲ゅ嵄闁归偊鍏橀弸搴ㄦ煙閹咃紞闁绘挻鍨甸—鍐Χ閸℃瑥顫х紓渚囧枛缁夌懓顕ｉ幎鑺ュ亹缂備焦菤閹锋椽姊洪崫鍕垫Ъ婵炲娲濋崐鎾⒒娴ｅ湱婀介柛濠冩礀铻炴繛鎴欏灩缁犵喎霉閸忓吋缍戞鐐灪缁绘盯宕卞Ο鍝勵潕闂佹寧绋掗崝娆忣潖濞差亜绠伴幖杈剧岛濡插牆顪冮妶蹇撶槣闁告瑥鍟村畷娲焵?
 	openAIWSRetryBackoffInitialDefault = 120 * time.Millisecond
 	openAIWSRetryBackoffMaxDefault     = 2 * time.Second
 	openAIWSRetryJitterRatioDefault    = 0.2
 	openAICompactSessionSeedKey        = "openai_compact_session_seed"
 	codexCLIVersion                    = "0.125.0"
-	// Codex 限额快照仅用于后台展示/诊断，不需要每个成功请求都立即落库。
+	// Codex 闂傚倸鍊搁崐鎼佸磹閸濄儮鍋撳鐓庡籍鐎规洘绻傞埢搴ㄥ箻閳ь剟鎮滈挊澶岋紲濠电娀娼ч悧蹇涘级缁嬫娓婚柕鍫濇婵倿鏌涙繝鍐╃妞ゆ洩缍侀獮鍡涒€栭垾宕囩Ш闁诡喒鏅犲畷锝嗗緞婵犲喚浠遍梻鍌欐祰濡椼劑姊藉澶婄９闁哄稁鍋嗛惌澶屸偓骞垮劚濡瑩宕曢悢鍏肩厓闁宠桨绀侀弳娆撴煃瑜滈崜娑㈠极婵犳艾钃熸繛鎴炃氶弸搴ㄦ煙闁箑骞橀柛鎴節濮婂搫煤鐠囪弓绨荤紓浣割槸婢у酣宕?闂傚倷娴囧畷鍨叏閺夋嚚娲Χ婢跺娅囬梺闈涱槴閺呮盯鎷戦悢鍏肩厱闁靛鍠栨晶顖炴煛閸滀礁澧撮柟顔斤耿閹瑧鎹勬潪鐗堢潖闂備浇宕甸崰鎰崲閸繍娼栧┑鐘宠壘閻愬﹪鏌ㄥ┑鍡樺櫢濠㈣娲熷娲嚒閵堝懏鐎惧┑鐐插级閸ㄥ潡骞冮悙鐑樻櫇闁稿本绋戦崜銊╂⒑閺傘儲娅呴柛鐔跺嵆閸┿垽寮埀顒勫Φ閸曨喚鐤€闁圭偓娼欏▍锝夋⒑鐠囪尙绠版繛宸弮瀵鈽夐姀鐘电潉闂佺鏈喊宥夋倶閸℃娓婚柕鍫濇婢跺嫰鏌涢幘瀵告噭闁哄懌鍎靛铏圭矙鐠恒劎浼囬梺绋款儐閻╊垰鐣烽姀鈶╁亾闂堟稒鎲哥痪鎯с偢閺岋繝宕掑☉鍗炲妼闂佺楠哥换鎺楀焵椤掑喚娼愰柟鍝ヮ焾铻炴繝闈涱儏缁狀垶鏌涢幇闈涙灍閻庣數濮撮…璺ㄦ崉閻戞ɑ鎷遍梺姹囧妽閸ㄥ灝顫?
 	openAICodexSnapshotPersistMinInterval = 30 * time.Second
 )
 
@@ -72,7 +71,7 @@ var openaiAllowedHeaders = map[string]bool{
 }
 
 // OpenAI passthrough allowed headers whitelist.
-// 透传模式下仅放行这些低风险请求头，避免将非标准/环境噪声头传给上游触发风控。
+// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼幃瑙勬姜閹殿喚协闂佺粯姊婚崢褔鎮樺畷鍥ｅ亾鐟欏嫭绀€婵炲眰鍔戦妴渚€宕ㄩ鍓ь啎闂佺懓顕崑鐐典焊椤撶喆浜滈柟瀛樼箓椤忣偊鏌涢幒鎾崇瑲闁诡垱妫冩俊鎼佸Ψ瑜嶉幗瀣⒒娴ｄ警鏀版い顐㈩樀瀹曟繈鏁冮崒姘卞摋婵炲濮撮鍛棯瑜旈弻宥夊传閸曨偀鍋撴繝姘疇濞达綀娅ｇ壕濂告煏婵炑冨暙婵℃椽姊洪悷鏉挎Щ闁瑰啿绻橀獮鍡涘籍閸埃鍋撻敃鍌氱闁绘垵妫欓ˉ娑㈡⒒閸屾艾鈧悂宕愰崫銉㈠亾濮樷偓閸パ呮煣闂佺粯鍔掔拃锕傚极鐎ｎ偁浜滈柟鍝勬娴滈箖鏌℃担鍝ュⅵ闁哄本绋撴禒锕傚箚瑜庨幆娑欑箾鐎电孝闁绘鎹囧濠氬Ω閵夈垺顫嶅┑鈽嗗灥閸嬫劙宕濋娑氱闁哄鍨瑰В鐐烘煛閸涱垰孝闁伙絽鍢茶灃闁逞屽墴椤㈡ɑ绺界粙鍨獩濡炪倖鐗楁笟妤呭疮閸儲鈷掗柛灞捐壘閳ь剚鎮傞幃褑绠涘☉妯硷紱闂佺粯鍔楅崕銈夊磻婢舵劖鐓ユ繝闈涙－濡插摜绱掗埀?闂傚倸鍊烽懗鍓佸垝椤栨粌鍨濋柣妯款嚙閸ㄥ倸霉閸忚偐鏆橀柍褜鍓欓崐鎸庝繆閹间礁鐓涘〒姘ｅ亾婵☆偄鍢查—鍐Χ閸涱垳顔囬柣搴㈣壘閹芥粌危閹扮増鏅查柛婊€鑳堕崬鐢告⒑閸涘﹥灏柤鍐插瀵囧焵椤掑倻纾藉ù锝囶焾閼哥懓顭胯濞村嘲危閹版澘绠抽柟瀛樻⒐閻庡鏌熼懝鐗堝涧缂佹彃娼￠獮澶愵敂閸曘劍鏂€闂佺粯鍔曢悺銊т焊娴煎瓨鐓熼柍鈺佸暞缁€澶嬨亜閵堝懎鈧灝顫忓ú顏勫窛濠电姴瀚崳顓㈡⒑閹肩偛濡兼繛鎮搞倖锛傞梻浣筋潐瀹曟﹢顢氳缁鐣烽崶銊ユ瀾闁诲函缍嗛崰鏍倿?
 var openaiPassthroughAllowedHeaders = map[string]bool{
 	"accept":                true,
 	"accept-language":       true,
@@ -86,7 +85,7 @@ var openaiPassthroughAllowedHeaders = map[string]bool{
 	"x-codex-turn-metadata": true,
 }
 
-// codex_cli_only 拒绝时记录的请求头白名单（仅用于诊断日志，不参与上游透传）
+// codex_cli_only 闂傚倸鍊风粈浣虹礊婵犲洤缁╅弶鍫氭櫆閺嗘粓鏌ｉ幇鐗堟锭闁搞劍绻堥弻锝夊箣閿濆棭妫勭紓渚囧亜缁夊綊寮婚悢纰辨晬闁绘劘寮撻崰濠囨⒑閸濄儱浠滃褍閰ｉ獮澶愬箹娴ｇ懓浜遍梺鍓插亞閸犳捇藝椤撶偐鏀介柣鎰皺婢ф盯鏌涢妸銉хШ妤犵偛绻橀幃鈺冪磼濡厧寮抽梺璇插嚱缂嶅棝宕滃璺虹闁绘劦鍓涚弧鈧梺闈涢獜缁插墽娑甸悙顑句簻闁哄洢鍔岄獮鏍煃鐠囪尙啸妞わ箑婀遍埀顒冾潐濞插繘宕曢柆宥庢晣濠靛倻顭堝婵囥亜閹捐泛顎屾俊鎻掔秺濮婄粯鎷呴悷閭﹀殝缂備礁顑嗛崹鍧楀箖瑜斿畷銊╊敍濮橆剛浜伴梺鐟板悑閻ｎ亪宕濆澶婄；闁靛ň鏅滈悡蹇撯攽閻愯尙浠㈤柍褜鍓氶〃濠囧箠濠靛洢鍋呴柛鎰ㄦ櫅娴狀垶姊洪幖鐐插妧鐎广儱妫欓弳浼存⒒娴ｅ憡鎯堥柤娲诲灠鐓ゆい鎾跺剱閸ゆ洘銇勯弴妤€浜炬繝纰夌磿閸忔ɑ淇婇悿顖ｆЬ濡炪倖鏌ㄧ粔鐟邦潖濞差亜绠伴幖杈剧岛濡插牊绻濋棃娑樷偓鐟邦潖閼姐倕鍨濇い鎾跺枎缁剁偤鏌熼柇锕€澧伴柣鎾村灴濮婅櫣绮欓幐搴㈡嫳闂佽崵鍟欓崶銊ヤ画闂侀潧绻掓慨顓炍ｉ崼銉︾厵闁告挆灞藉闂佽　鍋撳┑鐘崇閻撶喖鏌″畵顔兼噹閻撶喖姊洪崫鍕闁硅櫕鎸剧划璇测槈濞嗘劕鍔呴梺鎸庣箓濞层倝鍩€椤掑倸浠辨慨?
 var codexCLIOnlyDebugHeaderWhitelist = []string{
 	"User-Agent",
 	"Content-Type",
@@ -214,8 +213,7 @@ type OpenAIForwardResult struct {
 	RequestID  string
 	ResponseID string
 	Usage      OpenAIUsage
-	Model      string // 原始模型（用于响应和日志显示）
-	// BillingModel is the model used for cost calculation.
+	Model      string // 闂傚倸鍊风粈渚€骞夐敓鐘偓锕傚炊椤掆偓缁愭骞栭幖顓犲帨缂傚秵鐗犻弻鐔兼焽閿曗偓閸旓箓鏌ｉ弮鍌氬付闁诲繐纾埀顒冾潐濞叉牕煤閻樿纾婚柟鍓х帛閸婂鏌ら幁鎺戝姕婵炲懏鐗犲娲礈閹绘帊绨撮梺鎼炲妽濡炶棄顕ｇ€圭姷鐤€闁瑰彞鑳堕幊鎾烩€﹂妸鈺佺妞ゆ洖鎳夐崑鎾澄旈崨顔惧幍婵犻潧鍊搁幉锟犲极闁秵鐓欐い鏍ㄧ⊕椤ュ牏鈧鍣崜鐔肩嵁閹邦厽鍎熼柍钘夋缁辨牠姊婚崒娆戭槮闁圭⒈鍋婂畷顖炲Ω閳轰胶锛熼柡澶婄墐閺呮粌鐣烽弻銉︾厸闁告劑鍔庢晶鏇㈡煕濞嗗骏韬柡灞剧洴楠炴ê顪冮悙顒夋▊缂備緡鍠氶弫璇差潖?	// BillingModel is the model used for cost calculation.
 	// When non-empty, CalculateCost uses this instead of Model.
 	// This is set by the Anthropic Messages conversion path where
 	// the mapped upstream model differs from the client-facing model.
@@ -234,6 +232,7 @@ type OpenAIForwardResult struct {
 	ResponseHeaders    http.Header
 	Duration           time.Duration
 	FirstTokenMs       *int
+	VideoCount         int
 	ImageCount         int
 	ImageSize          string
 	ImageInputSize     string
@@ -341,6 +340,7 @@ type OpenAIGatewayService struct {
 	channelService        *ChannelService
 	balanceNotifyService  *BalanceNotifyService
 	settingService        *SettingService
+	videoJobRepo          OpenAIVideoJobRepository
 
 	openaiWSPoolOnce              sync.Once
 	openaiWSStateStoreOnce        sync.Once
@@ -382,7 +382,12 @@ func NewOpenAIGatewayService(
 	channelService *ChannelService,
 	balanceNotifyService *BalanceNotifyService,
 	settingService *SettingService,
+	videoJobRepo ...OpenAIVideoJobRepository,
 ) *OpenAIGatewayService {
+	var openAIVideoJobRepo OpenAIVideoJobRepository
+	if len(videoJobRepo) > 0 {
+		openAIVideoJobRepo = videoJobRepo[0]
+	}
 	svc := &OpenAIGatewayService{
 		accountRepo:         accountRepo,
 		usageLogRepo:        usageLogRepo,
@@ -413,6 +418,7 @@ func NewOpenAIGatewayService(
 		channelService:        channelService,
 		balanceNotifyService:  balanceNotifyService,
 		settingService:        settingService,
+		videoJobRepo:          openAIVideoJobRepo,
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
 		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
 	}
@@ -420,7 +426,7 @@ func NewOpenAIGatewayService(
 	return svc
 }
 
-// ResolveChannelMapping 解析渠道级模型映射（代理到 ChannelService）
+// ResolveChannelMapping 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠弶鍫氭櫅缁躲倕螖閿濆懎鏆為柛濠勬暬閺岋箑螣娓氼垱肖闂侀€炲苯澧悽顖ょ節楠炲啴鍩￠崘鈺侇€涢梺鍛婂姇濡﹤螞濠婂懐纾介柛灞剧懆閸忓矂鎮楀顒傜鐎规洜鍠栭崺鈧い鎺嶈兌閻熷綊鏌嶈閸撴瑩鎮鹃悜钘夋嵍妞ゆ挻绋戞禍楣冩煥濠靛棝顎楀ù婊勭箘閹増绺介崨濠勫幗闂婎偄娲﹂幐鍓х不娴煎瓨鍊垫慨姗嗗墯閹插憡淇婇崣澶婂闁宠閰ｉ獮鍥敋閸涱喚銈梻鍌欑劍鐎笛呮崲閸屾娲晝閸屾氨锛欓梺缁樺姉閸庛倝鎮?ChannelService闂?
 func (s *OpenAIGatewayService) ResolveChannelMapping(ctx context.Context, groupID int64, model string) ChannelMappingResult {
 	if s.channelService == nil {
 		return ChannelMappingResult{MappedModel: model}
@@ -428,7 +434,7 @@ func (s *OpenAIGatewayService) ResolveChannelMapping(ctx context.Context, groupI
 	return s.channelService.ResolveChannelMapping(ctx, groupID, model)
 }
 
-// IsModelRestricted 检查模型是否被渠道限制（代理到 ChannelService）
+// IsModelRestricted 婵犵數濮烽。钘壩ｉ崨鏉戠；闁逞屽墴閺屾稓鈧綆鍋呭畷宀勬煛瀹€瀣？濞寸媴濡囬幏鐘诲箵閹烘埈娼ラ梻浣哄帶閻忓牓寮查悩璇茶摕婵炴垯鍨规儫闂侀潧顦介崰鏍礈閸楃偐鏀介柍銉ュ暱缁狙囨煙椤旂厧鈧悂鎮鹃悜钘壩ㄩ柍鍝勫€瑰▍鍥ㄧ箾閹剧澹樻繛璇х畵閹风儤寰勬繛鐐杸闂佺粯鍔曢悺銊т焊闂堟稈鏀介柣鎰ㄦ櫅娴滄儳鈹戦悙鑼憼缂侇喗鎸剧划濠氬冀瑜滃鏍归悩宸剰缂佺姵绋掗妵鍕箳閸℃ぞ澹曢梻浣虹帛閹稿宕归崸妤€钃熼柕濞垮劗濡插牊淇婇婊冨付妞わ絽缍婂娲传閵夈儱澹夐梺鍛婃尵閸犳牠鐛崘顔奸唶闁哄洨鍋涢懓鍨攽鎺抽崐鎰板磻閹剧粯鐓?ChannelService闂?
 func (s *OpenAIGatewayService) IsModelRestricted(ctx context.Context, groupID int64, model string) bool {
 	if s.channelService == nil {
 		return false
@@ -436,8 +442,7 @@ func (s *OpenAIGatewayService) IsModelRestricted(ctx context.Context, groupID in
 	return s.channelService.IsModelRestricted(ctx, groupID, model)
 }
 
-// ResolveChannelMappingAndRestrict 解析渠道映射。
-// 模型限制检查已移至调度阶段，restricted 始终返回 false。
+// ResolveChannelMappingAndRestrict 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠弶鍫氭櫅缁躲倕螖閿濆懎鏆為柛濠勬暬閺岋箑螣娓氼垱肖闂侀€炲苯澧悽顖ょ節楠炲啴鍩￠崘鈺侇€涢梺鍛婂姇濡﹤螞濠婂牊鈷掑ù锝呮啞閹牓鎮楀鐓庢灍闁逛究鍔戦獮姗€顢欓挊澶婂闂備胶绮…鍫ヮ敋瑜戠换?// 婵犵數濮烽。钘壩ｉ崨鏉戝瀭妞ゅ繐鐗嗛悞鍨亜閹哄棗浜剧紒鍓ц檸閸欏啴宕洪埀顒併亜閹烘垵鈧悂宕㈢€涙ɑ鍙忓┑鐘辫兌閻瑦顨ラ悙鍙夊枠妞ゃ垺顨婇崺鈧い鎺戝閸嬪倿鏌熺€电浠掔紒璇叉閵囧嫰骞囬鍏肩€绘繛瀛樼矒缁犳牕顫忓ú顏勪紶闁告洦鍣鍫曟⒑缁嬪潡鍙勫ù婊嗘硾閻ｅ嘲鈻庨幘瀛樻珫闂佸憡娲﹂崢楣冩偂鐎ｎ喗鈷戦柛婵嗗椤忊晝绱掔紒妯哄闁崇粯鎸婚妶锝夊礃閳轰椒鍖栭梺璇插嚱缂嶅棙绂嶅鍫濇辈婵炲棙鎸婚崐鐢告偡濞嗗繐顏╅柍缁樻礃閹便劍绻濋崒妯轰划闂佺娅曠划宀勫煝閹捐鍨傛い鏃囧Г濠㈡垿姊婚崒娆戝妽閻庣瑳鍛煓闁硅揪瀵岄弫濠囨煙鏉堚晝鏆塼ricted 濠电姷鏁告慨鐢割敊閺嶎厼绐楅柡宥庡弾閺佸嫰鏌涢妷銏℃珔闁搞劍绻堥弻鐔煎箚瑜忛幗鐘裁瑰┃鍨偓婵嬪蓟閿熺姴纾兼繛鎴烇供閸ゅ绱撴担鎻掍壕闂?false闂?
 func (s *OpenAIGatewayService) ResolveChannelMappingAndRestrict(ctx context.Context, groupID *int64, model string) (ChannelMappingResult, bool) {
 	if s.channelService == nil {
 		return ChannelMappingResult{MappedModel: model}, false
@@ -498,7 +503,7 @@ func (s *OpenAIGatewayService) needsUpstreamChannelRestrictionCheck(ctx context.
 	return ch.BillingModelSource == BillingModelSourceUpstream
 }
 
-// ReplaceModelInBody 替换请求体中的 JSON model 字段（通用 gjson/sjson 实现）。
+// ReplaceModelInBody 闂傚倸鍊风粈渚€骞栭鈷氭椽鏁傞柨顖氫壕缂佹绋戦崯浼村汲閿曞倹鐓犵痪鏉垮船婢ь垶鎮楀顓炲摵婵﹥妞藉畷褰掝敋閸涱厼澹嬫繝鐢靛Л閸嬫捇鏌℃径瀣鐟滅増甯楅弲鏌ユ煕閳╁厾顏堟儗椤曗偓濮婃椽鎮℃惔锝勭驳闂佹悶鍔屽锟犵嵁?JSON model 闂傚倷娴囬褏鈧稈鏅濈划娆撳箳濡炲皷鍋撻崘顔煎耿婵炴垼椴搁弲鈺呮倵閸忓浜鹃梺鍛婃处閸撴艾鈻嶉弽顓熲拺闁告挻褰冩禍鏍煕鎼搭喖娅嶇€规洘鍨块獮姗€骞囨担鐟板厞闂佸搫顦悧鍕礉瀹ュ應鏋?gjson/sjson 闂傚倷娴囬褎顨ョ粙鍖¤€块梺顒€绉寸壕濠氭煟閺冨洤浜圭€规挷绶氶弻娑㈠Ψ椤旂厧顫梺鍝勬媼閸撴瑩鈥︾捄銊﹀磯闁惧繒鎳撻。鐢告⒑?
 func (s *OpenAIGatewayService) ReplaceModelInBody(body []byte, newModel string) []byte {
 	return ReplaceModelInBody(body, newModel)
 }
@@ -521,8 +526,7 @@ func (s *OpenAIGatewayService) billingDeps() *billingDeps {
 	}
 }
 
-// CloseOpenAIWSPool 关闭 OpenAI WebSocket 连接池的后台 worker 和空闲连接。
-// 应在应用优雅关闭时调用。
+// CloseOpenAIWSPool 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁瑰鍋熺粻鎯р攽閻樿弓杩?OpenAI WebSocket 闂傚倷绀侀幖顐λ囬锕€鐤炬繝闈涱儏绾惧鏌ｉ幇顒備粵闁哄棙绮撻弻鈩冨緞鐎ｎ亝鐦庨悷婊勬楠炲啴鍩￠崨顓炵€銈嗗姂閸婃牕鈻撻幖浣光拻濞达絽鎲￠崯鐐烘煠閸︻厼浜炬い銊ｅ劚椤垻浠︾拋铏潖?worker 闂傚倸鍊风粈渚€骞夐敍鍕灊鐎光偓閸曨剙鍓舵繝闈涘€婚…鍫ユ偂濮椻偓閺屸€愁吋鎼粹€崇闂佹娊鏀辩敮锟犲蓟閵堝鍋傞幖绮规閺嗐垻绱撴担鍝勨枅缂佺姵鐗犲濠氭偄閻撳海鐣抽梺鍦劋閸ㄥ灚鎱ㄥ畝鍕拺?// 闂傚倷绀佸﹢閬嶅储瑜旈幃娲Ω閳轰浇鎽曢梺闈涱焾閸庡鎳撻幐搴涗簻闊洦鎸婚崳娲煕鎼达絽鏋涢柡宀嬬節瀹曟﹢濡搁妷銏犱壕鐟滅増甯掑Ч鏌ョ叓閸ャ劍濯肩憸鐗堝笒缁€鍌滅棯椤撶姵鐒块柍褜鍓氱€笛呮崲濞戞瑥绶為柛顐ｇ妇閸嬫挸鈹戦崱娆愭濠德板€曢幊搴ｇ不椤曗偓閺屻倝骞侀幒鎴濆Х缂備椒绌堕崝鎴濐潖濞差亜浼犻柛鏇ㄥ亝濞堟煡姊虹粙鍧楊€楅柕鍫熸倐楠炲棝宕橀钘変簻闂佺绻掗崢褎绂掑ú顏呪拺闂傚牊渚楅悡顓犵磼閸欏銇濈€?
 func (s *OpenAIGatewayService) CloseOpenAIWSPool() {
 	if s != nil && s.openaiWSPool != nil {
 		s.openaiWSPool.Close()
@@ -904,9 +908,8 @@ func getAPIKeyIDFromContext(c *gin.Context) int64 {
 	return apiKey.ID
 }
 
-// isolateOpenAISessionID 将 apiKeyID 混入 session 标识符，
-// 确保不同 API Key 的用户即使使用相同的原始 session_id/conversation_id，
-// 到达上游的标识符也不同，防止跨用户会话碰撞。
+// isolateOpenAISessionID 闂?apiKeyID 婵犵數濮烽弫鎼佸磿閹寸姴绶ゅù鐘差儏鎼村﹪鏌＄仦璇插姎闁?session 闂傚倸鍊风粈渚€骞栭銈囩煋闁哄鍤氬ú顏勭厸闁告侗鍠栭崜銊╂⒑閻熼偊鍤熷┑顕€顥撶划濠氬籍閸喓鍙嗛梺鍝勫暙濞层倖绂嶉崷顓犵＜闁?
+// 缂傚倸鍊烽懗鍫曟惞鎼淬劌鐭楅幖娣妼缁愭鏌￠崶鈺佇ｇ€规洖寮堕幈銊ヮ潨閸℃绠婚梺宕囩帛濮婂鍩€椤掆偓缁犲秹宕曢柆宥呯疇闊洦绋戠壕?API Key 闂傚倸鍊烽悞锕傛儑瑜版帒绀夌€光偓閳ь剟鍩€椤掍礁鍤柛锝忕到椤曪綁顢曢敃鈧洿婵犮垼娉涢敃锕傤敇濞差亝鍊甸柣鐔告緲椤忣亝绻濋姀鈽嗙劷缂侇喖锕、娆徝规惔锛勭Ш闁轰焦鍔欏畷銊╊敃閿涘嫰鎸兼繝鐢靛Х閺佹悂宕戝☉妯忔椽顢橀姀鐘电暫婵炲濮撮鍛劔闁荤喐绮屽ù椋庡垝婵犲洤钃熼柕澶涘閸樺崬鈹戦鏂や緵闁告挻鐩幃妯绘綇閵娧咁啎闂佸壊鍋嗛崰搴ㄦ倶鐎电硶鍋撶憴鍕８闁搞劋绮欓獮鍐閿涘嫰妾繝銏ｆ硾椤戝洨绮?session_id/conversation_id闂?// 闂傚倸鍊风粈渚€骞夐敍鍕殰婵°倓绀侀崹鏂棵归悩宸剰缂佺姴鐏氶妵鍕疀閹炬潙娅ч梺宕囩帛閺屻劑鍩為幋锔藉亹闁圭粯甯楀▓鍫曟⒑缁洘娅嗘い銊ワ躬瀵鏁愭径濞⑩晠鏌曟径鍫濆姶濞寸娀绠栧铏圭磼濡厧顥夌紓浣瑰絻濞硷繝鐛箛娑欏亹閻犲洦褰冮懓鍨攽閻愬弶顥為柨姘舵煕閹惧崬濡界紒缁樼洴楠炲鎮欑划瑙勫闂備礁鎽滄慨瀵哥矓閸撲礁鍨濇い鎾跺枎缁剁偤鏌熼柇锕€澧茬悮婵嬫煟鎼粹€冲辅闁稿鎹囬幃妤呮晲鎼粹€愁潾濡炪倧瀵岄崳锝咁潖婵犳艾纾兼慨姗嗗墯濞堫參鎮楀▓鍨灈闁绘牕銈搁妴浣肝旈埀顒勫煡婢跺娼╂い鎾跺仧閿涘繘姊绘笟鈧褑鍣归梺鍛婃处閸撴岸顢樿ぐ鎺撯拻濞达絽鎲＄拹鈩冦亜閵夛箑濮囬柕鍡樺浮瀹曠兘顢橀悤浣圭稐闂備浇顫夐鏍窗濡ゅ啠鍋撳顓狀暡缂佺粯绻堝Λ鍐ㄢ槈濮橆兘鎷℃繝鐢靛仜閵堝摜绮婚弽顓炶摕闁绘梻鍘х粈鍫㈡喐瀹ュ棛顩插┑鍌氭啞閻?
 func isolateOpenAISessionID(apiKeyID int64, raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -1208,9 +1211,7 @@ func (s *OpenAIGatewayService) GenerateSessionHash(c *gin.Context, body []byte) 
 	return currentHash
 }
 
-// GenerateSessionHashWithFallback 先按常规信号生成会话哈希；
-// 当未携带 session_id/conversation_id/prompt_cache_key 时，使用 fallbackSeed 生成稳定哈希。
-// 该方法用于 WS ingress，避免会话信号缺失时发生跨账号漂移。
+// GenerateSessionHashWithFallback 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁规壆澧楅崑瀣攽閻樻彃顏ら柛瀣崌瀹曞綊顢曢妶鍥╁帓闂備浇妗ㄧ欢锟犲窗閺嶎叏缍栭柕蹇曞Х閺嗗棗鈹戦悩鎻掓殶缂佸鍢查埞鎴︽倻閸モ晛鍩屽┑鐐跺皺婵炩偓闁糕斁鍋撳銈嗗坊閸嬫捇鏌涢悢绋款嚋缂佺粯鐩畷鍫曨敆娴ｅ搫骞楅梻渚€娼х换鍫ュ垂瑜版帒鍑犻柟杈鹃檮閻撴洟鏌曟繝蹇擃洭妞わ絾鐓￠幃妤呮偨闂堟稑浠樺銈庡亝缁诲倿鎮鹃悜钘夌倞闁靛鍨洪悘渚€姊婚崒娆戭槮闁硅绱曢幑銏ゅ磼閻愭潙浜遍梺绯曞墲閻熝呯不閺冨牊鐓曢柕澶樺枛婢ь垶鏌?// 闂備浇宕甸崰鎰垝鎼淬垺娅犳俊銈呮噹缁犱即鎮归崶顏嶅殝闁肩増瀵ч妵鍕箻閸楃偟浠肩紓浣哄Т缂嶅﹪寮诲☉妯锋斀闁糕剝顨忔导鈧梻?session_id/conversation_id/prompt_cache_key 闂傚倸鍊风粈渚€骞栭锕€鐤柟鍓佺摂閺佸﹪鏌熼柇锕€鏋熸い顐ｆ礃缁绘繈妫冨☉娆忣槱婵犳鍨遍幐鎶藉箖瑜版帒绠掗柟鐑樺灥椤姊?fallbackSeed 闂傚倸鍊烽悞锕傛儑瑜版帒鍨傚┑鐘宠壘缁愭鏌熼悧鍫熺凡闁搞劌鍊归幈銊ノ熸径绋挎儓闂佹椿鍘介悷鈺呭蓟濞戙垹绠涙い鏍ㄦ皑濮ｃ垽姊洪崫鍕棛闁告濞婂璇测槈濡攱鏂€闂佺硶鍓濋悷銉┿€傞搹鍦＝濞达綀顕栧▓鏃€绻涘顔煎箺濞?// 闂傚倷娴囧畷鍨叏閺夋嚚娲閵堝懐锛熼梺鍝勮閸庨亶鎷戦悢鍏肩厽闁哄倽娉曞▓閬嶆煛鐎ｎ偆澧甸柡宀嬬節瀹曞爼鍩℃担鍥风秮閺岋繝宕卞Δ鍐唶闂?WS ingress闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢鏌涚仦鍓р槈妞ゆ洟浜堕弻宥夊传閸曨剙娅ｇ紓浣插亾闁稿本澹曢崑鎾荤嵁閸喖濮庨柣搴㈠嚬閸犳氨鍒掗敐鍛傛棃宕ㄩ闂村寲闂備焦鎮堕崕顖炲礉鎼达絿涓嶉柟瀛樺姴鎼淬劌鐐婄憸婵嬬叕椤掑倵鍋撶憴鍕┛缂佹煡绠栬棟闁绘鐗婇崕鐔兼煥濞戞ê顏柣锝呭暱閳规垿鎮╅鑲╀痪闂佺楠搁崥瀣Φ閺冨倻鐭欐繛鍡欏亾鐎靛矂姊虹粙璺ㄧ伇闁稿鐩幆灞轿旈崨顔惧幍闁诲海鏁搁…鍫熺墡闂備礁鎼幊蹇涘箖閸岀偛绠栫憸鐗堝笒缁犳帡鏌熼悜妯虹仴妞ゎ偄鎳忕换婵嬪閿濆棛銆愰柣搴㈢濠㈡﹢鎮鹃悜鑺ユ櫜濠㈣泛顑囬崣鍡涙煟鎼搭垳绉甸柛鎾寸洴閺佸秴鈹戦崼銏紳婵炶揪绲芥竟濠偽ｈぐ鎺撶厽妞ゅ繐瀚粔娲煕閳规儳浜?
 func (s *OpenAIGatewayService) GenerateSessionHashWithFallback(c *gin.Context, body []byte, fallbackSeed string) string {
 	sessionHash := s.GenerateSessionHash(c, body)
 	if sessionHash != "" {
@@ -1262,9 +1263,9 @@ func (s *OpenAIGatewayService) SelectAccountForModel(ctx context.Context, groupI
 }
 
 // SelectAccountForModelWithExclusions selects an account supporting the requested model while excluding specified accounts.
-// SelectAccountForModelWithExclusions 选择支持指定模型的账号，同时排除指定的账号。
+// SelectAccountForModelWithExclusions 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ瀬閸ヮ剙绠ユい鏃傛嚀娴滅偓鎱ㄥΟ绋垮姎濠殿喖鍊婚埀顒侇問閸犳捇宕濋幋锔衡偓浣糕槈濡攱顫嶅┑鈽嗗灠閸氬鏆╅梻鍌氬€风粈浣革耿闁秮鈧箓宕煎婵囨そ婵¤埖寰勭€ｎ亙鎮ｉ梻浣筋嚃閸ㄥジ鎮樺☉銏″亜闁绘挸娴锋导瀣倵鐟欏嫭绀€婵炶尙濞€瀹曟垿骞樼紒妯衡偓濠氭煠閹帒鍔氶柛鎿冨弮濮婃椽宕ㄦ繝鍐槱闂佸摜濮甸悧鐘烘闂佸啿鎼幊蹇涙偂閺囩喓绠鹃柛鈩冾殘缁犵増绻涢崼姘珖缂佽鲸甯楀蹇涘Ω瑜忛悿鍕倵鐟欏嫭纾搁柛搴ゆ珪缁傛帡鏁冮崒娑樷偓閿嬨亜閹烘埈妲圭悮褔姊婚崒娆戭槮婵犫偓闁秴纾块柕鍫濇处閺嗘粓鏌嶉妷锔界伇闁哄绉归獮鏍庨鈧俊鑲╃磼閻樺崬宓嗛柡灞剧洴婵＄兘骞嬪┑鍥ф濠殿噯绲介柊锝咁潖閸濆嫅褔宕惰椤牓鏌ｆ惔銏犲毈闁搞劌宕銉╁礋椤栨氨顦板銈嗙墬濮樸劑鎮￠幋锔解拺闁告繂瀚烽崕娑㈡煕鐎Ｑ冧壕闂?
 func (s *OpenAIGatewayService) SelectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*Account, error) {
-	return s.selectAccountForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, excludedIDs, false, 0)
+	return s.selectAccountForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, excludedIDs, false, 0, PlatformOpenAI)
 }
 
 // noAvailableOpenAISelectionError builds the standard "no account available" error
@@ -1297,8 +1298,19 @@ func openAICompactSupportTier(account *Account) int {
 
 // isOpenAIAccountEligibleForRequest centralises the schedulable / OpenAI / model /
 // compact-support checks used during account selection.
-func isOpenAIAccountEligibleForRequest(account *Account, requestedModel string, requireCompact bool) bool {
-	if account == nil || !account.IsSchedulable() || !account.IsOpenAI() {
+func accountMatchesPlatform(account *Account, platform string) bool {
+	if account == nil {
+		return false
+	}
+	platform = NormalizePlatformSlug(platform)
+	if platform == "" {
+		platform = PlatformOpenAI
+	}
+	return account.Platform == platform
+}
+
+func isOpenAIAccountEligibleForRequest(account *Account, requestedModel string, requireCompact bool, platform string) bool {
+	if account == nil || !account.IsSchedulable() || !accountMatchesPlatform(account, platform) {
 		return false
 	}
 	if requestedModel != "" && !account.IsModelSupported(requestedModel) {
@@ -1351,7 +1363,14 @@ func resolveOpenAIAccountUpstreamModelForRequest(account *Account, requestedMode
 	return upstreamModel
 }
 
-func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64) (*Account, error) {
+func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, platform string) (*Account, error) {
+	platform = NormalizePlatformSlug(platform)
+	if platform == "" {
+		platform = PlatformOpenAI
+	}
+	if platform != PlatformOpenAI {
+		requireCompact = false
+	}
 	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
 		slog.Warn("channel pricing restriction blocked request",
 			"group_id", derefGroupID(groupID),
@@ -1359,29 +1378,25 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.C
 		return nil, fmt.Errorf("%w supporting model: %s (channel pricing restriction)", ErrNoAvailableAccounts, requestedModel)
 	}
 
-	// 1. 尝试粘性会话命中
-	// Try sticky session hit
-	if account := s.tryStickySessionHit(ctx, groupID, sessionHash, requestedModel, excludedIDs, requireCompact, stickyAccountID); account != nil {
+	// 1. 闂傚倷娴囬褏鎹㈤幇顔藉床闁瑰濮靛畷鏌ユ煕閳╁啰鈯曢柛搴★攻閵囧嫰寮介妸褏鐓€闂佹悶鍔嶇换鍐╃┍婵犲浂鏁嶆繝濠傚暙婵箓姊虹粙娆惧剱闁归€涚窔钘濋弶鍫氭櫇绾惧ジ寮堕崼娑樺妞ゃ儱顑夐弻鐔割槹鎼粹寬銏ゆ煃鐟欏嫬鐏寸€规洖宕灒闁绘垶锕╅崥瀣節?	// Try sticky session hit
+	if account := s.tryStickySessionHit(ctx, groupID, sessionHash, requestedModel, excludedIDs, requireCompact, stickyAccountID, platform); account != nil {
 		return account, nil
 	}
 
-	// 2. 获取可调度的 OpenAI 账号
-	// Get schedulable OpenAI accounts
-	accounts, err := s.listSchedulableAccounts(ctx, groupID)
+	// 2. 闂傚倸鍊风粈渚€宕ョ€ｎ喖纾块柟鎯版鎼村﹪鏌ら懝鎵牚濞存粌缍婇弻娑㈠Ψ椤旂厧顫╅梺娲诲幗椤ㄥ棝濡甸崟顖氬唨闁靛ě鍛毉婵犵數鍋涢悧鍡涙偉婵傚摜宓侀柡宥冨妽缂嶅洭鏌熼鍡楁湰閸犳ɑ绻?OpenAI 闂傚倷娴囧畷鍨叏閻㈢绀夌憸蹇曞垝婵犳艾绠ｉ柨婵嗗暕濮?	// Get schedulable OpenAI accounts
+	accounts, err := s.listSchedulableAccounts(ctx, groupID, platform)
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
 	}
 
-	// 3. 按优先级 + LRU 选择最佳账号
-	// Select by priority + LRU
-	selected, compactBlocked := s.selectBestAccount(ctx, groupID, accounts, requestedModel, excludedIDs, requireCompact)
+	// 3. 闂傚倸鍊风粈浣革耿闁秮鈧箓宕奸妷瀣喘椤㈡瑩鎮欓澶嬬稐婵＄偑鍊栭幐鍫曞垂閸︻厾鐭嗛柛宀€鍋為悡鏇熴亜閹邦喖孝闁诲繑鐓￠弻?+ LRU 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ瀬閸ヮ剙绠ユい鏃傛嚀娴滅偓鎱ㄥΟ绋垮姎濠殿喖鍊婚埀顒侇問閸犳岸寮繝姘槬闁逞屽墯閵囧嫰骞掑鍥у婵犳鍨遍幐鎶藉箖濡ゅ懎鎹舵い鎾跺€姀掳浜滈柨鏃囶潐濞呭﹪鏌?	// Select by priority + LRU
+	selected, compactBlocked := s.selectBestAccount(ctx, groupID, accounts, requestedModel, excludedIDs, requireCompact, platform)
 
 	if selected == nil {
 		return nil, noAvailableOpenAISelectionError(requestedModel, compactBlocked)
 	}
 
-	// 4. 设置粘性会话绑定
-	// Set sticky session binding
+	// 4. 闂傚倷娴囧畷鍨叏瀹曞洨鐭嗗ù锝堫潐濞呯姴霉閻樺樊鍎愰柛瀣典邯閺屾盯鍩勯崘顏呭櫑闂佹悶鍔嶇换鍐╃┍婵犲浂鏁嶆繝濠傚暙婵箓姊虹粙娆惧剱闁归€涚窔钘濋弶鍫氭櫇绾惧ジ寮堕崼娑樺妞ゃ儱顑夐弻鐔割槹鎼粹寬銏ゆ煃鐟欏嫬鐏寸€规洖銈告慨鈧柍銉﹀墯娴犻亶姊?	// Set sticky session binding
 	if sessionHash != "" {
 		_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, selected.ID, openaiStickySessionTTL)
 	}
@@ -1389,12 +1404,10 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.C
 	return s.hydrateSelectedAccount(ctx, selected)
 }
 
-// tryStickySessionHit 尝试从粘性会话获取账号。
-// 如果命中且账号可用则返回账号；如果账号不可用则清理会话并返回 nil。
-//
+// tryStickySessionHit 闂傚倷娴囬褏鎹㈤幇顔藉床闁瑰濮靛畷鏌ユ煕閳╁啰鈯曢柛搴★攻閵囧嫰寮介妸褋鈧帗銇勯埡鍐ㄥ幋妤犵偞鐗楀蹇涘礈瑜庨崑褔姊虹紒妯诲鞍閻㈩垽绻濆濠氭偄绾拌鲸鏅炲銈嗗坊閸嬫捇鏌涙繝鍛惞缂侇噯绲借灃闁告侗鍠栨禒顖炴⒑閹肩偛鍔橀柛鏂挎捣缁顫濋褎顔旈梺缁樺姌鐏忔瑧绮婚懡銈傚亾鐟欏嫭绌跨紓宥勭椤曪絾绂掔€ｅ灚鏅㈤梺閫炲苯澧撮挊婵嬫煃閸濆嫭鍣洪柣鎾存礃缁绘盯宕卞Ο鍝勵潕婵炲濮甸惄顖炲蓟?// 濠电姷鏁告慨鐑姐€傛禒瀣劦妞ゆ巻鍋撻柛鐔锋健閸┾偓妞ゆ巻鍋撶紓宥咃躬楠炲啫螣鐠囪尙绐為梺褰掑亰閸撴瑧绮ｅ☉銏♀拺闁荤喐澹嗛幗鐘绘偨椤栨粌鏋涚€规洏鍨介、妤呭焵椤掑嫬鐓″鑸靛姇缁犲鎮楀☉娆欎緵婵﹥瀵х换婵嬪閿濆棛銆愰柣搴㈢濠㈡﹢鎮鹃悜鑺ユ櫜闁告侗鍨卞▓婵嬫⒑閸濆嫷妲奸柛搴☆煼椤㈡瑦寰勯幇顓涙嫼濠电偠灏欑划顖涚箾閸ヮ剚鐓曢柡鍌濇硶閻掑摜鈧娲栫紞濠囥€佸☉妯锋婵炲棗瀛╅崬澶愭⒒娴ｅ憡鎯堥柛濠傛贡閳ь剛鐟抽崨顖滅劶闂侀€炲苯澧撮柡宀嬬秮閹晠宕橀幓鎹胶绱撴担鍝勑ｉ柛銊ャ偢婵＄敻骞囬弶鍧楁暅濠德板€撻悞锕€鈻嶉弽褉鏀介柣鎰綑閻忥箓鏌ㄩ弴妤佹珔閻撱倝鏌曢崼婵愭Ч闁绘挻鐩幃妤呮晲鎼粹€茬敖闂佹椿鍘兼鎼佲€︾捄銊﹀磯闁告繂瀚锋导鍐倵鐟欏嫭绌跨紓宥勭窔楠炴鎯旈妸銉э紲濠电姴锕ら幊蹇涘窗閹烘鈷掑ù锝呮啞閸熺偤鏌ｉ悤浣哥仸鐎规洖缍婇獮搴ㄦ寠婢跺鈧剟姊洪棃娑氬妞わ富鍨崇划鍫ュ幢濡偐顔曢梺绯曞墲閿氬┑顔碱槹閵囧嫯绠涢弮鈧崐鎰版煛瀹€瀣М闁诡喗鐟╁畷锝嗗緞濡椿妫ょ紓鍌氬€峰ù鍥ㄣ仈閸涘﹦鐝堕柛鈩冪☉缁狀垶鏌ｅΟ鑽ゃ偞闁衡偓娴犲鐓曢柍鈺佸暢婢规﹢鏌ｅ┑鎰仸闁哄备鍓濆鍕幢濡崵褰嗛梻浣告惈鐞氼偊宕濆畝鈧崣?nil闂?//
 // tryStickySessionHit attempts to get account from sticky session.
 // Returns account if hit and usable; clears session and returns nil if account is unavailable.
-func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID *int64, sessionHash, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64) *Account {
+func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID *int64, sessionHash, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, stickyAccountID int64, platform string) *Account {
 	if sessionHash == "" {
 		return nil
 	}
@@ -1417,19 +1430,17 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		return nil
 	}
 
-	// 检查账号是否需要清理粘性会话
-	// Check if sticky session should be cleared
+	// 婵犵數濮烽。钘壩ｉ崨鏉戠；闁逞屽墴閺屾稓鈧綆鍋呭畷宀勬煛瀹€瀣？濞寸媴濡囬幏鐘诲箵閹烘嚩鎾斥攽閻橆喖鐏辨繛澶嬬〒閳ь剚纰嶅姗€鎮鹃悜鑺ユ櫜濠㈣泛顑囬崣鍡涙煟鎼搭垳绉甸柛濠忕秮閺佸啴宕掑☉姘箞婵犳鍠楅敋濠⒀傜矙閹箖宕归銈囶啎闂佽鍎抽崯鍧椼€傞幎鑺ョ厵闁肩⒈鍓欓。濂告煙瀹勭増鍤囩€规洜鍏橀、妯款槺缂佹墎鏅犲缁樻媴閽樺鎯為梺绋款儐缁嬫垼鐏嬪┑鐐村灟閸ㄦ椽宕曞Δ浣瑰弿婵＄偠顕ф禍鎯旈悩闈涗汗闁稿鎹囬幃宄邦煥閸愵亞浼囧┑鈥冲级閸旀瑩鐛澶樻晩闁芥ê顦辫ぐ?	// Check if sticky session should be cleared
 	if shouldClearStickySession(account, requestedModel) {
 		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 		return nil
 	}
 
-	// 验证账号是否可用于当前请求
-	// Verify account is usable for current request
-	if !isOpenAIAccountEligibleForRequest(account, requestedModel, false) {
+	// 濠电姴鐥夐弶搴撳亾濡や焦鍙忛柟缁㈠枟閸庢銆掑锝呬壕闂佽鍨悞锕€顕ラ崟顓濇勃闁诡垎灞肩穿闂傚倷鐒︾€笛兠哄澶婄；闁规崘鍩栭崰鎰版煛婢跺顕滈柛瀣ㄥ劤閳ь剚顔栭崰鏇㈠础閹跺鈧礁鈽夊鍡樺兊濡炪倖鎸鹃崑娑欐櫠妤ｅ啯鈷掑ù锝呮啞閸熺偤鏌ｉ悤浣哥仸鐎规洖缍婇獮搴ㄦ寠婢跺鈧剟姊洪棃娑氬婵☆偅鐩妴鍛村蓟閵夈儳顔愰柡澶婄墕婢х晫澹曠捄銊х＜濠㈣泛顭堥崑銏ゆ煛鐏炲墽娲存鐐疵悾鐑藉炊閸℃劕鍔滈柕鍥у瀵挳濡搁妷銉交闂?	// Verify account is usable for current request
+	if !isOpenAIAccountEligibleForRequest(account, requestedModel, false, platform) {
 		return nil
 	}
-	account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel, requireCompact)
+	account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel, requireCompact, platform)
 	if account == nil {
 		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 		return nil
@@ -1440,20 +1451,17 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		return nil
 	}
 
-	// 刷新会话 TTL 并返回账号
-	// Refresh session TTL and return account
+	// 闂傚倸鍊风粈渚€骞夐敍鍕殰闁跨喓濮寸紒鈺呮⒑椤掆偓缁夋挳鎷戦悢灏佹斀闁绘ɑ褰冮弳娆愩亜閺囷繝鍝洪柟渚垮妼铻ｉ柧蹇曟缁辩偛鈹?TTL 婵犲痉鏉库偓妤佹叏閻戣棄纾婚柣鎰惈绾惧潡鏌ゅù瀣珕鐎规洘鐓￠弻鐔告綇閸撗呮殸闂佺粯鍔曢敃顏堝蓟閿濆绠涙い鏍ㄧ〒閵嗘劕顪冮妶蹇氬悅闁哄懐濞€瀵?	// Refresh session TTL and return account
 	_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, openaiStickySessionTTL)
 	return account
 }
 
-// selectBestAccount 从候选账号中选择最佳账号（优先级 + LRU）。
-// 返回 nil 表示无可用账号。
-//
+// selectBestAccount 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛悗娑欙供濞堜粙鏌熼梻瀵割槮闁绘帒鐏氶妵鍕箳瀹ュ牆鍘￠梺鐟板暱濞差參寮诲鍫闂佸憡鎸婚悷鈺勬闂佹儳娴氶崑鍕閻愮儤鐓曢柡鍥ュ妼閻忕娀鏌ｉ鐕佹疁闁哄睙鍐炬僵妞ゆ巻鍋撻柍褜鍏涚划娆忕暦閵忋値鏁嗛柛鏇ㄥ厴閹峰搫顪冮妶鍡楀闁糕晛瀚嵄鐟滅増甯楅崐鍨叏濡鍔氬┑顔煎€婚埀顒侇問閸犳岸寮繝姘槬闁逞屽墯閵囧嫰骞掑鍥у婵犳鍨遍幐鎶藉箖濡ゅ懎鎹舵い鎾跺€姀掳浜滈柨鏃囶潐濞呭﹪鏌＄仦鍓р槈闁宠姘︾粻娑㈠箻閹碱厼鏁ょ紓鍌氬€峰ù鍥ㄣ仈閹间焦鍋￠柨鏃堟暜閸嬫捇鎮介棃娑樹粯闁句紮缍侀弻娑樷攽閸℃浠奸悗娈垮枟椤ㄥ牏妲?+ LRU闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆¤娲、姗€濮€閻橀潧濮?// 闂傚倷绀侀幖顐λ囬锕€鐤炬繝濠傜墕閽冪喖鏌曟繛鍨壄?nil 闂傚倷娴囧畷鐢稿磻閻愮數鐭欓煫鍥ㄧ☉缁€澶愬箹濞ｎ剙濡煎鍛攽椤旂瓔鐒炬繛澶嬬〒閻氭儳顓兼径瀣幗濠碘槅鍨甸褏寰婃繝姘仯濞达絽婀遍崣鈧梺鍝勭焿缂嶄線鏁愰悙渚晢闁逞屽墯閹便劑鍩€椤掍胶绡€闁靛骏绲剧涵楣冩倵濮橆厽绶查柣锝囧厴閺佹劖寰勬繝鍌氭婵＄偑鍊栭崝妤呭窗鎼淬垻顩?//
 // selectBestAccount selects the best account from candidates (priority + LRU).
 // Returns nil if no available account. The second return reports whether at
 // least one candidate was filtered out solely because it lacks compact support
 // (only meaningful when requireCompact=true).
-func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *int64, accounts []Account, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool) (*Account, bool) {
+func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *int64, accounts []Account, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, platform string) (*Account, bool) {
 	var selected *Account
 	selectedCompactTier := -1
 	compactBlocked := false
@@ -1462,17 +1470,16 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 	for i := range accounts {
 		acc := &accounts[i]
 
-		// 跳过被排除的账号
-		// Skip excluded accounts
+		// 闂傚倷娴囧畷鍨叏閹绢喖绠规い鎰堕檮閸嬵亪鏌涢妷銏℃珕鐎规洘鐓￠弻娑㈠箛閸忓摜鍑归梺绋款儐閻楁濡甸崟顖氱疀闁告挷绀侀崺宀€绱撴担璇℃畷闁圭懓娲ら～蹇旂節濮橆剛顦伴梺瀹犳〃鐠佹煡宕戦幘婢勬棃鍩€椤掑嫬鐓濋柟鎹愵嚙缁狅綁鏌ｅΟ鍝勬毐妞ゅ繑鎮傚娲箰鎼淬垻锛曢梺绋款儐閹搁箖骞?		// Skip excluded accounts
 		if _, excluded := excludedIDs[acc.ID]; excluded {
 			continue
 		}
 
-		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel, false)
+		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel, false, platform)
 		if fresh == nil {
 			continue
 		}
-		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, false)
+		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, false, platform)
 		if fresh == nil {
 			continue
 		}
@@ -1488,15 +1495,14 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 			}
 		}
 
-		// 选择优先级最高且最久未使用的账号
-		// Select highest priority and least recently used
+		// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ瀬閸ヮ剙绠ユい鏃傛嚀娴滅偓鎱ㄥΟ绋垮姎濠碘€茬矙閹鎮介棃娑樹粯闁句紮缍侀弻娑樷攽閸℃浠奸悗娈垮枟椤ㄥ牏妲愰幘瀛樺闁告繂瀚ぐ娆撴⒑閸涘﹥澶勯柛蹇旂〒閸掓帡顢涘☉妤冪畾闂侀潧鐗嗛幊搴ㄥ焵椤掆偓濠€鍗烇耿娴ｈ櫣纾藉ù锝堫嚃濞堟洟鏌ｅΔ鍐ㄐ㈡い鏇秮閹晫绮欑捄銊ュЕ婵＄偑鍊栫敮濠囨嚄閸洖鐓濋柡鍥ュ灪閻撴洘绻涢幋婵嗚埞闁哄鍠撻埀顒侇問閸犳骞愰幖浣圭畳闂備焦瀵х换鍌炴偋婵犲嫭鍏滈柛顐ｆ礃閻撴稑霉閿濆娑ч柍褜鍓氱换鍫ョ嵁閸℃稑绀冩い鏃囧亹椤︽澘顪冮妶鍡樷拻闁冲嘲鐗嗗嵄闂侇剙绉甸埛?		// Select highest priority and least recently used
 		if selected == nil {
 			selected = fresh
 			selectedCompactTier = compactTier
 			continue
 		}
 
-		// compact 模式下高 tier 优先；同 tier 内才比较 priority/LRU。
+		// compact 婵犵數濮烽。钘壩ｉ崨鏉戝瀭妞ゅ繐鐗嗛悞鍨亜閹哄棗浜剧紒鍓ц檸閸樻儳鈽夐悽绋跨劦妞ゆ帊鑳剁粻楣冩煙鐎电浠﹂悘蹇ｅ幗閵囧嫰骞嬪┑鎰枅闂?tier 濠电姷鏁搁崑鐐差焽濞嗘挸瑙﹂悗锝庡枟閺咁亪姊绘担鍛婂暈閽冮亶鏌ｉ埡濠傜仸鐎殿噮鍋勯濂稿川椤忓拋娼旀繝纰樻閸ㄧ敻顢氳閸┾偓?tier 闂傚倸鍊风粈渚€骞夐敓鐘茬闁哄洢鍨圭粻鐘荤叓閸ャ劍鈷愭繛鍛█閺岋絽螣閼姐倖娈梺鍦劋椤ㄥ懐鐚惧澶嬬厱闁靛鍨哄▍鍥煟?priority/LRU闂?
 		if requireCompact && compactTier != selectedCompactTier {
 			if compactTier > selectedCompactTier {
 				selected = fresh
@@ -1514,13 +1520,11 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *i
 	return selected, compactBlocked
 }
 
-// isBetterAccount 判断 candidate 是否比 current 更优。
-// 规则：优先级更高（数值更小）优先；同优先级时，未使用过的优先，其次是最久未使用的。
-//
+// isBetterAccount 闂傚倸鍊风粈渚€骞夐敍鍕殰闁搞儺鍓欑壕褰掓煛瀹ュ骸骞栭柦?candidate 闂傚倸鍊风粈渚€骞栭銈傚亾濮樺崬鍘寸€规洝顫夌€靛ジ寮堕幋鐘垫毎濠电偠鎻徊楣冨礉?current 闂傚倸鍊风粈渚€骞栭鈷氭椽濡歌瀹曞弶绻濋棃娑氬妞ゎ偅娲橀妵鍕箻閸楃偟浠奸弶?// 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠柕澹偓閸嬫挸顫濋悡搴♀拫閻庤娲栫紞濠囥€佸☉銏″€烽悗娑櫳戦悵顐ｇ節濞堝灝鏋熼柨鏇楁櫊瀹曟垿宕卞☉妯肩崶濠殿喗銇涢崑鎾绘煛鐏炲墽顬肩紒鐘崇洴楠炴鎹勭悰鈥冲綑婵犲痉鏉库偓妤佹叏閺夋嚚娲敇閻戝棗娈ㄩ梺鍦檸閸犳牜绮荤紒妯镐簻闁哄啠鍋撻柛搴㈠▕閹峰繒鈧綆鍠楅埛鎴︽煙缁嬫寧鎹ｉ柍钘夘樀閺岋絽螖閳ь剟鏁冮鍕靛殨闁规儼濮ら崑鍕煟閹捐櫕鎹ｉ柨娑欑懇濮婅櫣绮欑捄銊ь唶闂佸憡鑹鹃鍥儉椤忓牜鏁嶉柣鎰綑閳ь剙鐖奸悡顐﹀炊閵婏箑纾抽梺缁樼⊕缁海妲愰幒鎾寸秶闁靛ě灞炬闂佽娴烽弫鎼佸储瑜戦悘鎺楁⒑閸涘﹦绠撻悗姘煎墮椤曪絽螖閸涱喒鎷洪梺鍦焾濞寸兘鍩婇弴鐘电＜閻庯綆鍋勯悘瀛橆殽閻愭彃鏆ｆ鐐达耿瀵爼骞嬮鐐搭啌濠电姷顣藉Σ鍛村垂娴兼潙绠规い鎰╁€栭弳婊堟煏婢诡垰鎳愰敍婊堟⒑缂佹鎳勯柣鐔村劤閳ь剚鍑归崣鍐閻熸粍妫冨濠氬Ω閵夈垺顫嶅┑鈽嗗灣缁垶骞忛崡鐐╂斀闁绘﹩鍋勬禍鎯ь渻閵堝棙灏甸柛鐘冲姈閸掑﹪骞橀钘変化闂佽鍘界敮鎺撲繆娴犲鐓涢柛鈩冾殘缁犺崵鈧鍠栭悥濂稿春閳╁啯濯撮柣鐔稿閻涒晜绻濋悽闈涗粶闁绘锕畷褰掑礈娴ｆ彃浜鹃柣銏ゆ涧鐢爼鎽堕敐澶嬬厱婵犻潧妫楅鈺冣偓娈垮枟椤ㄥ﹤顫忓ú顏勭閹艰揪绲哄Σ鍫ユ⒑閸忓吋銇熼柛銊ㄦ硾閻ｇ兘鏁愭径濠勭暰閻熸粌顦靛鍛婃償閵婏妇鍘撻梺瀹犳〃缁€渚€寮抽悙鐢电當闁硅揪闄勯埛鎴︽煕濠靛棗顏褎鍔欓弻娑氣偓锝庡亝鐏忣參鏌嶉挊澶樻█鐎殿噮鍓熼獮鎰償閳╁喚浠┑鐘垫暩婵參宕戦幘娣簻闁规崘娉涢弸鎴濃攽椤栨稒灏﹂柟顔肩秺楠炰線骞掗幋婵愮€撮梻浣告惈濡鎹㈠鈧濠氭晲婢跺á鈺呮煏婢跺牆鍔村ù鐘虫尦濮?//
 // isBetterAccount checks if candidate is better than current.
 // Rules: higher priority (lower value) wins; same priority: never used > least recently used.
 func (s *OpenAIGatewayService) isBetterAccount(candidate, current *Account) bool {
-	// 优先级更高（数值更小）
+	// 濠电姷鏁搁崑鐐差焽濞嗘挸瑙﹂悗锝庡枟閺咁亪姊绘担鍛婂暈閽冭京绱掔€ｎ偅宕岄柟顖楀亾濡炪倕绻愬ù鍌毼ｉ悡搴樻斀闁绘劖褰冪痪褔鎮楃粭娑樻储閳ь剙鍟村畷鎯邦檨婵炵鍔戦弻娑㈩敃閻樿尙浼勫銈忚吂閺呯姴顫忛悜妯诲闁规鍠栨俊钘夆攽閻橆喖鐏柨鏇樺灲瀹曟椽鍩€椤掍降浜滈柟鍝勬娴滈箖姊洪崨濠呭妞ゆ垵鎳愰崣鍛存煟閻樺厖鑸柛鏂款儔閹偞绻濋崶鈺佸絼闂佹悶鍎崕閬嶅礉閵堝洨纾奸柍?
 	// Higher priority (lower value)
 	if candidate.Priority < current.Priority {
 		return true
@@ -1529,30 +1533,36 @@ func (s *OpenAIGatewayService) isBetterAccount(candidate, current *Account) bool
 		return false
 	}
 
-	// 同优先级，比较最后使用时间
-	// Same priority, compare last used time
+	// 闂傚倸鍊风粈渚€骞夐敓鐘冲殞闁绘劦鍓涢梽鍕煛閸愩劌鈧綊锝為弴鐔翠簻闁规儳宕悘鈺冪磼閳ь剟宕掗悙瀵稿幈濡炪倖鍔楁慨鎾倶閺屻儲鐓熸繛鎴炵懄瀹曞矂鏌＄仦璇插闁宠棄顦灒缂備焦蓱鐎氭娊姊绘担椋庝覆閻庨潧鐭傚畷鏉课旈埀顒勨€﹂崶顏嗙杸婵炴垶顭囬ˇ銊╂⒑閸愬弶鎯堥柛濠囶棑閸掓帡顢涢悙绮规嫼闂佸憡绋戦敃銊︾珶濡偐纾奸柕濞垮劚閹垹绱掔紒妯兼创鐎规洖鐖奸、妤佹媴闂€鎰处闂傚倷绶氬褔鈥﹂銏♀挃闁告洦鍨侀崶顏嶆▌濠?	// Same priority, compare last used time
 	switch {
 	case candidate.LastUsedAt == nil && current.LastUsedAt != nil:
-		// candidate 从未使用，优先
+		// candidate 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛悗鐢电《閸嬫挸鈽夐幒鎾寸彅闂佹寧娲忛崹浠嬨€佸鈧幃銏㈢矙濞嗛敮鍋撻幘缁樼厽闁绘ê鍘栭懜顏堟煕閺傝法效鐎殿喖鐤囩粻娑樷槈濞嗘垵寮虫繝鐢靛仦閸ㄥ爼鏁嬪銈冨妽閻熝呮閹烘搩娼欓柡宓啰鐫勯柣?
 		return true
 	case candidate.LastUsedAt != nil && current.LastUsedAt == nil:
-		// current 从未使用，保持
+		// current 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛悗鐢电《閸嬫挸鈽夐幒鎾寸彅闂佹寧娲忛崹浠嬨€佸鈧幃銏㈢矙濞嗛敮鍋撻幘缁樼厽闁绘ê鍘栭懜顏堟煕閺傝法效鐎殿喖鐤囩粻娑樷槈濞嗘垵寮虫繝鐢靛仦閸ㄥ爼鏁嬪銈冨妽閻熝呮閹烘梻纾兼俊顖氭惈閹介潧螖?
 		return false
 	case candidate.LastUsedAt == nil && current.LastUsedAt == nil:
-		// 都未使用，保持
+		// 闂傚倸鍊搁崐椋庢閿熺姴绐楁繛鎴炵懄閸欏繘鏌曢崼婵囧珔闁肩増瀵ч妵鍕箻鐠虹儤鐎炬繝娈垮灡閹告娊骞冭ぐ鎺戠畳闁圭儤鍨甸‖澶愭⒑閸濆嫭顥滅紒缁橈耿瀵濡搁妷銏☆潔濠碘槅鍨拃锕€鈻撻鐘电＝濞达綀娅ｇ敮娑氣偓鍏夊亾闁归棿鑳跺畵?
 		return false
 	default:
-		// 都使用过，选择最久未使用的
+		// 闂傚倸鍊搁崐椋庢閿熺姴绐楁俊銈呮噹閸ㄥ倹绻濋棃娑欏窛缂佺娀绠栭弻娑㈠Ψ椤旂厧顫梺绋款儍閸旀垿寮婚弴鐔虹闁割煈鍠栭‖瀣磽娴ｅ搫校闁绘濞€瀵濡搁妷銏☆潔濠碘槅鍨甸崑鎰板礉椤栫偞鈷戦梺顐ゅ仜閼活垱鏅堕濮愪簻闁挎棁妫勯ˉ瀣煃瑜滈崜姘跺传鎼淬劌绀夐柟瀛樼箥閸ゆ洟鏌ｉ姀銏╃劸闁绘帒鐏氶妵鍕箳瀹ュ牆鍘￠梺宕囩帛濞茬喖寮诲☉妯锋闁告鍋為悘宥夋倵濞堝灝鏋熼柟鍛婃倐濠€渚€姊洪幐搴ｇ畵闁绘锕﹀☉鐢稿醇閺囩喓鍘告繛杈剧秮濞佳囧焵椤掍胶绠炴?
 		return candidate.LastUsedAt.Before(*current.LastUsedAt)
 	}
 }
 
 // SelectAccountWithLoadAwareness selects an account with load-awareness and wait plan.
 func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*AccountSelectionResult, error) {
-	return s.selectAccountWithLoadAwareness(ctx, groupID, sessionHash, requestedModel, excludedIDs, false)
+	return s.selectAccountWithLoadAwareness(ctx, groupID, sessionHash, requestedModel, excludedIDs, false, PlatformOpenAI)
 }
 
-func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool) (*AccountSelectionResult, error) {
+func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, requireCompact bool, platform string) (*AccountSelectionResult, error) {
+	platform = NormalizePlatformSlug(platform)
+	if platform == "" {
+		platform = PlatformOpenAI
+	}
+	if platform != PlatformOpenAI {
+		requireCompact = false
+	}
 	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
 		slog.Warn("channel pricing restriction blocked request",
 			"group_id", derefGroupID(groupID),
@@ -1569,7 +1579,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		}
 	}
 	if s.concurrencyService == nil || !cfg.LoadBatchEnabled {
-		account, err := s.selectAccountForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, excludedIDs, requireCompact, stickyAccountID)
+		account, err := s.selectAccountForModelWithExclusions(ctx, groupID, sessionHash, requestedModel, excludedIDs, requireCompact, stickyAccountID, platform)
 		if err != nil {
 			return nil, err
 		}
@@ -1596,7 +1606,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		})
 	}
 
-	accounts, err := s.listSchedulableAccounts(ctx, groupID)
+	accounts, err := s.listSchedulableAccounts(ctx, groupID, platform)
 	if err != nil {
 		return nil, err
 	}
@@ -1622,8 +1632,8 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 				if clearSticky {
 					_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 				}
-				if !clearSticky && isOpenAIAccountEligibleForRequest(account, requestedModel, false) {
-					account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel, requireCompact)
+				if !clearSticky && isOpenAIAccountEligibleForRequest(account, requestedModel, false, platform) {
+					account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel, requireCompact, platform)
 					if account == nil {
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, account, requestedModel, requireCompact) {
@@ -1694,11 +1704,11 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			ordered = prioritizeOpenAICompactAccounts(ordered)
 		}
 		for _, acc := range ordered {
-			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel, false)
+			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel, false, platform)
 			if fresh == nil {
 				continue
 			}
-			fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact)
+			fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact, platform)
 			if fresh == nil {
 				continue
 			}
@@ -1762,19 +1772,18 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 				}
 				selectionOrder = appendTier(selectionOrder, 2)
 				selectionOrder = appendTier(selectionOrder, 1)
-				// tier 0 候选作为兜底追加：DB recheck 时若发现 cache tier 0 实际
-				// 已升级为 1/2（探测刚跑完，cache 尚未刷新），仍可正常命中。
+				// tier 0 闂傚倸鍊烽懗鍫曗€﹂崼銉︽櫇闁靛鏅滈崑锟犳煃閸濆嫭鍣归柣鎺戠仛閵囧嫰骞掗崱妞惧婵＄偑鍊х€靛矂宕板杈潟闁绘劕鎼猾宥夋煃瑜滈崜娑氬垝濞嗘劕绶為柟閭﹀厸缁卞爼姊洪崨濠冨闁稿瀚划濠氬蓟閵夛妇鍘甸梺缁樻尭濞寸兘骞楅悩宕囩闁告瑥顦辩粻鐐搭殽閻愯尙绠婚柟顔界矒閹稿﹥寰勫畝濠冃ラ梻鍌欒兌缁垶鎮烽妷鈺佺疇闁归偊鍠氶悳缁樹繆濡ゅ啫鐝?recheck 闂傚倸鍊风粈渚€骞栭锕€鐤い鏍仜绾惧潡鏌ゅù瀣澒闁稿鎸搁～婵嬪Ψ閵壯傜礄闁诲氦顫夊ú鈺冪礊娓氣偓閻涱喚鈧綆鍠楅崑鎰版煠绾板崬澧伴柡?cache tier 0 闂傚倷娴囬褎顨ョ粙鍖¤€块梺顒€绉寸壕濠氭煏閸繃濯奸柣?				// 闂備浇顕уù鐑藉箠閹捐绠熼梽鍥Φ閹版澘绀冮柕濞у嫭顔曢柣搴″帨閸嬫捇鏌嶈閸撶喖骞嗛埀顒併亜韫囨挻绁╂俊鍙夋そ閺?1/2闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鈹戦悩鎻掝仾闁哄棙绮撻弻鈩冨緞鐎ｅ墎绌块梺闈╁瘜閸樻悂宕戦幘缁樻櫜閹煎瓨绻勯惄搴ㄦ⒑鐠囪尙绠冲┑鐐╁亾闂佽鍠栫紞濠囧箖濠婂吘鐔兼惞闁稒妯婇梻鍌欐缁鳖喚绱為崱娑樼闁绘梻鍘ч弸浣衡偓骞垮劚濞茬娀宕戦幘鑸靛枂闁告洦鍋勭紞姒梙e 闂傚倷娴囬褏鎹㈤幇顔藉床闁瑰濮撮弸鍫⑩偓骞垮劚閹锋垿鎳撻幐搴涗簻闁规儳宕悘鈺冪磼閳ь剟宕卞☉娆屾嫼闂佸壊鐓堥崳顕€宕曢幇鐗堢厽闁圭虎鍨版禍楣冩⒒閸屾瑧鍔嶉悗绗涘懐鐭欓柟娆″眰鍔戦崺鈧い鎺戝€荤壕濂稿级閸稑濡跨紒鐘崇墱缁辨帡宕掑☉妯肩懆濡炪倖鎸搁妶绋跨暦閵娾晩鏁囬柍钘夋閺佺厧鈹戦悩鎰佸晱闁哥姵顨堥幑銏ゅ箛椤旇偐绛忔繛瀵稿Т椤戝棝宕戞径鎰厱妞ゆ劧绲剧粈鈧悗鐟版啞缁诲牓寮婚悢琛″亾濞戞顏嗙箔閳哄懏鐓曟慨妤€妫楁晶鎾煛?
 				selectionOrder = appendTier(selectionOrder, 0)
 			} else {
 				selectionOrder = append(selectionOrder, available...)
 			}
 
 			for _, item := range selectionOrder {
-				fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, item.account, requestedModel, false)
+				fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, item.account, requestedModel, false, platform)
 				if fresh == nil {
 					continue
 				}
-				fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact)
+				fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact, platform)
 				if fresh == nil {
 					continue
 				}
@@ -1798,11 +1807,11 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		candidates = prioritizeOpenAICompactAccounts(candidates)
 	}
 	for _, acc := range candidates {
-		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel, false)
+		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel, false, platform)
 		if fresh == nil {
 			continue
 		}
-		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact)
+		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact, platform)
 		if fresh == nil {
 			continue
 		}
@@ -1823,19 +1832,23 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 	return nil, ErrNoAvailableAccounts
 }
 
-func (s *OpenAIGatewayService) listSchedulableAccounts(ctx context.Context, groupID *int64) ([]Account, error) {
+func (s *OpenAIGatewayService) listSchedulableAccounts(ctx context.Context, groupID *int64, platform string) ([]Account, error) {
+	platform = NormalizePlatformSlug(platform)
+	if platform == "" {
+		platform = PlatformOpenAI
+	}
 	if s.schedulerSnapshot != nil {
-		accounts, _, err := s.schedulerSnapshot.ListSchedulableAccounts(ctx, groupID, PlatformOpenAI, false)
+		accounts, _, err := s.schedulerSnapshot.ListSchedulableAccounts(ctx, groupID, platform, false)
 		return accounts, err
 	}
 	var accounts []Account
 	var err error
 	if s.cfg != nil && s.cfg.RunMode == config.RunModeSimple {
-		accounts, err = s.accountRepo.ListSchedulableByPlatform(ctx, PlatformOpenAI)
+		accounts, err = s.accountRepo.ListSchedulableByPlatform(ctx, platform)
 	} else if groupID != nil {
-		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, PlatformOpenAI)
+		accounts, err = s.accountRepo.ListSchedulableByGroupIDAndPlatform(ctx, *groupID, platform)
 	} else {
-		accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatform(ctx, PlatformOpenAI)
+		accounts, err = s.accountRepo.ListSchedulableUngroupedByPlatform(ctx, platform)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
@@ -1850,7 +1863,7 @@ func (s *OpenAIGatewayService) tryAcquireAccountSlot(ctx context.Context, accoun
 	return s.concurrencyService.AcquireAccountSlot(ctx, accountID, maxConcurrency)
 }
 
-func (s *OpenAIGatewayService) resolveFreshSchedulableOpenAIAccount(ctx context.Context, account *Account, requestedModel string, requireCompact bool) *Account {
+func (s *OpenAIGatewayService) resolveFreshSchedulableOpenAIAccount(ctx context.Context, account *Account, requestedModel string, requireCompact bool, platform string) *Account {
 	if account == nil {
 		return nil
 	}
@@ -1864,18 +1877,18 @@ func (s *OpenAIGatewayService) resolveFreshSchedulableOpenAIAccount(ctx context.
 		fresh = current
 	}
 
-	if !isOpenAIAccountEligibleForRequest(fresh, requestedModel, requireCompact) {
+	if !isOpenAIAccountEligibleForRequest(fresh, requestedModel, requireCompact, platform) {
 		return nil
 	}
 	return fresh
 }
 
-func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDB(ctx context.Context, account *Account, requestedModel string, requireCompact bool) *Account {
+func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDB(ctx context.Context, account *Account, requestedModel string, requireCompact bool, platform string) *Account {
 	if account == nil {
 		return nil
 	}
 	if s.schedulerSnapshot == nil || s.accountRepo == nil {
-		if !isOpenAIAccountEligibleForRequest(account, requestedModel, requireCompact) {
+		if !isOpenAIAccountEligibleForRequest(account, requestedModel, requireCompact, platform) {
 			return nil
 		}
 		return account
@@ -1885,7 +1898,7 @@ func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDB(ctx context.Co
 	if err != nil || latest == nil {
 		return nil
 	}
-	if !isOpenAIAccountEligibleForRequest(latest, requestedModel, requireCompact) {
+	if !isOpenAIAccountEligibleForRequest(latest, requestedModel, requireCompact, platform) {
 		return nil
 	}
 	return latest
@@ -1952,7 +1965,10 @@ func (s *OpenAIGatewayService) schedulingConfig() config.GatewaySchedulingConfig
 func (s *OpenAIGatewayService) GetAccessToken(ctx context.Context, account *Account) (string, string, error) {
 	switch account.Type {
 	case AccountTypeOAuth:
-		// 使用 TokenProvider 获取缓存的 token
+		if !account.IsOpenAI() {
+			return "", "", fmt.Errorf("unsupported OAuth account platform for OpenAI-compatible gateway: %s", account.Platform)
+		}
+		// 濠电姷鏁搁崑鐘诲箵椤忓棛绀婇柍褜鍓氱换娑欏緞鐎ｎ偆顦伴悗?TokenProvider 闂傚倸鍊风粈渚€宕ョ€ｎ喖纾块柟鎯版鎼村﹪鏌ら懝鎵牚濞存粌缍婇弻娑㈠Ψ閵忊剝鐝栫紒鎯у綖缁瑩寮婚悢鐓庣畾鐟滃繘鏁嶅澶嬬厵闁伙絽鑻埢鍫ユ煛?token
 		if s.openAITokenProvider != nil {
 			accessToken, err := s.openAITokenProvider.GetAccessToken(ctx, account)
 			if err != nil {
@@ -1960,7 +1976,7 @@ func (s *OpenAIGatewayService) GetAccessToken(ctx context.Context, account *Acco
 			}
 			return accessToken, "oauth", nil
 		}
-		// 降级：TokenProvider 未配置时直接从账号读取
+		// 闂傚倸鍊搁崐鎼佸磹閸濄儮鍋撳鐓庡缂侇喗妫冮幊婊冣枔閹稿寒鍟嶉梻浣规偠閸庢椽宕滃璺虹柧妞ゆ帊鐒﹂崣蹇旂節闂堟稒顥炴繝鈧悗鏀卬Provider 闂傚倸鍊风粈渚€骞栭锔藉亱婵犲﹤瀚々鍙夈亜韫囨挾澧曢柛灞诲姂閺屾洟宕煎┑鍥х獩缂佹儳澧介崑鎾诲Φ閸曨垰绫嶉柛銉仢閹炬番浜滈敎濠氬炊閵娧冨箺闂備礁鐤囧銊╂嚄閸洖绠洪柣妯肩帛閸嬨劍銇勯弽銊︾殤闁圭晫濮风槐鎺楀磼濞戞鐟查梺璇″灡濡啯淇婇崼鏇炴そ濞达絽澧ｉ悢鍏尖拻濞达絽鎲￠崯鐐烘煟閻旀繂娲ら拑鐔奉熆閼搁潧濮﹂柡浣割儏闇夐柛蹇撳悑缂嶆垿鏌?
 		accessToken := account.GetOpenAIAccessToken()
 		if accessToken == "" {
 			return "", "", errors.New("access_token not found in credentials")
@@ -2024,7 +2040,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	isCodexCLI := openai.IsCodexOfficialClientByHeaders(c.GetHeader("User-Agent"), c.GetHeader("originator")) || (s.cfg != nil && s.cfg.Gateway.ForceCodexCLI)
 	wsDecision := s.getOpenAIWSProtocolResolver().Resolve(account)
 	clientTransport := GetOpenAIClientTransport(c)
-	// 仅允许 WS 入站请求走 WS 上游，避免出现 HTTP -> WS 协议混用。
+	// 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛柟缁㈠枛缁犵娀骞栧ǎ顒€濡奸柛灞诲姂閺岀喓鈧數顭堟牎婵?WS 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁割偁鍎辩壕鍧楁煙閹澘袚闁稿鍠愰妵鍕冀閵娧呯厑闁诲孩纰嶅畝绋款潖濞差亜鍨傛い鏇炴噹閸撳啿鈹戦悩顐壕闂佸湱铏庨崰妤呭磻?WS 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繈鏌曟径鍡樻珕闁稿顦甸弻娑㈩敃閿濆棛顦ㄩ梺鍝勬媼閸撴盯鍩€椤掆偓閸樻粓宕戦幘缁樼厱闁哄洢鍔嬬花鐣岀磼鏉堛劌鍝烘慨濠呮缁瑧鎹勯妸褜鍞剁紓鍌欑椤︿即骞愰崘鑼殾闁汇垹澹婇弫鍥煏韫囧ň鍋撻崗鍛版?HTTP -> WS 闂傚倸鍊风粈渚€骞夐敓鐘偓鍐川椤栨稑搴婂┑掳鍊曢幏瀣极婵犲洦鐓曟繛鎴濆船鐢酣骞栧ǎ顒€鐒烘俊鎻掔秺楠炴牕菐椤掆偓閻忣亝绻涢崼娑樼伈婵?
 	wsDecision = resolveOpenAIWSDecisionByClientTransport(wsDecision, clientTransport)
 	if c != nil {
 		c.Set("openai_ws_transport_decision", string(wsDecision.Transport))
@@ -2041,7 +2057,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			reqStream,
 		)
 	}
-	// 当前仅支持 WSv2；WSv1 命中时直接返回错误，避免出现“配置可开但行为不确定”。
+	// 闂備浇宕甸崰鎰垝鎼淬垺娅犳俊銈呮噹缁犱即鏌涘☉姗堟敾婵炲懐濞€閺岋絽螣閾忕櫢绱炲銈傛櫇閸忔﹢寮诲☉妯锋闁告鍋為悘宥夋⒑閸濆嫭顥炵紒顔芥崌瀵?WSv2闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑橆殕閸庢鏌涢弽顐ｎ吂1 闂傚倸鍊风粈渚€骞夐敍鍕煓闁圭儤顨呴崹鍌涚節闂堟侗鍎愰柛銈呯墦閺岀喐娼忛崜褏鏆犵紓渚囧亜缁夊綊寮诲☉銏犵闁肩⒈鍓欐俊鐣岀磽娴ｉ缚妾搁柛銊ョ埣瀵鎮㈤悡搴ｇ暢闂佸湱鍎ら崹鍨叏閵堝洨纾藉ù锝堟鐢盯鏌涢妸銉т虎闁伙絿鍏樺畷濂稿即閻斿皝鍋撻悜鑺ョ厽闁瑰鍊栭幋婵冩瀺闁瑰墽绮悡鐔兼煟濡搫绾х紒浣叉櫊閺屾盯濡歌濞呮洘淇婇崣澶婂闁宠鍨归埀顒婄秵閸嬪棝宕濋崼鏇熲拺闁告捁灏欓崢娑㈡煕閻樺磭澧遍柡渚囧櫍楠炲酣鎳為妷褍骞堥梻浣侯攰閹活亞寰婃ィ鍐炬晜闁绘ɑ鍓氬▓浠嬫煟閹邦剙绾ч柛鐘筹耿閺屾盯濡搁敃鈧崝銈嗐亜椤撴粌濮傜€规洜鍘ч埞鎴﹀幢濮樹究鍋炵紓鍌氬€搁崐鎼佸磹閹间礁绐楁慨妯挎硾缁愭鏌″搴″幍濞存粌缍婇弻鐔虹磼濡桨鍒婇梺鎼炲€栧ú鐔煎蓟瀹ュ牜妾ㄩ梺鍛婃尰瀹€鎼佺嵁韫囨稑宸濋柡澶嬪灥閼板灝鈹戦鐭亪宕ョ€ｎ喖妫橀柍褜鍓欓埞鎴︽倷閺夋垹浠搁梺褰掆偓娑氼槮妞も晛銈告俊姝岊槾缂佺姵鏌ㄩ…璺ㄦ崉閻戞ɑ鎷遍梺绋跨箲缁秹濡甸崟顖氱睄闁搞儜鍌涚潖闂備礁鎼Λ鏃堝础閹惰棄钃熺€广儱顦敮闂佹寧鏌ㄦ晶鐣屾娴煎瓨鈷?
 	if wsDecision.Transport == OpenAIUpstreamTransportResponsesWebsocket {
 		if c != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -2055,7 +2071,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	}
 	passthroughEnabled := account.IsOpenAIPassthroughEnabled()
 	if passthroughEnabled {
-		// 透传分支只需要轻量提取字段，避免热路径全量 Unmarshal。
+		// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼弻娑㈩敃閿濆棛顦ョ紓浣插亾闁糕剝绋掗悡鏇㈡煃閳轰礁褰侀柟杈剧畱濮瑰弶绻濇繝鍌滃闁绘挻娲樼换娑㈠幢濡繐銈搁弻鍥敍濞戞氨顔曢梺瑙勫劤閸熷潡銆傞幎鑺ョ厵闁肩⒈鍓欓。濂告煙瀹勭増鍤囨鐐差儔楠炴帡骞橀搹顐ｆ殬闂傚倸鍊搁崐鐑芥倿閿曚降浜归柛鎰典簼瀹曟煡鏌熸潏鍓хシ濞存粎鎳撻妴鎺戭潩閿濆懍澹曢柣搴ゎ潐濞测晝绱炴担鍓插殨闁稿﹦鍣ュΣ楣冩⒑閸︻厽娅曢柛鐘冲姉閹广垹鈽夐姀鐘诲敹闂侀潧绻嗛弲婊冣枔閹殿喚纾藉ù锝勭矙閸濊櫣绱掔拠鑼ⅵ鐎殿喖顭峰畷鍗炩槈濡櫣鈧厼顪冮妶鍡樷拻闁告鍛皫閻庯綆鍠楅埛鎴犵磽娴ｅ顏堟倿妤ｅ啯鐓曟繛鍡楄嫰娴滈箖姊绘担瑙勩仧闁告ü绮欏畷鏇㈠箮缁涘鏅梺闈涱槴閺呮稓绮堢€ｎ偁浜滈柟鎵虫櫅閻忊晛霉閻撳酣鍙勬慨?Unmarshal闂?
 		reasoningEffort := extractOpenAIReasoningEffortFromBody(body, reqModel)
 		return s.forwardOpenAIPassthrough(ctx, c, account, originalBody, reqModel, reasoningEffort, reqStream, startTime)
 	}
@@ -2096,7 +2112,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 
 	// Track if body needs re-serialization
 	bodyModified := false
-	// 单字段补丁快速路径：只要整个变更集最终可归约为同一路径的 set/delete，就避免全量 Marshal。
+	// 闂傚倸鍊风粈渚€骞夐敓鐘偓鍐幢濡炴洘妞藉浠嬵敇閻旇渹妲愰柣鐔哥矊缁夊綊宕洪姀銈呯閻庢稒锚椤庢捇姊虹粙鎸庣闁搞劋鍗宠棟闁规鍠氶惌娆忣熆鐠轰警鍎愬┑顖涙尦閺屾稑鈽夊鍫濅紣濠电偞鎸婚崝娆忣潖缂佹鐟归柛銉戝倻鏁栭梻浣告憸婵潧煤閻旂厧绠氱€光偓閸曨偆鐣鹃悷婊勭矒瀹曢潧螖閸涱喚鍘遍梺鍝勬川閸嬫盯銆傚畷鍥╃＜闁归偊鍙庡▓婊堟煛鐏炲墽鈽夐柍璇查铻ｉ悷娆忓瀹曡櫕淇婇悙顏勨偓鎰板疾椤忓棛涓嶉柟鐐墯閸ゆ洘銇勯幇鈺佲偓妤冪矆閸曨垱鐓熸俊顖涱儥閸ゆ瑦绻涢崼鐔虹疄婵﹥妞藉畷銊︾節閸曨剙娅楅梺钘夊暢妞村摜鎹㈠☉銏犵闁圭儤鎸告禒鏉戔攽椤旂》宸ユ繛灏栤偓宕囨殾闁告鍊ｉ悢鐑樺鐎规洖娲ょ粭锛勭磽閸屾艾鈧悂宕愭搴ｇ焼濞撴埃鍋撻柟顔ㄥ洤骞㈡慨妯稿劙濮规姊洪懝鏉款棈缂傚牏澧楃粋宥堛亹閹烘挾鍘甸梺缁樺灦钃遍柣鎾卞劜閵囧嫰寮崠鈥充紣闂佸疇妫勯ˇ鐢哥嵁濮椻偓閹煎綊顢曢敐鍛闂傚倷娴囬鏍窗濡ゅ懎绠伴柤濮愬€楅惌娆忣熆閼搁潧濮囬柣鎺戠仛閵囧嫰骞掗幋婵冨亾閻熸壆鏆﹀璺侯儍娴滄粓鏌″鍐ㄥ闁汇劍鍨圭槐鎺楀箛椤旈棿妲愰梺?set/delete闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸ゆ劖銇勯弽銊ュ毈婵炲皷鏅犻弻鏇熺箾閻愵剚鐝曢梺缁樺笒閵堟悂寮诲☉鈶┾偓锕傚箣濠靛洨浜梺姹囧焺閸ㄨ鲸绻涙繝鍥ц摕婵炴垶绮庨悿鈧柣搴秵娴滄粓锝為崶顒佲拺?Marshal闂?
 	patchDisabled := false
 	patchHasOp := false
 	patchDelete := false
@@ -2145,7 +2161,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		patchDisabled = true
 	}
 
-	// 非透传模式下，instructions 为空时注入默认指令。
+	// 闂傚倸鍊搁崐鎼佸磹閹间焦鍋嬮煫鍥ㄧ☉绾惧鏌曢崼婵愭Ц闁绘帒鐏氶妵鍕箳閸℃ぞ澹曠紓鍌欐祰椤曆囶敄閸ヮ灛锝夊箛椤旇棄纾繛杈剧稻濞叉粓宕伴弽顓炲瀭闁诡垎鍛闂佹悶鍎弲鈺呭绩閵娿儮鏀介柣鎰綑閻忥箓鏌熼崨濠冨€愭い銏＄墵楠炲鎮╅幇浣圭稐婵犵數濮靛ú锕傚蓟瀹告ⅸructions 濠电姷鏁搁崑鐐哄垂閸洖绠插ù锝囩《閺嬪秹鏌ㄥ┑鍡╂Ц闁绘挻锕㈤弻鈥愁吋鎼粹€崇缂備緡鍋勭粔褰掑蓟閵堝洨鐭欓悹鎭掑妺缁敻姊洪崫鍕棞闁绘鎹囧璇测槈濠婂懐鏉搁柣搴秵娴滄粍鎱ㄩ敂鍓х＝濞撴艾娲ゅ▍姗€鏌涢妸锕€鈻曟鐐茬箳閳ь剨缍嗛崰鏍ф纯闂備胶纭堕崜婵嬨€冮崼婢喖宕熼鍌滎啎闁诲海鏁搁…鍫ｂ叿闂備胶顭堥敃銉╁垂閸ф鏄ラ柍?
 	if isInstructionsEmpty(reqBody) && !compatMessagesBridge {
 		reqBody["instructions"] = "You are a helpful coding assistant."
 		bodyModified = true
@@ -2169,7 +2185,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Added Codex image_generation bridge instructions")
 	}
 
-	// 对所有请求执行模型映射（包含 Codex CLI）。
+	// 闂傚倷娴囬褏鑺遍懖鈺佺筏濠电姵鐔紞鏍ь熆鐠轰警鍎愭繛鍛Х閳ь剙绠嶉崕閬嵥囬婧惧亾濮橆剦妲告い顓℃硶閹瑰嫰宕崟顓熜為梻浣规偠閸婃宕戦悙鍝勭疄闁靛ň鏅滈崑锟犳煛婢跺﹦姘ㄩ柛瀣尵閹叉挳宕熼浣哄娇闂備椒绱徊浠嬪嫉椤掑嫬纾绘慨妞诲亾闁诡喗锕㈤幃娆撳礂閸濄儳鈹涘┑鐐存尰閸╁啴宕戦幘鍨涘亾鐟欏嫭绀€婵犫偓闁秴鐒垫い鎺戯功缁夌敻鏌涚€ｎ亝鍤€闁靛棙鐗犲铏规嫚閼碱剛顔囩紓浣虹帛閸旀鍩€椤掍浇澹橀柟鑺ョ矊鍗遍柟閭﹀厴閺嬪酣鏌熼幆褏锛嶆い锕備憾濮婃椽宕ㄦ繝浣虹箒闂佸憡眉缁瑥鐣?Codex CLI闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆¤娲、姗€濮€閻橀潧濮?
 	billingModel := account.GetMappedModel(reqModel)
 	if billingModel != reqModel {
 		logger.LegacyPrintf("service.openai_gateway", "[OpenAI] Model mapping applied: %s -> %s (account: %s, isCodexCLI: %v)", reqModel, billingModel, account.Name, isCodexCLI)
@@ -2224,8 +2240,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		return nil, err
 	}
 
-	// Compact-only model 映射：仅在 /responses/compact 路径生效，且优先级高于
-	// OAuth 模型规范化（避免 OAuth 规范化覆盖 compact-only 自定义模型）。
+	// Compact-only model 闂傚倸鍊风粈渚€骞栭銈傚亾濮樼厧鏋熼柟渚垮姂楠炴﹢顢欓挊澶婂闂備胶绮…鍥╁垝椤栫偛鐤炬い鎺嶇劍閸欏繑鎱ㄥΔ鈧Λ妤佺閻愮儤鐓熸い鎾跺仧閻掓悂鏌?/responses/compact 闂傚倷娴囧畷鍨叏瀹曞洦濯伴柨鏇炲€搁崹鍌炴煙濞堝灝鏋熸い鎰矙閺岋綁骞囬鐓庡闂佺顑冮崝鎴﹀蓟閿濆妫橀柟绋块閺嗗牆鈹戦悙鍙夊櫣缂佺粯锕㈠濠氬Ω閵夈垺顫嶅┑鈽嗗灟鐠€锕€鈻撻鐘电＝濞达綀顕栧▓鏇㈡煟濡や緡娈橀柍褜鍓涢弫鎼佸储瑜戦悘鎺楁⒑閸涘﹦绠撻悗姘煎墮椤曪絽螖閸愵亞锛濇繛杈剧到閹碱偊鎮甸敓鐘崇厱闁靛鍨哄▍鍛存煢閸屾凹鍎愮紒?	// OAuth 婵犵數濮烽。钘壩ｉ崨鏉戝瀭妞ゅ繐鐗嗛悞鍨亜閹哄棗浜剧紒鍓ц檸閸欏啴宕洪埀顒併亜閹烘垵顏存俊顐ｅ灴閺岀喖宕ｆ径瀣攭閻庤娲滈崰鏍€佸▎鎾村殐闁冲搫鍊愰妸鈺傗拻濞达絽鎲￠崯鐐烘煟濡や緡娈滈柟顔ㄥ浂鏁囬柣妯诲墯濞肩喎鈹戦悙鍙夘棡闁圭顭烽幃鐐寸附閸涘﹦鍘卞銈庡幗閸ㄧ敻寮稿☉銏″仺?OAuth 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠柕澹偓閸嬫挸顫濋悡搴ｄ化闂侀€炲苯澧柣蹇斿哺閹囨偐閼碱剚娈鹃梺缁橆焾椤曆囧礃閳ь剙顪冮妶鍡楃瑨妞わ缚鍗抽幊婊嗐亹閹烘挴鎷?compact-only 闂傚倸鍊烽懗鍫曞储瑜旈妴鍐╂償閵忋埄娲稿┑鐘诧工閻楀﹪宕戦埡鍛厽闁逛即娼ф晶浼存煃缂佹ɑ绀€妞ゎ叀娉曢幑鍕惞鐟欏嫬鏆┑鐐存尰閸╁啴宕戦幘鍨涘亾鐟欏嫭绀€婵犫偓闁秴鐒垫い鎺戯功閸掓澘顭胯濞撮鍒掗崼銉ュ耿婵炴垶鐟ч崢?
 	isCompactRequest := isOpenAIResponsesCompactPath(c)
 	compactMapped := false
 	if isCompactRequest {
@@ -2240,9 +2255,8 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
-	// OpenAI OAuth 账号走 ChatGPT internal Codex endpoint，需要将模型名规范化为
-	// 上游可识别的 Codex/GPT 系列。API Key 账号则应保留原始/映射后的模型名，
-	// 以兼容自定义 base_url 的 OpenAI-compatible 上游。
+	// OpenAI OAuth 闂傚倷娴囧畷鍨叏閻㈢绀夌憸蹇曞垝婵犳艾绠ｉ柨婵嗗暕濮规鏌ｉ悩鍏呰埅闁告柨绉舵禍?ChatGPT internal Codex endpoint闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢鏌涚仦鎯ф惛闁逞屽墯鐢€崇暦濠婂嫭濯撮柣鐔哄濮ｅ洤鈹戦悙鑸靛涧缂佽弓绮欓獮妤€顭ㄩ崘锝嗙亖闂佺粯鍨剁湁缂佽妫欓妵鍕冀閵婏絼绮堕梺绋款儐閹告悂鎮鹃悜钘夌倞闁挎繂鎳嶆竟鏇㈡⒑缂佹ê鐏辨俊顐㈠閹叉挳鏁傞柨顖氫壕妤犵偛鐏濋崝姘舵煟濡や胶鐭婃い顓炴喘楠炲洭鎮ч崼銏犲箻闂備胶绮幐鍛婎殽閹间礁姹叉繛鍡樻尰閸婄敻姊婚崼鐔衡槈缂佺嫏鍛＜?	// 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繈鏌曟径鍡樻珕闁稿顦甸弻娑㈩敃閿濆棛顦ラ梺娲诲幗椤ㄥ棝濡甸崟顖氬唨闁靛ě鍛毉婵犵鈧啿绾ф繛鑼枛瀵鈽夐姀鐘殿唺濠电娀娼уΛ鏃傝姳閽樺鏀?Codex/GPT 缂傚倸鍊搁崐椋庢閿熺姴鍨傞柣銏犲閺佸鎲搁弬璺ㄦ殾鐟滅増甯╅弫鍌炴煕椤愶絾鍎曢柕澶堝劘閳ь剚甯掗～婵嬪础閻愰潧袩I Key 闂傚倷娴囧畷鍨叏閻㈢绀夌憸蹇曞垝婵犳艾绠ｉ柨婵嗗暕濮规姊虹粔鍡楀濞堟梻绱掗埀顒勫幢濡偐顔曢梺绯曞墲椤ㄥ牏绮婚幎鑺ュ€甸柣鐔煎亰濡叉悂鎳ｉ幇鐗堢厱闁靛绲芥俊璺ㄧ磼閻樼鑰块柡宀嬬節瀹曡精绠涢幘鎻掝棜闂傚倸鍊风粈渚€骞夐敓鐘偓锕傚炊椤掆偓缁愭骞栭幖顓犲帨缂?闂傚倸鍊风粈渚€骞栭銈傚亾濮樼厧鏋熼柟渚垮姂楠炴﹢顢欓挊澶婂闂備胶绮…鍫ヮ敋瑜忛幉鎾晝閸屾氨顔愰柡澶婄墕婢х晫绮欐繝姘厽闁挎繂鐗撻崫鍝勄庨崶褝韬い銏＄☉椤啰鎷犻煫顓烆棜闁诲氦顫夊ú鏍洪悩璇茬；闁瑰墽绮崐濠氭煢濡警妲肩悮婵嬫煟鎼达紕鐣柛搴や含閹广垽骞掗弮鍌滅劶?
+	// 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忓ù鍏兼綑绾惧潡姊洪鈧粔瀵告喆閿曞倹鍊甸柨婵嗛閸樻挳鏌涚€ｎ偅宕岀€规洜鍏橀、妯款槼闁轰緡鍨跺娲箹閻愭祴鍋撻弽顐㈠灊閹兼番鍔岄悞鍨亜閹烘垵鏋ゆ繛鍏煎姍閺岋綁顢樿閺嬨倗绱?base_url 闂?OpenAI-compatible 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繈鏌曟径鍡樻珕闁稿顦甸弻娑㈩敃閿濆棛顦ラ弶?
 	if model, ok := reqBody["model"].(string); ok {
 		if !compactMapped {
 			upstreamModel = normalizeOpenAIModelForUpstream(account, model)
@@ -2255,8 +2269,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			}
 		}
 
-		// 移除 gpt-5.2-codex 以下的版本 verbosity 参数
-		// 确保高版本模型向低版本模型映射不报错
 		if !SupportsVerbosity(upstreamModel) {
 			if text, ok := reqBody["text"].(map[string]any); ok {
 				delete(text, "verbosity")
@@ -2264,7 +2276,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
-	// 规范化 reasoning.effort 参数（minimal -> none），与上游允许值对齐。
+	// 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠柕澹偓閸嬫挸顫濋悡搴ｄ化闂侀€炲苯澧柣蹇斿哺閹囨偐閼碱剚娈?reasoning.effort 闂傚倸鍊风粈渚€骞夐敓鐘冲仭闁靛鏅涚壕鍦喐閻楀牆绗掓慨瑙勭叀閺岋綁寮崹顔藉€梺鍝勬媼閸撶喖寮诲☉婊庢闂佸搫鎳愬﹢寤糾al -> none闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆″眰鍔戦崺鈧い鎺戝€荤壕濂稿级閸稑濡跨紒鐘崇墱缁辨帞鈧綆浜跺Σ褰掓煙椤栨稒鐓ラ柍瑙勫灴瀹曞ジ濮€閳ヨ櫕娈舵繝鐢靛Х閺佹悂宕戦悙鍝勭濡わ絽鍟犻埀顒婄畵瀹曞ジ濡烽妷銉ヤ憾闂備胶鎳撻顓熸叏閸偄鍨旈柤娴嬫櫇绾惧ジ鎮楅敐搴濈敖婵ǜ鍔戦弻娑氣偓锝庡亝瀹曞矂鏌熼鐟板⒉闁诡垱妫冮、娆撳礂绾板崬鏅犲┑鐘愁問閸犳鏁悙闈涘灊妞ゆ牜鍋涚粈澶愭煙鏉堝墽鐣遍柣?
 	if reasoning, ok := reqBody["reasoning"].(map[string]any); ok {
 		if effort, ok := reasoning["effort"].(string); ok && effort == "minimal" {
 			reasoning["effort"] = "none"
@@ -2355,8 +2367,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		}
 	}
 
-	// 仅在 WSv2 模式保留 previous_response_id，其他模式（HTTP/WSv1）统一过滤。
-	// 注意：该规则同样适用于 Codex CLI 请求，避免 WSv1 向上游透传不支持字段。
+	// 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛柟缁㈠枛缁犵娀骞栫划瑙勵潐闁?WSv2 婵犵數濮烽。钘壩ｉ崨鏉戝瀭妞ゅ繐鐗嗛悞鍨亜閹哄棗浜剧紒鍓ц檸閸樻儳鈽夐悽绋跨劦妞ゆ帊鑳剁粻楣冩煥濠靛棙鍣哄璺哄缁辨帞鎷犻幓鎺濅純閻庢鍠楁繛濠囧春閳?previous_response_id闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸ゆ劖銇勯弽顐粶闁活厽顨婇弻锝夊箛闂堟稑顫銈傛櫇閸忔﹢寮婚垾鎰佸悑閹艰揪绲界敮鎾寸箾鏉堝墽鍒板鐟帮躬瀹曠敻寮撮姀銏犲絼闂佹悶鍎崕閬嶅礉閵堝洨纾奸柍褜鍓熷畷娆撀ㄥ宄?WSv1闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆¤娲﹀蹇涘煛娴ｅ摜浜伴梻浣虹帛閸ㄥ爼鈥﹂崶顒€鐓濋柡鍐ㄧ墛閻撳啰鎲稿鍫濈婵﹩鍓﹂悞钘夆攽閻樺疇澹橀柣鎰躬閺屾洘绻濊箛鏇犳殸閻炴碍锕㈠?	// 婵犵數濮烽弫鎼佸磻濞戔懞鍥敇閵忕姷顦悗骞垮劚椤︻垳绮堥崼婢濆綊鎮℃惔锝嗘喖闂佸搫鎷嬮崜姘跺箞閵娿儙鐔烘嫚閹绘帩娼介梻浣规偠閸婃洟藝閻㈢绠栫€瑰嫭澹嬮弸搴ㄧ叓閸ャ劍鎯勫ù鐘层偢濮婃椽宕滈懠顒€甯ラ梺鎼炲姀濞夋盯鎮鹃悜钘壩ㄧ憸灞解柦椤忓牊鐓曢柟鐐殔閸犳艾螞婵犲洦鈷掗柛灞剧懅鐠愪即鏌涚€ｎ亜顏€规洘鍔栫换婵嗩潩椤掍胶鈧剟姊洪棃娑氬婵☆偅鐩妴?Codex CLI 闂傚倷娴囧畷鍨叏閺夋嚚娲敇閵忕姷鍝楅梻渚囧墮缁夌敻宕曢幋婢濆綊鎮℃惔锝嗘喖闂佸搫鎷嬮崜娑㈠焵椤掆偓閸樻粓宕戦幘缁樼厱闁哄洢鍔嬬花鐣岀磼鏉堛劌鍝烘慨?WSv1 闂傚倸鍊风粈渚€骞夐敍鍕瀳鐎广儱顦崹鍌溾偓瑙勬礀濞层劎绮婚弮鍫熺厱閻忕偞鍎抽幖鎼佹煃瑜滈崜姘辨暜閿熺姷宓侀柡宥冨妽婵挳鏌熺紒妯虹瑐濠㈣娲熷Λ鍛搭敃閵忊剝鎮欏┑鐐差嚟閸忔﹢骞冨▎鎰瘈闁稿本顨嗛～宥夋⒑鐟欏嫬鍔ょ痪缁㈠幗閻楀酣姊绘担鑺ャ€冪紒璁圭節瀹曟娊鏁愭径灞界ウ闂佸綊鍋婇崢鑺ュ垔閹绢喗鐓曟繝闈涘閸旀粓鏌熼懠棰濆殭闁宠鍨块幃娆撴嚑椤掆偓閳亶姊虹粙娆惧劀缂傚秳绶氬畷娲焵?
 	if wsDecision.Transport != OpenAIUpstreamTransportResponsesWebsocketV2 {
 		if _, has := reqBody["previous_response_id"]; has {
 			delete(reqBody, "previous_response_id")
@@ -2370,20 +2381,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 		disablePatch()
 	}
 
-	// Apply OpenAI fast policy (参照 Claude BetaPolicy 的 fast-mode 过滤)：
-	// 针对 body 的 service_tier 字段（"priority" 即 fast，"flex"），按策略
-	// 执行 filter（删除字段）或 block（拒绝请求）。对 gpt-5.5 等模型屏蔽
-	// fast 时在此生效。
-	//
-	// 注意：
-	//   1. 此处统一使用 upstreamModel（已经过 GetMappedModel +
-	//      normalizeOpenAIModelForUpstream + Codex OAuth normalize），与
-	//      chat-completions / messages 入口保持一致，避免不同入口因为模型
-	//      维度不同而出现 whitelist 命中差异。
-	//   2. action=pass 时也要把 raw "fast" 归一化为 "priority" 写回 body，
-	//      否则 native /responses 入口透传 "fast" 给上游会被拒。chat-
-	//      completions 入口由 normalizeResponsesBodyServiceTier 完成同一
-	//      行为，这里手工实现等效逻辑。
+	// Apply OpenAI fast policy (闂傚倸鍊风粈渚€骞夐敓鐘冲仭闁靛鏅涚壕鐟扳攽閻樺疇澹橀柣?Claude BetaPolicy 闂?fast-mode 闂傚倷绀侀幖顐λ囬锕€鐤炬繛鎴炩棨濞差亝鏅濋柛灞炬皑椤?闂?	// 闂傚倸鍊搁崐宄懊归崶顬盯宕熼娑樹罕闂佺硶鍓濇笟妤呭极?body 闂?service_tier 闂傚倷娴囬褏鈧稈鏅濈划娆撳箳濡炲皷鍋撻崘顔煎耿婵炴垼椴搁弲鈺呮倵閸忓浜鹃梺鍛婃处閸撴艾鈻?priority" 闂?fast闂?flex"闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆″眰鍔戦崺鈧い鎺戝€荤壕濂稿级閸稑濡跨紒鐘靛仦椤ㄣ儵鎮欓弶鎴濐潔閻庡灚婢樼€氼剟鎮惧┑瀣劦妞ゆ帒瀚粻鐑樼節婵犲倻澧涢柣?	// 闂傚倸鍊风粈浣革耿闁秵鍋￠柟鎯版楠炪垽鏌嶉崫鍕偓褰掑级?filter闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鏌涢埄鍐槈闁搞劌鍊婚幉鎼佹偋閸繄鐟查梺鎶芥敱濡啴寮婚弴銏犻唶婵犻潧娲ゅ▍褔姊洪崷顓熸珪闁哥姵鍔楅幑銏犫槈閵忕娀鍞堕梺闈涚箚閺呮粌鈻撻幍顔剧＝濞达絼绮欓崫铏光偓鍏夊亾闁归棿鑳跺畵?block闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鈹戦悩鎻掝仱闁稿鎸搁～婵嬵敆娓氬洦锟ョ紓鍌欐祰妞村摜鏁幒妤€鐓橀柟瀵稿仧缁♀偓闁硅偐琛ラ崜婵嬵敊婢跺绡€婵炲牆鐏濋弸銈夋煙閾忣偅宕岀€规洘鍨剁换婵嬪礋椤掑缍楁繝娈垮枟椤牆鈻斿☉婊呯闂傚倷鑳堕…鍫ュ嫉椤掑嫬绀勭憸鐗堝笒閸?gpt-5.5 缂傚倸鍊搁崐鐑芥倿閿斿墽鐭欓柟娆¤娲獮蹇曚沪閼恒儲顔夐梻鍌氬€烽悞锕傚箖閸洖绀夌€光偓閸曞灚鏅為梺鍛婄☉閻°劑宕曢幘缁樼厱闁斥晛鍟伴埊鏇㈡倵?	// fast 闂傚倸鍊风粈渚€骞栭锕€鐤柛鎰ゴ閺嬫牗绻涢幋鐑囧叕闁肩増瀵ч妵鍕疀閹炬剚浼屽┑鐐烘？閸楁娊寮婚弴銏犻唶婵犻潧娲らˇ鈺呮⒑閸濆嫭鍣洪柟顔煎€垮濠氬焺閸愨晛顎撻梺鍛婄缚閸庨亶銆傞崼鏇熲拺?	//
+	// 婵犵數濮烽弫鎼佸磻濞戔懞鍥敇閵忕姷顦悗骞垮劚椤︻垳绮堥崼婢濆綊鎮℃惔锝嗘喖闂?	//   1. 婵犵數濮甸鏍窗濡ゅ啰绱﹂柛褎顨呯壕褰掓煛閸ワ絾鍤嶉柛銉墮閻撴盯鏌涢幇鍏哥敖闁挎稒绮撳铏圭磼濡崵鍙嗘繝鈷€鍐弰妞ゃ垺妫冨畷锟犳倶鐠囪尙绉洪柡浣瑰姍瀹曞ジ鎮㈤幁鎺嗗亾婵犲洦鈷?upstreamModel闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鏌涢埄鍐槈缂佲偓閸曨垱鐓ユ繛鎴灻顐ょ棯閹佸仮闁绘搩鍋婂畷鍫曞Ω閿旂偓顓荤紓?GetMappedModel +
+	//      normalizeOpenAIModelForUpstream + Codex OAuth normalize闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆″眰鍔戦崺鈧い鎺戝€荤壕濂稿级閸稑濡跨紒鐘崇墱缁?	//      chat-completions / messages 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁割偁鍎辩壕鍧楀级閸偄浜栧ù婊嗩潐缁绘盯骞嬮悙鍨櫘闂佸磭鎳撶粔鐢垫崲濠靛顥堟繛鎴炵懄閹瑩姊烘导娆忕槣闁哥姵鐗犻崺銉﹀緞閹邦剛顔掑銈嗙墬閻喗绔熼弴銏♀拻濞达綀妫勬禍褰掓煛鐏炵瓔妯€妤犵偞鎹囬、鏃堝幢濮楀棙缍楁繝鐢靛█濞佳囶敄閸℃稒鍊垮┑鍌氭啞閻撴洘銇勯鐔风仴闁哄鐩幃浠嬵敍濮橆剚姣愰梺瀹犳椤︾敻鐛Ο铏规殾闁搞儱妫庨崹浠嬪蓟閻旂⒈鏁婇柤鎭掑劚绾炬娊鎮楃憴鍕妞ゃ劌锕ユ穱濠囨倻閽樺）銊╂煏婢诡垰鎳夐弸鏍⒒閸屾瑧鍔嶉柟顔肩埣瀹曟洟鎼归锝呭伎閻庤娲栧ú锔锯偓姘煼閺岋綁寮崶褌妲愰梺缁樻⒒閸樠囨倶瀹曞洠鍋撶憴鍕婵炶尙濞€瀹?	//      缂傚倸鍊搁崐鎼佸磹閻戣姤鍊块柨鏇楀亾妞ゎ厼娲ら埢搴ㄥ箣閺傚じ澹曠紒缁㈠幖閹冲繘鎮甸鍡欑＜閻庯綆浜跺Σ鍛娿亜閹剧偨鍋㈢€规洏鍔戦、娆戜焊閺嵮傚闂備緡鍓欑粔鐢告偂閻樼粯鐓涘璺洪閸旂敻鎮楀顐㈠祮闁哄本鐩俊鑸垫償閳ュ磭鐫勯梻?whitelist 闂傚倸鍊风粈渚€骞夐敍鍕煓闁圭儤顨呴崹鍌涚節闂堟侗鍎愰柛銈呯墦閺岀喓鈧稒顭囩粻銉╂煕閻旈攱鍣洪柕鍥у瀵噣宕惰濮规绱掗幆褍缍栫紒顔界懇瀵?	//   2. action=pass 闂傚倸鍊风粈渚€骞栭锕€鐤い鏍ㄧ啲閼板潡鏌涢敂璇插箹濠殿噮鍓熼弻娑㈠箛閸忓摜鍑归梺鍝ュ枎閹碱偊婀侀梺鎸庣箓濞诧箓宕甸埀顒勬煙?raw "fast" 闂備浇宕甸崰鎰垝鎼淬垺娅犳俊銈呭暞閺嗘粌鈹戦悩鎻掝伀闁告宀搁弻鐔虹磼閵忕姵鐏堢紓浣插亾鐎光偓閸曨剛鍘搁悗骞垮劚缁绘帡鎮惧畷鍥╃＜闁?"priority" 闂傚倸鍊风粈渚€骞夐敓鐘茬闁哄稁鍘介崑锟犳煏婢跺牆鍓?body闂?	//      闂傚倸鍊风粈渚€骞夐敓鐘冲亜妞ゆ帒鍊绘稉宥夋煙鏉堝墽鐣遍柛?native /responses 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁割偁鍎辩壕鍧楀级閸偄浜栧ù婊嗩潐缁绘盯骞嬪▎蹇曚痪闂佺粯甯掗…鐑芥偂椤愶箑鐐婄憸搴ㄥ箲閿濆鐓?"fast" 缂傚倸鍊搁崐鎼佸磹閻戣姤鍊块柨鏇炲€归崑锟犳煏閸繃宸濈紒鐘虫閺屾稓浠﹂幆褎鎯涢梺閫炲苯澧悽顖椻偓鎰佹綎鐟滅増甯掔粻娑欍亜閺傚灝鈷旂€规洖鐖煎娲嚒閵堝懍娌梺鍛婂灥缂嶅﹤鐣烽幋锕€宸濇い鏍殔娴滅偓鎱ㄥ鍡楀妞ゃ儯鍨归埞鎴﹀灳瀹曞洦鎲肩紓浣哥焸娴滃爼濡撮崒姘煎晠闁?
+	//      completions 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁割偁鍎辩壕鍧楀级閸偄浜栧ù婊嗩潐缁绘盯骞嬪▎蹇曚痪闂?normalizeResponsesBodyServiceTier 闂傚倷娴囬褍霉閻戣棄绠犻柟鎹愵嚙鐎氬銇勯幒鎴濐仼闁搞劌鍊归幈銊ノ熼幐搴ｃ€愰柣鐔哥懕缁犳捇骞冨鈧幃娆戞崉鏉炵増鐫忔俊?
+	//      闂傚倷娴囧畷鐢稿磻閻愮數鐭欓柟瀵稿仧闂勫嫰鏌￠崘銊モ偓鍦偓姘煼閺岋綁寮崹顔藉€梺鍝勬媼閸撴盯鍩€椤掆偓閸樻粓宕戦幘缁樼厱闁规澘鍚€缁ㄨ姤銇勯弮鈧崝娆忣潖缂佹ɑ濯撮柣鐔稿缁佺兘姊洪崫鍕⒈闁告挻宀稿鑼崉娓氼垳鍙嗛梺鍛婂姈閸庢娊寮查悩缁樷拺闂傚牊渚楀Σ鍫曟煕鎼淬垹鈻曠€殿喛鍩栫粋鎺斺偓锝庡亞閸樿棄鈹戦悩璇у伐閻庢凹鍓熻棢閻庯綆鍠楅悡鐔兼煃閳轰礁鏆欓柣蹇擃嚟閳ь剚顔栭崳顕€宕戞繝鍌滄殾濠靛倻顭堝敮闂侀潧绻掓慨铏珶閺囥垺鈷戦柛婵嗗椤忊晝绱掔紒妯虹闁轰緡鍣ｅ畷鍗炩槈濞嗘垵甯?
 	if rawTier, ok := reqBody["service_tier"].(string); ok {
 		if normTier := normalizedOpenAIServiceTierValue(rawTier); normTier != "" {
 			action, errMsg := s.evaluateOpenAIFastPolicy(ctx, account, upstreamModel, normTier)
@@ -2401,8 +2403,8 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 				bodyModified = true
 				disablePatch()
 			default:
-				// pass：若客户端传的是别名 "fast"，归一化为 "priority"
-				// 后写回 body，确保上游收到的是其能识别的规范值。
+				// pass闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑樻尵閳瑰秹鏌ц箛鎾冲辅闁稿鎸搁～婵嬪Ψ閵壯傜磿闂備線鈧偛鑻晶顔剧磼閻樿尙效鐎规洜鎳撶叅妞ゅ繐瀚Σ顒€鈹戦悙鏉戠仸婵ǜ鍔戝畷鈥愁潩椤撴粈绨婚梺鍝勭Р閸斿酣骞婇崨瀛樼厽闁归偊鍓ㄩ煬顒勬煛瀹€瀣М濠碘剝鎮傛俊鐑藉Ψ椤旇崵妫┑鐘殿暯閳ь剙鍟跨痪褔鏌熼鐓庘偓鎼佹偩瀹勯偊娼╁Λ鐗堢箖閺呮繈姊洪棃娑氱畾闁逞屽墯閺嬪ジ宕?"fast"闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸ゆ劖銇勯弽銊х煂缂佲偓婵犲倵鏀介柣妯诲絻閺嗙喖鏌嶇紒妯活棃闁哄苯绉烽¨渚€鏌涢幘璺烘瀻闁伙絿鍏橀幃鈺冩嫚閹绘帒鏁ら梻浣瑰濞叉垿鎳楅崼鏇€?"priority"
+				// 闂傚倸鍊风粈渚€骞夐敓鐘冲殞闁绘劦鍓﹀▓浠嬫煙闂傚顦﹂柣銈庡櫍閺岀喖骞戦幇闈涙闂?body闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢柨鈹戦崒婊庣劸闁诲繗娅曟穱濠囶敍濠靛棗鎯為梺宕囨嚀缁夌數鎹㈠┑瀣棃婵炴垶鐟ュ▍褔姊洪懡銈呮瀾闁告梹鐗滈幑銏犫槈閵忕姷顔掗梺鎯ф禋閸嬪嫰寮抽崼銉︹拺閺夌偞澹嗛ˇ锔剧磽瀹ュ拑宸ラ柣锝呭槻椤繄鎹勯搹璇″悑婵＄偑鍊栧濠氬疾椤愶箑姹查柣妯肩帛閳锋垿鏌涘┑鍡楊仼妞ゅ繑鎸抽弻娑㈠Ω閵堝懎绁悗瑙勬穿缁查箖濡堕敐澶婄闁宠桨鐒﹂悾閬嶆⒒娴ｄ警鐒鹃柨鏇畵瀹曚即骞樺鍕剁秮瀵挳濮€閿涘嫬骞堥梻浣告贡閸庛倗鎹㈤崒娑氼洸闁绘劕顕粻楣冩煕椤愩倕鏋庨柣蹇婃櫊閺岀喖宕ｆ径瀣攭閻庤娲滈崰鏍€佸▎鎾村殐闁冲搫鍊愰妸鈺傗拻濞达絼璀﹂悞楣冩煥閺囶亞鐣垫い銏＄墵瀵挳濮€閻橀潧濮?
 				if normTier != rawTier {
 					reqBody["service_tier"] = normTier
 					bodyModified = true
@@ -2476,7 +2478,7 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 	// Capture upstream request body for ops retry of this attempt.
 	setOpsUpstreamRequestBody(c, body)
 
-	// 命中 WS 时仅走 WebSocket Mode；不再自动回退 HTTP。
+	// 闂傚倸鍊风粈渚€骞夐敍鍕煓闁圭儤顨呴崹鍌涚節闂堟侗鍎愰柛?WS 闂傚倸鍊风粈渚€骞栭锕€鐤い鏍ㄧ啲閼板潡鏌涢敂璇插箹闁搞劍绻堥獮鏍ㄦ綇閸撗吷戦柣?WebSocket Mode闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑樻⒒閻瑩鏌熼柇锕€鏋ょ紒鐘虫煥椤潡鎳滈棃娑橆潓缂備讲鍋撻柛鎰典簴閸嬫捇鐛崹顔煎闂佺粯顨呭Λ妤呭煝閹炬潙顕遍悗娑欘焽閸橀亶姊洪崫鍕偓浠嬵敋瑜庢穱濠囧礂閼测晝顔曢梺鍛婄懃椤﹁鲸鏅堕悽鍛婄厸閻忕偠濮ら崵鍥煕閳规儳浜?HTTP闂?
 	if wsDecision.Transport == OpenAIUpstreamTransportResponsesWebsocketV2 {
 		wsReqBody := reqBody
 		if len(reqBody) > 0 {
@@ -2595,8 +2597,6 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			if reason != "" {
 				wsLastFailureReason = reason
 			}
-			// previous_response_not_found 说明续链锚点不可用：
-			// 对非 function_call_output 场景，允许一次“去掉 previous_response_id 后重放”。
 			if reason == "previous_response_not_found" && recoverPrevResponseNotFound(attempt) {
 				continue
 			}
@@ -2913,11 +2913,8 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	}
 
 	// Apply OpenAI fast policy to the passthrough body (filter/block by service_tier).
-	// 统一使用 upstream 视角的 model：透传路径下 body 已经过 compact 映射 +
-	// OAuth normalize，body 中的 model 字段即上游真正会看到的 slug。
-	// 这样可以与 chat-completions / messages / native /responses 入口的
-	// upstreamModel 保持一致，避免 whitelist 命中差异。当 body 中没有
-	// model 字段时退回 reqModel。
+	// 缂傚倸鍊搁崐鎼佸磹閻戣姤鍤勯柛顐ｆ礀缁愭鈧箍鍎卞ú銊╁础濮樿埖鍊垫繛鎴烆伆閹寸偛鍨旈柟缁㈠枟閸嬶綁鏌熼鐔风瑨濠碘€茬矙閺?upstream 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠柕澶堝剻濞戞﹩鐓ラ柛顐墰缁嬪繐鈹戞幊閸婃洟骞婅箛娑樼？?model闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑樺灩閺嗗棝鏌熼梻瀵割槮闁绘帒鐏氶妵鍕箳閸℃ぞ澹曠紓鍌欐祰椤曆囶敄閸ヮ灛锝夊箛閺夎法顦繛杈剧悼閹虫挾澹曢姘兼富闁靛牆妫涙晶顒佹叏濡濡跨紒顕嗙秮閹瑥霉鐎ｎ偒娼?body 闂備浇顕у锕傦綖婢舵劖鍋ら柡鍥╁С閻掑﹥绻涢崱妯虹仴闁搞劍绻堥弻宥夊煛娴ｅ憡娈叉繛?compact 闂傚倸鍊风粈渚€骞栭銈傚亾濮樼厧鏋熼柟渚垮姂楠炴﹢顢欓挊澶婂?+
+	// OAuth normalize闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬧晠鏌ｉ妸銈夌反y 濠电姷鏁搁崑鐐哄垂閸洖绠归柍鍝勬噹閸屻劑鏌熼鍡忓亾闁?model 闂傚倷娴囬褏鈧稈鏅濈划娆撳箳濡炲皷鍋撻崘顔煎耿婵炴垼椴搁弲鈺呮倵閸忓浜鹃梺鍛婃处閸嬪棝銆侀崨瀛樷拺缂佸娉曠粻浼存煙閾忣偄濮嶉柟顔惧厴楠炲洭顢橀悩娈垮晭闂備浇顫夊畷妯衡枍閺囥垹绠熼柛娑橈功缁♀偓闂侀€炲苯澧撮柛銊╃畺楠炲洦鎷呯憴鍕┾偓鍐⒒娴ｇ懓顕滅紒璇插€婚埀顒佸嚬閸犳氨鍒掗敐鍛傛棃宕ㄩ鎯у箺婵＄偑鍊曠换鎰偓姘卞厴瀹曟洝绠涘☉娆戝幈闂佸疇妗ㄩ懗鍫曟倿閹间焦鐓?slug闂?	// 闂傚倷绀侀幖顐λ囬锕€鐤炬繝濠傜墛閸嬶繝鏌ㄩ弴鐐测偓褰掑磻鐎ｎ喗鈷戞い鎺嗗亾缂佸鎸抽幆灞轿旀担鍏哥盎闂佸搫绉查崝搴ㄥ箠娴ｈ櫣纾奸柕濠忛檮缁舵煡鏌?chat-completions / messages / native /responses 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁割偁鍎辩壕鍧楀级閸偄浜栧ù婊嗩潐缁绘盯骞嬪▎蹇曚痪闂?	// upstreamModel 濠电姷鏁搁崕鎴犲緤閽樺娲晜閻愵剙搴婇梺鍛婂姦娴滄牠宕戦幘璇插瀭妞ゆ劧绲洪幏鍦磽娴ｅ壊鍎忔い锔炬暬瀹曟椽鍩€椤掍降浜滈柟鐑樺灥椤忣亪鏌涢妶鍜冭含鐎殿喖鐖煎畷鐓庘攽閸″繑瀵栫紓鍌欒閸嬫挸顭块懜闈涘闁抽攱鍨堕妵鍕箳閸℃ぞ澹曢梻浣筋嚙缁绘垹鎹㈤崼婵堟殾?whitelist 闂傚倸鍊风粈渚€骞夐敍鍕煓闁圭儤顨呴崹鍌涚節闂堟侗鍎愰柛銈呯墦閺岀喓鈧稒顭囩粻銉╂煕閻旈攱鍣洪柕鍥у瀵噣宕惰濮规绱掗幆褍缍栫紒顔界懇瀵寮撮姀鐘茶€垮┑掳鍊愰崑鎾绘煃瑜滈崜娆撳箺濠婂懏顫?body 濠电姷鏁搁崑鐐哄垂閸洖绠归柍鍝勬噹閸屻劌霉閻樺樊鍎愰柛搴☆樀閺屾稑鈽夊▎鎰▏闁?	// model 闂傚倷娴囬褏鈧稈鏅濈划娆撳箳濡炲皷鍋撻崘顔煎耿婵炴垼椴搁弲鈺呮倵閸忓浜鹃梺鍛婃处閸嬪棝鎯堥崟顖涒拺闁告挻褰冩禍婵囩箾閹绘帞效鐎规洘鍨块獮妯兼嫚閼碱剙濮︽俊鐐€栫敮鎺斺偓姘煎墴閹?reqModel闂?
 	policyModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	if policyModel == "" {
 		policyModel = reqModel
@@ -2966,7 +2963,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	}
 
 	logger.LegacyPrintf("service.openai_gateway",
-		"[OpenAI 自动透传] 命中自动透传分支: account=%d name=%s type=%s model=%s stream=%v",
+		"[OpenAI passthrough] forwarding request account=%d name=%s type=%s model=%s stream=%v",
 		account.ID,
 		account.Name,
 		account.Type,
@@ -2981,9 +2978,9 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 				zap.Strings("timeout_headers", timeoutHeaders),
 			)
 			if s.isOpenAIPassthroughTimeoutHeadersAllowed() {
-				streamWarnLogger.Warn("OpenAI passthrough 透传请求包含超时相关请求头，且当前配置为放行，可能导致上游提前断流")
+				streamWarnLogger.Warn("检测到超时相关请求头，当前配置会透传，可能增加断流风险")
 			} else {
-				streamWarnLogger.Warn("OpenAI passthrough 检测到超时相关请求头，将按配置过滤以降低断流风险")
+				streamWarnLogger.Warn("检测到超时相关请求头，将按配置过滤以降低断流风险")
 			}
 		}
 	}
@@ -3037,8 +3034,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
-		// 透传模式默认保持原样代理；但 429/529 属于网关必须兜底的
-		// 上游容量类错误，应先触发多账号 failover 以维持基础 SLA。
+		// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼幃瑙勬姜閹殿喚协闂佺粯姊婚崢褔鎮樺畷鍥ｅ亾鐟欏嫭绀€婵炲眰鍔戦妴渚€宕ㄩ钘夊伎闂佸湱鍎ら幐楣冨煀閺囩喆浜滄い鎾跺仧婢э附銇勯姀鈽嗙劷缂佽鲸甯掕灒閻忓繑鐗楅弫鍨節閻㈤潧鈻堟繛浣冲厾娲Χ婢跺鍓ㄥ銈嗘磵閸嬫捇鏌＄仦鍓р槈閾伙綁鏌ｉ幘鍐差劉闁诲酣绠栧铏圭磼濮楀棙鐣芥俊鐐存綑閹芥粎鍒掔€ｎ喖绠虫俊銈勭劍濞呮粓姊洪幖鐐插姌闁告柨鐭傞崺鈧い鎺戝€告禒閬嶆煛鐏炶濡奸柍钘夘槸閳诲酣骞嬮弮鈧敍澶岀磽?429/529 闂傚倷娴囬褏鎹㈤幒妤€纾婚柣鏃傚帶绾剧粯淇婇婵嗩棈濠殿喛娅曢妵鍕箳閹存績鍋撻懡銈咁棜濡わ絽鍟悡娆撴倵濞戞瑯鐒界紒鐘虫尵閹叉悂骞嶉灏栨瀰闂佺粯鎼╅崑濠傜暦閹偊妲奸梺鎼炲€曞ú顓㈠蓟閺囥垹骞㈡俊銈呭暟椤旀帡鎮楃憴鍕妞ゃ劌鎳橀垾锕傚Ω閳轰胶顦ㄥ銈呯箰閸熲晝鈧稈鏅犲?		// 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繈鏌曟径鍡樻珕闁稿顦甸弻娑㈠箻閼奸鍞归梺绋款儐閹瑰洭骞冮悜钘夌妞ゆ梹瀚庨妸鈺傗拺闂傚牃鏅濈粔顒佺箾閸滃啰绉柟顕呭櫍閹瑩顢楅崒婊呮婵犳鍠楅敃鈺呭储閽樺鏋嶉柟鍓х帛閻撶喖鏌ｅΟ鍝勭骇缂佷讲鏅犻弻娑㈠Ω瑜庡▍鏇熶繆閸欏濮囬柍瑙勫灴瀹曞爼濡搁妷銉ノら梻鍌欑閹碱偊宕愰幖浣瑰€舵繝闈涚墛閺嗘粓鏌曟径鍡樻珕闁稿鍓濈换娑㈠幢濡吋鍣梺浼欑秬娴滎剟骞夐幖浣哥骇闁割煈鍠掗崑鎾绘偡闁箑娈梺鍛婃处閸嬫帒顭囬埡鍛厱闁归偊鍓氶埢鏇熶繆閺屻儰鎲炬慨?failover 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忓ù鍏兼綑绾惧潡鏌涢幇顔藉▏閹兼惌鐓堥弫瀣煃瑜滈崜鐔兼偘椤曗偓楠炲洭顢橀悢濂夆偓鎾绘⒑閸涘﹦缂氶柛搴ㄤ憾瀵偊濡堕崶鈺冿紲缂傚倷闄嶉崹褰掔嵁閹扮増鐓?SLA闂?
 		if shouldFailoverOpenAIPassthroughResponse(resp.StatusCode) {
 			return nil, s.handleFailoverErrorResponsePassthrough(ctx, resp, c, account, body)
 		}
@@ -3127,6 +3123,7 @@ func logOpenAIPassthroughInstructionsRejected(
 	}
 	fields = appendCodexCLIOnlyRejectedRequestFields(fields, c, body)
 	logger.FromContext(ctx).With(fields...).Warn("OpenAI passthrough 本地拦截：Codex 请求缺少有效 instructions")
+	logger.FromContext(ctx).With(fields...).Warn("OpenAI passthrough 鏈湴鎷︽埅锛欳odex 璇锋眰缂哄皯鏈夋晥 instructions")
 }
 
 func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
@@ -3157,7 +3154,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 		return nil, err
 	}
 
-	// 透传客户端请求头（安全白名单）。
+	// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼弻娑㈠箻閼奸鍞归梺绋款儐閹瑰洭鎮伴鈧畷褰掝敊閸欍儳妫梻鍌欒兌绾爼寮插鍛煓闁规崘娉涢崹婵嬫煃閸濆嫭濯奸柡浣哥У缁绘繈宕归銏狀潓濠电偛鐗婅ぐ鍐煘閹达富鏁婇柣鎰靛墮濞堝矂姊虹粙鍖℃敾闁诡喖鍊规穱濠囨偨缁嬭法鐫勯梺鍓插亞閸犳劕鈻嶉弽顓熲拺闁告挻褰冩禍婵堢磼鐠囨彃顏€殿喗濞婂顕€宕奸悢鍝勫箞闂傚鍋勫ú銈夘敄閸涱喕绻嗛柟绋挎捣缁犻箖鏌涘☉妯绘悙婵炲眰鍊楅幉鎾晜闁款垰浜炬鐐茬仢閸旀岸鏌熼崘鍙夋崳缂侇喖鐗忛埀顒婄秵閸犳鎮￠妷锔剧闁瑰鍎戞笟娑欎繆閹绘帞鍩ｉ柡?
 	allowTimeoutHeaders := s.isOpenAIPassthroughTimeoutHeadersAllowed()
 	if c != nil && c.Request != nil {
 		for key, values := range c.Request.Header {
@@ -3171,13 +3168,13 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 		}
 	}
 
-	// 覆盖入站鉴权残留，并注入上游认证
+	// 闂傚倷娴囧畷鐢稿窗閹邦優娲冀椤剚绋戦埥澶娢熻箛鏇炲妺缂佺粯绻堝畷鎯邦槾妞は佸洦鈷戦梻鍫熷喕缁憋繝鏌涘☉鍗炲绩妞ゆ柨顦靛濠氬磼濞嗘垵濡藉┑鐐插悑閻熲晠骞冨ú顏勎╅柕澶樺枤閸旂兘姊洪崜鎻掍簼缂佹椽绠栧鎼佸籍閸喎鈧敻鏌ㄥ┑鍡涱€楀褜鍨辩换娑㈠醇濠靛牏鍔梺鍝勮閸斿矂鍩ユ径濞㈢喖宕归鍛磾闂傚倷娴囨竟鍫濈暦閻㈢绐楅幖娣妼閻撴繈鏌￠崘銊у閹喖姊洪棃娑辨Ф闁稿骸宕晥闁告瑥顦辩粻楣冩煙鐎电浠﹂悘蹇ｅ弮閺屻劑寮村Ο鍝勫Е闂佽鍠撻崕闈涚暦濠婂嫭濯撮柣鐔煎亰閳ь剚鐩娲濞戞艾顣洪梺缁橆殔缁绘劕宓?
 	req.Header.Del("authorization")
 	req.Header.Del("x-api-key")
 	req.Header.Del("x-goog-api-key")
 	req.Header.Set("authorization", "Bearer "+token)
 
-	// OAuth 透传到 ChatGPT internal API 时补齐必要头。
+	// OAuth 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼弻娑㈩敃閿濆棛顦ョ紓浣插亾?ChatGPT internal API 闂傚倸鍊风粈渚€骞栭锕€鐤い鏍仜绾惧潡鏌ら崷顓烆暭闁挎稑鍊搁埞鎴︻敊閽樺顑傜紓渚囧櫘閸ㄨ泛鐣峰┑瀣嵆闁绘ê鍟挎惔濠囨⒑闁偛鑻晶鎾煙椤旀儳鍘寸€殿喗娼欓～婵囶潙閺嶃剱婊堟⒒娓氣偓濞佳兠洪敃鈧灋闁告劏鏅欑换?
 	if account.Type == AccountTypeOAuth {
 		promptCacheKey := strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String())
 		req.Host = "chatgpt.com"
@@ -3185,7 +3182,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 			req.Header.Set("chatgpt-account-id", chatgptAccountID)
 		}
 		apiKeyID := getAPIKeyIDFromContext(c)
-		// 先保存客户端原始值，再做 compact 补充，避免后续统一隔离时读到已处理的值。
+		// 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁规壆澧楅崑瀣煕濞戝崬鐏＄€规洖寮堕幈銊ノ熺拠宸殺闂佺顑嗛幐鎼佸煡婢跺ň鏋嶆い鎾楀倿鍋楀銈冨灪椤牓濡甸幇鏉跨闁瑰濯崥鍛攽閿涘嫬浠滄い鎴濇噽閳ь剙鐏氱敮妤冣偓闈涖偢瀹曟帡鎮欑€电骞堟繝纰樻閸ㄦ娊宕㈣瀵憡鎯旈～顑跨盎濡炪倖鍔х徊鑺ユ叏瀹ュ洠鍋撶憴鍕闁告梹顨呴埥澶愬垂椤愵偅效闁硅壈鎻紞鍡椢ｉ悜鑺モ拻濞达絽鎲￠崯鐐烘煕閺冣偓濞叉粎鍒掗弮鍌楀亾濞戞瑯鐒芥い?compact 闂傚倷娴囧畷鐢稿磻閻愮數鐭欓煫鍥ㄧ☉绾惧潡姊洪鈧粔鎾磼閵娾晜鐓涚€广儱楠搁獮妤呮煛閸滀礁澧伴柍褜鍓欓崢婊堝磻閹剧粯鐓曢柡鍥ュ妺缁ㄧ晫绱掓潏銊ュ摵婵﹨娅ｇ划娆戞崉閵娧屽敹缂傚倷绀侀ˇ浼村箰閹剁晫宓侀柛鎰╁壆閺冨牆绀冩い蹇撴４缁卞弶淇婇悙顏勨偓鏍箰閻愵剚鍙忛柣鎴ｆ閺勩儵鏌ｅΟ鑽ゃ偞婵℃彃鐗撻弻鐔虹磼閵忕姷浠╂繛瀛樼矒缁犳牕顫忔繝姘＜婵﹩鍘煎▍銈呪攽椤旂》宸ユい顓犲厴閸ㄩ箖寮介鐐靛€炲銈嗗坊閸嬫挾绱掗銏⑿ч柡宀€鍠栭、娑㈡倷闊厼鏋堥梻浣规偠閸婃垿宕规禒瀣摕婵炴垯鍨圭粻鎶芥煙閹屽殶闁告埊绻濆娲川婵犲倻浜堕梺鍛婃尰缁诲倿顢氶妷鈺佺妞ゆ牗姘ㄩˇ鏉款渻閵堝棙灏甸柛鐘查叄閸┾偓妞ゆ帒鍊告禒閬嶆煛瀹€瀣М濠碘剝鎮傛俊鐑藉Ψ椤旂粯鍋呴梻鍌欑窔閳ь剛鍋涢懟顖涙櫠閻楀牄浜滈柟瀵稿仦缁€瀣煕閳规儳浜?
 		clientSessionID := strings.TrimSpace(req.Header.Get("session_id"))
 		clientConversationID := strings.TrimSpace(req.Header.Get("conversation_id"))
 		if isOpenAIResponsesCompactPath(c) {
@@ -3205,7 +3202,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 		if req.Header.Get("originator") == "" {
 			req.Header.Set("originator", "codex_cli_rs")
 		}
-		// 用隔离后的 session 标识符覆盖客户端透传值，防止跨用户会话碰撞。
+		// 闂傚倸鍊烽悞锕€顪冮崹顕呯劷闁秆勵殔缁€澶愭煙鐎涙濡囬柡瀣⒒閹叉瓕绠涢弴鐐茬亰闁诲函缍嗛崜姘扁偓姘哺閺屾稑鈻庤箛锝喰﹂梺閫炲苯澧伴柡浣割煼瀵?session 闂傚倸鍊风粈渚€骞栭銈囩煋闁哄鍤氬ú顏勭厸闁告侗鍠栭崜銊╂⒑閻熼偊鍤熷┑顕€顥撶划濠氬籍閸喓鍙嗛梺鍝勬处濮樸劎鎷归悧鍫㈢鐎瑰壊鍠栨晶鎾煛瀹€瀣М闁糕晪绻濆畷鎺戭煥閸愶絽鎮呭┑锛勫亼閸婃牠骞愰崫銉х濠电姴娲ㄥ畵渚€鎮楅敐搴′航婵℃彃缍婇獮鏍箹椤撶偞鐏嗙紓浣介哺閹瑰洤顫忕紒妯肩懝闁搞儜鍌滅泿缂傚倷娴囬褔顢栭崶顬綁骞囬弶鍧楀敹闂佸搫娲ㄩ崑鐔兼晬濞嗘垹纾肩紓浣靛灩瀵喗銇勯妷锔藉暗缂侇喖鐗婂鍕箛椤撴稒瀚介梻浣告啞閸旀垿宕濆畝鈧惀顏囶槼闁靛洤瀚伴獮鎺楀箻闊祴鍋撻幒妤佺厵闁荤喐婢橀顓炩攽閳╁啰鎽冩い锔藉▕閺岋繝宕卞Δ鍐啋闂佸搫鐬奸崰鎾寸珶閺囩姭鍋撻敐搴′函闁告艾鍊荤槐鎾存媴娴犲鎽垫繝銏㈡嚀濡繈鐛箛娑欏亹婵炴潙顑嗛弬鈧梻浣稿閸嬫帡宕戦崨顕呮闁告洦鍨遍埛鎴︽煟閻斿憡绶查柍閿嬫閺屾稓鈧綆鍋勯悘鎾煕閳规儳浜?
 		if clientSessionID == "" {
 			clientSessionID = promptCacheKey
 		}
@@ -3220,7 +3217,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 		}
 	}
 
-	// 透传模式也支持账户自定义 User-Agent 与 ForceCodexCLI 兜底。
+	// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼幃瑙勬姜閹殿喚协闂佺粯姊婚崢褔鎮樺畷鍥ｅ亾鐟欏嫭绀€婵炲眰鍔戦妴渚€宕ㄩ鍓ь啎闂佺懓顕崑鐐哄煕閹烘鐓曢柣妯哄暱婵秶鈧鍣崑濠囥€佸璺虹劦妞ゆ帒瀚畵渚€鏌熼柇锕€骞楀┑顖涙尦閺岋箑螣娓氼垱鈻撳┑鈩冪叀娴滆泛顫忓ú顏呭仭闂侇叏绠戝▓鍫曟⒑閸濆嫯瀚版い锕傛涧閻ｇ兘妫冨☉杈╁弳闂佸憡渚楁禍婊勭妤ｅ啯鍋℃繛鍡楃箰椤忣偊鏌ｉ幙鍐ㄧ仯缂?User-Agent 濠?ForceCodexCLI 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁瑰濮撮崹婵堚偓鍏夊亾闁逞屽墴閹崇偤鏌嗗鍛唴闂佽姤锚閿?
 	customUA := account.GetOpenAIUserAgent()
 	if customUA != "" {
 		req.Header.Set("user-agent", customUA)
@@ -3228,7 +3225,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	if s.cfg != nil && s.cfg.Gateway.ForceCodexCLI {
 		req.Header.Set("user-agent", codexCLIUserAgent)
 	}
-	// OAuth 安全透传：对非 Codex UA 统一兜底，降低被上游风控拦截概率。
+	// OAuth 闂傚倷娴囬褍霉閻戣棄绠犻柟鎯у殺閸ヮ剦鏁嶉柣鎰皺閻撴垿妫呴銏″缂佸甯￠幃鐐寸節濮樺崬褰勯梺鎼炲劀閸曨剙闂梻浣虹帛閸旀洟鏁冮鍫濊摕闁靛鍎Σ鍫熺箾閸℃ê绗掓い銉︾箓椤啴濡堕崱妯侯槱闂侀潻缍囩徊鍊熺亱?Codex UA 缂傚倸鍊搁崐鎼佸磹閻戣姤鍤勯柛顐ｆ礀缁愭鈧箍鍎卞ú銊╁础濮樿埖鐓欑紓浣靛灩閺嬫稓绱掗埀顒勫磼濞戞氨鐦堟繝鐢靛Т閸婃悂寮抽悢闈炲酣宕堕妸锔轰虎闂佸搫琚崝宀勫煡婢跺á鐔兼嚃閳轰礁袩濠电姷顣换婵堢不閺嶎厼缁╅梺顒€绉寸粻顖炴煕濞戝崬鏋熼柛搴ｅ枛閺屾洟宕煎┑鍡╁妷闂佽姤鍨甸ˇ鎵崲濞戙垹绠ｉ柣鎰綑绾板秹姊洪幐搴㈢８闁稿海鏁婚獮鍐Ψ閳哄倸娈濆┑鐐茬墛鐎笛勬櫏闂備胶鎳撻崥瀣偩椤忓牆鍨傞悷娆忓椤╅攱鎱ㄥ璇蹭壕闂佸搫鐬奸崰鏍х暦濞嗘挸围濠㈣泛顑愰埀顒€绉瑰铏瑰寲閺囩喐鐝旈梺鐟板暱闁帮綁鏁愰悙鍙傛棃宕ㄩ鐙呯床婵犵數濮撮敃銈夊疮閾忣偅鍙忛柣銏犳啞閳?
 	if account.Type == AccountTypeOAuth && !openai.IsCodexCLIRequest(req.Header.Get("user-agent")) {
 		req.Header.Set("user-agent", codexCLIUserAgent)
 	}
@@ -3663,7 +3660,7 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			return resultWithUsage(), fmt.Errorf("stream usage incomplete after disconnect: %w", err)
 		}
 		logger.LegacyPrintf("service.openai_gateway",
-			"[OpenAI passthrough] 流读取异常中断: account=%d request_id=%s err=%v",
+			"[OpenAI passthrough] 婵犵數濮烽弫鎼佸磻閻旂儤宕叉繝闈涙灩瑜版帒鐐婃い鎺戭槹閺咁亝绻涢弶鎴濇倯婵炲吋鐟╅幆灞轿旈崨顔惧幐閻庤鎼╅崰鏍箠閹扮増鏅繝闈涱儐閻撶喖鏌曡箛濠冩珔闁诲骏绠撻弻锟犲川椤旀儳寮ㄩ梺纭呮珪閻熲晠鐛€ｎ喗鏅濋柍褜鍓欒灋? account=%d request_id=%s err=%v",
 			account.ID,
 			upstreamRequestID,
 			err,
@@ -3678,7 +3675,12 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			zap.String("component", "service.openai_gateway"),
 			zap.Int64("account_id", account.ID),
 			zap.String("upstream_request_id", upstreamRequestID),
-		).Info("OpenAI passthrough 上游流在未收到 [DONE] 时结束，疑似断流")
+		).Info("上游流在未收到 [DONE] 时结束，疑似断流")
+		logger.FromContext(ctx).With(
+			zap.String("component", "service.openai_gateway"),
+			zap.Int64("account_id", account.ID),
+			zap.String("upstream_request_id", upstreamRequestID),
+		).Info("涓婃父娴佸湪鏈敹鍒?[DONE] 鏃剁粨鏉燂紝鐤戜技鏂祦")
 		if !openAIStreamClientOutputStarted(c, clientOutputStarted) {
 			return resultWithUsage(),
 				s.newOpenAIStreamFailoverError(c, account, true, upstreamRequestID, nil, "OpenAI stream ended before a terminal event")
@@ -3718,7 +3720,7 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 		}
 	}
 	if !usageParsed {
-		// 兜底：尝试从 SSE 文本中解析 usage
+		// 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁瑰濮撮崹婵堚偓鍏夊亾闁逞屽墴閹崇偤鏌嗗鍛唴闂佸吋浜介崕鎻掆枍閺嵮€鏀芥い鏃€鏋绘笟娑㈡煕閹惧鈽夌悮娆撴煥閺囩偛鈧綊宕戦敐澶嬬厱闁靛绲芥俊鐣岀棯閹规劕鍚圭紒?SSE 闂傚倸鍊风粈渚€骞栭锕€纾圭紒瀣紩濞差亝鏅濋柍褜鍓熼弫鍐閵堝棗浜遍梺鍓插亐閹冲洭寮搁弽褜娓婚柕鍫濇鐏忋劑鎮楀▓鍨⒋妤犵偞甯掕灃闁逞屽墴瀹?usage
 		usage = s.parseSSEUsageFromBody(string(body))
 	}
 
@@ -3810,14 +3812,12 @@ func writeOpenAIPassthroughResponseHeaders(dst http.Header, src http.Header, fil
 	if filter != nil {
 		responseheaders.WriteFilteredHeaders(dst, src, filter)
 	} else {
-		// 兜底：尽量保留最基础的 content-type
+		// 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁瑰濮撮崹婵堚偓鍏夊亾闁逞屽墴閹崇偤鏌嗗鍛唴闂佸吋浜介崕鎻掆枍閺嵮€鏀芥い鏃€鏋绘笟娑㈡煕閹炬潙鍝虹€殿喖寮剁缓浠嬪川婵炵偓瀚奸梻浣告贡缁垳鏁悙鐢典笉闁挎繂娲ㄧ壕鑲╃磽娴ｅ顏堝传濞差亝鐓欐い鏃囨閸斻倝鏌嶇拠鏌ュ弰妤犵偛娲、妯衡攽閸繄顐奸梻鍌氬€烽懗鍓佹兜閸洖鐤鹃柣鎰ゴ閺嬪秹鏌ㄥ┑鍡╂Ф闁逞屽厸缁舵艾鐣烽妸褉鍋撳☉娅亪宕?content-type
 		if v := strings.TrimSpace(src.Get("Content-Type")); v != "" {
 			dst.Set("Content-Type", v)
 		}
 	}
-	// 透传模式强制放行 x-codex-* 响应头（若上游返回）。
-	// 注意：真实 http.Response.Header 的 key 一般会被 canonicalize；但为了兼容测试/自建响应，
-	// 这里用 EqualFold 做一次大小写不敏感的查找。
+	// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼幃瑙勬姜閹殿喚协闂佺粯姊婚崢褔鎮樺畷鍥ｅ亾鐟欏嫭绀€婵炲眰鍔戦妴渚€宕ㄧ€涙ê鈧灚绻涢崼婵堜虎闁哄鐩弻鐔哄枈閸楃偘鍠婇悗瑙勬礀閹碱偉鐏冮梺鍛婁緱閸橀箖宕Δ鍛拺缁绢厼鎷嬪鎰版煕閺冩挾鐣电€?x-codex-* 闂傚倸鍊风粈渚€骞夐敍鍕床闁稿本绮庨惌鎾绘倵閸偆鎽冨┑顔藉▕閺屾稑鈻庤箛锝喰︾紓浣稿閸嬨倕顕ｉ崼鏇為唶婵犻潧妫岄幐鍐磽娴ｆ彃浜鹃梺鍛婃处閸ㄩ亶鎮￠悩铏弿闁荤喓澧楅幖鎰版煕閺冣偓閻熝呮閹烘嚦鏃堝焵椤掑嫬纾归柟闂寸杩濋梺鍦劋閸╁牆顭囬幍顔瑰亾閸忓浜鹃梺閫炲苯澧扮紒顔碱煼瀵濡烽敂鎯у箞闂備線娼ч敍蹇涘礃閵娿儺妫庣紓鍌氬€峰ù鍥ㄣ仈缁嬭法鏆嗛柛娑橈梗缁?	// 婵犵數濮烽弫鎼佸磻濞戔懞鍥敇閵忕姷顦悗骞垮劚椤︻垳绮堥崼婢濆綊鎮℃惔锝嗘喖闂佸搫鎷嬮崜姘跺箞閵娿儙鐔煎锤濡も偓閹界敻姊虹化鏇熸珔闁稿﹤娼￠獮?http.Response.Header 闂?key 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟缁㈠枛绾惧鏌熼崜褏甯涢柣鎾跺█閺屾盯骞橀弶鎴犵シ闂佸憡锚閹芥粎妲愰幒鎾寸秶闁靛鍎哄Λ鍡涙⒑?canonicalize闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑樻⒒閻瑩鏌熼柇锕€鏋涚紒韬插€濋弻锝夊箛闂堟稑顫梺宕囩帛濡啫顕ｉ崼鏇熷€烽柡澶嬪焾濡棝姊洪崫銉ユ瀻闁挎洦浜璇测槈濠婂懐鏉搁梺鍝勬川閸嬫稒绂掑Ο渚富闁靛牆妫欓埛鎰版煕閺冣偓濞茬喎锕㈡笟鈧弻锝嗘償椤栨粎校闂佸憡蓱閸庡啿宓?闂傚倸鍊烽懗鍫曞储瑜旈妴鍐╂償閵忋埄娲稿┑鐘诧工閹虫劗澹曟禒瀣厵闁硅鍔﹂崵娆徝归懖鈺佇ラ柍褜鍓欑粻宥夊磿闁秴绠犻柟閭﹀枓閸嬫捇鎮烽柇锔解枅闂?	// 闂傚倷绀侀幖顐λ囬锕€鐤炬繝濠傜墛閸嬶繝鏌嶉崫鍕櫣闂傚偆鍨堕弻锝夊箣閿濆憛鎾绘煕?EqualFold 闂傚倸鍊烽懗鍫曗€﹂崼銉晞闁糕剝绋掗崕妤併亜閺傚灝鈷旈柛妤佸哺閺屸剝寰勭€ｎ亞浜堕梺鍝勵儏闁帮綁寮诲澶娢ㄧ憸宥嗙閸濆娊鐟邦煥閹邦喚袦闂佽鍠楅…鍫㈢不濞戙垹绠婚柛鎾茬贰閸炲爼姊绘担鍛婃喐闁哥姵鍔欓獮鎰版嚒閵堝洨鐓撴繝銏ｆ硾椤剟宕ョ€ｎ喗鐓曢柍鈺佸彁閹达附鍋熼梺顒€绉甸埛鎴︽偡濞嗗繐顏╂い銉ヮ儔閺屾盯鎮╅搹顐㈢闂佸磭绮幑鍥嵁鐎ｎ喗鏅濋柍褜鍓熼幏鎴︽偄閸忚偐鍘繝銏ｅ煐缁嬫捇鎮炬潏銊ｄ簻闁靛濡囩粻鐐烘煛?
 	getCaseInsensitiveValues := func(h http.Header, want string) []string {
 		if h == nil {
 			return nil
@@ -3856,6 +3856,9 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 	var targetURL string
 	switch account.Type {
 	case AccountTypeOAuth:
+		if !account.IsOpenAI() {
+			return nil, fmt.Errorf("unsupported OAuth account platform for OpenAI-compatible gateway: %s", account.Platform)
+		}
 		// OAuth accounts use ChatGPT internal API
 		targetURL = chatgptCodexURL
 	case AccountTypeAPIKey:
@@ -3905,8 +3908,8 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 	}
 	if account.Type == AccountTypeOAuth {
 		compatMessagesBridge := isOpenAICompatMessagesBridgeContext(c) || isOpenAICompatMessagesBridgeBody(body)
-		// 清除客户端透传的 session 头，后续用隔离后的值重新设置，防止跨用户会话碰撞。
 		clientConversationID := strings.TrimSpace(req.Header.Get("conversation_id"))
+		// 婵犵數濮烽弫鎼佸磻閻愬搫绠伴柟闂寸缁犵姵淇婇婵勨偓鈧柡瀣Ч楠炴牗娼忛崜褍鐭濋梺绋款儐閹瑰洭鎮伴鈧畷褰掝敊閸欍儳妫梻鍌欒兌绾爼寮插鍛煓闁规崘娉涢崹婵嬫煃閸濆嫭濯奸柡浣哥Ч閺岋綁骞囬妸锔界彅婵炲瓨绮撶粻鏍偂椤愶箑鐐婄憸搴ㄥ箲閿濆鐓熼柟閭﹀墾闊剟鏌?session 濠电姷鏁告慨浼村垂濞差亜纾垮┑鍌滎焾缁犲灚銇勮箛鎾搭棡妞ゎ偅娲樼换婵嬫濞戝崬鍓伴柣鐔哥懕缁犳捇鐛弽銊︾秶闁告挆鍕还闂備浇妗ㄧ欢姘辩不閺嶎厼钃熼柨婵嗩檧缂嶆牗銇勯幒鍡椾壕婵犳鍠栭崐鍦崲濞戙垹閱囧ù锝呮啞閸ｄ粙鏌ｉ鐑嗘█闁诡喖缍婂畷鎯邦槻缂佺嫏鍥ㄧ厱濠电姴瀚弳顒勬煛瀹€瀣М濠碘剝鎮傛俊鐑藉Ψ椤旂粯鍋呴梻鍌欑窔閳ь剛鍋涢懟顖涙櫠椤曗偓閺屾洟宕奸悢绋库偓鎰偓瑙勬礃婵炲﹪鐛弽銊﹀闁告稑顭Λ鐔兼⒒娴ｇ儤鍤€闁搞垺鐓￠幆宀勫醇閵夈儳鏌堥柟鑹版彧缁茶法澹曟禒瀣厱闁归偊鍘奸崝銈嗙箾閸涱喚鎳呯紒杈ㄥ笚濞煎繘濡歌閻ゅ嫬鈹戦纭峰伐闁靛牏顭堥悾鐑芥晲閸℃绐炲┑鈽嗗灠閹碱偊藟濠靛鈷戦柤濮愬€曟牎婵炲瓨绮堢划娆忕暦濠靛洦鍎熼柕濞垮劜閻庮剟姊洪棃娑氬妞わ富鍨崇划濠氭晲婢跺鍙勫┑顔斤供閸撴瑩鍩€椤掑啫鍚圭紒顕嗙到铻栭柛娑卞枛娴狀垶姊洪幖鐐插姌闁告柨娴风划璇参熷Ч鍥︾盎濡炪倖鍔﹂崑鍕閻楀牜娈介柣鎰彧閼板潡鏌熼鐣屾噰妞ゃ垺姊归幏鍛存⒐閹邦剦妫?		clientConversationID := strings.TrimSpace(req.Header.Get("conversation_id"))
 		req.Header.Del("conversation_id")
 		req.Header.Del("session_id")
 
@@ -3943,8 +3946,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 		req.Header.Set("user-agent", customUA)
 	}
 
-	// 若开启 ForceCodexCLI，则强制将上游 User-Agent 伪装为 Codex CLI。
-	// 用于网关未透传/改写 User-Agent 时，仍能命中 Codex 侧识别逻辑。
+	// 闂傚倸鍊风粈渚€宕ョ€ｎ喗鍎戠憸鐗堝笒绾惧潡寮堕崼姘珕妞ゎ偅娲熼弻鐔告綇閸撗呮殸闁?ForceCodexCLI闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸ゆ劖銇勯弽顐粶闁搞劌鍊归妵鍕冀閵娿儱姣堥梺鎼炲€栧ú鐔煎蓟濞戞ǚ鏀介柛鈩冾殢娴犲ジ姊虹紒妯诲鞍闁搞劌娼￠獮鍐ㄎ熺捄銊ф澑闂佸湱鍋撻幆灞轿涘☉姘辩＝濞达綀顕栧▓鏃堟煕婵犲啯鍊愬┑?User-Agent 濠电姷鏁搁崑娑㈩敋椤撱垹鐓曢柛顐ゅ枔椤╂煡鏌ㄥ┑鍡礂濠㈣泛顑囩弧鈧梺鍛婂姦娴滄牠寮?Codex CLI闂?	// 闂傚倸鍊烽悞锕€顪冮崹顕呯劷闁秆勵殔缁€澶愭倵閿濆骸澧插┑顔挎珪閵囧嫰骞掗幋婵冨亾閼姐倕顥氬Δ锝呭暞閻撴瑩鎮楀☉娆樼劷缂佺姵鎸鹃幉鎼佸箥椤斿皷鏋呴梺鍝勭焿缁绘繂鐣锋總鍓叉晝闁跨喓濮存禒鎰版⒒娓氣偓閳ь剛鍋涢懟顖涙櫠椤斿墽纾奸悹鍥ф▕閸庢垶淇?闂傚倸鍊峰ù鍥Υ閳ь剟鏌涚€ｎ偅宕岄柡宀嬬秮閹垽宕ㄦ繝鍕殥闂?User-Agent 闂傚倸鍊风粈渚€骞栭锕€鐤柟鍓佺摂閺佸﹪鏌熼柇锕€鏋熸い顐ｆ礃缁绘繈妫冨☉娆忕獩濡炪倐鏅犻ˉ鎾诲焵椤掆偓缁犲秹宕曢柆宥嗗亱闁糕剝绋戦崒銊╂煙缂併垹鏋熼柣鎾存礃缁绘盯骞嬮悙鍨櫑闂佽绻愰敃顏堝蓟?Codex 濠电姷鏁搁崑鐐哄箰婵犳碍鍎嶆繝濠傜墕楠炪垺绻涢崱妯哄Е婵炵鍎靛缁樻媴閸涘﹤鏆堥柣銏╁灙閺呯姴鐣烽幋鐐电瘈闁搞儜鍛Е婵＄偑鍊栫敮濠囨倿閿曞偊缍栨俊銈呭暟绾剧厧螞閻楀牏绠撳ù婊勬緲閳?
 	if s.cfg != nil && s.cfg.Gateway.ForceCodexCLI {
 		req.Header.Set("user-agent", codexCLIUserAgent)
 	}
@@ -4153,7 +4155,7 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 		return nil, fmt.Errorf("upstream error: %d (passthrough rule matched) message=%s", resp.StatusCode, upstreamMsg)
 	}
 
-	// Check custom error codes — if the account does not handle this status,
+	// Check custom error codes; if the account does not handle this status,
 	// return a generic error without exposing upstream details.
 	if !account.ShouldHandleErrorCode(resp.StatusCode) {
 		appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
@@ -4279,7 +4281,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 	if s.cfg != nil && s.cfg.Gateway.StreamDataIntervalTimeout > 0 {
 		streamInterval = time.Duration(s.cfg.Gateway.StreamDataIntervalTimeout) * time.Second
 	}
-	// 仅监控上游数据间隔超时，不被下游写入阻塞影响
+	// 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛柟缁㈠枛缁犵娀鏌熼柇锕€鍔掓繛宸簻缁€鍐┿亜閺冨洤浜规い鏂匡躬閹嘲顭ㄩ崘顏嗕紘缂備緡鍣崣鍐ㄧ暦閹烘埈娼╅柕澶堝灩娴滈箖鏌熼悜姗嗘當鐎瑰憡绻傞埞鎴︽偐閹绘帗娈插銈嗘煥缁夌懓顫忛搹瑙勫厹闁告粈绀佸▓鎰版⒑闂堚晝绉剁紒鎻掆偓鐔轰罕闂備胶顫嬮崟鍨暦闂佹娊鏀卞ú鐔煎蓟閿熺姴绀冮柕濠忕畱缁愭盯鎮楀☉娆戠疄婵﹥妞藉畷顐﹀礋椤愶絾顔戞俊鐐€栧褰掑礉濡も偓鍗遍柟閭﹀厴閺€浠嬫煕閵夈垺鏉归柡瀣墵閹鐛崹顔煎闂佺粯顨嗙划宀勨€﹂崶鈺傚磯閻炴稈鍓濋～宥夋⒑閸︻厼浜鹃柛鎾村哺瀹曟洟骞囬悧鍫㈠幗闂佸搫璇為崨顓犲幗闁诲氦顫夊ú姗€鏁嬮梺瀹狀嚙濮橈妇绮诲☉銏犵闁惧浚鍋夌欢銏ゆ⒒閸屾艾鈧悂宕愰幖浣哥柈闁瑰墎鐡旈弫瀣喐閺冨牆违濞撴埃鍋撻柡浣瑰姍瀹曠厧鈽夊Δ浣烘綎闂傚倷绀侀幉锟犮€冮崼銉ョ；闁绘劕鎼粻?
 	var intervalTicker *time.Ticker
 	if streamInterval > 0 {
 		intervalTicker = time.NewTicker(streamInterval)
@@ -4294,7 +4296,6 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 	if s.cfg != nil && s.cfg.Gateway.StreamKeepaliveInterval > 0 {
 		keepaliveInterval = time.Duration(s.cfg.Gateway.StreamKeepaliveInterval) * time.Second
 	}
-	// 下游 keepalive 仅用于防止代理空闲断开
 	var keepaliveTicker *time.Ticker
 	if keepaliveInterval > 0 {
 		keepaliveTicker = time.NewTicker(keepaliveInterval)
@@ -4309,11 +4310,9 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 	// based on downstream idle time.
 	lastDownstreamWriteAt := time.Now()
 
-	// 仅发送一次错误事件，避免多次写入导致协议混乱。
-	// 注意：OpenAI `/v1/responses` streaming 事件必须符合 OpenAI Responses schema；
-	// 否则下游 SDK（例如 OpenCode）会因为类型校验失败而报错。
+	// 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忛柟缁㈠枛缁犵娀骞栧ǎ顒€鈧垶绂嶈ぐ鎺撶厱鐎光偓閳ь剟宕戦悙鐑樺€块悹鍥梿瑜版帗鏅插鑸瞪戦ˉ鏍ь渻閵堝懐绠哄鏉戞憸閹广垹鈽夐姀鐘茶€垮銈嗘尵婵兘鎯侀崼銉︹拺閺夌偞澹嗛ˇ锕傛煥閺囶亞鐣垫鐐茬箻閹晛煤缂佹ɑ娅栨繝鐢靛仜濡瑩宕归悷鎵虫灁闁靛牆妫涚粻楣冩倵閻㈡鐒鹃棄瀣渻閵堝棙鈷愰柛鏃€顨呭嵄闁归偊鍏橀弨浠嬫倵閿濆骸浜為柛鏂跨埣濮婃椽宕滈懠顒€甯ラ梺鍝ュУ閻楁粓寮鈧畷妯侯啅椤旀儳鏁搁梻浣哄帶閹芥粓寮幖浣碘偓鍌炲矗婢跺牅绨婚梺褰掑亰閸忔瑩宕戦姀鈶╁亾鐟欏嫭绀冮柨姘舵煃鐠囧弶鍞夌紒鐘崇洴楠炴﹢鎼归銉у彂闂傚倷娴囬褏鑺遍懖鈺佺筏缂備焦顭囬悵鍫曟煕椤愮姴鍔氶柛姘贡閹叉悂寮捄銊︽闂傚嫬娲ㄧ划璇测槈濮楀棙鍍甸梺缁樻尭鐎涒晠寮抽妷锔剧瘈闁汇垽娼ч崜宕囩磽瀹ヤ礁浜炬繝鐢靛仦閹哥锕㈤柆宥呯鐟滅増甯楅弲鎼佹煟濡搫妫?	// 婵犵數濮烽弫鎼佸磻濞戔懞鍥敇閵忕姷顦悗骞垮劚椤︻垳绮堥崼婢濆綊鎮℃惔锝嗘喖闂佸搫鎷嬮崜姘跺箞閵娿儮鏀介柛鈩冾殘閸欏儱nAI `/v1/responses` streaming 濠电姷鏁搁崑娑㈡偤閵娧冨灊鐎光偓閸曞灚鏅為梺鍛婃处閸嬧偓闁哄閰ｉ弻鏇＄疀閵壯勫仹闂佹眹鍊愰崑鎾绘⒒娴ｅ憡鍟炵紒瀣浮閹箖顢旈崼婵堝姦濡炪倖宸婚崑鎾剁磼缂佹ê绗ч柛鎺撳浮椤㈡﹢濮€閳╁啯鐝栭梻渚€鈧偛鑻晶瀛橆殽?OpenAI Responses schema闂?	// 闂傚倸鍊风粈渚€骞夐敓鐘冲亜妞ゆ帒鍊绘稉宥夋煙鏉堝墽鐣遍柛銊ュ€归妵鍕冀閵娧佲偓鎺楁煃缂佹ɑ顥堥柟顔筋殜閺佹劖鎯旈垾鑼晼闂?SDK闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鏌涘☉鍗炵仭妞ゆ劒绮欓弻鏇熷緞濞戞氨绐楃紓?OpenCode闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆¤娲、娆撴倷椤掑缍楀┑鐐存綑閸氬顭囧▎鎾村€峰┑鐘叉处閻撶喐淇婇婵囩《缂併劏娉曠槐鎺楀焵椤掑倵鍋撻敐搴″缁炬儳鍚嬮妵鍕箛閳轰礁濮堕梺鎼炲€栭悷鈺呭蓟閿濆棙鍎熼柨婵嗘噹楠炲鎮楀▓鍨灆缂侇喗鐟╁顐﹀箻缂佹ê浜归梻鍌氱墛缁嬫捇鎮￠幋婵冩斀闁绘﹩鍠栭悘顏堟煕鎼淬倕浜归柛鎺撳浮瀹曟粏顦抽柛鐘叉閺屻劑寮撮悙娴嬪亾瑜版帒鍚归柍褜鍓熼弻锝堢疀閺囩偘娌梺绋块閻ゅ洭銆傞崸妤佲拻闁稿本鐟ч崝宥夋倵缁楁稑娲﹂崑锟犳煥濠靛棭妲搁柣?
 	errorEventSent := false
-	clientDisconnected := false // 客户端断开后继续 drain 上游以收集 usage
+	clientDisconnected := false // 闂傚倷娴囬褎顨ラ崫銉т笉鐎广儱顦崹鍌涚箾瀹割喕绨婚柡鍕╁劜缁绘盯骞嬮悙瀵告闂佸憡顨嗙喊宥夊Φ閸曨垰鍐€闁靛ě鈧慨鍥⒑缂佹ê绗ч柡鍜佸亰閸┾偓妞ゆ帊绶￠崯蹇涙煕閻樺啿娴€规洘鍨块獮妯肩磼濡厧骞堟繝娈垮枟閿曗晠宕滃璺虹闁挎繂顦伴悡娆撴煙缂併垹娅樻俊顐ｅ灩缁?drain 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繈鏌曟径鍡樻珕闁稿顦甸弻銈夊传閵夛附姣勫銈傛櫇閸忔﹢寮婚弴鐔风窞婵炴垯鍨洪宥夋⒑閸濆嫭锛嶅ù婊庝簻椤?usage
 	sawTerminalEvent := false
 	sawFailedEvent := false
 	failedMessage := ""
@@ -4391,8 +4390,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 		if sawFailedEvent {
 			return resultWithUsage(), fmt.Errorf("upstream response failed: %s", failedMessage), true
 		}
-		// 客户端断开/取消请求时，上游读取往往会返回 context canceled。
-		// /v1/responses 的 SSE 事件必须符合 OpenAI 协议；这里不注入自定义 error event，避免下游 SDK 解析失败。
+		// 闂傚倷娴囬褎顨ラ崫銉т笉鐎广儱顦崹鍌涚箾瀹割喕绨婚柡鍕╁劜缁绘盯骞嬮悙瀵告闂佸憡顨嗙喊宥夊Φ閸曨垰鍐€闁靛ě鈧慨鍥⒑缂佹ê绗ч柡鍜佸亰閸┾偓妞ゆ帊绶￠崯蹇涙煕閻樺啿娴€?闂傚倸鍊风粈渚€骞夐敓鐘冲仭闁挎洖鍊归崑瀣繆閵堝懎鏆熼柣顓熸尭椤啰鈧綆浜滈銏ゆ倵濮橆厼鍝烘慨濠冩そ瀹曞綊顢氶崨顓炲婵犵數濮崑鎾绘煙缂併垹鏋熼柣鎾寸洴閺屾盯骞囬棃娑樺闂佸摜鍠庡ú銊ф閹烘挻缍囬柕濞у懐鏆紓鍌欑椤戝懘藝閹殿喗宕叉繝闈涱儏缁€鍐┿亜韫囨挸顏柛姗嗗墴濮婃椽鎳￠妶鍛呫垺绻涘ù瀣珚妞ゃ垺淇洪ˇ鍫曟煏閸ャ劌濮嶇€规洘鍎奸¨渚€鏌涢妶鍡╂疁闁哄苯绉烽¨渚€鏌涢幘瀵告噰妞ゃ垺宀告俊鐑藉煛娴ｅ搫濮︽俊鐐€栫敮濠勭矆娓氣偓椤㈡碍娼忛妸锕€寮垮┑鈽嗗灥濞咃綁鏁嶅鍥╃＜闁绘ê纾崣鈧梺?context canceled闂?		// /v1/responses 闂?SSE 濠电姷鏁搁崑娑㈡偤閵娧冨灊鐎光偓閸曞灚鏅為梺鍛婃处閸嬧偓闁哄閰ｉ弻鏇＄疀閵壯勫仹闂佹眹鍊愰崑鎾绘⒒娴ｅ憡鍟炵紒瀣浮閹箖顢旈崼婵堝姦濡炪倖宸婚崑鎾剁磼缂佹ê绗ч柛鎺撳浮椤㈡﹢濮€閳╁啯鐝栭梻渚€鈧偛鑻晶瀛橆殽?OpenAI 闂傚倸鍊风粈渚€骞夐敓鐘偓鍐川椤栨稑搴婂┑掳鍊曢幏瀣极婵犲洦鐓曟繛鎴烆焽閹界娀鏌￠崪浣稿缂佺粯鐩獮瀣倷閻㈢數鍘掔紓鍌欒兌婵绱炴繝鍌ゆ綎婵炲樊浜滅粻鐢告煙閻戞ê鐒炬繛鍫幘缁辨挻鎷呯拠鈩冪暥濡炪倧瀵岄崹鍫曞春閵忋倕绫嶉柛顐ｆ儕閳哄懏鐓忓璺虹墕閸旀碍鎱ㄧ憴鍕弨婵﹥妞介幃鈩冩償椤旂晫鏋冨┑鐐茬摠缁秶鍒掗幘璇茬畺濡わ絽鍟崐閿嬨亜閹烘垵鈧敻寮?error event闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢鏌涚仦鍓р槈妞ゆ洟浜堕弻宥夊传閸曨剙娅ｇ紓浣插亾闁稿本澹曢崑鎾荤嵁閸喖濮庨柣搴㈠嚬閸ｏ綁骞冮悜钘夌閻庨潧鎽滈?SDK 闂傚倷娴囧畷鐢稿窗閹扮増鍋￠弶鍫氭櫅缁躲倕螖閿濆懎鏆為柛濠勬暬閺屻倝骞侀幒鎴濆缂備礁澧庨崑銈咁嚕閸洖閱囨い鎰垫線閸戜粙鎮跺顓犵疄婵?
 		if errors.Is(scanErr, context.Canceled) || errors.Is(scanErr, context.DeadlineExceeded) {
 			return resultWithUsage(), fmt.Errorf("stream usage incomplete: %w", scanErr), true
 		}
@@ -4408,7 +4406,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 			}
 			return resultWithUsage(), s.newOpenAIStreamFailoverError(c, account, false, upstreamRequestID, nil, msg), true
 		}
-		// 客户端已断开时，上游出错仅影响体验，不影响计费；返回已收集 usage
+		// 闂傚倷娴囬褎顨ラ崫銉т笉鐎广儱顦崹鍌涚箾瀹割喕绨婚柡鍕╁劜缁绘盯骞嬮悙瀵告闂佸憡顨嗙喊宥夊Φ閸曨垰鍐€闁靛鍔岄ˉ婵嬫⒑閹肩偛鈧牜鏁敓鐘茶摕闁跨喓濮寸壕濂告煏閸繃鍣圭紒鐘叉贡缁辨挻鎷呮禒瀣懙闂佹悶鍔岄悘婵嬵敋閿濆鏁婇柣鎰靛墮椤庢盯姊洪棃鈺佺槣闁告﹢绠栬棟妞ゆ梻鏅粻楣冩煙鐎电浠﹂悘蹇ｅ弮閺屻劑寮村Ο鍝勫Е闂佽鍠撻崕闈涚暦婵傜鍗抽柣鎰問濡茶鲸绻濋悽闈涗粶婵☆垰锕ョ粋宥呪攽鐎ｎ亞鏌ч梺瀹犳〃閹儴銇愰幒鎾充汗闂佸憡鐟ラˇ顖氣枍閿濆棛绡€闂傚牊绋戦埀顒€缍婇幃褔鎮╅懠顒佹濡炪倖鍔戦崺鍕触鐎ｎ喗鐓曢柡鍥ュ妼楠炴ê顫㈤崶褉鏀介幒鎶藉磹濡や焦鍙忛柟缁㈠枟閸庢顭跨捄鐑樻拱妞ゎ偅娲樼换婵嬫濞戞瑥绐涢梺宕囩帛濮婂鍩€椤掆偓缁犲秹宕曢柆宥呯疇閹兼番鍔婇埀顒€鍟埥澶愬閿涘嫬骞堟繝鐢靛█濞佳兾涘☉妯绘瘎濠碉紕鍋戦崐鏍箰閹间礁绠烘繝濠傜墕缁狀垳鎲搁悧鍫濈瑲闁稿骸鐭傞弻娑樷攽閸曨偄濮庨梺鍏兼緲濞硷繝寮婚埄鍐ㄧ窞闁糕剝蓱閻濇洟姊洪崫鍕潶闁告柨鐬奸崣鍛存⒑閸濆嫯鐧侀悘鐐跺Г濞呭﹪姊绘担鍛婂暈闁荤喆鍎佃棟濞村吋娼欏Ч鍙夈亜韫囨挾澧涢柍?usage
 		if clientDisconnected {
 			return resultWithUsage(), fmt.Errorf("stream usage incomplete after disconnect: %w", scanErr), true
 		}
@@ -4455,11 +4453,11 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 			}
 			startsClientOutput := forceFlushFailedEvent || openAIStreamDataStartsClientOutput(data, eventType)
 
-			// 写入客户端（客户端断开后继续 drain 上游）
+			// 闂傚倸鍊风粈渚€骞夐敓鐘茬闁哄稁鍘介崑锟犳煏婢跺棙娅呴柣顓燁殜閺屾盯鍩勯崘顏呭枦闂佺顑嗛幑鍥偘椤曗偓瀹曞綊顢欓崣銉ф／闂傚倷鑳剁涵鍫曞疾濠婂懐鐭欓柟鎹愭硾閸ㄦ繈鏌嶉崫鍕闁轰礁绉归弻鏇㈠醇濠靛洤绐涘銈忚吂閺呯娀寮婚敐鍡樺劅闁挎稑瀚弳娑㈡⒑閹肩偛濡芥俊鐐舵閻ｇ兘宕崟銊︻潔濠殿喗锚瀹曨剙鐣烽妷銉富闁靛牆妫涙晶顒傜磼鐎ｎ偄娴柟顔惧仱閹墽浠︾粙澶稿濠电偛鐗嗛悘婵嬪几閹剧粯鐓曢悗锝庡亝瀹曞矂鏌＄仦鍓р槈妞ゎ偅绻堥、妤佹媴閻熶即妫烽梻鍌欐祰椤骞愰幎鍓垮骞橀懜娈挎綗?drain 濠电姷鏁搁崑鐐哄垂閸洖绠伴柟闂寸劍閺呮繈鏌曟径鍡樻珕闁稿顦甸弻娑㈩敃閿濆棛顦ㄩ梺?
 			if !clientDisconnected {
 				shouldFlush := queueDrained && (clientOutputStarted || startsClientOutput)
 				if firstTokenMs == nil && startsClientOutput {
-					// 保证首个 token 事件尽快出站，避免影响 TTFT。
+					// 濠电姷鏁搁崕鎴犲緤閽樺娲晜閻愵剙搴婇梺绯曞墲缁嬫帡宕曟繝鍌ょ唵閻犺桨璀﹂崕婊呯磼鏉堛劍顥堥柡灞糕偓鎰佸悑闊洦娲滈弳銈夋⒑?token 濠电姷鏁搁崑娑㈡偤閵娧冨灊鐎光偓閸曞灚鏅為梺鍛婃处閸嬧偓闁哄閰ｉ弻鏇＄疀閿濆棛绐旈梺缁樺笒閿曨亪寮婚敃鈧灒濞撴凹鍨辨晥闁荤喐绮忛崺鍥磿閻㈢钃熸繛鎴欏灩缁狅綁鏌ㄥ┑鍡橈紞濞寸姭鏅犲铏圭磼濡偐顓奸梺鎼炲妼閻栫厧顕ｉ銏╁悑闁告侗鍨卞▓鏇㈡⒑閸涘﹥澶勫ù婊呭仧濡叉劕顫濋懜纰樻嫼缂備礁顑堝▔鏇犵不閹殿喚纾煎璺猴功閹界姷绱掓潪鎵煓鐎殿喕绮欓、姗€鎮欓幍顔惧€?TTFT闂?
 					shouldFlush = true
 				}
 				if _, err := bufferedWriter.WriteString(line); err != nil {
@@ -4508,7 +4506,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 		}
 	}
 
-	// 无超时/无 keepalive 的常见路径走同步扫描，减少 goroutine 与 channel 开销。
+	// 闂傚倸鍊风粈渚€骞栭锕€鐤柣妤€鐗婇崣蹇涙煕閹炬鎳愰悡瀣⒑閸︻叀妾搁柛鐘崇墱閻?闂?keepalive 闂傚倸鍊烽悞锕傛儑瑜版帒绀夌€光偓閳ь剟鍩€椤掍礁鍤柛鎾跺枛楠炲啴濡烽埡浣侯槶婵炶揪绲块幊鎾诲几閸屾稓绠鹃弶鍫濆⒔閹ジ鏌￠崪浣镐喊闁诡喓鍨藉畷銊╊敍濡も偓娴滈箖鏌涢…鎴濅簼缂佽埖鐓￠幃妤€顫濋悡搴ｄ桓闂佺妫勯崐濠氬焵椤掑﹦绉甸柛鐘崇墱閹叉挳鏁冮崒娑樷偓鍫曟煟閹邦亞绁锋俊鐐倐閺屾盯寮崹顕呬純闂佸搫鐬奸崰搴ㄥ煝閹捐鍨傛い鏃囧吹閸戝綊鏌ｆ惔銏╁晱闁哥姵鐗曢…鍥晸閻樺弶鐎悗骞垮劚濞诧絽鈻介鍫熺參婵☆垯璀﹀Σ瑙勩亜韫囥儳绡€闁?goroutine 濠?channel 闂備浇顕х€涒晠顢欓弽顓炵獥闁圭儤顨呯壕濠氭煙閸撗呭笡闁抽攱鍨块獮鏍偓娑櫳戠亸顓灻瑰鍫㈢暫婵?
 	if streamInterval <= 0 && keepaliveInterval <= 0 {
 		defer putSSEScannerBuf64K(scanBuf)
 		for scanner.Scan() {
@@ -4527,7 +4525,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 		line string
 		err  error
 	}
-	// 独立 goroutine 读取上游，避免读取阻塞影响 keepalive/超时处理
+	// 闂傚倸鍊烽懗鍓佸垝椤栫偞鍋℃い鏍仜缁€鍫熺箾閹存瑥鐏柛?goroutine 闂傚倷娴囧畷鍨叏閺夋嚚娲煛閸滀焦鏅悷婊勫灴婵＄敻骞囬弶璺ㄥ€為梺闈浤涢埀顒勫几閺嶃劎绡€闁汇垽娼у瓭闂佸摜鍠嶉崡鍐茬暦閸濆嫀鏃堝川椤旀儳寮虫繝鐢靛仦閸ㄥ爼鈥﹂崶顒佸€跨紒瀣紩閸︻厺鐒婇柡宥冨妽閻濇岸鎮楃憴鍕妞ゃ劌鎳橀、妯荤附缁嬪潡鍞跺銈嗗姂閸ㄦ椽顢欓幋锔解拻濞达絽鎲￠崯鐐烘煟閻曞倻鐣甸柟顔ㄥ洦鍋愰柛娆忓€婚崰鏍х暦閸楃倣鐔兼嚃閳哄啯姣岄梻鍌欒兌缁垶宕濋弽顑句汗闁告劦鍠撻埀顒€鍟埥澶愬閿涘嫬骞?keepalive/闂傚倷鑳堕崕鐢稿礈濠靛牊鏆滈柟鐑橆殔缁犵娀鐓崶銊︽儎婵炴挸顭烽弻娑氫沪閸撗€妲堢紓浣稿閸嬨倝寮诲☉銏犲嵆闁靛鍎辩粻娲⒑?
 	events := make(chan scanEvent, 16)
 	done := make(chan struct{})
 	sendEvent := func(ev scanEvent) bool {
@@ -4578,7 +4576,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 				return resultWithUsage(), fmt.Errorf("stream usage incomplete after timeout")
 			}
 			logger.LegacyPrintf("service.openai_gateway", "Stream data interval timeout: account=%d model=%s interval=%s", account.ID, originalModel, streamInterval)
-			// 处理流超时，可能标记账户为临时不可调度或错误状态
+			// 濠电姷鏁告慨浼村垂閻撳簶鏋栨繛鎴炲焹閸嬫挸顫濋悡搴㈢彎濡ょ姷鍋涢崯顖滄崲濠靛纾绘い鏍ㄧ箥濞兼劙鏌熷畡鐗堝殗闁诡喖澧芥禒锕€鈹戦崟顐や紙闂佸搫鐭夌换婵嗙暦濮椻偓椤㈡顦查柡鍜冪悼缁辨挻鎷呮禒瀣懙缂備浇顕ч悧鍡涙偩閻戣姤鏅插鑸瞪戦弲顒€鈹戦悩缁樻锭婵☆偅顨婇悰顔锯偓锝庡枟閳锋垿鏌涘┑鍡楊伀鐎涙繂鈹戦悙瀵搞偞闁哄懐濞€閵嗕礁鈻庨幘宕囧€為梺鍐叉惈閸婃悂顢旈幖浣光拺闁圭瀛╅ˉ鍡樹繆椤愩垹顏柟顕嗙節瀵挳鎮欓埡鍌ゆ綌闂備浇顫夊畷姗€锝炴径鎰ラ柛鎰电厛閻斿棝鎮规ウ鎸庮仩閺佸牓鎮楀▓鍨珮闁革綇绲介锝夋偨閸涘﹤浠洪梺姹囧灩閻忔岸宕伴幒妤佲拻濞达絽鎲￠崯鐐烘煟閻曚礁鐏︾€规洖缍婇幃浠嬪川婵犲倸澹勯梻浣虹帛閺屻劑骞夐敓鐘茬？闁绘柨鍚嬮悡銉╂煛閸愩劍澶勬い銉ヮ樀閺岋綀绠涢弮鎴炵杹濠殿喖锕ュ浠嬬嵁閹邦厽鍎熼柨婵嗘濞呮瑦淇婇悙顏勨偓鏍鸿箛娑樼９婵犻潧顑呯粻鏍煃閸濆嫭鍣洪柛銈咁儑閻ヮ亪鎮ч崺顐簼缁?
 			if s.rateLimitService != nil {
 				s.rateLimitService.HandleStreamTimeout(ctx, account, originalModel)
 			}
@@ -4608,8 +4606,7 @@ func (s *OpenAIGatewayService) handleStreamingResponse(ctx context.Context, resp
 
 }
 
-// extractOpenAISSEDataLine 低开销提取 SSE `data:` 行内容。
-// 兼容 `data: xxx` 与 `data:xxx` 两种格式。
+// extractOpenAISSEDataLine 濠电姷鏁搁崑鐘诲箵椤忓棗绶ら柤鎭掑労濞堜粙鏌涘┑鍕姕妞ゎ偅娲熼弻鐔告綇妤ｅ啯顎嶉梺缁樻尪閸庣敻寮诲鍫闂佸憡鎸鹃崰鏍偘椤曗偓楠炴鎷犻懠顒傛澑婵＄偑鍊栧濠氬磻閹惧墎纾?SSE `data:` 闂傚倷娴囧畷鐢稿磻閻愮數鐭欓柟杈鹃檮閸ゆ劖銇勯弽顐粶闁肩缍婇幃妤呮偨閻㈢偣鈧﹪鏌涚€ｎ偅宕岄柟顔惧厴楠炲秹顢欓悙顒侇唵闂?// 闂傚倸鍊烽懗鍫曗€﹂崼銏″床闁圭儤顨呴崒銊ф喐閺冨牄鈧?`data: xxx` 濠?`data:xxx` 濠电姷鏁搁崑鐐哄垂閸洖绠伴柛顐ｆ礀绾捐淇婇妶鍛珔缂傚秵鐗犻弻鐔兼倻濮楀棙鐣堕梺鍛婂姀閸嬫捇姊绘担铏瑰笡闁瑰摜顭堥湁濡炲瀛╅崗婊堟煃瑜滈崜鐔奉潖?
 func extractOpenAISSEDataLine(line string) (string, bool) {
 	if !strings.HasPrefix(line, "data:") {
 		return "", false
@@ -4703,7 +4700,6 @@ func (s *OpenAIGatewayService) replaceModelInSSELine(line, fromModel, toModel st
 		return line
 	}
 
-	// 使用 gjson 精确检查 model 字段，避免全量 JSON 反序列化
 	if m := gjson.Get(data, "model"); m.Exists() && m.Str == fromModel {
 		newData, err := sjson.Set(data, "model", toModel)
 		if err != nil {
@@ -4712,7 +4708,6 @@ func (s *OpenAIGatewayService) replaceModelInSSELine(line, fromModel, toModel st
 		return "data: " + newData
 	}
 
-	// 检查嵌套的 response.model 字段
 	if m := gjson.Get(data, "response.model"); m.Exists() && m.Str == fromModel {
 		newData, err := sjson.Set(data, "response.model", toModel)
 		if err != nil {
@@ -4724,7 +4719,7 @@ func (s *OpenAIGatewayService) replaceModelInSSELine(line, fromModel, toModel st
 	return line
 }
 
-// correctToolCallsInResponseBody 修正响应体中的工具调用
+// correctToolCallsInResponseBody 濠电姷鏁搁崕鎴犲緤閽樺褰掑磼閻愯尙鐛ュ┑掳鍊曢幏瀣极閸℃绡€濠电姴鍊绘晶鏇灻归懖鈺佇ラ柍褜鍓欑粻宥夊磿闁秴绠犻柟閭﹀枓閸嬫捇鎮烽柇锔叫﹂梻鍥ь樀閺屻劌鈹戦崱姗嗘！闁诲繐娴氶崑濠囧蓟閵堝鍨傛い鎰╁灮娴煎矂姊虹拠鈥崇仩闁哥喐娼欓悾鐑芥偄绾拌鲸鏅濋梺鎸庣☉鐎氼噣鎮￠幋锔解拻濞达絼璀﹂悞鍓х磼缂佹ê娴€殿喚绮鍕箛椤撶偛澹勯梻浣虹帛閺屻劑宕ョ€ｎ喖纾?
 func (s *OpenAIGatewayService) correctToolCallsInResponseBody(body []byte) []byte {
 	if len(body) == 0 {
 		return body
@@ -4745,7 +4740,7 @@ func (s *OpenAIGatewayService) parseSSEUsageBytes(data []byte, usage *OpenAIUsag
 	if usage == nil || len(data) == 0 || bytes.Equal(data, []byte("[DONE]")) {
 		return
 	}
-	// 选择性解析：仅在数据中包含终止事件标识时才进入字段提取。
+	// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ瀬閸ヮ剙绠ユい鏃傛嚀娴滅偓鎱ㄥΟ绋垮姎濠殿喖鍊归〃銉╂倷閳轰椒澹曢梺鑽ゅ枑缁秹宕规總鎼炩偓鍌涖偅閸愨斁鎷洪梺鍛婄箓鐎氱兘宕曢幇鐗堢厱闁哄倻鍋涢幊蹇涳綖閺囥垺鐓熸俊銈傚亾闁绘绻橀妴鍛存倻閼恒儳鍘卞┑鐐村灥瀹曨剟鐛Δ鍛棅妞ゆ帒顦晶鎾煛鐏炵澧查柟宄版嚇瀹曨偊宕熼崹顐ｇ様闂佽姘﹂～澶愬箰閻戣姤鍊块柨鏂垮⒔閻瑥顭块懜闈涘Е闁轰礁娲弻锝夊箛椤栨氨姣㈠┑鈽嗗灟缁舵艾顫忓ú顏勫窛濠电姴鍊稿В鍫ユ⒑缁嬫鍎忔俊顐ｇ洴瀹曟岸骞掑Δ鈧粻濠氭煙妫颁胶鍔嶆俊妞煎妼椤啴濡舵惔鈥茶埅闂佸憡锕㈢粻鏍箚閸愵喖绠ｆ繝銏＄箓缂嶅﹪骞冮埡鍛紶闁告洦鍘肩敮鍧楁⒒娴ｈ櫣甯涢柣妤婂幘瀵板﹪宕稿Δ鈧粻顖炴煟濡鍤欐鐐灪娣囧﹪顢涘☉娆嶄户濠碘€虫▕閸ㄨ泛顫忔ウ瑁や汗闁圭儤鎸婚柨顓犵磽娴ｅ壊妯€妞ゃ儲鎹囬獮鎴﹀閻欌偓濞笺劑鏌嶈閸撴瑩鎮惧畡鎷旀棃宕ㄩ鍥ュ姂閺屾洘绔熼姘仾闁哥姵娲樼换婵嬫偨闂堟稐绮堕梺缁橆殔濡繈骞冨Ο渚僵闁绘劖鍨濆Ч妤佺箾閹炬潙鐒归柛瀣尵閳ь剝顫夊ú鈺冪礊娴ｅ壊鍤曞ù鐘差儏鍞梺闈涚箳婵櫕绔?
 	if len(data) < 72 {
 		return
 	}
@@ -5090,11 +5085,7 @@ func (s *OpenAIGatewayService) validateUpstreamBaseURL(raw string) (string, erro
 	return normalized, nil
 }
 
-// buildOpenAIResponsesURL 组装 OpenAI Responses 端点。
-// - base 以 /v1 结尾：追加 /responses
-// - base 以其他版本段结尾（如 /v4）：追加 /responses
-// - base 已是 /responses：原样返回
-// - 其他情况：追加 /v1/responses
+// buildOpenAIResponsesURL builds the OpenAI Responses endpoint URL.
 func buildOpenAIResponsesURL(base string) string {
 	return buildOpenAIEndpointURL(base, "/v1/responses")
 }
@@ -5303,7 +5294,6 @@ func appendOpenAIResponsesRequestPathSuffix(baseURL, suffix string) string {
 }
 
 func (s *OpenAIGatewayService) replaceModelInResponseBody(body []byte, fromModel, toModel string) []byte {
-	// 使用 gjson/sjson 精确替换 model 字段，避免全量 JSON 反序列化
 	if m := gjson.GetBytes(body, "model"); m.Exists() && m.Str == fromModel {
 		newBody, err := sjson.SetBytes(body, "model", toModel)
 		if err != nil {
@@ -5323,8 +5313,8 @@ type OpenAIRecordUsageInput struct {
 	Subscription       *UserSubscription
 	InboundEndpoint    string
 	UpstreamEndpoint   string
-	UserAgent          string // 请求的 User-Agent
-	IPAddress          string // 请求的客户端 IP 地址
+	UserAgent          string // 闂傚倷娴囧畷鍨叏閺夋嚚娲敇閵忕姷鍝楅梻渚囧墮缁夌敻宕曢幋婢濆綊鎮℃惔锝嗘喖闂?User-Agent
+	IPAddress          string // Client IP address.
 	RequestPayloadHash string
 	APIKeyService      APIKeyQuotaUpdater
 	ChannelUsageFields
@@ -5349,8 +5339,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	subscription := input.Subscription
 	ApplyOpenAIImageBillingResolution(result)
 
-	// 计算实际的新输入token（减去缓存读取的token）
-	// 因为 input_tokens 包含了 cache_read_tokens，而缓存读取的token不应按输入价格计费
+	// 闂傚倷娴囧畷鍨叏瀹曞洦顐介柕鍫濇处椤洟鏌￠崶銉ョ仾闁稿鏅犻弻銈嗘叏閹邦兘鍋撻幇鏉跨；闁规崘顕ч幑鑸点亜閹捐泛浠掓俊鍙夊姇閳规垿鏁嶉崟顔筋€楅梺鎼炲妼閻栧ジ鐛崱娑樼妞ゆ棁鍋愰ˇ鏉款渻閵堝棗绗傞柤鍐茬埣瀹曘垽骞囬悧鍫㈠幐婵犮垼娉涢敃锔芥櫠濞戙垺鐓欓柛娑橈攻閸婃劗鈧娲╃紞浣哥暦椤掆偓椤繘鎮ラ崳鈧琻闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鏌涢埄鍐槈闂傚偆鍨辩换娑橆啅椤旇崵鐩庨梺绋胯閸旀垿寮婚妶鍡樺弿闁归偊鍏橀崑鎾澄旀担鍝ョ獮闂佸憡娲﹂崹閬嶅磹閸偆绠鹃柟瀵稿仧閹虫劙鏌ｉ幒鏂夸壕闁靛洤瀚板鏉戭潩椤掆偓缁侇噣鎮楃憴鍕┛缂傚秳绀侀锝嗙鐎ｅ灚鏅濋梺鎸庣箓濞诧箑鈻撶粩顪祂en闂?	// 闂傚倸鍊烽悞锕傚箖閸洖纾块柧蹇ｅ亝閸欏繒鈧娲栧ú锔锯偓?input_tokens 闂傚倸鍊风粈渚€骞夐敓鐘冲亱闁哄洢鍨圭粻鐘诲箹濞ｎ剙濡肩紒鐘冲哺閺屾盯顢曢妶鍛亖濡?cache_read_tokens闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢銆掑锝呬壕闂佺硶鏂侀崑鎾愁渻閵堝棗鍧婇柛瀣崌閺岋綁顢楅崘銊ゆ睏濠碘€冲级閸旀瑩寮崒鐐寸叆妞ゆ牗鐭竟鏇炩攽閻愭潙鐏﹂柣鐕佸灦閹偤鎮欓鍙ョ盎闂佸搫娲﹂懝鎯х暤閸℃瑢鍋撶憴鍕┛缂傚秳绀侀锝嗙鐎ｅ灚鏅濋梺鎸庣箓濞诧箑鈻撶粩顪祂en濠电姷鏁搁崑鐐哄垂閸洖绠伴柛婵勫劤閻捇鎮楅崹顐ゆ憙濠殿喗濞婇弻锛勪沪鐠囨彃濮庣紓浣哄У濠㈡﹢鈥︾捄銊﹀磯闁绘垶蓱瀹曞磭绱撻崒姘卞妞ゎ厾鍏樺璇测槈濠婂懐鏉搁柣搴秵娴滄粍鎱ㄥ澶嬧拺缂備焦顭囬惌銈夋煕閵娿劍纭炬い鏇稻缁傛帞鈧綆鍋勫▓鐐烘⒒娓氬洤寮跨紒鐘冲灴楠炲啯绗熼埀顒勫蓟?
 	actualInputTokens := result.Usage.InputTokens - result.Usage.CacheReadInputTokens
 	if actualInputTokens < 0 {
 		actualInputTokens = 0
@@ -5432,7 +5421,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	accountRateMultiplier := account.BillingRateMultiplier()
 	requestID := resolveUsageBillingRequestID(ctx, result.RequestID)
 
-	// 确定 RequestedModel（渠道映射前的原始模型）
+	// Prefer the original requested model for billing display when it differs from the upstream model.
 	requestedModel := result.Model
 	if input.OriginalModel != "" {
 		requestedModel = input.OriginalModel
@@ -5461,6 +5450,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		ImageOutputSize:     optionalTrimmedStringPtr(result.ImageOutputSize),
 		ImageSizeSource:     optionalTrimmedStringPtr(result.ImageSizeSource),
 		ImageSizeBreakdown:  result.ImageSizeBreakdown,
+		VideoCount:          result.VideoCount,
 	}
 	if cost != nil {
 		usageLog.InputCost = cost.InputCost
@@ -5483,10 +5473,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	usageLog.DurationMs = &durationMs
 	usageLog.FirstTokenMs = result.FirstTokenMs
 	usageLog.CreatedAt = time.Now()
-	// 设置渠道信息
-	usageLog.ChannelID = optionalInt64Ptr(input.ChannelID)
+	// 闂傚倷娴囧畷鍨叏瀹曞洨鐭嗗ù锝堫潐濞呯姴霉閻樺樊鍎愰柛瀣典邯閺屾盯鍩勯崘锔跨不闂侀€炲苯澧悽顖ょ節楠炲啴鍩￠崘鈺侇€涢梺鍛婂姇濡﹤螞濠婂啠鏀介柣鎴濇川閸掔増绻涢懠顒€鈻堢€规洘绮岄埞鎴﹀炊瑜滈崵?	usageLog.ChannelID = optionalInt64Ptr(input.ChannelID)
 	usageLog.ModelMappingChain = optionalTrimmedStringPtr(input.ModelMappingChain)
-	// 设置计费模式
+	// 闂傚倷娴囧畷鍨叏瀹曞洨鐭嗗ù锝堫潐濞呯姴霉閻樺樊鍎愰柛瀣典邯閺屾盯鍩勯崘顏呭櫗婵犳鍨伴妶绋款潖娴犲鐐婃い鎺嗗亾闁搞劌鍊块弻娑氫沪缂併垹娈奸梺缁樻⒒閸樠囨倶瀹曞洠鍋撶憴鍕婵炲眰鍔戦妴?
 	if cost != nil && cost.BillingMode != "" {
 		billingMode := cost.BillingMode
 		usageLog.BillingMode = &billingMode
@@ -5497,12 +5486,12 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		billingMode := string(BillingModeToken)
 		usageLog.BillingMode = &billingMode
 	}
-	// 添加 UserAgent
+	// 婵犵數濮烽弫鎼佸磿閹寸姷绀婇柍褜鍓氶妵鍕即閸℃顏柛?UserAgent
 	if input.UserAgent != "" {
 		usageLog.UserAgent = &input.UserAgent
 	}
 
-	// 添加 IPAddress
+	// 婵犵數濮烽弫鎼佸磿閹寸姷绀婇柍褜鍓氶妵鍕即閸℃顏柛?IPAddress
 	if input.IPAddress != "" {
 		usageLog.IPAddress = &input.IPAddress
 	}
@@ -5514,7 +5503,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		usageLog.SubscriptionID = &subscription.ID
 	}
 
-	// 计算账号统计定价费用（使用最终上游模型匹配自定义规则）
+	// 闂傚倷娴囧畷鍨叏瀹曞洦顐介柕鍫濇处椤洟鏌￠崶銉ョ仾闁稿鏅犻弻銈嗘叏閹邦兘鍋撻弽顐熷亾濮橆剦鐓奸柡灞诲姂瀵潙螖閳ь剚绂嶆ィ鍐╁仭婵犲﹤瀚婊勭箾婢跺绀堟俊鍙夊姍楠炴帒螖娴ｉ晲绨绘繝鐢靛仩鐏忣亪顢氳楠炲啯绗熼埀顒勫蓟閿濆棙鍎熼柕鍫濆缂嶅牓姊哄ú璇插季闁革綇缍侀獮鍐箮缁涘鏅┑鐘诧工鐎氼剟顢旈幖浣光拺闂傚牃鏅涢惁婊堟煕濡湱鐭欑€殿喖鐤囩粻娑樷槈濞嗘垵寮虫繝鐢靛仦閸ㄥ爼鈥﹂崶銊︽珷闁哄倸绨遍弨浠嬫煟閹邦剙绾ч柛鐘筹耿閺岀喖顢欓懡銈囩厯婵犵鍓濋幃鍌炲极閸岀偛绠ｉ柟鐑樻煥缁楋紕绱撻崒姘偓鎼佸磹妞嬪海鐭嗗〒姘ｅ亾闁诡啫鍥у窛妞ゆ牗绮庨悾鍫曟⒑缁嬫寧婀伴柛婵嗛叄閸┾偓妞ゆ帊绀佸ù顔锯偓瑙勬磸閸斿秶鎹㈠☉銏犳闁告挆鍛床闁诲氦顫夊ú鏍э耿闁秴鐒垫い鎺戯功缁夐潧霉濠婂嫮鐭掗柟顔哄劦閺屽棗顓奸崱蹇斿闂備礁鎼ˇ鍐测枖閺囩偞姣勯梻鍌欑劍閹爼宕愰弽顐㈠灊閹兼番鍔岄悞鍨亜閹烘垵鏋ゆ繛鍏煎姍閺岋綁顢樿閺嬨倗绱掗纰辩吋闁诡喓鍨介幃婊兾熼悜妯尖偓顓㈡⒒娴ｅ憡鍟炴繛璇х畵瀹曟垿宕熼娑樷偓鍫曟煟閺傚灝鎮戦柣?
 	if apiKey.GroupID != nil {
 		applyAccountStatsCost(ctx, usageLog, s.channelService, s.billingService,
 			account.ID, *apiKey.GroupID, result.UpstreamModel, result.Model,
@@ -5566,6 +5555,9 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	if result != nil && result.ImageCount > 0 {
 		return s.calculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier), nil
 	}
+	if result != nil && result.VideoCount > 0 {
+		return s.calculateOpenAIVideoCost(ctx, billingModel, apiKey, result, multiplier), nil
+	}
 	if len(billingModels) == 0 || billingModel == "" {
 		return nil, errors.New("openai usage billing model is empty")
 	}
@@ -5596,6 +5588,37 @@ func isUsagePricingUnavailableError(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "no pricing available") || strings.Contains(msg, "pricing not found")
+}
+
+func (s *OpenAIGatewayService) calculateOpenAIVideoCost(
+	ctx context.Context,
+	billingModel string,
+	apiKey *APIKey,
+	result *OpenAIForwardResult,
+	multiplier float64,
+) *CostBreakdown {
+	videoCount := 1
+	if result != nil && result.VideoCount > 0 {
+		videoCount = result.VideoCount
+	}
+	if resolved := s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey); resolved != nil &&
+		(resolved.Mode == BillingModePerRequest || resolved.Mode == BillingModeVideo) {
+		gid := apiKey.Group.ID
+		cost, err := s.billingService.CalculateCostUnified(CostInput{
+			Ctx:            ctx,
+			Model:          billingModel,
+			GroupID:        &gid,
+			RequestCount:   videoCount,
+			RateMultiplier: multiplier,
+			Resolver:       s.resolver,
+			Resolved:       resolved,
+		})
+		if err == nil {
+			return cost
+		}
+		logger.LegacyPrintf("service.openai_gateway", "Calculate video channel cost failed: %v", err)
+	}
+	return &CostBreakdown{BillingMode: string(BillingModeVideo)}
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIRecordUsageTokenCost(
@@ -5774,7 +5797,7 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 	baseTime := codexSnapshotBaseTime(snapshot, fallbackNow)
 	updates := make(map[string]any)
 
-	// 保存原始 primary/secondary 字段，便于排查问题
+	// 濠电姷鏁搁崕鎴犲緤閽樺娲晜閻愵剙搴婇梺绋跨灱閸嬬偤宕戦妶澶嬬厪濠电偟鍋撳▍鍛存煕鐏炶濮傞柡宀嬬秮瀵剙鈻庨悙顒傛瀮婵?primary/secondary 闂傚倷娴囬褏鈧稈鏅濈划娆撳箳濡炲皷鍋撻崘顔煎耿婵炴垼椴搁弲鈺呮倵閸忓浜鹃梺鍛婃处閸撴艾鈻嶉弽顓熺厽闊洦娲栨禒鈺呮煕鐎ｎ偄濮嶉柛鈺冨仱楠炴帡骞婇妸褎鍤€妞ゎ厹鍔戝畷姗€鈥﹂幋婵單ㄩ梻浣圭湽閸╁嫰宕归柆宥呯闁搞儜灞芥婵犵數濮甸懝鎯ф暜闂備礁鍟块幖顐﹀磻婵犲嫭顫曟い蹇撴噸缁?
 	if snapshot.PrimaryUsedPercent != nil {
 		updates["codex_primary_used_percent"] = *snapshot.PrimaryUsedPercent
 	}
@@ -5798,7 +5821,6 @@ func buildCodexUsageExtraUpdates(snapshot *OpenAICodexUsageSnapshot, fallbackNow
 	}
 	updates["codex_usage_updated_at"] = baseTime.Format(time.RFC3339)
 
-	// 归一化到 5h/7d 规范字段
 	if normalized := snapshot.Normalize(); normalized != nil {
 		if normalized.Used5hPercent != nil {
 			updates["codex_5h_used_percent"] = *normalized.Used5hPercent
@@ -5920,9 +5942,8 @@ func extractOpenAIRequestMetaFromBody(body []byte) (model string, stream bool, p
 	return model, stream, promptCacheKey
 }
 
-// normalizeOpenAIPassthroughOAuthBody 将透传 OAuth 请求体收敛为旧链路关键行为：
-// 1) 删除 ChatGPT internal API 不支持的顶层 Responses 参数
-// 2) store=false 3) 非 compact 保持 stream=true；compact 强制 stream=false
+// normalizeOpenAIPassthroughOAuthBody 闂傚倷娴囬褏鎹㈤幇顔藉床闁归偊鍎靛☉妯锋斀閻庯綆浜為崝锕€顪冮妶鍡楀潑闁稿鎸剧槐鎺旀嫚瀹割喖鍓冲┑?OAuth 闂傚倷娴囧畷鍨叏閺夋嚚娲敇閵忕姷鍝楅梻渚囧墮缁夌敻宕曢幋锔界厽婵°倐鍋撻柣妤€锕ラ崚濠囧箻椤旂晫鍘甸梺璇″瀻閸涱喗鍠栭梻浣告惈濡厽绂嶉鍫濊摕闁斥晛鍟刊鎾煕閿旇骞愭俊顐熸櫊閺岋綁鎮╅崘鎻掝潕闂佸摜濮甸悧鏇㈩敋閿濆鏁婃繛鍡欏亾閳诲矂姊绘担鐑樺殌闁逞屽墰閸犲孩绂嶈ぐ鎺撶厵闁荤喐婢橀顓熴亜閵忥紕鈽夋い顐ｇ箞椤㈡鍩€椤掑倻绀婃慨妞诲亾婵﹦绮幏鍛嫚閳ュ啿濡奸梻浣告憸婵敻鎯勯鐐参ュ〒姘ｅ亾妤犵偛顑夐幃娆戝枈濡崵浜欓梻鍌欒兌缁垶鎳濇ィ鍐炬晪妞ゆ挾濮烽悳?
+// 1) 闂傚倸鍊风粈渚€骞夐敍鍕殰闁绘劕顕粻楣冩煃瑜滈崜姘辨崲?ChatGPT internal API 濠电姷鏁搁崑鐐哄垂閸洖绠伴柛婵勫劤閻捇鏌ｉ姀銏╃劸闁哄鐒﹂妵鍕即濡も偓娴滄儳螖閻橀潧浠﹂柛鏃€鐗犻獮蹇涘川鐎涙ê鈧粯淇婇姘倯婵炲牏顭堥埞鎴︽晬閸曨偂鏉梺绋匡攻缁嬫垿鍩㈤弬搴撴闁靛繆鈧啿澹?Responses 闂傚倸鍊风粈渚€骞夐敓鐘冲仭闁靛鏅涚壕鍦喐閻楀牆绗掓慨?// 2) store=false 3) 闂?compact 濠电姷鏁搁崕鎴犲緤閽樺娲晜閻愵剙搴婇梺鍛婂姦娴滄牠宕?stream=true闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑橆殕閸庢鏌ｆ惔鈶芥攽act 闂備浇顕х€涒晠顢欓弽顓炵獥闁哄稁鍘肩粻瑙勩亜閹板墎鐣遍柡?stream=false
 func normalizeOpenAIPassthroughOAuthBody(body []byte, compact bool) ([]byte, bool, error) {
 	if len(body) == 0 {
 		return body, false, nil
@@ -6047,10 +6068,7 @@ func normalizeOpenAIServiceTier(raw string) *string {
 	if value == "fast" {
 		value = "priority"
 	}
-	// 放过 OpenAI 官方文档定义的所有合法 tier 值：priority/flex/auto/default/scale。
-	// 对 Codex 客户端零影响（Codex 只发 priority 或 flex，见 codex-rs/core/src/client.rs），
-	// 但能让直连 OpenAI SDK 的用户透传 auto/default/scale 以便抓包/调试。
-	// 真未知值仍返回 nil，由 normalizeResponsesBodyServiceTier 从 body 中删除。
+	// 闂傚倸鍊峰ù鍥Υ閳ь剟鏌涚€ｎ偅宕岄柡宀€鍠撻幉鎾礋椤愩埄娼曠紓?OpenAI 闂傚倷娴囬褍顫濋敃鍌︾稏濠㈣泛瀛╅幊宀勬⒒娴ｅ憡鎯堥柣顒€銈稿畷浼村冀瑜滈崵鏇熴亜閹烘垵顏╅柣鎰躬閺屾洘绻濊箛鏇炵煗闂佺顑嗛幑鍥х暦閹烘垟鏀﹂柟顖嗗倸顥氶梺鑽ゅ枑閻熴儳鈧凹鍣ｉ幃锟狀敍濠婂懐锛滈梺缁橈耿濞佳囧几濞戙垺鐓欐い鏍ㄨ壘閺嗭絿鈧娲滈崰鏍€佸Δ鍛劦妞ゆ帒瀚ㄩ埀顒€鍊垮濠氬Ψ閿旀儳骞愰梻浣稿閸嬪懐鎹㈠鍛傦綁骞栨担鍦幍濡炪倖鏌ㄩ妶鎼侇敁濡ゅ懏鐓?tier 闂傚倸鍊烽懗鍫曗€﹂崼銉︽櫇闁挎洖鍊歌繚闁诲函缍嗛崜姘讹綖閺囥垺鐓熼柕濞垮劚閸樼帵ority/flex/auto/default/scale闂?	// 闂?Codex 闂傚倷娴囬褎顨ラ崫銉т笉鐎广儱顦崹鍌涚箾瀹割喕绨婚柡鍕╁劜缁绘盯骞嬮悙瀵告闂佸憡顨嗙喊宥夊Φ閸曨垰鍐€妞ゆ劦婢€濞岊亞绱撴担鐤唹闁哄懏绻堥獮澶愬箹娴ｅ摜楠囬梺鍓茬厛閸犳盯宕洪悙鐑樷拺缁绢厼鎳庢禍褰掓煕韫囨棑鑰跨€殿噮鍋勯鍏煎緞婵犲啫绁堕梻浣告惈鐎氼喚绮嬬€规敍 闂傚倸鍊风粈渚€骞夐敓鐘冲仭妞ゆ牗绋撻々鍙夌節婵犲倹顥撳ù?priority 闂?flex闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢銆掑锝呬壕闂?codex-rs/core/src/client.rs闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆″眰鍔戦崺鈧い鎺戝€荤壕?	// 濠电姷鏁搁崑鐘诲箵椤忓棗绶ら柦妯猴級濞戞﹩鐓ラ柛顐ｇ箘椤ρ冣攽閳藉棗鐏犻柛姘儐閸掑﹥绺介崨濠勫帗闂佸憡绻傜€氼剟寮抽悙鐢电＜缂備降鍨归悘锔锯偓?OpenAI SDK 闂傚倸鍊烽悞锕傛儑瑜版帒绀夌€光偓閳ь剟鍩€椤掍礁鍤柛锝忕到椤曪綁顢曢敃鈧洿婵犮垼娉涢敃锕傤敇濞差亝鈷戠紓浣姑悘杈╂偖濞嗘挻鐓曢悗锝庡亝瀹曞嫮绱掗悩宕団姇闁诡垱妫冮弫鎰板炊瑜夐崑?auto/default/scale 濠电姷鏁搁崑娑㈩敋椤撶喐鍙忓ù鍏兼綑绾惧潡鏌熷▓鍨灓闁活厽宀搁弻娑㈩敃閿濆棛顦ョ紓浣哄閸ｏ綁寮婚悢鐓庣畾鐟滃秹寮抽柆宥嗙厽?闂傚倷娴囧畷鍨叏閹绢噮鏁勯柛娑欐綑閻ゎ噣鏌熼幆鏉啃撻柛搴★攻閵囧嫰寮介顫捕閺?	// 闂傚倸鍊烽悞锕€顪冮幐搴ｎ洸闁绘劕鎼粣妤呮煙闁箑澧鹃柤鐗堝閵囧嫰骞橀崡鐐典痪闂佺瀛╅〃濠囧蓟閺囩喎绶為柛顐ｇ箓婵姊虹粙娆惧剱闁圭懓娲ら～蹇涙嚒閵堝倸浜鹃梻鍫熺⊕閹叉悂鏌ｉ幘鎼疁闁哄备鍓濆鍕幢濡崵褰嗛梻浣告惈鐞氼偊宕濆畝鈧崣?nil闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸庢柨鈹戦崒婊庣劸闁?normalizeResponsesBodyServiceTier 濠?body 濠电姷鏁搁崑鐐哄垂閸洖绠归柍鍝勬噹閸屻劌鈹戦崒婊庣劸闁搞劌鍊婚幉鎼佹偋閸繄鐟查梺鎶芥敱濡啴寮婚弴銏犻唶婵犻潧妫欏▓婊堟⒑?
 	switch value {
 	case "priority", "flex", "auto", "default", "scale":
 		return &value
@@ -6078,14 +6096,13 @@ func (e *OpenAIFastBlockedError) Error() string { return e.Message }
 //   - ModelWhitelist narrows the rule to specific models; FallbackAction
 //     handles the non-matching case (default: pass)
 //
-// 与 Claude BetaPolicy 的差异（保留首条匹配 short-circuit）：
-//   - BetaPolicy 处理的是 anthropic-beta header 中的 token 集合，不同
-//     规则可能针对不同 token，filter 需要累加成 set；block 则 first-match。
-//   - OpenAI fast policy 操作的是单个字段 service_tier：filter 即删字段，
-//     没有可累加的对象。一次请求只携带一个 service_tier，规则的 tier
-//     维度天然互斥；同一 (scope, tier) 下若多条规则的 model whitelist
-//     发生重叠，admin 可通过规则顺序明确意图。因此采用 first-match 而
-//     非 BetaPolicy 那样的"block 覆盖 filter 覆盖 pass"语义。
+// Difference from Claude BetaPolicy (keeps first-match short-circuit):
+//   - BetaPolicy works on a token set from anthropic-beta; filter can accumulate
+//     a set and block uses first-match.
+//   - OpenAI fast policy works on a single service_tier field; filter deletes it.
+//     A request only carries one service_tier, so tier matching is mutually exclusive.
+//     When model whitelists overlap, admins can use rule order to express intent.
+//     Therefore this uses first-match semantics.
 func (s *OpenAIGatewayService) evaluateOpenAIFastPolicy(ctx context.Context, account *Account, model, serviceTier string) (action, errMsg string) {
 	if s == nil || s.settingService == nil {
 		return BetaPolicyActionPass, ""
@@ -6135,19 +6152,16 @@ func evaluateOpenAIFastPolicyWithSettings(settings *OpenAIFastPolicySettings, ac
 	return BetaPolicyActionPass, ""
 }
 
-// openAIFastPolicyCtxKey 是 context 中预取的 OpenAIFastPolicySettings 缓存
-// 键，仅用于 WebSocket 长会话内多帧复用同一份策略快照，避免每帧 DB 命中。
-//
-// Trade-off：策略变更不会影响当前 WS session（只影响新 session）。这是
-// 有意为之 —— 对长会话来说，"策略一致性"比"立刻生效"更重要，且 Claude
-// BetaPolicy 的 gin.Context 缓存也是同样取舍。需要 hot-reload 时管理员
-// 可以通过踢断 session 强制刷新。
+// openAIFastPolicyCtxKey 闂?context 濠电姷鏁搁崑鐐哄垂閸洖绠归柍鍝勬噹閻鏌涢幇闈涙灁闁逞屽墮閸婂潡宕洪敓鐘插窛妞ゆ挾濮烽崢顒勬⒒娴ｅ憡鎯堢紒瀣╃窔瀹曟垿宕ㄧ€涙ê浠?OpenAIFastPolicySettings 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笒缁犱即鏌熼梻瀵稿妽闁?// 闂傚倸鍊搁崐鐑芥倿閿曞偆鏁勬繛鍡樻尭闂傤垱銇勯弽銊х煁妞ゎ偅娲樼换婵嬫濞戞瑥绐涘銈傛櫇閸忔﹢寮诲☉妯锋闁告鍋熸禒顓㈡⒑閸濆嫭顥滅紒缁樺姍濠€?WebSocket 闂傚倸鍊搁崐鎼佸磹閻㈢纾婚柟鐐墯閻斿棝鎮归搹鐟板妺闁规彃鎽滅槐鎺楀箛椤撗勭杹闂佽鍠栫紞濠傜暦閸洖惟鐟滃繘鎮鹃悽鍛娾拺闁告縿鍎辨禒婊堟煟鎺抽崝宀勵敋閵夆晛绀嬫い鎰靛亝閸嶉潧顪冮妶鍡楃瑐缂佲偓娓氣偓閿濈偤骞樼€靛摜鐦堥梺闈涢獜缁插墽娑甸崜褏纾煎璺猴功閸╋絿鈧鍣崑濠冧繆閼搁潧绶炲┑鐘叉啗閺囥垺鐓熼煫鍥ㄦ礀娴犫晠鏌涚€ｎ偄濮嶆い銏℃瀹曪繝鎮樼拠鑼Ш闁诡喒鏅犲畷褰掝敃閿濆洤娑ч梻鍌欑椤撲粙寮堕崹顔夹曢梻浣筋嚃閸ｏ絿绮婚弽銊ょ箚闁绘垼妫勫敮闂佹寧娲嶉崑鎾寸箾閹炬潙濮嶆慨濠呮缁辨帒螣鐠囪尙妯傞柣搴＄畭閸庡崬煤閵娾敡鍥敋閳ь剙顫忕紒妯肩懝闁搞儜鍐炬交闂備浇顕х换鎴犳崲閸繄鏆﹂柕蹇嬪€曞洿闂佸憡绋戦幊蹇曟暜閻旇櫣涓嶆繛鎴欏灩缁犲鏌℃径瀣劸婵?DB 闂傚倸鍊风粈渚€骞夐敍鍕煓闁圭儤顨呴崹鍌涚節闂堟侗鍎愰柛銈呯墦閺岀喐娼忛崜褏鏆犻弶?//
+// Trade-off闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟鐑樺焾濞尖晠鏌曟繛鐐珕闁稿鍊濋弻鏇熷緞閸℃ɑ鐝曢梺绋款儌閺呯娀寮婚弴鐔风窞闁割偅绻傛慨搴ｇ磽閸屾氨小缂佽埖宀稿濠氭晸閻樿尙鍊為梺鍐叉惈閸熶即鎯侀崼銏㈢＝濞达綀顕栧▓鏃€銇勯敂钘夘棆闁逞屽墰閺佹悂宕㈣閿濈偛鈹戠€ｅ灚鏅㈤梺閫炲苯澧撮柕鍡楀暙閳藉濮€閿涘嫬骞堟繝鐢靛█濞佳兾涘☉妯兼懃缂傚倸鍊搁崐鍝ョ矓閹绢噮鏁勫璺猴功閺?WS session闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鏌涢埄鍐ㄦ惛濞存粌婀遍幉鎼佸箣閿曗偓妗呴梺鍦濠㈡娑甸埀顒勬⒑缂佹ê濮囬柣掳鍔戝畷鏇㈠Ψ閳哄倵鎷?session闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟娆¤娲、姗€濮€閻橀潧濮︽俊鐐€栧濠氬磻閹剧粯鐓曞┑鐘插濞呮洟鏌熼獮鍨伈鐎殿喕绮欓、姗€鎮欓幓鎺撳皨?// 闂傚倸鍊风粈渚€骞栭锔藉亱闁糕剝铔嬮崶銊ヮ嚤闁哄鍨归ˇ顓㈡⒑缂佹﹩娈旈柣妤€绻橀崺銏ゅ籍閸繄楠囬梺缁樺姈濞兼瑩藟鐎ｎ偁浜?闂傚倸鍊烽懗鍫曞磻閵娾晛纾块柡灞诲劚閽冪喖鏌ㄩ悢鍝勑㈤柣?闂傚倷娴囬褔鏌婇敐鍜佺劷鐟滃繒妲愰悙瀵哥瘈闁搞儜鍕发闂佸搫顦悧鍕礉瀹€鍕垫晪閺夊牄鍔嶉崣蹇斾繆椤栨繃顏犻柨娑樼У娣囧﹪顢涘鍗炩叺闂佸搫澶囬崜婵嗩嚗閸曨垰閱囨繝闈涙琚氬┑锛勫亼閸婃牕煤瀹ュ鐤鹃柣妯款嚙閺?缂傚倸鍊搁崐鐑芥倿閿斿墽鐭欓柟鐑橆殕閸嬪绻濇繝鍌滃婵鐓￠弻鐔兼焽閿曗偓楠炴﹢鏌嶇紒妯活棃闁哄苯绉烽¨渚€鏌涢幘璺烘灈妤犵偛锕ら埥澶婎潩閿濆懍澹曞┑鐐村灦椤忣喖顫濈捄铏癸紱?婵?缂傚倸鍊搁崐鐑芥倿閿曞倸钃熼柕濞炬櫓閺佸嫰鏌涘☉娆愮稇闁哄嫨鍎甸弻鏇＄疀鐎ｎ亖鍋撻弽顓炵；闁靛ň鏅滈悡鐔兼煛閸屾稑顕滈柛鐔哄仦缁?闂傚倸鍊风粈渚€骞栭鈷氭椽鏁冮崒姘鳖唶闂佽鍎煎Λ鍕⒒椤栫偞鐓曟繝闈涘閸旀粓鏌涢悢閿嬫儓闁靛棙甯掗～婵嬵敆婵犲倸顫犵紓鍌欒閸嬫挸顭跨捄鍙峰牆危?Claude
+// BetaPolicy 闂?gin.Context 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笒缁犱即鏌熼梻瀵稿妽闁稿鍊濋弻鏇熺節韫囨搩娲梺宕囩帛濞茬喖寮婚敐澶婃闁圭楠搁弳鍫㈢磼濡や礁鐏存慨濠冩そ瀹曘劍绻濋崨顓ф闂備礁鎼悧婊堝礈閻旂厧绠栫憸鏃堝蓟閸℃鍚嬮柛娑卞灣閸橆剟姊绘担鍛婃儓缂佸绶氬畷婊冣枎閹炬潙鈧爼鏌涢弴銊ョ仭闁绘挸绻橀弻娑㈠焺閸愮偓鐣堕梺閫炲苯澧柣蹇旂箞婵℃挳骞掑Δ鈧粈鍫澝归敐鍥ㄥ殌闁?hot-reload 闂傚倸鍊风粈渚€骞栭锕€鐤い鎰剁稻濞呯娀骞栭幖顓犲帥闁轰礁娲弻鐔兼⒒鐎电濡介梺绋款儑婵炩偓闁哄本鐩崺鍕礃閻愵剛鏆﹂梻?
+// 闂傚倸鍊风粈渚€骞夐敓鐘冲仭妞ゆ牜鍋涢崹鍌涖亜閺嶃劎銆掓い鈺傜叀閺岀喖鎮滃鍡樼暦闂佺粯甯炵划顖炲箞閵娿儙鐔兼惞閻у摜绀婄紓鍌欒兌婵敻鎮ч悩鍙傛盯宕ㄩ幖顓熸櫆闂佺鏈銊︾妤ｅ啯鈷?session 闂備浇顕х€涒晠顢欓弽顓炵獥闁哄稁鍘肩粻瑙勩亜閹板墎鐣遍柡鍕╁劜娣囧﹪濡堕崨顔兼缂備讲鍋撻柛鈩冪⊕閳锋垿鏌涢…鎴濇珮闁稿孩鍔欓弻锝夊箻椤栨矮澹曢梻?
 type openAIFastPolicyCtxKeyType struct{}
 
 var openAIFastPolicyCtxKey = openAIFastPolicyCtxKeyType{}
 
-// withOpenAIFastPolicyContext 将一份 settings 快照绑定到 context，供该 ctx
-// 衍生 goroutine 中的 evaluateOpenAIFastPolicy 复用。
+// withOpenAIFastPolicyContext 闂傚倷娴囬褏鎹㈤幇顔藉床闁归偊鍎靛☉銏犵睄闁稿本绮屽畷銉╂煟鎼淬垻鈯曟い顓炴喘閵?settings 闂傚倸鍊搁…顒勫磻閸曨個褰掑磼閻愯尙锛涢梺绯曞墲缁嬫垿鎯屽Δ鍛閺夊牆澧介幃鑲╃棯閹佸仮闁哄瞼鍠撻埀顒佺⊕椤洨绮诲鈧弻锟犲幢閺囩偛绁梺?context闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟瀵稿仧闂勫嫰鏌￠崘銊モ偓褰掝敃娴犲鐓熼柕蹇曞Х娴犳盯鎮?ctx
+// 闂傚倷娴囧畷鐢稿磻閻愮數鐭欓柟瀵稿Х閻捇鏌涢锝嗙闁?goroutine 濠电姷鏁搁崑鐐哄垂閸洖绠归柍鍝勬噹閸屻劑鏌熼鍡忓亾闁?evaluateOpenAIFastPolicy 濠电姷鏁告慨浼村垂閻撳簶鏋栨繛鎴炴皑閻捇鏌涢锝嗙闁哄绶氶弻鏇㈠醇濠垫劖笑閺?
 func withOpenAIFastPolicyContext(ctx context.Context, settings *OpenAIFastPolicySettings) context.Context {
 	if ctx == nil || settings == nil {
 		return ctx
@@ -6168,14 +6182,10 @@ func openAIFastPolicySettingsFromContext(ctx context.Context) *OpenAIFastPolicyS
 // applyOpenAIFastPolicyToBody applies the OpenAI fast policy to a raw request
 // body. When action=filter it removes the service_tier field; when
 // action=block it returns (body, *OpenAIFastBlockedError). On pass it
-// normalizes the service_tier value (e.g. client alias "fast" → "priority"),
-// rewriting the body so the upstream receives a slug it recognizes.
-//
-// Rationale for normalize-on-pass: chat-completions / messages 入口在调用本
-// 函数之前已经通过 normalizeResponsesBodyServiceTier 把 service_tier 归一化
-// 到了上游可识别值；passthrough（OpenAI 自动透传） / native /responses 等
-// 入口没有这一前置步骤，pass 路径下若不在此处归一化，"fast" 就会被原样
-// 透传到 OpenAI 上游导致 400/拒绝。把归一化收敛到本函数，所有入口行为一致。
+// Rationale for normalize-on-pass: chat-completions / messages already normalize
+// service_tier before calling this function. Passthrough and native /responses
+// do not have that earlier step, so aliases like "fast" must be normalized here
+// before reaching upstream.
 func (s *OpenAIGatewayService) applyOpenAIFastPolicyToBody(ctx context.Context, account *Account, model string, body []byte) ([]byte, error) {
 	if len(body) == 0 {
 		return body, nil
@@ -6203,7 +6213,7 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToBody(ctx context.Context, 
 		}
 		return trimmed, nil
 	default:
-		// pass：把别名（如 "fast"）写回为规范值（"priority"）。
+		// On pass, write aliases such as "fast" back as canonical values such as "priority".
 		if normTier == rawTier {
 			return body, nil
 		}
@@ -6230,7 +6240,7 @@ func writeOpenAIFastPolicyBlockedResponse(c *gin.Context, err *OpenAIFastBlocked
 }
 
 // applyOpenAIFastPolicyToWSResponseCreate evaluates the OpenAI fast policy
-// against a single client→upstream WebSocket frame whose top-level
+// against a single client闂傚倸鍊烽悞锕傚礈濮樿泛纾婚柛娑卞枟閸欏繒鐥悙顒€袩tream WebSocket frame whose top-level
 // "type"=="response.create". It mirrors the HTTP-side
 // applyOpenAIFastPolicyToBody contract but operates on a Realtime/Responses
 // WS payload:
@@ -6240,20 +6250,18 @@ func writeOpenAIFastPolicyBlockedResponse(c *gin.Context, err *OpenAIFastBlocked
 //   - block: returns (frame, *OpenAIFastBlockedError)
 //
 // Only frames whose "type" field strictly equals "response.create" are
-// inspected/mutated. Any other frame type — including the empty string —
-// passes through untouched. The OpenAI Realtime client-event spec requires
+// inspected/mutated. Any other frame type 闂?including the empty string 闂?// passes through untouched. The OpenAI Realtime client-event spec requires
 // "type" to be set, so an empty type is treated as a malformed frame we do
 // not police; the upstream is the source of truth for rejecting it.
 //
-// service_tier lives at the top level of response.create — same as the
+// service_tier lives at the top level of response.create 闂?same as the
 // Responses HTTP body shape (see openai_gateway_chat_completions.go:304 +
 // extractOpenAIServiceTierFromBody at line 5593, and the test fixture at
 // openai_ws_forwarder_ingress_session_test.go:402). We therefore only need
 // to inspect / strip the top-level field; there is no nested form in the
 // schema today.
 //
-// The caller is responsible for choosing the upstream model passed in —
-// this helper does not re-derive it.
+// The caller is responsible for choosing the upstream model passed in 闂?// this helper does not re-derive it.
 func (s *OpenAIGatewayService) applyOpenAIFastPolicyToWSResponseCreate(
 	ctx context.Context,
 	account *Account,
@@ -6271,7 +6279,7 @@ func (s *OpenAIGatewayService) applyOpenAIFastPolicyToWSResponseCreate(
 	// types pass through untouched so we never accidentally strip fields
 	// from response.cancel, conversation.item.create, or any future
 	// client-event the spec adds. The Realtime spec requires "type" on
-	// every client event, so an empty type is malformed input — let the
+	// every client event, so an empty type is malformed input 闂?let the
 	// upstream reject it rather than guessing at our layer.
 	if frameType != "response.create" {
 		return frame, nil, nil

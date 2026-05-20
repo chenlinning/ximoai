@@ -10,7 +10,7 @@ import (
 )
 
 // TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupportedOverUnknown
-// 验证 compact 调度时显式支持 (tier=2) 优先于未探测 (tier=1)。
+// verifies that compact scheduling prefers explicit support (tier=2) over unknown support (tier=1).
 func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupportedOverUnknown(t *testing.T) {
 	resetOpenAIAdvancedSchedulerSettingCacheForTest()
 
@@ -49,6 +49,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupported
 
 	selection, _, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -64,7 +65,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupported
 }
 
 // TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitlyUnsupported
-// 验证 force_off / 已探测不支持 (tier=0) 的账号不会被 compact 请求选中。
+// verifies that force_off or probed-unsupported accounts (tier=0) are not selected for compact requests.
 func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitlyUnsupported(t *testing.T) {
 	resetOpenAIAdvancedSchedulerSettingCacheForTest()
 
@@ -103,6 +104,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitl
 
 	selection, _, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -112,12 +114,11 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitl
 		true,
 	)
 	require.Error(t, err)
-	require.True(t, errors.Is(err, ErrNoAvailableCompactAccounts), "compact-only accounts should rejected explicitly unsupported and return compact error")
+	require.True(t, errors.Is(err, ErrNoAvailableCompactAccounts), "compact-only accounts should reject explicitly unsupported accounts and return compact error")
 	require.Nil(t, selection)
 }
 
-// TestOpenAIGatewayService_SelectAccountWithScheduler_CompactFallsBackToUnknown
-// 验证当没有"已知支持"账号时，compact 请求会回退到"未探测"账号。
+// verifies that compact requests fall back to unknown accounts when no supported account is available.
 func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactFallsBackToUnknown(t *testing.T) {
 	resetOpenAIAdvancedSchedulerSettingCacheForTest()
 
@@ -156,6 +157,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactFallsBackToUnkno
 
 	selection, _, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -170,7 +172,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactFallsBackToUnkno
 	require.Equal(t, int64(71021), selection.Account.ID, "unknown account should be picked when no supported account available")
 }
 
-// TestOpenAICompactSupportTier 验证 tier 分类逻辑。
+// TestOpenAICompactSupportTier verifies compact support tier classification.
 func TestOpenAICompactSupportTier(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	pkgerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/gemini"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
@@ -47,6 +48,7 @@ type GatewayHandler struct {
 	usageRecordWorkerPool     *service.UsageRecordWorkerPool
 	errorPassthroughService   *service.ErrorPassthroughService
 	contentModerationService  *service.ContentModerationService
+	platformService           *service.PlatformService
 	concurrencyHelper         *ConcurrencyHelper
 	userMsgQueueHelper        *UserMsgQueueHelper
 	maxAccountSwitches        int
@@ -68,6 +70,7 @@ func NewGatewayHandler(
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	contentModerationService *service.ContentModerationService,
+	platformService *service.PlatformService,
 	userMsgQueueService *service.UserMessageQueueService,
 	cfg *config.Config,
 	settingService *service.SettingService,
@@ -102,6 +105,7 @@ func NewGatewayHandler(
 		usageRecordWorkerPool:     usageRecordWorkerPool,
 		errorPassthroughService:   errorPassthroughService,
 		contentModerationService:  contentModerationService,
+		platformService:           platformService,
 		concurrencyHelper:         NewConcurrencyHelper(concurrencyService, SSEPingFormatClaude, pingInterval),
 		userMsgQueueHelper:        umqHelper,
 		maxAccountSwitches:        maxAccountSwitches,
@@ -284,8 +288,9 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	} else if apiKey.Group != nil {
 		platform = apiKey.Group.Platform
 	}
+	isGeminiProtocol := h.isGeminiProtocolPlatform(c.Request.Context(), platform)
 	sessionKey := sessionHash
-	if platform == service.PlatformGemini && sessionHash != "" {
+	if isGeminiProtocol && sessionHash != "" {
 		sessionKey = "gemini:" + sessionHash
 	}
 
@@ -312,7 +317,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	// 判断是否真的绑定了粘性会话：有 sessionKey 且已经绑定到某个账号
 	hasBoundSession := sessionKey != "" && sessionBoundAccountID > 0
 
-	if platform == service.PlatformGemini {
+	if isGeminiProtocol {
 		fs := NewFailoverState(h.maxAccountSwitchesGemini, hasBoundSession)
 
 		// 单账号分组提前设置 SingleAccountRetry 标记，让 Service 层首次 503 就不设模型限流标记。
@@ -346,7 +351,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					return
 				default: // FailoverExhausted
 					if fs.LastFailoverErr != nil {
-						h.handleFailoverExhausted(c, fs.LastFailoverErr, service.PlatformGemini, streamStarted)
+						h.handleFailoverExhausted(c, fs.LastFailoverErr, platform, streamStarted)
 					} else {
 						h.handleFailoverExhaustedSimple(c, 502, streamStarted)
 					}
@@ -451,7 +456,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				if errors.As(err, &failoverErr) {
 					// 流式内容已写入客户端，无法撤销，禁止 failover 以防止流拼接腐化
 					if c.Writer.Size() != writerSizeBeforeForward {
-						h.handleFailoverExhausted(c, failoverErr, service.PlatformGemini, true)
+						h.handleFailoverExhausted(c, failoverErr, platform, true)
 						return
 					}
 					action := fs.HandleFailoverError(c.Request.Context(), h.gatewayService, account.ID, account.Platform, failoverErr)
@@ -459,7 +464,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					case FailoverContinue:
 						continue
 					case FailoverExhausted:
-						h.handleFailoverExhausted(c, fs.LastFailoverErr, service.PlatformGemini, streamStarted)
+						h.handleFailoverExhausted(c, fs.LastFailoverErr, platform, streamStarted)
 						return
 					case FailoverCanceled:
 						return
@@ -972,11 +977,20 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		return
 	}
 
-	// Fallback to default models
-	if platform == service.PlatformOpenAI {
+	// Fallback to default models. Custom OpenAI-compatible platforms use the
+	// OpenAI model list when no account whitelist is configured.
+	normalizedPlatform := service.NormalizePlatformSlug(platform)
+	if h.isOpenAIProtocolPlatform(c.Request.Context(), normalizedPlatform) {
 		c.JSON(http.StatusOK, gin.H{
 			"object": "list",
 			"data":   openai.DefaultModels,
+		})
+		return
+	}
+	if h.isGeminiProtocolPlatform(c.Request.Context(), normalizedPlatform) {
+		c.JSON(http.StatusOK, gin.H{
+			"object": "list",
+			"data":   geminiModelsAsClaudeModels(),
 		})
 		return
 	}
@@ -1013,6 +1027,43 @@ func cloneAPIKeyWithGroup(apiKey *service.APIKey, group *service.Group) *service
 	cloned.GroupID = &groupID
 	cloned.Group = group
 	return &cloned
+}
+
+func (h *GatewayHandler) isOpenAIProtocolPlatform(ctx context.Context, platform string) bool {
+	platform = service.NormalizePlatformSlug(platform)
+	if platform == service.PlatformOpenAI {
+		return true
+	}
+	if platform == "" || h == nil || h.platformService == nil {
+		return false
+	}
+	return h.platformService.IsOpenAICompatible(ctx, platform)
+}
+
+func (h *GatewayHandler) isGeminiProtocolPlatform(ctx context.Context, platform string) bool {
+	platform = service.NormalizePlatformSlug(platform)
+	if platform == service.PlatformGemini {
+		return true
+	}
+	if platform == "" || h == nil || h.platformService == nil {
+		return false
+	}
+	return h.platformService.IsGeminiCompatible(ctx, platform)
+}
+
+func geminiModelsAsClaudeModels() []claude.Model {
+	models := gemini.DefaultModels()
+	out := make([]claude.Model, 0, len(models))
+	for _, model := range models {
+		id := strings.TrimPrefix(model.Name, "models/")
+		out = append(out, claude.Model{
+			ID:          id,
+			Type:        "model",
+			DisplayName: id,
+			CreatedAt:   "2024-01-01T00:00:00Z",
+		})
+	}
+	return out
 }
 
 // Usage handles getting account balance and usage statistics for CC Switch integration

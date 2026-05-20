@@ -9409,6 +9409,7 @@ func (s *GatewayService) validateUpstreamBaseURL(raw string) (string, error) {
 // GetAvailableModels returns the list of models available for a group
 // It aggregates model_mapping keys from all schedulable accounts in the group
 func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64, platform string) []string {
+	platform = NormalizePlatformSlug(platform)
 	cacheKey := modelsListCacheKey(groupID, platform)
 	if s.modelsListCache != nil {
 		if cached, found := s.modelsListCache.Get(cacheKey); found {
@@ -9486,7 +9487,7 @@ func (s *GatewayService) InvalidateAvailableModelsCache(groupID *int64, platform
 		return
 	}
 
-	normalizedPlatform := strings.TrimSpace(platform)
+	normalizedPlatform := NormalizePlatformSlug(platform)
 	// 完整匹配时精准失效；否则按维度批量失效。
 	if groupID != nil && normalizedPlatform != "" {
 		s.modelsListCache.Delete(modelsListCacheKey(groupID, normalizedPlatform))

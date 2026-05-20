@@ -283,6 +283,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabledUsesLega
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"resp_disabled_001",
 		"",
@@ -338,6 +339,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_Require
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -380,6 +382,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_Require
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -442,6 +445,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledUsesAdvancedPrev
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"resp_enabled_001",
 		"",
@@ -490,7 +494,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyRateLimite
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_rate_limited", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_rate_limited", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -544,7 +548,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyDBRuntimeR
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_db_runtime_recheck", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_db_runtime_recheck", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -614,6 +618,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_PreviousResponseSticky(
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"resp_prev_001",
 		"session_hash_001",
@@ -661,6 +666,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionSticky(t *testin
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_abc",
@@ -718,8 +724,8 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyBusyKeepsS
 
 	concurrencyCache := schedulerTestConcurrencyCache{
 		acquireResults: map[int64]bool{
-			21001: false, // sticky 账号已满
-			21002: true,  // 若回退负载均衡会命中该账号（本测试要求不能切换）
+			21001: false, // sticky account is full
+			21002: true,  // fallback candidate must not be selected
 		},
 		waitCounts: map[int64]int{
 			21001: 999,
@@ -740,6 +746,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyBusyKeepsS
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_sticky_busy",
@@ -789,6 +796,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionSticky_ForceHTTP
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_force_http",
@@ -841,7 +849,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_RequiredWSV2_SkipsStick
 	}
 	cfg := newSchedulerTestOpenAIWSV2Config()
 
-	// 构造“HTTP-only 账号负载更低”的场景，验证 required transport 会强制过滤。
+	// Build a lower-load HTTP-only account scenario to verify required transport filtering.
 	concurrencyCache := schedulerTestConcurrencyCache{
 		loadMap: map[int64]*AccountLoadInfo{
 			2201: {AccountID: 2201, LoadRate: 0, WaitingCount: 0},
@@ -859,6 +867,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_RequiredWSV2_SkipsStick
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_ws_only",
@@ -903,6 +912,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_RequiredWSV2_NoAvailabl
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -980,6 +990,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceTopKFallback
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -1025,7 +1036,7 @@ func TestOpenAIGatewayService_OpenAIAccountSchedulerMetrics(t *testing.T) {
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, _, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_metrics", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, _, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_metrics", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	svc.ReportOpenAIAccountScheduleResult(account.ID, true, intPtrForTest(120))
@@ -1223,6 +1234,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceDistributesA
 		sessionHash := fmt.Sprintf("session_hash_lb_%d", i)
 		selection, decision, err := svc.SelectAccountWithScheduler(
 			ctx,
+			PlatformOpenAI,
 			&groupID,
 			"",
 			sessionHash,

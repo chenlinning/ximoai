@@ -531,6 +531,7 @@ type adminServiceImpl struct {
 	defaultSubAssigner   DefaultSubscriptionAssigner
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
+	platformService      *PlatformService
 }
 
 type userGroupRateBatchReader interface {
@@ -556,6 +557,7 @@ func NewAdminService(
 	defaultSubAssigner DefaultSubscriptionAssigner,
 	userSubRepo UserSubscriptionRepository,
 	privacyClientFactory PrivacyClientFactory,
+	platformService *PlatformService,
 ) AdminService {
 	return &adminServiceImpl{
 		userRepo:             userRepo,
@@ -575,6 +577,7 @@ func NewAdminService(
 		defaultSubAssigner:   defaultSubAssigner,
 		userSubRepo:          userSubRepo,
 		privacyClientFactory: privacyClientFactory,
+		platformService:      platformService,
 	}
 }
 
@@ -1581,9 +1584,12 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		return nil, errors.New("rate_multiplier must be > 0")
 	}
 
-	platform := input.Platform
+	platform := NormalizePlatformSlug(input.Platform)
 	if platform == "" {
 		platform = PlatformAnthropic
+	}
+	if err := s.validatePlatformForGroup(ctx, platform); err != nil {
+		return nil, err
 	}
 
 	subscriptionType := input.SubscriptionType
@@ -1693,7 +1699,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		MessagesDispatchModelConfig:     normalizeOpenAIMessagesDispatchModelConfig(input.MessagesDispatchModelConfig),
 		RPMLimit:                        input.RPMLimit,
 	}
-	sanitizeGroupMessagesDispatchFields(group)
+	sanitizeGroupMessagesDispatchFields(ctx, s.platformRegistry(), group)
 	if err := s.groupRepo.Create(ctx, group); err != nil {
 		return nil, err
 	}
@@ -1828,7 +1834,11 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 		group.Description = input.Description
 	}
 	if input.Platform != "" {
-		group.Platform = input.Platform
+		platform := NormalizePlatformSlug(input.Platform)
+		if err := s.validatePlatformForGroup(ctx, platform); err != nil {
+			return nil, err
+		}
+		group.Platform = platform
 	}
 	if input.RateMultiplier != nil {
 		if *input.RateMultiplier <= 0 {
@@ -1941,7 +1951,7 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if input.RPMLimit != nil {
 		group.RPMLimit = *input.RPMLimit
 	}
-	sanitizeGroupMessagesDispatchFields(group)
+	sanitizeGroupMessagesDispatchFields(ctx, s.platformRegistry(), group)
 
 	if err := s.groupRepo.Update(ctx, group); err != nil {
 		return nil, err
@@ -2020,6 +2030,70 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 
 	return group, nil
+}
+
+func (s *adminServiceImpl) platformRegistry() *PlatformService {
+	if s != nil && s.platformService != nil {
+		return s.platformService
+	}
+	return NewPlatformService(nil)
+}
+
+func (s *adminServiceImpl) validatePlatformForGroup(ctx context.Context, platform string) error {
+	platform = NormalizePlatformSlug(platform)
+	if platform == "" {
+		return ErrPlatformInvalid
+	}
+	return s.platformRegistry().ValidatePlatformSlug(ctx, platform)
+}
+
+func (s *adminServiceImpl) validateAccountPlatformInput(ctx context.Context, platform, accountType string) error {
+	platform = NormalizePlatformSlug(platform)
+	accountType = strings.TrimSpace(accountType)
+	if platform == "" {
+		return infraerrors.BadRequest("INVALID_ACCOUNT_PLATFORM", "platform is required")
+	}
+	if accountType == "" {
+		return infraerrors.BadRequest("INVALID_ACCOUNT_TYPE", "account type is required")
+	}
+	return s.platformRegistry().ValidateAccountPlatform(ctx, platform, accountType)
+}
+
+func (s *adminServiceImpl) normalizeAccountCredentialsForPlatform(ctx context.Context, platformSlug, accountType string, credentials map[string]any) (map[string]any, error) {
+	if credentials == nil {
+		credentials = map[string]any{}
+	}
+	platform, err := s.platformRegistry().GetBySlug(ctx, platformSlug)
+	if err != nil {
+		return nil, err
+	}
+	if platform.Builtin || accountType != AccountTypeAPIKey {
+		return credentials, nil
+	}
+	if strings.TrimSpace(accountCredentialString(credentials, "api_key")) == "" {
+		return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_API_KEY_REQUIRED", "api_key is required for custom platforms")
+	}
+	if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
+		credentials["base_url"] = platform.BaseURL
+	}
+	if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
+		return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_BASE_URL_REQUIRED", "base_url is required for custom platforms")
+	}
+	return credentials, nil
+}
+
+func accountCredentialString(credentials map[string]any, key string) string {
+	if len(credentials) == 0 {
+		return ""
+	}
+	value, ok := credentials[key]
+	if !ok || value == nil {
+		return ""
+	}
+	if s, ok := value.(string); ok {
+		return s
+	}
+	return fmt.Sprint(value)
 }
 
 func (s *adminServiceImpl) DeleteGroup(ctx context.Context, id int64) error {
@@ -2353,12 +2427,21 @@ func (s *adminServiceImpl) GetAccountsByIDs(ctx context.Context, ids []int64) ([
 }
 
 func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccountInput) (*Account, error) {
+	platformSlug := NormalizePlatformSlug(input.Platform)
+	accountType := strings.TrimSpace(input.Type)
+	if err := s.validateAccountPlatformInput(ctx, platformSlug, accountType); err != nil {
+		return nil, err
+	}
+	credentials, err := s.normalizeAccountCredentialsForPlatform(ctx, platformSlug, accountType, input.Credentials)
+	if err != nil {
+		return nil, err
+	}
 	// 绑定分组
 	groupIDs := input.GroupIDs
 	// 如果没有指定分组,自动绑定对应平台的默认分组
 	if len(groupIDs) == 0 && !input.SkipDefaultGroupBind {
-		defaultGroupName := input.Platform + "-default"
-		groups, err := s.groupRepo.ListActiveByPlatform(ctx, input.Platform)
+		defaultGroupName := platformSlug + "-default"
+		groups, err := s.groupRepo.ListActiveByPlatform(ctx, platformSlug)
 		if err == nil {
 			for _, g := range groups {
 				if g.Name == defaultGroupName {
@@ -2371,7 +2454,7 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 
 	// 检查混合渠道风险（除非用户已确认）
 	if len(groupIDs) > 0 && !input.SkipMixedChannelCheck {
-		if err := s.checkMixedChannelRisk(ctx, 0, input.Platform, groupIDs); err != nil {
+		if err := s.checkMixedChannelRisk(ctx, 0, platformSlug, groupIDs); err != nil {
 			return nil, err
 		}
 	}
@@ -2379,9 +2462,9 @@ func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccou
 	account := &Account{
 		Name:        input.Name,
 		Notes:       normalizeAccountNotes(input.Notes),
-		Platform:    input.Platform,
-		Type:        input.Type,
-		Credentials: input.Credentials,
+		Platform:    platformSlug,
+		Type:        accountType,
+		Credentials: credentials,
 		Extra:       input.Extra,
 		ProxyID:     input.ProxyID,
 		Concurrency: input.Concurrency,
@@ -2467,7 +2550,7 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		account.Name = input.Name
 	}
 	if input.Type != "" {
-		account.Type = input.Type
+		account.Type = strings.TrimSpace(input.Type)
 	}
 	if input.Notes != nil {
 		account.Notes = normalizeAccountNotes(input.Notes)
@@ -2476,6 +2559,14 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		// 敏感子键采用"incoming 没提供就保留"的合并语义：前端响应已脱敏，
 		// 全对象 PUT 编辑时不会再带回 token，避免覆盖时清空已有凭证。
 		account.Credentials = MergePreservingSensitiveCreds(account.Credentials, input.Credentials)
+	}
+	if err := s.validateAccountPlatformInput(ctx, account.Platform, account.Type); err != nil {
+		return nil, err
+	}
+	if normalizedCredentials, err := s.normalizeAccountCredentialsForPlatform(ctx, account.Platform, account.Type, account.Credentials); err != nil {
+		return nil, err
+	} else {
+		account.Credentials = normalizedCredentials
 	}
 	// Extra 使用 map：需要区分“未提供(nil)”与“显式清空({})”。
 	// 关闭配额限制时前端会删除 quota_* 键并提交 extra:{}，此时也必须落库。
@@ -3536,13 +3627,18 @@ func (s *adminServiceImpl) saveProxyLatency(ctx context.Context, proxyID int64, 
 
 // getAccountPlatform 根据账号 platform 判断混合渠道检查用的平台标识
 func getAccountPlatform(accountPlatform string) string {
-	switch strings.ToLower(strings.TrimSpace(accountPlatform)) {
+	platform := NormalizePlatformSlug(accountPlatform)
+	switch platform {
 	case PlatformAntigravity:
 		return "Antigravity"
 	case PlatformAnthropic, "claude":
 		return "Anthropic"
+	case PlatformOpenAI:
+		return "OpenAI"
+	case PlatformGemini:
+		return "Gemini"
 	default:
-		return ""
+		return platform
 	}
 }
 

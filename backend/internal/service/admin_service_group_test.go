@@ -125,6 +125,44 @@ func (s *groupRepoStubForAdmin) UpdateSortOrders(_ context.Context, _ []GroupSor
 	return nil
 }
 
+type platformRepoStubForAdmin struct {
+	platforms map[string]Platform
+}
+
+func (s *platformRepoStubForAdmin) List(_ context.Context, includeDisabled bool) ([]Platform, error) {
+	out := make([]Platform, 0, len(s.platforms))
+	for _, platform := range s.platforms {
+		if includeDisabled || platform.Enabled {
+			out = append(out, platform)
+		}
+	}
+	return out, nil
+}
+
+func (s *platformRepoStubForAdmin) GetBySlug(_ context.Context, slug string) (*Platform, error) {
+	if platform, ok := s.platforms[NormalizePlatformSlug(slug)]; ok {
+		cp := platform
+		return &cp, nil
+	}
+	return nil, ErrPlatformNotFound
+}
+
+func (s *platformRepoStubForAdmin) Create(_ context.Context, _ *Platform) error {
+	panic("unexpected Create call")
+}
+
+func (s *platformRepoStubForAdmin) Update(_ context.Context, _ *Platform) error {
+	panic("unexpected Update call")
+}
+
+func (s *platformRepoStubForAdmin) Delete(_ context.Context, _ string) error {
+	panic("unexpected Delete call")
+}
+
+func (s *platformRepoStubForAdmin) Usage(_ context.Context, _ string) (PlatformUsage, error) {
+	return PlatformUsage{}, nil
+}
+
 func TestAdminService_ListGroups_PassesSortParams(t *testing.T) {
 	repo := &groupRepoStubForAdmin{
 		listWithFiltersGroups: []Group{{ID: 1, Name: "g1"}},
@@ -416,6 +454,37 @@ func TestAdminService_CreateGroup_ClearsMessagesDispatchFieldsForNonOpenAIPlatfo
 	require.False(t, repo.created.AllowMessagesDispatch)
 	require.Empty(t, repo.created.DefaultMappedModel)
 	require.Equal(t, OpenAIMessagesDispatchModelConfig{}, repo.created.MessagesDispatchModelConfig)
+}
+
+func TestAdminService_CreateGroup_PreservesMessagesDispatchForOpenAICompatiblePlatform(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	platformService := NewPlatformService(&platformRepoStubForAdmin{platforms: map[string]Platform{
+		"acme": {
+			Slug:        "acme",
+			DisplayName: "Acme",
+			Protocol:    PlatformProtocolOpenAICompatible,
+			BaseURL:     "https://api.acme.test",
+			AuthModes:   []string{AccountTypeAPIKey},
+			Enabled:     true,
+		},
+	}})
+	svc := &adminServiceImpl{groupRepo: repo, platformService: platformService}
+
+	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:                  "acme-group",
+		Description:           "custom openai-compatible",
+		Platform:              "acme",
+		RateMultiplier:        1.0,
+		AllowMessagesDispatch: true,
+		MessagesDispatchModelConfig: OpenAIMessagesDispatchModelConfig{
+			SonnetMappedModel: "gpt-5.4",
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.NotNil(t, repo.created)
+	require.True(t, repo.created.AllowMessagesDispatch)
+	require.Equal(t, OpenAIMessagesDispatchModelConfig{SonnetMappedModel: "gpt-5.4"}, repo.created.MessagesDispatchModelConfig)
 }
 
 func TestAdminService_UpdateGroup_ClearsMessagesDispatchFieldsWhenPlatformChangesAwayFromOpenAI(t *testing.T) {

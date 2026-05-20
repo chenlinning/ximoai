@@ -48,6 +48,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_UsesWSPassthroughSnapsh
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
+		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_ws_passthrough",

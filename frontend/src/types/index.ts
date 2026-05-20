@@ -484,7 +484,21 @@ export interface PaginationConfig {
 
 // ==================== API Key & Group Types ====================
 
-export type GroupPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity'
+export type GroupPlatform = string
+
+export interface Platform {
+  slug: string
+  display_name: string
+  protocol: string
+  base_url: string
+  auth_modes: string[]
+  capabilities: string[]
+  color: string
+  enabled: boolean
+  builtin: boolean
+  created_at: string
+  updated_at: string
+}
 
 export type SubscriptionType = 'standard' | 'subscription'
 
@@ -667,7 +681,7 @@ export interface UpdateGroupRequest {
 
 // ==================== Account & Proxy Types ====================
 
-export type AccountPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity'
+export type AccountPlatform = string
 export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account'
 export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
@@ -1213,6 +1227,7 @@ export interface UsageLog {
   image_output_size: string | null
   image_size_source: ImageSizeSource | null
   image_size_breakdown: ImageSizeBreakdown | null
+  video_count?: number | null
 
   // User-Agent
   user_agent: string | null

@@ -127,20 +127,52 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 		return
 	}
 
-	userGroups, err := h.apiKeyService.GetAvailableGroups(c.Request.Context(), subject.UserID)
+	out, err := h.listVisibleChannels(c, subject.UserID, true)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
+	}
+
+	response.Success(c, out)
+}
+
+// ModelPlaza lists user-visible model pricing without checking the optional
+// Available Channels feature flag.
+// GET /api/v1/channels/model-plaza
+func (h *AvailableChannelHandler) ModelPlaza(c *gin.Context) {
+	subject, ok := middleware.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+
+	out, err := h.listVisibleChannels(c, subject.UserID, false)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, out)
+}
+
+func (h *AvailableChannelHandler) listVisibleChannels(c *gin.Context, userID int64, withGlobalPricingFallback bool) ([]userAvailableChannel, error) {
+	userGroups, err := h.apiKeyService.GetAvailableGroups(c.Request.Context(), userID)
+	if err != nil {
+		return nil, err
 	}
 	allowedGroupIDs := make(map[int64]struct{}, len(userGroups))
 	for i := range userGroups {
 		allowedGroupIDs[userGroups[i].ID] = struct{}{}
 	}
 
-	channels, err := h.channelService.ListAvailable(c.Request.Context())
+	var channels []service.AvailableChannel
+	if withGlobalPricingFallback {
+		channels, err = h.channelService.ListAvailable(c.Request.Context())
+	} else {
+		channels, err = h.channelService.ListAvailableChannelPricing(c.Request.Context())
+	}
 	if err != nil {
-		response.ErrorFrom(c, err)
-		return
+		return nil, err
 	}
 
 	out := make([]userAvailableChannel, 0, len(channels))
@@ -163,7 +195,7 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 		})
 	}
 
-	response.Success(c, out)
+	return out, nil
 }
 
 // buildPlatformSections 把一个渠道按 visibleGroups 的平台集合拆成有序的 section 列表：

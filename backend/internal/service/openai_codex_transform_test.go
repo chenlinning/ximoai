@@ -633,7 +633,7 @@ func TestApplyCodexImageGenerationBridgeInstructions_AppendsBridgeOnce(t *testin
 	require.True(t, ok)
 	require.Contains(t, instructions, "existing instructions")
 	require.Contains(t, instructions, codexImageGenerationBridgeMarker)
-	require.Contains(t, instructions, "Responses native `image_generation` tool")
+	require.Contains(t, instructions, "OpenAI Responses `image_generation` tool")
 
 	modified = applyCodexImageGenerationBridgeInstructions(reqBody)
 	require.False(t, modified)
@@ -733,8 +733,8 @@ func TestApplyCodexOAuthTransform_AddsSparkImageUnsupportedInstructions(t *testi
 	require.True(t, ok)
 	require.Contains(t, instructions, "existing instructions")
 	require.Contains(t, instructions, codexSparkImageUnsupportedMarker)
-	require.Contains(t, instructions, "does not support image generation")
-	require.Contains(t, instructions, "switch to a non-Spark Codex model")
+	require.Contains(t, instructions, "text-only Codex work")
+	require.Contains(t, instructions, "multimodal Codex model")
 	require.NotContains(t, instructions, codexImageGenerationBridgeMarker)
 }
 

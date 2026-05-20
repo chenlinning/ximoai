@@ -69,6 +69,13 @@ const AUTH_SOURCE_TYPES: AuthSourceType[] = [
 ];
 const AUTH_SOURCE_DEFAULT_BALANCE = 0;
 const AUTH_SOURCE_DEFAULT_CONCURRENCY = 5;
+const DEFAULT_AUTH_SOURCE_DEFAULTS: AuthSourceDefaultsValue = {
+  balance: AUTH_SOURCE_DEFAULT_BALANCE,
+  concurrency: AUTH_SOURCE_DEFAULT_CONCURRENCY,
+  subscriptions: [],
+  grant_on_signup: false,
+  grant_on_first_bind: false,
+};
 const PAYMENT_VISIBLE_METHOD_SOURCE_OPTIONS: Record<
   PaymentVisibleMethod,
   PaymentVisibleMethodSourceOption[]
@@ -205,7 +212,7 @@ export function appendAuthSourceDefaultsToUpdateRequest(
   const target = payload as Record<string, unknown>;
 
   for (const source of AUTH_SOURCE_TYPES) {
-    const current = authSourceDefaults[source];
+    const current = authSourceDefaults[source] ?? DEFAULT_AUTH_SOURCE_DEFAULTS;
     target[`auth_source_default_${source}_balance`] =
       Number(current.balance) || 0;
     target[`auth_source_default_${source}_concurrency`] = Math.max(
@@ -215,7 +222,7 @@ export function appendAuthSourceDefaultsToUpdateRequest(
       ),
     );
     target[`auth_source_default_${source}_subscriptions`] =
-      normalizeDefaultSubscriptionSettings(current.subscriptions);
+      normalizeDefaultSubscriptionSettings(current.subscriptions || []);
     target[`auth_source_default_${source}_grant_on_signup`] =
       current.grant_on_signup;
     target[`auth_source_default_${source}_grant_on_first_bind`] =

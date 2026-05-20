@@ -46,6 +46,17 @@ type AvailableChannel struct {
 // 前置条件：s.groupRepo 必须非 nil（由 wire DI 保证）。直接 nil-deref 用于 fail-fast，
 // 避免静默掩盖注入缺失。
 func (s *ChannelService) ListAvailable(ctx context.Context) ([]AvailableChannel, error) {
+	return s.listAvailable(ctx, true)
+}
+
+// ListAvailableChannelPricing returns the same user-facing available-channel view,
+// but keeps pricing strictly limited to channel.ModelPricing. It is used by the
+// model plaza where "configured channel pricing" is the source of truth.
+func (s *ChannelService) ListAvailableChannelPricing(ctx context.Context) ([]AvailableChannel, error) {
+	return s.listAvailable(ctx, false)
+}
+
+func (s *ChannelService) listAvailable(ctx context.Context, withGlobalPricingFallback bool) ([]AvailableChannel, error) {
 	channels, err := s.repo.ListAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list channels: %w", err)
@@ -82,7 +93,11 @@ func (s *ChannelService) ListAvailable(ctx context.Context) ([]AvailableChannel,
 		ch.normalizeBillingModelSource()
 
 		supported := ch.SupportedModels()
-		s.fillGlobalPricingFallback(supported)
+		if withGlobalPricingFallback {
+			s.fillGlobalPricingFallback(supported)
+		} else {
+			supported = filterSupportedModelsWithPricing(supported)
+		}
 
 		out = append(out, AvailableChannel{
 			ID:                 ch.ID,
@@ -194,4 +209,15 @@ func nonZeroPtr(v float64) *float64 {
 		return nil
 	}
 	return &v
+}
+
+func filterSupportedModelsWithPricing(models []SupportedModel) []SupportedModel {
+	out := make([]SupportedModel, 0, len(models))
+	for i := range models {
+		if models[i].Pricing == nil {
+			continue
+		}
+		out = append(out, models[i])
+	}
+	return out
 }

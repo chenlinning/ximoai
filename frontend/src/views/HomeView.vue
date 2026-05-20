@@ -32,7 +32,7 @@
         class="absolute bottom-1/4 right-1/4 h-64 w-64 rounded-full bg-primary-400/10 blur-3xl"
       ></div>
       <div
-        class="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
+        class="absolute inset-0 bg-[linear-gradient(rgb(var(--color-primary-500)_/_0.03)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--color-primary-500)_/_0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
       ></div>
     </div>
 
@@ -490,12 +490,12 @@ onMounted(() => {
 /* Terminal Window */
 .terminal-window {
   width: 420px;
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(145deg, rgb(var(--color-dark-800)) 0%, rgb(var(--color-dark-900)) 100%);
   border-radius: 14px;
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 25px 50px -12px rgb(var(--color-shadow) / 0.4),
+    0 0 0 1px rgb(var(--color-highlight) / 0.1),
+    inset 0 1px 0 rgb(var(--color-highlight) / 0.1);
   overflow: hidden;
   transform: perspective(1000px) rotateX(2deg) rotateY(-2deg);
   transition: transform 0.3s ease;
@@ -510,8 +510,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(30, 41, 59, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgb(var(--color-dark-800) / 0.8);
+  border-bottom: 1px solid rgb(var(--color-highlight) / 0.05);
 }
 
 .terminal-buttons {
@@ -526,13 +526,13 @@ onMounted(() => {
 }
 
 .btn-close {
-  background: #ef4444;
+  background: rgb(var(--color-red-500));
 }
 .btn-minimize {
-  background: #eab308;
+  background: rgb(var(--color-yellow-500));
 }
 .btn-maximize {
-  background: #22c55e;
+  background: rgb(var(--color-green-500));
 }
 
 .terminal-title {
@@ -540,7 +540,7 @@ onMounted(() => {
   text-align: center;
   font-size: 12px;
   font-family: ui-monospace, monospace;
-  color: #64748b;
+  color: rgb(var(--color-slate-500));
   margin-right: 52px;
 }
 
@@ -586,31 +586,31 @@ onMounted(() => {
 }
 
 .code-prompt {
-  color: #22c55e;
+  color: rgb(var(--color-green-500));
   font-weight: bold;
 }
 .code-cmd {
-  color: #38bdf8;
+  color: rgb(var(--color-sky-400));
 }
 .code-flag {
-  color: #a78bfa;
+  color: rgb(var(--color-violet-400));
 }
 .code-url {
-  color: #14b8a6;
+  color: rgb(var(--color-primary-500));
 }
 .code-comment {
-  color: #64748b;
+  color: rgb(var(--color-slate-500));
   font-style: italic;
 }
 .code-success {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.15);
+  color: rgb(var(--color-green-500));
+  background: rgb(var(--color-green-500) / 0.15);
   padding: 2px 8px;
   border-radius: 4px;
   font-weight: 600;
 }
 .code-response {
-  color: #fbbf24;
+  color: rgb(var(--color-amber-400));
 }
 
 /* Blinking Cursor */
@@ -618,7 +618,7 @@ onMounted(() => {
   display: inline-block;
   width: 8px;
   height: 16px;
-  background: #22c55e;
+  background: rgb(var(--color-green-500));
   animation: blink 1s step-end infinite;
 }
 
@@ -636,9 +636,9 @@ onMounted(() => {
 /* Dark mode adjustments */
 :deep(.dark) .terminal-window {
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(20, 184, 166, 0.2),
-    0 0 40px rgba(20, 184, 166, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 25px 50px -12px rgb(var(--color-shadow) / 0.6),
+    0 0 0 1px rgb(var(--color-primary-500) / 0.2),
+    0 0 40px rgb(var(--color-primary-500) / 0.1),
+    inset 0 1px 0 rgb(var(--color-highlight) / 0.1);
 }
 </style>

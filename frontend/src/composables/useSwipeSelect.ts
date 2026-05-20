@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted, type Ref } from 'vue'
 import type { Virtualizer } from '@tanstack/vue-virtual'
+import { themeColorVar } from '@/utils/theme-colors'
 
 /**
  * WeChat-style swipe/drag to select rows in a DataTable,
@@ -143,8 +144,8 @@ export function useSwipeSelect(
     const isDark = document.documentElement.classList.contains('dark')
     Object.assign(marqueeEl.style, {
       position: 'fixed',
-      background: isDark ? 'rgba(96, 165, 250, 0.15)' : 'rgba(59, 130, 246, 0.12)',
-      border: isDark ? '1.5px solid rgba(96, 165, 250, 0.5)' : '1.5px solid rgba(59, 130, 246, 0.4)',
+      background: isDark ? themeColorVar('blue-400', 0.15) : themeColorVar('blue-500', 0.12),
+      border: `1.5px solid ${isDark ? themeColorVar('blue-400', 0.5) : themeColorVar('blue-500', 0.4)}`,
       borderRadius: '4px',
       pointerEvents: 'none',
       zIndex: '9999',

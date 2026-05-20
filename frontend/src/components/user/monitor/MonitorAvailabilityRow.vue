@@ -28,6 +28,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { hslForPct } from '@/composables/useChannelMonitorFormat'
+import { themeColorVar } from '@/utils/theme-colors'
 
 const props = defineProps<{
   windowLabel: string
@@ -44,6 +45,6 @@ const displayValue = computed(() => {
 
 const colorStyle = computed(() => {
   const colour = hslForPct(props.value)
-  return colour ? { color: colour } : { color: 'rgb(156 163 175)' }
+  return colour ? { color: colour } : { color: themeColorVar('gray-400') }
 })
 </script>

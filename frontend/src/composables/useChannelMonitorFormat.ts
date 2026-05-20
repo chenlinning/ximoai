@@ -24,11 +24,6 @@ import {
 
 const NEUTRAL_BADGE = 'bg-gray-100 text-gray-800 dark:bg-dark-700 dark:text-gray-300'
 
-/** Availability HSL hue multiplier: 0%=red(0) / 50%=yellow(60) / 100%=green(120). */
-const HSL_HUE_PER_PERCENT = 1.2
-const HSL_SATURATION = 72
-const HSL_LIGHTNESS = 42
-
 export interface AvailabilityRow {
   primary_status: MonitorStatus | ''
   availability_7d: number | null | undefined
@@ -145,14 +140,16 @@ export function useChannelMonitorFormat() {
 }
 
 /**
- * Map availability percent to an HSL colour (red -> yellow -> green).
+ * Map availability percent to a themed semantic colour.
  * Returns undefined for null/NaN so callers can fall back to a neutral colour.
  */
 export function hslForPct(pct: number | null | undefined): string | undefined {
   if (pct === null || pct === undefined || Number.isNaN(pct)) return undefined
   const clamped = Math.max(0, Math.min(100, pct))
-  const hue = clamped * HSL_HUE_PER_PERCENT
-  return `hsl(${hue} ${HSL_SATURATION}% ${HSL_LIGHTNESS}%)`
+  if (clamped >= 99) return 'rgb(var(--color-emerald-500))'
+  if (clamped >= 95) return 'rgb(var(--color-green-500))'
+  if (clamped >= 80) return 'rgb(var(--color-amber-500))'
+  return 'rgb(var(--color-red-500))'
 }
 
 /**

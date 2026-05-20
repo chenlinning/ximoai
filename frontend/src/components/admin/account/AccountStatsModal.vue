@@ -469,6 +469,7 @@ import EndpointDistributionChart from '@/components/charts/EndpointDistributionC
 import Icon from '@/components/icons/Icon.vue'
 import { adminAPI } from '@/api/admin'
 import type { Account, AccountUsageStatsResponse } from '@/types'
+import { themeColor } from '@/utils/theme-colors'
 
 ChartJS.register(
   CategoryScale,
@@ -502,8 +503,8 @@ const isDarkMode = computed(() => {
 
 // Chart colors
 const chartColors = computed(() => ({
-  text: isDarkMode.value ? '#e5e7eb' : '#374151',
-  grid: isDarkMode.value ? '#374151' : '#e5e7eb'
+  text: isDarkMode.value ? themeColor('gray-200') : themeColor('gray-700'),
+  grid: isDarkMode.value ? themeColor('gray-700') : themeColor('gray-200')
 }))
 
 // Line chart data
@@ -516,8 +517,8 @@ const trendChartData = computed(() => {
       {
         label: t('usage.accountBilled') + ' (USD)',
         data: stats.value.history.map((h) => h.actual_cost),
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: themeColor('blue-500'),
+        backgroundColor: themeColor('blue-500', 0.1),
         fill: true,
         tension: 0.3,
         yAxisID: 'y'
@@ -525,8 +526,8 @@ const trendChartData = computed(() => {
       {
         label: t('usage.userBilled') + ' (USD)',
         data: stats.value.history.map((h) => h.user_cost),
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+        borderColor: themeColor('emerald-500'),
+        backgroundColor: themeColor('emerald-500', 0.08),
         fill: false,
         tension: 0.3,
         borderDash: [5, 5],
@@ -535,8 +536,8 @@ const trendChartData = computed(() => {
       {
         label: t('admin.accounts.stats.requests'),
         data: stats.value.history.map((h) => h.requests),
-        borderColor: '#f97316',
-        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+        borderColor: themeColor('orange-500'),
+        backgroundColor: themeColor('orange-500', 0.1),
         fill: false,
         tension: 0.3,
         yAxisID: 'y1'
@@ -601,7 +602,7 @@ const lineChartOptions = computed(() => ({
         color: chartColors.value.grid
       },
       ticks: {
-        color: '#3b82f6',
+        color: themeColor('blue-500'),
         font: {
           size: 10
         },
@@ -610,7 +611,7 @@ const lineChartOptions = computed(() => ({
       title: {
         display: true,
         text: t('usage.accountBilled') + ' (USD)',
-        color: '#3b82f6',
+        color: themeColor('blue-500'),
         font: {
           size: 11
         }
@@ -624,7 +625,7 @@ const lineChartOptions = computed(() => ({
         drawOnChartArea: false
       },
       ticks: {
-        color: '#f97316',
+        color: themeColor('orange-500'),
         font: {
           size: 10
         },
@@ -633,7 +634,7 @@ const lineChartOptions = computed(() => ({
       title: {
         display: true,
         text: t('admin.accounts.stats.requests'),
-        color: '#f97316',
+        color: themeColor('orange-500'),
         font: {
           size: 11
         }

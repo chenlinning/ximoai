@@ -10,6 +10,7 @@ import { opsAPI, type OpsDashboardOverview, type OpsMetricThresholds, type OpsRe
 import type { OpsRequestDetailsPreset } from './OpsRequestDetailsModal.vue'
 import { useAdminSettingsStore } from '@/stores'
 import { formatNumber } from '@/utils/format'
+import { themeColor, themeColorVar } from '@/utils/theme-colors'
 
 type RealtimeWindow = '1min' | '5min' | '30min' | '1h'
 
@@ -437,12 +438,12 @@ const healthScoreValue = computed<number | null>(() => {
 })
 
 const healthScoreColor = computed(() => {
-  if (isSystemIdle.value) return '#9ca3af' // gray-400
+  if (isSystemIdle.value) return themeColor('gray-400')
   const score = healthScoreValue.value
-  if (score == null) return '#9ca3af'
-  if (score >= 90) return '#10b981' // green
-  if (score >= 60) return '#f59e0b' // yellow
-  return '#ef4444' // red
+  if (score == null) return themeColor('gray-400')
+  if (score >= 90) return themeColor('emerald-500')
+  if (score >= 60) return themeColor('amber-500')
+  return themeColor('red-500')
 })
 
 const healthScoreClass = computed(() => {
@@ -1185,7 +1186,7 @@ function handleToolbarRefresh() {
                   <path
                     d="M0 16 Q 20 16, 40 16 T 80 16 T 120 10 T 160 22 T 200 16 T 240 16 T 280 16"
                     fill="none"
-                    stroke="#3b82f6"
+                    :stroke="themeColorVar('blue-500')"
                     stroke-width="2"
                     vector-effect="non-scaling-stroke"
                   >

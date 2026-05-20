@@ -190,10 +190,13 @@
         </div>
 
         <!-- Image mode -->
-        <div v-else-if="entry.billing_mode === 'image'">
-          <!-- Default image price (per-request, same as per_request mode) -->
+        <div v-else-if="entry.billing_mode === 'image' || entry.billing_mode === 'video'">
+          <!-- Default media price (per-request, same as per_request mode) -->
           <label class="mt-3 block text-xs font-medium text-gray-500 dark:text-gray-400">
-            {{ t('admin.channels.form.defaultImagePrice', '默认图片价格（未命中层级时使用）') }}
+            {{ entry.billing_mode === 'video'
+              ? t('admin.channels.form.defaultVideoPrice', '默认视频价格（未命中层级时使用）')
+              : t('admin.channels.form.defaultImagePrice', '默认图片价格（未命中层级时使用）')
+            }}
             <span class="ml-1 font-normal text-gray-400">$</span>
           </label>
           <div class="mt-1 w-48">
@@ -201,12 +204,15 @@
               type="number" step="any" min="0" class="input text-sm" :placeholder="t('admin.channels.form.pricePlaceholder', '默认')" />
           </div>
 
-          <!-- Image tiers -->
+          <!-- Media tiers -->
           <div class="mt-3 flex items-center justify-between">
             <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
-              {{ t('admin.channels.form.imageTiers', '图片计费层级（按次）') }}
+              {{ entry.billing_mode === 'video'
+                ? t('admin.channels.form.videoTiers', '视频计费层级（按次）')
+                : t('admin.channels.form.imageTiers', '图片计费层级（按次）')
+              }}
             </label>
-            <button type="button" @click="addImageTier" class="text-xs text-primary-600 hover:text-primary-700">
+            <button type="button" @click="entry.billing_mode === 'video' ? addVideoTier() : addImageTier()" class="text-xs text-primary-600 hover:text-primary-700">
               + {{ t('admin.channels.form.addTier', '添加层级') }}
             </button>
           </div>
@@ -256,7 +262,8 @@ const collapsed = ref(props.entry.models.length > 0)
 const billingModeOptions = computed(() => [
   { value: 'token', label: 'Token' },
   { value: 'per_request', label: t('admin.channels.billingMode.perRequest', '按次') },
-  { value: 'image', label: t('admin.channels.billingMode.image', '图片（按次）') }
+  { value: 'image', label: t('admin.channels.billingMode.image', '图片（按次）') },
+  { value: 'video', label: t('admin.channels.billingMode.video', '视频（按次）') }
 ])
 
 const billingModeLabel = computed(() => {
@@ -282,6 +289,18 @@ function addInterval() {
 function addImageTier() {
   const intervals = [...(props.entry.intervals || [])]
   const labels = ['1K', '2K', '4K', 'HD']
+  intervals.push({
+    min_tokens: 0, max_tokens: null, tier_label: labels[intervals.length] || '',
+    input_price: null, output_price: null, cache_write_price: null,
+    cache_read_price: null, per_request_price: null,
+    sort_order: intervals.length
+  })
+  emit('update', { ...props.entry, intervals })
+}
+
+function addVideoTier() {
+  const intervals = [...(props.entry.intervals || [])]
+  const labels = ['4s', '8s', '720p', '1080p']
   intervals.push({
     min_tokens: 0, max_tokens: null, tier_label: labels[intervals.length] || '',
     input_price: null, output_price: null, cache_write_price: null,

@@ -20,7 +20,7 @@
         @click="method.available && emit('select', method.type)"
       >
         <span class="flex items-center gap-2">
-          <img :src="methodIcon(method.type)" :alt="t(`payment.methods.${method.type}`)" class="h-7 w-7 object-contain" />
+          <PaymentMethodIcon :type="method.type" :class="['h-7 w-7', methodIconClass(method.type)]" />
           <span class="flex flex-col items-start leading-none">
             <span class="text-base font-semibold">{{ t(`payment.methods.${method.type}`) }}</span>
             <span
@@ -40,10 +40,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { METHOD_ORDER } from './providerConfig'
-import alipayIcon from '@/assets/icons/alipay.svg'
-import wxpayIcon from '@/assets/icons/wxpay.svg'
-import stripeIcon from '@/assets/icons/stripe.svg'
-import airwallexIcon from '@/assets/icons/airwallex.svg'
+import PaymentMethodIcon from './PaymentMethodIcon.vue'
 
 export interface PaymentMethodOption {
   type: string
@@ -62,13 +59,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-const METHOD_ICONS: Record<string, string> = {
-  alipay: alipayIcon,
-  wxpay: wxpayIcon,
-  stripe: stripeIcon,
-  airwallex: airwallexIcon,
-}
-
 const sortedMethods = computed(() => {
   const order: readonly string[] = METHOD_ORDER
   return [...props.methods].sort((a, b) => {
@@ -78,18 +68,19 @@ const sortedMethods = computed(() => {
   })
 })
 
-function methodIcon(type: string): string {
-  if (type.includes('alipay')) return METHOD_ICONS.alipay
-  if (type.includes('wxpay')) return METHOD_ICONS.wxpay
-  if (type === 'airwallex') return METHOD_ICONS.airwallex
-  return METHOD_ICONS[type] || alipayIcon
+function methodIconClass(type: string): string {
+  if (type.includes('alipay')) return 'text-alipay-500'
+  if (type.includes('wxpay')) return 'text-wxpay-500'
+  if (type === 'airwallex') return 'text-airwallex-500'
+  if (type === 'stripe') return 'text-stripe-500'
+  return 'text-primary-500'
 }
 
 function methodSelectedClass(type: string): string {
-  if (type.includes('alipay')) return 'border-[#02A9F1] bg-blue-50 text-gray-900 shadow-sm dark:bg-blue-950 dark:text-gray-100'
-  if (type.includes('wxpay')) return 'border-[#09BB07] bg-green-50 text-gray-900 shadow-sm dark:bg-green-950 dark:text-gray-100'
-  if (type === 'stripe') return 'border-[#676BE5] bg-indigo-50 text-gray-900 shadow-sm dark:bg-indigo-950 dark:text-gray-100'
-  if (type === 'airwallex') return 'border-[#FF6B3D] bg-orange-50 text-gray-900 shadow-sm dark:border-[#FF8E3C] dark:bg-orange-950 dark:text-gray-100'
+  if (type.includes('alipay')) return 'border-alipay-500 bg-alipay-50 text-gray-900 shadow-sm dark:bg-alipay-950 dark:text-gray-100'
+  if (type.includes('wxpay')) return 'border-wxpay-500 bg-wxpay-50 text-gray-900 shadow-sm dark:bg-wxpay-950 dark:text-gray-100'
+  if (type === 'stripe') return 'border-stripe-500 bg-stripe-50 text-gray-900 shadow-sm dark:bg-stripe-950 dark:text-gray-100'
+  if (type === 'airwallex') return 'border-airwallex-500 bg-airwallex-50 text-gray-900 shadow-sm dark:bg-airwallex-950 dark:text-gray-100'
   return 'border-primary-500 bg-primary-50 text-gray-900 shadow-sm dark:bg-primary-950 dark:text-gray-100'
 }
 </script>

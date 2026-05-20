@@ -84,14 +84,14 @@ func NewGroupHandler(adminService service.AdminService, dashboardService *servic
 type CreateGroupRequest struct {
 	Name             string             `json:"name" binding:"required"`
 	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity"`
+	Platform         string             `json:"platform" binding:"omitempty"`
 	RateMultiplier   float64            `json:"rate_multiplier"`
 	IsExclusive      bool               `json:"is_exclusive"`
 	SubscriptionType string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
 	DailyLimitUSD    optionalLimitField `json:"daily_limit_usd"`
 	WeeklyLimitUSD   optionalLimitField `json:"weekly_limit_usd"`
 	MonthlyLimitUSD  optionalLimitField `json:"monthly_limit_usd"`
-	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
+	// 鍥剧墖鐢熸垚璁¤垂閰嶇疆锛坅ntigravity 鍜?gemini 骞冲彴浣跨敤锛岃礋鏁拌〃绀烘竻闄ら厤缃級
 	AllowImageGeneration            bool     `json:"allow_image_generation"`
 	ImageRateIndependent            bool     `json:"image_rate_independent"`
 	ImageRateMultiplier             *float64 `json:"image_rate_multiplier"`
@@ -101,21 +101,21 @@ type CreateGroupRequest struct {
 	ClaudeCodeOnly                  bool     `json:"claude_code_only"`
 	FallbackGroupID                 *int64   `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
-	// 模型路由配置（仅 anthropic 平台使用）
+	// ModelRouting maps model patterns to account IDs.
 	ModelRouting        map[string][]int64 `json:"model_routing"`
 	ModelRoutingEnabled bool               `json:"model_routing_enabled"`
 	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
-	// 支持的模型系列（仅 antigravity 平台使用）
+	// SupportedModelScopes limits model families for supported platforms.
 	SupportedModelScopes []string `json:"supported_model_scopes"`
-	// OpenAI Messages 调度配置（仅 openai 平台使用）
+	// AllowMessagesDispatch enables OpenAI Messages dispatch for this group.
 	AllowMessagesDispatch       bool                                      `json:"allow_messages_dispatch"`
 	RequireOAuthOnly            bool                                      `json:"require_oauth_only"`
 	RequirePrivacySet           bool                                      `json:"require_privacy_set"`
 	DefaultMappedModel          string                                    `json:"default_mapped_model"`
 	MessagesDispatchModelConfig service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	// 分组 RPM 上限（0 = 不限制）
+	// 鍒嗙粍 RPM 涓婇檺锛? = 涓嶉檺鍒讹級
 	RPMLimit int `json:"rpm_limit"`
-	// 从指定分组复制账号（创建后自动绑定）
+	// 浠庢寚瀹氬垎缁勫鍒惰处鍙凤紙鍒涘缓鍚庤嚜鍔ㄧ粦瀹氾級
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
 
@@ -123,7 +123,7 @@ type CreateGroupRequest struct {
 type UpdateGroupRequest struct {
 	Name             string             `json:"name"`
 	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai gemini antigravity"`
+	Platform         string             `json:"platform" binding:"omitempty"`
 	RateMultiplier   *float64           `json:"rate_multiplier"`
 	IsExclusive      *bool              `json:"is_exclusive"`
 	Status           string             `json:"status" binding:"omitempty,oneof=active inactive"`
@@ -131,7 +131,7 @@ type UpdateGroupRequest struct {
 	DailyLimitUSD    optionalLimitField `json:"daily_limit_usd"`
 	WeeklyLimitUSD   optionalLimitField `json:"weekly_limit_usd"`
 	MonthlyLimitUSD  optionalLimitField `json:"monthly_limit_usd"`
-	// 图片生成计费配置（antigravity 和 gemini 平台使用，负数表示清除配置）
+	// 鍥剧墖鐢熸垚璁¤垂閰嶇疆锛坅ntigravity 鍜?gemini 骞冲彴浣跨敤锛岃礋鏁拌〃绀烘竻闄ら厤缃級
 	AllowImageGeneration            *bool    `json:"allow_image_generation"`
 	ImageRateIndependent            *bool    `json:"image_rate_independent"`
 	ImageRateMultiplier             *float64 `json:"image_rate_multiplier"`
@@ -141,21 +141,21 @@ type UpdateGroupRequest struct {
 	ClaudeCodeOnly                  *bool    `json:"claude_code_only"`
 	FallbackGroupID                 *int64   `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
-	// 模型路由配置（仅 anthropic 平台使用）
+	// ModelRouting maps model patterns to account IDs.
 	ModelRouting        map[string][]int64 `json:"model_routing"`
 	ModelRoutingEnabled *bool              `json:"model_routing_enabled"`
 	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
-	// 支持的模型系列（仅 antigravity 平台使用）
+	// SupportedModelScopes limits model families for supported platforms.
 	SupportedModelScopes *[]string `json:"supported_model_scopes"`
-	// OpenAI Messages 调度配置（仅 openai 平台使用）
+	// AllowMessagesDispatch enables OpenAI Messages dispatch for this group.
 	AllowMessagesDispatch       *bool                                      `json:"allow_messages_dispatch"`
 	RequireOAuthOnly            *bool                                      `json:"require_oauth_only"`
 	RequirePrivacySet           *bool                                      `json:"require_privacy_set"`
 	DefaultMappedModel          *string                                    `json:"default_mapped_model"`
 	MessagesDispatchModelConfig *service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	// 分组 RPM 上限（0 = 不限制）；nil 表示未提供不改动
+	// 鍒嗙粍 RPM 涓婇檺锛? = 涓嶉檺鍒讹級锛沶il 琛ㄧず鏈彁渚涗笉鏀瑰姩
 	RPMLimit *int `json:"rpm_limit"`
-	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
+	// 浠庢寚瀹氬垎缁勫鍒惰处鍙凤紙鍚屾鎿嶄綔锛氬厛娓呯┖褰撳墠鍒嗙粍鐨勮处鍙风粦瀹氾紝鍐嶇粦瀹氭簮鍒嗙粍鐨勮处鍙凤級
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
 
@@ -166,7 +166,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 	platform := c.Query("platform")
 	status := c.Query("status")
 	search := c.Query("search")
-	// 标准化和验证 search 参数
+	// 鏍囧噯鍖栧拰楠岃瘉 search 鍙傛暟
 	search = strings.TrimSpace(search)
 	if len(search) > 100 {
 		search = search[:100]

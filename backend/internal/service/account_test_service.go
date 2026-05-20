@@ -70,6 +70,7 @@ type AccountTestService struct {
 	httpUpstream              HTTPUpstream
 	cfg                       *config.Config
 	tlsFPProfileService       *TLSFingerprintProfileService
+	platformService           *PlatformService
 }
 
 // NewAccountTestService creates a new AccountTestService
@@ -81,6 +82,7 @@ func NewAccountTestService(
 	httpUpstream HTTPUpstream,
 	cfg *config.Config,
 	tlsFPProfileService *TLSFingerprintProfileService,
+	platformService *PlatformService,
 ) *AccountTestService {
 	return &AccountTestService{
 		accountRepo:               accountRepo,
@@ -90,6 +92,7 @@ func NewAccountTestService(
 		httpUpstream:              httpUpstream,
 		cfg:                       cfg,
 		tlsFPProfileService:       tlsFPProfileService,
+		platformService:           platformService,
 	}
 }
 
@@ -180,19 +183,53 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 	}
 
 	// Route to platform-specific test method
-	if account.IsOpenAI() {
-		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
-	}
-
-	if account.IsGemini() {
-		return s.testGeminiAccountConnection(c, account, modelID, prompt)
-	}
-
 	if account.Platform == PlatformAntigravity {
 		return s.routeAntigravityTest(c, account, modelID, prompt)
 	}
 
+	if s.isOpenAIProtocolAccount(ctx, account) {
+		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
+	}
+
+	if s.isGeminiProtocolAccount(ctx, account) {
+		return s.testGeminiAccountConnection(c, account, modelID, prompt)
+	}
+
+	if s.isAnthropicProtocolAccount(ctx, account) {
+		return s.testClaudeAccountConnection(c, account, modelID)
+	}
+
 	return s.testClaudeAccountConnection(c, account, modelID)
+}
+
+func (s *AccountTestService) isOpenAIProtocolAccount(ctx context.Context, account *Account) bool {
+	if account == nil {
+		return false
+	}
+	if account.IsOpenAI() {
+		return true
+	}
+	return s != nil && s.platformService != nil && s.platformService.IsOpenAICompatible(ctx, account.Platform)
+}
+
+func (s *AccountTestService) isGeminiProtocolAccount(ctx context.Context, account *Account) bool {
+	if account == nil {
+		return false
+	}
+	if account.IsGemini() {
+		return true
+	}
+	return s != nil && s.platformService != nil && s.platformService.IsGeminiCompatible(ctx, account.Platform)
+}
+
+func (s *AccountTestService) isAnthropicProtocolAccount(ctx context.Context, account *Account) bool {
+	if account == nil {
+		return false
+	}
+	if account.IsAnthropic() {
+		return true
+	}
+	return s != nil && s.platformService != nil && s.platformService.IsAnthropicCompatible(ctx, account.Platform)
 }
 
 // testClaudeAccountConnection tests an Anthropic Claude account's connection

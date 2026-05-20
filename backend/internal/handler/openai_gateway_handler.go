@@ -46,6 +46,17 @@ func resolveOpenAIMessagesDispatchMappedModel(apiKey *service.APIKey, requestedM
 	return strings.TrimSpace(apiKey.Group.ResolveMessagesDispatchModel(requestedModel))
 }
 
+func openAIPlatformForAPIKey(apiKey *service.APIKey) string {
+	if apiKey == nil || apiKey.Group == nil {
+		return service.PlatformOpenAI
+	}
+	platform := service.NormalizePlatformSlug(apiKey.Group.Platform)
+	if platform == "" {
+		return service.PlatformOpenAI
+	}
+	return platform
+}
+
 // NewOpenAIGatewayHandler creates a new OpenAIGatewayHandler
 func NewOpenAIGatewayHandler(
 	gatewayService *service.OpenAIGatewayService,
@@ -268,6 +279,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		reqLog.Debug("openai.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
+			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			previousResponseID,
 			sessionHash,
@@ -669,6 +681,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		reqLog.Debug("openai_messages.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
+			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"", // no previous_response_id
 			sessionHash,
@@ -1232,6 +1245,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 	)
 	selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 		ctx,
+		service.PlatformOpenAI,
 		apiKey.GroupID,
 		previousResponseID,
 		sessionHash,
@@ -1547,7 +1561,7 @@ func (h *OpenAIGatewayHandler) submitUsageRecordTask(task service.UsageRecordTas
 }
 
 func (h *OpenAIGatewayHandler) submitOpenAIUsageRecordTask(result *service.OpenAIForwardResult, task service.UsageRecordTask) {
-	if result != nil && result.ImageCount > 0 {
+	if result != nil && (result.ImageCount > 0 || result.VideoCount > 0) {
 		h.submitMandatoryUsageRecordTask(task)
 		return
 	}

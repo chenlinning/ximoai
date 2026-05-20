@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EmailVerifyView from '@/views/auth/EmailVerifyView.vue'
+import { storeAffiliateReferralCode } from '@/utils/oauthAffiliate'
 
 const {
   pushMock,
@@ -300,6 +301,7 @@ describe('EmailVerifyView', () => {
       provider: 'wechat',
       redirect: '/profile',
     }
+    storeAffiliateReferralCode('AFF123')
     sessionStorage.setItem(
       'register_data',
       JSON.stringify({

@@ -41,6 +41,15 @@ vi.mock('vue-chartjs', () => ({
   },
 }))
 
+vi.mock('@/utils/theme-colors', () => ({
+  defaultChartColors: () => [
+    'rgb(var(--color-blue-500))',
+    'rgb(var(--color-emerald-500))',
+    'rgb(var(--color-amber-500))',
+  ],
+  themeColor: (token: string) => `rgb(var(--color-${token}))`,
+}))
+
 describe('ModelDistributionChart', () => {
   const modelStats = [
     {
@@ -157,8 +166,8 @@ describe('ModelDistributionChart', () => {
       'Others',
     ])
     expect(chartData.datasets[0].data).toEqual([12, 8, 10])
-    expect(chartData.datasets[0].backgroundColor[0]).toBe('#3b82f6')
-    expect(chartData.datasets[0].backgroundColor[2]).toBe('#94a3b8')
+    expect(chartData.datasets[0].backgroundColor[0]).toBe('rgb(var(--color-blue-500))')
+    expect(chartData.datasets[0].backgroundColor[2]).toBe('rgb(var(--color-slate-400))')
     expect(chartData.datasets[0].backgroundColor[2]).not.toBe(chartData.datasets[0].backgroundColor[0])
 
     const rows = wrapper.findAll('tbody tr')

@@ -610,6 +610,7 @@ func usageLogFromServiceUser(l *service.UsageLog) UsageLog {
 		ImageOutputSize:       l.ImageOutputSize,
 		ImageSizeSource:       l.ImageSizeSource,
 		ImageSizeBreakdown:    l.ImageSizeBreakdown,
+		VideoCount:            l.VideoCount,
 		MediaType:             l.MediaType,
 		UserAgent:             l.UserAgent,
 		CacheTTLOverridden:    l.CacheTTLOverridden,

@@ -16,16 +16,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'; import { useI18n } from 'vue-i18n'; import Select from '@/components/common/Select.vue'; import SearchInput from '@/components/common/SearchInput.vue'
-import type { AdminGroup } from '@/types'
+import { computed, onMounted, ref } from 'vue'; import { useI18n } from 'vue-i18n'; import Select from '@/components/common/Select.vue'; import SearchInput from '@/components/common/SearchInput.vue'
+import { adminAPI } from '@/api/admin'
+import type { AdminGroup, Platform } from '@/types'
 const props = defineProps<{ searchQuery: string; filters: Record<string, any>; groups?: AdminGroup[] }>()
 const emit = defineEmits(['update:searchQuery', 'update:filters', 'change']); const { t } = useI18n()
+const fallbackPlatforms: Platform[] = [
+  { slug: 'anthropic', display_name: 'Anthropic', protocol: 'native', base_url: '', auth_modes: [], capabilities: [], color: '#D97706', enabled: true, builtin: true, created_at: '', updated_at: '' },
+  { slug: 'openai', display_name: 'OpenAI', protocol: 'openai', base_url: 'https://api.openai.com', auth_modes: [], capabilities: [], color: '#10A37F', enabled: true, builtin: true, created_at: '', updated_at: '' },
+  { slug: 'gemini', display_name: 'Gemini', protocol: 'native', base_url: '', auth_modes: [], capabilities: [], color: '#4285F4', enabled: true, builtin: true, created_at: '', updated_at: '' },
+  { slug: 'antigravity', display_name: 'Antigravity', protocol: 'native', base_url: '', auth_modes: [], capabilities: [], color: '#7C3AED', enabled: true, builtin: true, created_at: '', updated_at: '' },
+]
+const platforms = ref<Platform[]>([...fallbackPlatforms])
 const updatePlatform = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, platform: value }) }
 const updateType = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, type: value }) }
 const updateStatus = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, status: value }) }
 const updatePrivacyMode = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, privacy_mode: value }) }
 const updateGroup = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, group: value }) }
-const pOpts = computed(() => [{ value: '', label: t('admin.accounts.allPlatforms') }, { value: 'anthropic', label: 'Anthropic' }, { value: 'openai', label: 'OpenAI' }, { value: 'gemini', label: 'Gemini' }, { value: 'antigravity', label: 'Antigravity' }])
+const pOpts = computed(() => [
+  { value: '', label: t('admin.accounts.allPlatforms') },
+  ...platforms.value.map(platform => ({ value: platform.slug, label: platform.display_name }))
+])
 const tOpts = computed(() => [{ value: '', label: t('admin.accounts.allTypes') }, { value: 'oauth', label: t('admin.accounts.oauthType') }, { value: 'setup-token', label: t('admin.accounts.setupToken') }, { value: 'apikey', label: t('admin.accounts.apiKey') }, { value: 'bedrock', label: 'AWS Bedrock' }])
 const sOpts = computed(() => [{ value: '', label: t('admin.accounts.allStatus') }, { value: 'active', label: t('admin.accounts.status.active') }, { value: 'inactive', label: t('admin.accounts.status.inactive') }, { value: 'error', label: t('admin.accounts.status.error') }, { value: 'rate_limited', label: t('admin.accounts.status.rateLimited') }, { value: 'temp_unschedulable', label: t('admin.accounts.status.tempUnschedulable') }, { value: 'unschedulable', label: t('admin.accounts.status.unschedulable') }])
 const privacyOpts = computed(() => [
@@ -40,4 +51,13 @@ const gOpts = computed(() => [
   { value: 'ungrouped', label: t('admin.accounts.ungroupedGroup') },
   ...(props.groups || []).map(g => ({ value: String(g.id), label: g.name }))
 ])
+
+onMounted(async () => {
+  try {
+    const items = await adminAPI.platforms.list(true)
+    if (items.length > 0) platforms.value = items
+  } catch {
+    platforms.value = [...fallbackPlatforms]
+  }
+})
 </script>

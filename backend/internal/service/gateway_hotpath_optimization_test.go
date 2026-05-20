@@ -580,6 +580,42 @@ func TestGetAvailableModels_ErrorAndGlobalListBranches(t *testing.T) {
 	require.Equal(t, int64(1), okRepo.listAllCalls.Load())
 }
 
+func TestGetAvailableModels_FiltersByCustomPlatform(t *testing.T) {
+	resetGatewayHotpathStatsForTest()
+
+	groupID := int64(421)
+	repo := &modelsListAccountRepoStub{
+		byGroup: map[int64][]Account{
+			groupID: {
+				{
+					ID:       1,
+					Platform: "acme",
+					Credentials: map[string]any{
+						"model_mapping": map[string]any{"acme-video": "acme-video"},
+					},
+				},
+				{
+					ID:       2,
+					Platform: PlatformOpenAI,
+					Credentials: map[string]any{
+						"model_mapping": map[string]any{"openai-only": "openai-only"},
+					},
+				},
+			},
+		},
+	}
+	svc := &GatewayService{
+		accountRepo:        repo,
+		modelsListCache:    gocache.New(time.Minute, time.Minute),
+		modelsListCacheTTL: time.Minute,
+	}
+
+	models := svc.GetAvailableModels(context.Background(), &groupID, "acme")
+
+	require.Equal(t, []string{"acme-video"}, models)
+	require.Equal(t, int64(1), repo.listByGroupCalls.Load())
+}
+
 func TestGatewayHotpathHelpers_CacheTTLAndStickyContext(t *testing.T) {
 	t.Run("resolve_user_group_rate_cache_ttl", func(t *testing.T) {
 		require.Equal(t, defaultUserGroupRateCacheTTL, resolveUserGroupRateCacheTTL(nil))

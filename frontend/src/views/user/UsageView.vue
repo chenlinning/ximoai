@@ -216,6 +216,10 @@
               <span class="text-gray-400">({{ formatImageBillingSize(row, t) }})</span>
             </div>
             <!-- Token 请求 -->
+            <div v-else-if="row.billing_mode === 'video'" class="flex items-center gap-1.5">
+              <Icon name="document" size="sm" class="text-cyan-500" />
+              <span class="font-medium text-gray-900 dark:text-white">{{ videoCount(row) }}{{ t('usage.videoUnit') }}</span>
+            </div>
             <div v-else class="flex items-center gap-1.5">
               <div class="space-y-1.5 text-sm">
                 <!-- Input / Output Tokens -->
@@ -493,6 +497,20 @@
                 <span class="font-medium text-violet-300">{{ formatTokenPricePerMillion(tooltipData.output_cost, tooltipData.output_tokens) }} {{ t('usage.perMillionTokens') }}</span>
               </div>
             </template>
+            <template v-else-if="tooltipData?.billing_mode === 'video'">
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-gray-400">{{ t('usage.videoCount') }}</span>
+                <span class="font-medium text-white">{{ videoCount(tooltipData) }}{{ t('usage.videoUnit') }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-gray-400">{{ t('usage.videoUnitPrice') }}</span>
+                <span class="font-medium text-sky-300">${{ videoUnitPrice(tooltipData).toFixed(6) }}</span>
+              </div>
+              <div class="flex items-center justify-between gap-4">
+                <span class="text-gray-400">{{ t('usage.videoTotalPrice') }}</span>
+                <span class="font-medium text-white">${{ tooltipData.total_cost?.toFixed(6) || '0.000000' }}</span>
+              </div>
+            </template>
             <div v-else class="flex items-center justify-between gap-4">
               <span class="text-gray-400">{{ t('usage.unitPrice') }}</span>
               <span class="font-medium text-sky-300">${{ tooltipData?.total_cost?.toFixed(6) || '0.000000' }}</span>
@@ -687,6 +705,19 @@ const getDisplayBillingMode = (row: Pick<UsageLog, 'billing_mode' | 'image_count
     return BILLING_MODE_IMAGE
   }
   return row?.billing_mode
+}
+
+const videoCount = (row: UsageLog | null): number => {
+  if (!row) return 1
+  const count = row.video_count ?? 1
+  return count > 0 ? count : 1
+}
+
+const videoUnitPrice = (row: UsageLog | null): number => {
+  if (!row) return 0
+  const total = row.total_cost ?? 0
+  const price = total / videoCount(row)
+  return Number.isFinite(price) ? price : 0
 }
 
 const formatUserAgent = (ua: string): string => {

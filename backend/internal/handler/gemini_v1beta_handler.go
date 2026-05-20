@@ -41,8 +41,12 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 	}
 	// 检查平台：优先使用强制平台（/antigravity 路由），否则要求 gemini 分组
 	forcePlatform, hasForcePlatform := middleware.GetForcePlatformFromContext(c)
-	if !hasForcePlatform && (apiKey.Group == nil || apiKey.Group.Platform != service.PlatformGemini) {
-		googleError(c, http.StatusBadRequest, "API key group platform is not gemini")
+	targetPlatform := forcePlatform
+	if !hasForcePlatform && apiKey.Group != nil {
+		targetPlatform = apiKey.Group.Platform
+	}
+	if !hasForcePlatform && !h.isGeminiProtocolPlatform(c.Request.Context(), targetPlatform) {
+		googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
 		return
 	}
 
@@ -52,10 +56,13 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 		return
 	}
 
-	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID)
+	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID, targetPlatform)
 	if err != nil {
 		// 没有 gemini 账户，检查是否有 antigravity 账户可用
-		hasAntigravity, _ := h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID)
+		hasAntigravity := false
+		if service.NormalizePlatformSlug(targetPlatform) == service.PlatformGemini {
+			hasAntigravity, _ = h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID)
+		}
 		if hasAntigravity {
 			// antigravity 账户使用静态模型列表
 			c.JSON(http.StatusOK, gemini.FallbackModelsList())
@@ -88,8 +95,12 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 	}
 	// 检查平台：优先使用强制平台（/antigravity 路由），否则要求 gemini 分组
 	forcePlatform, hasForcePlatform := middleware.GetForcePlatformFromContext(c)
-	if !hasForcePlatform && (apiKey.Group == nil || apiKey.Group.Platform != service.PlatformGemini) {
-		googleError(c, http.StatusBadRequest, "API key group platform is not gemini")
+	targetPlatform := forcePlatform
+	if !hasForcePlatform && apiKey.Group != nil {
+		targetPlatform = apiKey.Group.Platform
+	}
+	if !hasForcePlatform && !h.isGeminiProtocolPlatform(c.Request.Context(), targetPlatform) {
+		googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
 		return
 	}
 
@@ -105,10 +116,13 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 		return
 	}
 
-	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID)
+	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID, targetPlatform)
 	if err != nil {
 		// 没有 gemini 账户，检查是否有 antigravity 账户可用
-		hasAntigravity, _ := h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID)
+		hasAntigravity := false
+		if service.NormalizePlatformSlug(targetPlatform) == service.PlatformGemini {
+			hasAntigravity, _ = h.geminiCompatService.HasAntigravityAccounts(c.Request.Context(), apiKey.GroupID)
+		}
 		if hasAntigravity {
 			// antigravity 账户使用静态模型信息
 			c.JSON(http.StatusOK, gemini.FallbackModel(modelName))
@@ -155,8 +169,12 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 
 	// 检查平台：优先使用强制平台（/antigravity 路由，中间件已设置 request.Context），否则要求 gemini 分组
 	if !middleware.HasForcePlatform(c) {
-		if apiKey.Group == nil || apiKey.Group.Platform != service.PlatformGemini {
-			googleError(c, http.StatusBadRequest, "API key group platform is not gemini")
+		groupPlatform := ""
+		if apiKey.Group != nil {
+			groupPlatform = apiKey.Group.Platform
+		}
+		if !h.isGeminiProtocolPlatform(c.Request.Context(), groupPlatform) {
+			googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
 			return
 		}
 	}
