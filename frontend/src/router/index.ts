@@ -12,6 +12,7 @@ import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveDocumentTitle } from './title'
+import { ximoAIRoutes } from '@/extensions/routes'
 
 /**
  * Route definitions with lazy loading
@@ -214,18 +215,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Usage Records',
       titleKey: 'usage.title',
       descriptionKey: 'usage.description'
-    }
-  },
-  {
-    path: '/model-plaza',
-    name: 'ModelPlaza',
-    component: () => import('@/extensions/model-plaza/ModelPlazaPage.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Model Plaza',
-      titleKey: 'modelPlaza.title',
-      descriptionKey: 'modelPlaza.description'
     }
   },
   {
@@ -501,18 +490,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/platforms',
-    name: 'AdminPlatforms',
-    component: () => import('@/views/admin/PlatformsView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: true,
-      title: 'Platform Management',
-      titleKey: 'admin.platforms.title',
-      descriptionKey: 'admin.platforms.description'
-    }
-  },
-  {
     path: '/admin/announcements',
     name: 'AdminAnnouncements',
     component: () => import('@/views/admin/AnnouncementsView.vue'),
@@ -637,8 +614,6 @@ const routes: RouteRecordRaw[] = [
       descriptionKey: 'admin.affiliates.transfersDescription'
     }
   },
-
-
   // ==================== Payment Admin Routes ====================
   {
     path: '/admin/orders/dashboard',
@@ -676,6 +651,8 @@ const routes: RouteRecordRaw[] = [
       requiresPayment: true
     }
   },
+
+  ...ximoAIRoutes,
 
   // ==================== 404 Not Found ====================
   {

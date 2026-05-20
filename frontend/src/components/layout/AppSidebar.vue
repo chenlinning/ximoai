@@ -187,6 +187,7 @@ import { useAdminSettingsStore, useAppStore, useAuthStore, useOnboardingStore } 
 import VersionBadge from '@/components/common/VersionBadge.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
+import { ximoAIAdminNavItems, ximoAIUserNavItems } from '@/extensions/navigation'
 
 interface NavItem {
   path: string
@@ -669,7 +670,7 @@ const flagAdminPayment = () => adminSettingsStore.paymentEnabled
 // Builds the user's own navigation items for regular users and admin personal links.
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
-  items.push({ path: '/model-plaza', label: t('nav.modelPlaza'), icon: ModelPlazaIcon })
+  items.push(...ximoAIUserNavItems({ modelPlaza: ModelPlazaIcon }).map(toNavItem))
   if (withDashboard) {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
   }
@@ -710,6 +711,15 @@ const personalNavItems = computed((): NavItem[] => {
   return applyFeatureFlags(buildSelfNavItems(false))
 })
 
+function toNavItem(item: { path: string; labelKey: string; icon: unknown; hideInSimpleMode?: boolean }): NavItem {
+  return {
+    path: item.path,
+    label: t(item.labelKey),
+    icon: item.icon,
+    hideInSimpleMode: item.hideInSimpleMode,
+  }
+}
+
 // Custom menu items filtered by visibility
 const customMenuItemsForUser = computed(() => {
   const items = appStore.cachedPublicSettings?.custom_menu_items ?? []
@@ -744,7 +754,7 @@ const adminNavItems = computed((): NavItem[] => {
     },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
-    { path: '/admin/platforms', label: t('nav.platforms'), icon: ServerIcon },
+    ...ximoAIAdminNavItems({ platform: ServerIcon }).map(toNavItem),
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: ServerIcon },
     { path: '/admin/risk-control', label: t('nav.riskControl'), icon: ShieldIcon, hideInSimpleMode: true, featureFlag: flagRiskControl },

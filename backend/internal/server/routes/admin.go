@@ -89,8 +89,7 @@ func RegisterAdminRoutes(
 		// 渠道管理
 		registerChannelRoutes(admin, h)
 
-		// 平台管理
-		registerPlatformRoutes(admin, h)
+		registerXimoAIAdminRoutes(admin, h)
 
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
@@ -598,16 +597,6 @@ func registerChannelRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		channels.POST("", h.Admin.Channel.Create)
 		channels.PUT("/:id", h.Admin.Channel.Update)
 		channels.DELETE("/:id", h.Admin.Channel.Delete)
-	}
-}
-
-func registerPlatformRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	platforms := admin.Group("/platforms")
-	{
-		platforms.GET("", h.Admin.Platform.List)
-		platforms.POST("", h.Admin.Platform.Create)
-		platforms.PUT("/:slug", h.Admin.Platform.Update)
-		platforms.DELETE("/:slug", h.Admin.Platform.Delete)
 	}
 }
 

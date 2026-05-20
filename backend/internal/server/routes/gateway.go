@@ -125,11 +125,10 @@ func RegisterGatewayRoutes(
 			}
 			h.OpenAIGateway.Images(c)
 		})
-		gateway.POST("/videos", openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))
-		gateway.GET("/videos", openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))
-		gateway.POST("/videos/*subpath", openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
-		gateway.GET("/videos/*subpath", openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
-		gateway.DELETE("/videos/*subpath", openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
+		registerXimoAIV1GatewayRoutes(gateway, ximoAIGatewayContext{
+			platformService: platformService,
+			handlers:        h,
+		})
 	}
 
 	// Gemini 鍘熺敓 API 鍏煎灞傦紙Gemini SDK/CLI 鐩磋繛锛
@@ -205,11 +204,16 @@ func RegisterGatewayRoutes(
 		}
 		h.OpenAIGateway.Images(c)
 	})
-	r.POST("/videos", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))
-	r.GET("/videos", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))
-	r.POST("/videos/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
-	r.GET("/videos/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
-	r.DELETE("/videos/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleOnly(platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
+	registerXimoAIRootGatewayRoutes(r, ximoAIGatewayContext{
+		bodyLimit:       bodyLimit,
+		clientRequestID: clientRequestID,
+		opsErrorLogger:  opsErrorLogger,
+		endpointNorm:     endpointNorm,
+		apiKeyAuth:      apiKeyAuth,
+		requireGroup:    requireGroupAnthropic,
+		platformService: platformService,
+		handlers:        h,
+	})
 
 	// Antigravity 妯″瀷鍒楄〃
 	r.GET("/antigravity/models", gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.Gateway.AntigravityModels)
@@ -244,84 +248,4 @@ func RegisterGatewayRoutes(
 		antigravityV1Beta.POST("/models/*modelAction", h.Gateway.GeminiV1BetaModels)
 	}
 
-}
-
-// getGroupPlatform extracts the group platform from the API Key stored in context.
-func getGroupPlatform(c *gin.Context) string {
-	apiKey, ok := middleware.GetAPIKeyFromContext(c)
-	if !ok || apiKey.Group == nil {
-		return ""
-	}
-	return apiKey.Group.Platform
-}
-
-func isGroupOfficialOpenAI(c *gin.Context) bool {
-	return service.NormalizePlatformSlug(getGroupPlatform(c)) == service.PlatformOpenAI
-}
-
-func isGroupOpenAICompatible(c *gin.Context, platformService *service.PlatformService) bool {
-	platform := service.NormalizePlatformSlug(getGroupPlatform(c))
-	if platform == "" {
-		return false
-	}
-	if platform == service.PlatformOpenAI {
-		return true
-	}
-	if platformService == nil {
-		return false
-	}
-	return platformService.IsOpenAICompatible(c.Request.Context(), platform)
-}
-
-func isGroupGeminiCompatible(c *gin.Context, platformService *service.PlatformService) bool {
-	platform := service.NormalizePlatformSlug(getGroupPlatform(c))
-	if platform == "" {
-		return false
-	}
-	if platform == service.PlatformGemini {
-		return true
-	}
-	if platformService == nil {
-		return false
-	}
-	return platformService.IsGeminiCompatible(c.Request.Context(), platform)
-}
-
-func openAIEndpointUnsupported(c *gin.Context, message string) {
-	c.JSON(http.StatusNotFound, gin.H{
-		"error": gin.H{
-			"type":    "not_found_error",
-			"message": message,
-		},
-	})
-}
-
-func officialOpenAIOnly(next gin.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !isGroupOfficialOpenAI(c) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": "This endpoint is only supported for official OpenAI groups",
-				},
-			})
-			return
-		}
-		next(c)
-	}
-}
-
-func openAICompatibleOnly(platformService *service.PlatformService, message string, next gin.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if !isGroupOpenAICompatible(c, platformService) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": message,
-				},
-			})
-			return
-		}
-		next(c)
-	}
 }

@@ -75,13 +75,9 @@ func RegisterUserRoutes(
 		channels := authenticated.Group("/channels")
 		{
 			channels.GET("/available", h.AvailableChannel.List)
-			channels.GET("/model-plaza", h.AvailableChannel.ModelPlaza)
 		}
 
-		platforms := authenticated.Group("/platforms")
-		{
-			platforms.GET("", h.Platform.ListPublic)
-		}
+		registerXimoAIUserRoutes(authenticated, h)
 
 		// 使用记录
 		usage := authenticated.Group("/usage")
