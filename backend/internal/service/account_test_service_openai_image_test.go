@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/gin-gonic/gin"
@@ -241,6 +242,59 @@ func TestAccountTestService_OpenAIVideoModelUsesReturnedVideoURL(t *testing.T) {
 	require.Contains(t, rec.Body.String(), `"type":"video"`)
 	require.Contains(t, rec.Body.String(), `"video_url":"https://cdn.example/video_456.mp4"`)
 	require.Contains(t, rec.Body.String(), "\"success\":true")
+}
+
+func TestAccountTestService_OpenAIVideoStillProcessingReturnsError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	originalSleep := accountTestSleep
+	accountTestSleep = func(context.Context, time.Duration) error { return nil }
+	t.Cleanup(func() { accountTestSleep = originalSleep })
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/1/test", nil)
+
+	upstream := &httpUpstreamRecorder{
+		responses: []*http.Response{
+			{
+				StatusCode: http.StatusAccepted,
+				Header: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: io.NopCloser(strings.NewReader(`{"id":"video_queued","status":"queued"}`)),
+			},
+		},
+	}
+	for i := 0; i < openAIVideoTestPollAttempts; i++ {
+		upstream.responses = append(upstream.responses, &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: io.NopCloser(strings.NewReader(`{"id":"video_queued","status":"queued"}`)),
+		})
+	}
+	svc := &AccountTestService{
+		httpUpstream: upstream,
+		cfg:          &config.Config{},
+	}
+	account := &Account{
+		ID:       59,
+		Name:     "openai-apikey",
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "test-api-key",
+			"base_url": "https://video-upstream.example/v1",
+		},
+	}
+
+	err := svc.testOpenAIAccountConnection(c, account, "sora-2", "", "")
+	require.Error(t, err)
+	require.Len(t, upstream.requests, openAIVideoTestPollAttempts+1)
+	require.Contains(t, rec.Body.String(), "Video status: queued")
+	require.Contains(t, rec.Body.String(), "Video test still processing: video_queued")
+	require.NotContains(t, rec.Body.String(), "\"success\":true")
 }
 
 func TestAccountTestService_OpenAIMediaOAuthTestsReturnExplicitError(t *testing.T) {

@@ -72,6 +72,17 @@ const (
 	openAIVideoTestPollInterval       = 2 * time.Second
 )
 
+var accountTestSleep = func(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
 const (
 	AccountTestTypeAuto  = "auto"
 	AccountTestTypeText  = "text"
@@ -1739,14 +1750,11 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 }
 
 func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx context.Context, account *Account, baseURL, videoID string) error {
+	lastStatus := ""
 	for attempt := 0; attempt < openAIVideoTestPollAttempts; attempt++ {
 		if attempt > 0 {
-			timer := time.NewTimer(openAIVideoTestPollInterval)
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return s.sendErrorAndEnd(c, ctx.Err().Error())
-			case <-timer.C:
+			if err := accountTestSleep(ctx, openAIVideoTestPollInterval); err != nil {
+				return s.sendErrorAndEnd(c, err.Error())
 			}
 		}
 
@@ -1772,8 +1780,9 @@ func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx conte
 		}
 
 		status := extractOpenAIVideoStatus(body)
-		if status != "" {
+		if status != "" && status != lastStatus {
 			s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video status: %s", status)})
+			lastStatus = status
 		}
 		switch strings.ToLower(status) {
 		case "completed", "succeeded", "success":
@@ -1816,9 +1825,7 @@ func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx conte
 		_ = headers
 	}
 
-	s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video test still processing: %s", videoID)})
-	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
-	return nil
+	return s.sendErrorAndEnd(c, fmt.Sprintf("Video test still processing: %s", videoID))
 }
 
 func (s *AccountTestService) doOpenAIVideoTestGet(ctx context.Context, account *Account, baseURL, endpoint, accept string) (int, http.Header, []byte, error) {

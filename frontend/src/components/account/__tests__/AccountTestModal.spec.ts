@@ -206,4 +206,57 @@ describe('AccountTestModal', () => {
     expect(video.attributes('src')).toBe('https://cdn.example/test.mp4')
     expect(wrapper.find('a[href="https://cdn.example/test.mp4"]').exists()).toBe(true)
   })
+
+  it('prints non-text test content as separate lines', async () => {
+    const encoder = new TextEncoder()
+    const chunks = [
+      'data: {"type":"test_start","model":"sora-2"}\n',
+      'data: {"type":"content","text":"Video status: queued"}\n',
+      'data: {"type":"content","text":"Video test still processing: task_123"}\n',
+      'data: {"type":"error","error":"Video test still processing: task_123"}\n'
+    ].map((line) => encoder.encode(line))
+    let index = 0
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: vi.fn().mockImplementation(async () => {
+            if (index < chunks.length) {
+              return { done: false, value: chunks[index++] }
+            }
+            return { done: true, value: undefined }
+          })
+        })
+      }
+    } as any)
+
+    const wrapper = mount(AccountTestModal, {
+      props: {
+        show: true,
+        account: {
+          ...buildAccount(),
+          type: 'apikey'
+        }
+      },
+      global: {
+        stubs: {
+          BaseDialog: BaseDialogStub,
+          Select: SelectStub,
+          TextArea: TextAreaStub,
+          Icon: true
+        }
+      }
+    })
+
+    await flushPromises()
+    ;(wrapper.vm as any).selectedModelId = 'sora-2'
+    ;(wrapper.vm as any).testType = 'video'
+    await (wrapper.vm as any).startTest()
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Video status: queued')
+    expect(wrapper.text()).toContain('Video test still processing: task_123')
+    expect((wrapper.vm as any).streamingContent).toBe('')
+  })
 })

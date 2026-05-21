@@ -725,8 +725,12 @@ const handleEvent = (event: {
 
     case 'content':
       if (event.text) {
-        streamingContent.value += event.text
-        scrollToBottom()
+        if (activeTestType.value === 'text') {
+          streamingContent.value += event.text
+          scrollToBottom()
+        } else {
+          addLine(event.text, 'text-green-300')
+        }
       }
       break
 
