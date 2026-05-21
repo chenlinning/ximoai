@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -26,6 +28,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/util/urlvalidator"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
 )
 
 // sseDataPrefix matches SSE data lines with optional whitespace after colon.
@@ -45,6 +48,8 @@ type TestEvent struct {
 	Status   string `json:"status,omitempty"`
 	Code     string `json:"code,omitempty"`
 	ImageURL string `json:"image_url,omitempty"`
+	AudioURL string `json:"audio_url,omitempty"`
+	VideoURL string `json:"video_url,omitempty"`
 	MimeType string `json:"mime_type,omitempty"`
 	Data     any    `json:"data,omitempty"`
 	Success  bool   `json:"success,omitempty"`
@@ -59,6 +64,12 @@ const (
 	defaultOpenAIVideoTestPrompt = "A tiny test video of a sunrise over mountains."
 	defaultOpenAIVideoSeconds    = 4
 	defaultOpenAIVideoSize       = "720x1280"
+)
+
+const (
+	accountTestMediaPreviewLimitBytes = 40 * 1024 * 1024
+	openAIVideoTestPollAttempts       = 8
+	openAIVideoTestPollInterval       = 2 * time.Second
 )
 
 const (
@@ -1584,15 +1595,24 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, accountTestMediaPreviewLimitBytes+1))
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read response: %s", err.Error()))
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
+	if len(body) > accountTestMediaPreviewLimitBytes {
+		return s.sendErrorAndEnd(c, "Audio response is too large to preview")
+	}
 
+	mimeType := normalizeMediaContentType(resp.Header.Get("Content-Type"), "audio/mpeg")
 	s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Audio test returned %d bytes", len(body))})
+	s.sendEvent(c, TestEvent{
+		Type:     "audio",
+		AudioURL: mediaDataURL(mimeType, body),
+		MimeType: mimeType,
+	})
 	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 	return nil
 }
@@ -1672,21 +1692,232 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, accountTestMediaPreviewLimitBytes+1))
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read response: %s", err.Error()))
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
+	if len(body) > accountTestMediaPreviewLimitBytes {
+		return s.sendErrorAndEnd(c, "Video response is too large to preview")
+	}
+
+	if isMediaContentType(resp.Header.Get("Content-Type"), "video/") {
+		mimeType := normalizeMediaContentType(resp.Header.Get("Content-Type"), "video/mp4")
+		s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video test returned %d bytes", len(body))})
+		s.sendEvent(c, TestEvent{
+			Type:     "video",
+			VideoURL: mediaDataURL(mimeType, body),
+			MimeType: mimeType,
+		})
+		s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+		return nil
+	}
 
 	message := "Video test request accepted"
-	if videoID := extractOpenAIVideoID(body); videoID != "" {
+	videoID := extractOpenAIVideoID(body)
+	if videoID != "" {
 		message = fmt.Sprintf("Video test created: %s", videoID)
 	}
 	s.sendEvent(c, TestEvent{Type: "content", Text: message})
+	if videoURL := extractOpenAIVideoURL(body); videoURL != "" {
+		s.sendEvent(c, TestEvent{
+			Type:     "video",
+			VideoURL: videoURL,
+			MimeType: "video/mp4",
+			Data:     json.RawMessage(body),
+		})
+		s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+		return nil
+	}
+	if videoID != "" {
+		return s.pollOpenAIVideoTestResult(c, ctx, account, normalizedBaseURL, videoID)
+	}
 	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 	return nil
+}
+
+func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx context.Context, account *Account, baseURL, videoID string) error {
+	for attempt := 0; attempt < openAIVideoTestPollAttempts; attempt++ {
+		if attempt > 0 {
+			timer := time.NewTimer(openAIVideoTestPollInterval)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return s.sendErrorAndEnd(c, ctx.Err().Error())
+			case <-timer.C:
+			}
+		}
+
+		statusCode, headers, body, err := s.doOpenAIVideoTestGet(ctx, account, baseURL, fmt.Sprintf("/v1/videos/%s", url.PathEscape(videoID)), "application/json")
+		if err != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to fetch video status: %s", err.Error()))
+		}
+		if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+			s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video status fetch returned %d: %s", statusCode, string(body))})
+			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+			return nil
+		}
+
+		if videoURL := extractOpenAIVideoURL(body); videoURL != "" {
+			s.sendEvent(c, TestEvent{
+				Type:     "video",
+				VideoURL: videoURL,
+				MimeType: "video/mp4",
+				Data:     json.RawMessage(body),
+			})
+			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+			return nil
+		}
+
+		status := extractOpenAIVideoStatus(body)
+		if status != "" {
+			s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video status: %s", status)})
+		}
+		switch strings.ToLower(status) {
+		case "completed", "succeeded", "success":
+			contentStatus, contentHeaders, contentBody, err := s.doOpenAIVideoTestGet(ctx, account, baseURL, fmt.Sprintf("/v1/videos/%s/content", url.PathEscape(videoID)), "video/*")
+			if err != nil {
+				return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to fetch video content: %s", err.Error()))
+			}
+			if contentStatus >= http.StatusOK && contentStatus < http.StatusMultipleChoices {
+				if len(contentBody) > 0 && isMediaContentType(contentHeaders.Get("Content-Type"), "video/") {
+					mimeType := normalizeMediaContentType(contentHeaders.Get("Content-Type"), "video/mp4")
+					s.sendEvent(c, TestEvent{
+						Type:     "video",
+						VideoURL: mediaDataURL(mimeType, contentBody),
+						MimeType: mimeType,
+					})
+					s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+					return nil
+				}
+				if videoURL := extractOpenAIVideoURL(contentBody); videoURL != "" {
+					s.sendEvent(c, TestEvent{
+						Type:     "video",
+						VideoURL: videoURL,
+						MimeType: "video/mp4",
+					})
+					s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+					return nil
+				}
+			}
+			s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video completed: %s", videoID)})
+			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+			return nil
+		case "failed", "error", "cancelled", "canceled":
+			errorMsg := strings.TrimSpace(extractUpstreamErrorMessage(body))
+			if errorMsg == "" {
+				errorMsg = fmt.Sprintf("Video test failed with status: %s", status)
+			}
+			return s.sendErrorAndEnd(c, errorMsg)
+		}
+
+		_ = headers
+	}
+
+	s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Video test still processing: %s", videoID)})
+	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+	return nil
+}
+
+func (s *AccountTestService) doOpenAIVideoTestGet(ctx context.Context, account *Account, baseURL, endpoint, accept string) (int, http.Header, []byte, error) {
+	authToken := account.GetOpenAIApiKey()
+	if authToken == "" {
+		return 0, nil, nil, fmt.Errorf("No API key available")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildOpenAIVideosURL(baseURL, endpoint), nil)
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	if strings.TrimSpace(accept) == "" {
+		accept = "application/json"
+	}
+	req.Header.Set("Accept", accept)
+	req.Header.Set("Authorization", "Bearer "+authToken)
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+
+	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	if err != nil {
+		return 0, nil, nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, accountTestMediaPreviewLimitBytes+1))
+	if err != nil {
+		return resp.StatusCode, resp.Header.Clone(), nil, err
+	}
+	if len(body) > accountTestMediaPreviewLimitBytes {
+		return resp.StatusCode, resp.Header.Clone(), nil, fmt.Errorf("video response is too large to preview")
+	}
+	return resp.StatusCode, resp.Header.Clone(), body, nil
+}
+
+func mediaDataURL(mimeType string, body []byte) string {
+	return fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(body))
+}
+
+func normalizeMediaContentType(contentType, fallback string) string {
+	contentType = strings.TrimSpace(strings.Split(contentType, ";")[0])
+	if contentType == "" {
+		return fallback
+	}
+	return strings.ToLower(contentType)
+}
+
+func isMediaContentType(contentType, prefix string) bool {
+	return strings.HasPrefix(normalizeMediaContentType(contentType, ""), strings.ToLower(prefix))
+}
+
+func extractOpenAIVideoStatus(body []byte) string {
+	for _, path := range []string{"status", "video.status", "data.status"} {
+		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func extractOpenAIVideoURL(body []byte) string {
+	for _, path := range []string{
+		"url",
+		"video_url",
+		"content_url",
+		"download_url",
+		"output_url",
+		"video.url",
+		"video.download_url",
+		"data.url",
+		"data.video_url",
+		"data.content_url",
+		"data.download_url",
+		"data.0.url",
+		"output.url",
+		"output.0.url",
+		"result.url",
+	} {
+		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); isPreviewableMediaURL(value) {
+			return value
+		}
+	}
+	return ""
+}
+
+func isPreviewableMediaURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || parsed.Scheme == "" {
+		return false
+	}
+	switch strings.ToLower(parsed.Scheme) {
+	case "http", "https", "data":
+		return true
+	default:
+		return false
+	}
 }
 
 // testOpenAIImageOAuth tests OpenAI image generation using an OAuth account via Codex /responses API.

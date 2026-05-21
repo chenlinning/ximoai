@@ -187,6 +187,55 @@
         </button>
       </div>
 
+      <div v-if="generatedAudios.length > 0" class="space-y-2">
+        <div class="text-xs font-medium text-gray-600 dark:text-gray-300">
+          {{ t('admin.accounts.audioPreview') }}
+        </div>
+        <div class="space-y-2">
+          <div
+            v-for="(audio, index) in generatedAudios"
+            :key="`${audio.url}-${index}`"
+            class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-dark-500 dark:bg-dark-700"
+          >
+            <audio :src="audio.url" controls class="w-full" />
+            <div class="mt-2 text-xs text-gray-500 dark:text-gray-300">
+              {{ audio.mimeType || 'audio/*' }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="generatedVideos.length > 0" class="space-y-2">
+        <div class="text-xs font-medium text-gray-600 dark:text-gray-300">
+          {{ t('admin.accounts.videoPreview') }}
+        </div>
+        <div class="space-y-3">
+          <div
+            v-for="(video, index) in generatedVideos"
+            :key="`${video.url}-${index}`"
+            class="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-dark-500 dark:bg-dark-700"
+          >
+            <video
+              :src="video.url"
+              controls
+              class="max-h-[420px] w-full rounded-lg bg-black object-contain"
+            />
+            <div class="mt-2 flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-300">
+              <span>{{ video.mimeType || 'video/*' }}</span>
+              <a
+                v-if="isExternalURL(video.url)"
+                :href="video.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-primary-600 hover:text-primary-700 dark:text-primary-400"
+              >
+                {{ t('admin.accounts.openVideoResult') }}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="generatedImages.length > 0" class="space-y-2">
         <div class="text-xs font-medium text-gray-600 dark:text-gray-300">
           {{ t('admin.accounts.imagePreview') }}
@@ -317,6 +366,16 @@ interface PreviewImage {
   mimeType?: string
 }
 
+interface PreviewAudio {
+  url: string
+  mimeType?: string
+}
+
+interface PreviewVideo {
+  url: string
+  mimeType?: string
+}
+
 type AccountTestType = 'auto' | 'text' | 'image' | 'audio' | 'video'
 
 const props = defineProps<{
@@ -343,6 +402,8 @@ const videoSize = ref('720x1280')
 const loadingModels = ref(false)
 let abortController: AbortController | null = null
 const generatedImages = ref<PreviewImage[]>([])
+const generatedAudios = ref<PreviewAudio[]>([])
+const generatedVideos = ref<PreviewVideo[]>([])
 const testMode = ref<'default' | 'compact'>('default')
 const testType = ref<AccountTestType>('auto')
 const activeTestType = ref<AccountTestType>('text')
@@ -505,8 +566,12 @@ const resetState = () => {
   streamingContent.value = ''
   errorMessage.value = ''
   generatedImages.value = []
+  generatedAudios.value = []
+  generatedVideos.value = []
   previewImageUrl.value = ''
 }
+
+const isExternalURL = (value: string) => /^https?:\/\//i.test(value)
 
 const handleClose = () => {
   abortStream()
@@ -634,6 +699,8 @@ const handleEvent = (event: {
   success?: boolean
   error?: string
   image_url?: string
+  audio_url?: string
+  video_url?: string
   mime_type?: string
 }) => {
   switch (event.type) {
@@ -670,6 +737,26 @@ const handleEvent = (event: {
           mimeType: event.mime_type
         })
         addLine(t('admin.accounts.imageReceived', { count: generatedImages.value.length }), 'text-purple-300')
+      }
+      break
+
+    case 'audio':
+      if (event.audio_url) {
+        generatedAudios.value.push({
+          url: event.audio_url,
+          mimeType: event.mime_type
+        })
+        addLine(t('admin.accounts.audioReceived', { count: generatedAudios.value.length }), 'text-purple-300')
+      }
+      break
+
+    case 'video':
+      if (event.video_url) {
+        generatedVideos.value.push({
+          url: event.video_url,
+          mimeType: event.mime_type
+        })
+        addLine(t('admin.accounts.videoReceived', { count: generatedVideos.value.length }), 'text-purple-300')
       }
       break
 

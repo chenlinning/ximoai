@@ -152,4 +152,58 @@ describe('AccountTestModal', () => {
       mode: 'compact'
     })
   })
+
+  it('renders audio and video results returned by account test events', async () => {
+    const encoder = new TextEncoder()
+    const chunks = [
+      'data: {"type":"test_start","model":"gpt-4o-audio-preview"}\n',
+      'data: {"type":"audio","audio_url":"data:audio/mpeg;base64,bXAz","mime_type":"audio/mpeg"}\n',
+      'data: {"type":"video","video_url":"https://cdn.example/test.mp4","mime_type":"video/mp4"}\n',
+      'data: {"type":"test_complete","success":true}\n'
+    ].map((line) => encoder.encode(line))
+    let index = 0
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: vi.fn().mockImplementation(async () => {
+            if (index < chunks.length) {
+              return { done: false, value: chunks[index++] }
+            }
+            return { done: true, value: undefined }
+          })
+        })
+      }
+    } as any)
+
+    const wrapper = mount(AccountTestModal, {
+      props: {
+        show: true,
+        account: buildAccount()
+      },
+      global: {
+        stubs: {
+          BaseDialog: BaseDialogStub,
+          Select: SelectStub,
+          TextArea: TextAreaStub,
+          Icon: true
+        }
+      }
+    })
+
+    await flushPromises()
+    ;(wrapper.vm as any).selectedModelId = 'gpt-4o-audio-preview'
+    await (wrapper.vm as any).startTest()
+    await flushPromises()
+    await flushPromises()
+
+    const audio = wrapper.find('audio')
+    expect(audio.exists()).toBe(true)
+    expect(audio.attributes('src')).toBe('data:audio/mpeg;base64,bXAz')
+
+    const video = wrapper.find('video')
+    expect(video.exists()).toBe(true)
+    expect(video.attributes('src')).toBe('https://cdn.example/test.mp4')
+    expect(wrapper.find('a[href="https://cdn.example/test.mp4"]').exists()).toBe(true)
+  })
 })

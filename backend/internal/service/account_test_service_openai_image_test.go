@@ -133,6 +133,8 @@ func TestAccountTestService_OpenAIAudioModelUsesAudioSpeechEndpoint(t *testing.T
 	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "input").String())
 	require.Equal(t, "alloy", gjson.GetBytes(upstream.lastBody, "voice").String())
 	require.Contains(t, rec.Body.String(), "Audio test returned")
+	require.Contains(t, rec.Body.String(), `"type":"audio"`)
+	require.Contains(t, rec.Body.String(), `data:audio/mpeg;base64,bXAzLWJ5dGVz`)
 	require.Contains(t, rec.Body.String(), "\"success\":true")
 }
 
@@ -143,12 +145,28 @@ func TestAccountTestService_OpenAIVideoModelUsesVideosEndpoint(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/1/test", nil)
 
 	upstream := &httpUpstreamRecorder{
-		resp: &http.Response{
-			StatusCode: http.StatusAccepted,
-			Header: http.Header{
-				"Content-Type": []string{"application/json"},
+		responses: []*http.Response{
+			{
+				StatusCode: http.StatusAccepted,
+				Header: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: io.NopCloser(strings.NewReader(`{"id":"video_123","status":"queued"}`)),
 			},
-			Body: io.NopCloser(strings.NewReader(`{"id":"video_123","status":"queued"}`)),
+			{
+				StatusCode: http.StatusOK,
+				Header: http.Header{
+					"Content-Type": []string{"application/json"},
+				},
+				Body: io.NopCloser(strings.NewReader(`{"id":"video_123","status":"completed"}`)),
+			},
+			{
+				StatusCode: http.StatusOK,
+				Header: http.Header{
+					"Content-Type": []string{"video/mp4"},
+				},
+				Body: io.NopCloser(strings.NewReader("mp4-bytes")),
+			},
 		},
 	}
 	svc := &AccountTestService{
@@ -168,16 +186,60 @@ func TestAccountTestService_OpenAIVideoModelUsesVideosEndpoint(t *testing.T) {
 
 	err := svc.testOpenAIAccountConnection(c, account, "sora-2", "", "")
 	require.NoError(t, err)
-	require.NotNil(t, upstream.lastReq)
-	require.Equal(t, "https://video-upstream.example/v1/videos", upstream.lastReq.URL.String())
-	require.Equal(t, "Bearer test-api-key", upstream.lastReq.Header.Get("Authorization"))
-	require.Equal(t, "application/json", upstream.lastReq.Header.Get("Accept"))
-	form := parseMultipartFormValues(t, upstream.lastReq.Header.Get("Content-Type"), upstream.lastBody)
+	require.Len(t, upstream.requests, 3)
+	createReq := upstream.requests[0]
+	require.NotNil(t, createReq)
+	require.Equal(t, "https://video-upstream.example/v1/videos", createReq.URL.String())
+	require.Equal(t, "Bearer test-api-key", createReq.Header.Get("Authorization"))
+	require.Equal(t, "application/json", createReq.Header.Get("Accept"))
+	form := parseMultipartFormValues(t, createReq.Header.Get("Content-Type"), upstream.bodies[0])
 	require.Equal(t, "sora-2", form["model"])
 	require.Equal(t, "A tiny test video of a sunrise over mountains.", form["prompt"])
 	require.Equal(t, "4", form["seconds"])
 	require.Equal(t, "720x1280", form["size"])
+	require.Equal(t, "https://video-upstream.example/v1/videos/video_123", upstream.requests[1].URL.String())
+	require.Equal(t, "https://video-upstream.example/v1/videos/video_123/content", upstream.requests[2].URL.String())
 	require.Contains(t, rec.Body.String(), "Video test created: video_123")
+	require.Contains(t, rec.Body.String(), `"type":"video"`)
+	require.Contains(t, rec.Body.String(), `data:video/mp4;base64,bXA0LWJ5dGVz`)
+	require.Contains(t, rec.Body.String(), "\"success\":true")
+}
+
+func TestAccountTestService_OpenAIVideoModelUsesReturnedVideoURL(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/1/test", nil)
+
+	upstream := &httpUpstreamRecorder{
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: io.NopCloser(strings.NewReader(`{"id":"video_456","status":"completed","download_url":"https://cdn.example/video_456.mp4"}`)),
+		},
+	}
+	svc := &AccountTestService{
+		httpUpstream: upstream,
+		cfg:          &config.Config{},
+	}
+	account := &Account{
+		ID:       58,
+		Name:     "openai-apikey",
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "test-api-key",
+			"base_url": "https://video-upstream.example/v1",
+		},
+	}
+
+	err := svc.testOpenAIAccountConnection(c, account, "sora-2", "", "")
+	require.NoError(t, err)
+	require.Len(t, upstream.requests, 1)
+	require.Contains(t, rec.Body.String(), `"type":"video"`)
+	require.Contains(t, rec.Body.String(), `"video_url":"https://cdn.example/video_456.mp4"`)
 	require.Contains(t, rec.Body.String(), "\"success\":true")
 }
 

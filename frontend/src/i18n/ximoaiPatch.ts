@@ -49,11 +49,16 @@ const zhPatch: MessageTree = {
       audioInputLabel: '语音输入文本',
       audioInputPlaceholder: '例如：hi',
       audioTestMode: '模式：语音测试',
+      audioPreview: '语音结果',
+      audioReceived: '已收到第 {count} 段测试音频',
       videoPromptLabel: '视频提示词',
       videoPromptPlaceholder: '例如：A tiny test video of a sunrise over mountains.',
       videoSecondsLabel: '视频秒数',
       videoSizeLabel: '视频尺寸',
-      videoTestMode: '模式：视频测试'
+      videoTestMode: '模式：视频测试',
+      videoPreview: '视频结果',
+      videoReceived: '已收到第 {count} 段测试视频',
+      openVideoResult: '打开视频'
     }
   }
 }
@@ -107,11 +112,16 @@ const enPatch: MessageTree = {
       audioInputLabel: 'Audio input text',
       audioInputPlaceholder: 'Example: hi',
       audioTestMode: 'Mode: Audio speech test',
+      audioPreview: 'Generated audio:',
+      audioReceived: 'Received test audio #{count}',
       videoPromptLabel: 'Video prompt',
       videoPromptPlaceholder: 'Example: A tiny test video of a sunrise over mountains.',
       videoSecondsLabel: 'Video seconds',
       videoSizeLabel: 'Video size',
-      videoTestMode: 'Mode: Video generation test'
+      videoTestMode: 'Mode: Video generation test',
+      videoPreview: 'Generated video:',
+      videoReceived: 'Received test video #{count}',
+      openVideoResult: 'Open video'
     }
   }
 }
