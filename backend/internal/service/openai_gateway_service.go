@@ -3718,7 +3718,7 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 	// Some upstreams (e.g. other sub2api instances) may return SSE even when
 	// stream=false was requested. Without this conversion the client would
 	// receive raw SSE text or a terminal event with empty output.
-	if isEventStreamResponse(resp.Header) {
+	if isEventStreamResponse(resp.Header) || looksLikeOpenAINonStreamingSSEBody(body) {
 		return s.handlePassthroughSSEToJSON(resp, c, body, originalModel, mappedModel)
 	}
 
@@ -4842,19 +4842,8 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 	// Detect SSE responses for ALL account types via Content-Type header.
 	// Some OpenAI-compatible upstreams (including other sub2api instances)
 	// may return SSE even when stream=false was requested.
-	if isEventStreamResponse(resp.Header) {
+	if isEventStreamResponse(resp.Header) || looksLikeOpenAINonStreamingSSEBody(body) {
 		return s.handleSSEToJSON(resp, c, body, originalModel, mappedModel)
-	}
-	// For OAuth accounts, also fall back to a body-content heuristic because
-	// the upstream may omit the Content-Type header while still sending SSE.
-	// This heuristic is NOT applied to API-key accounts to avoid false
-	// positives on JSON responses that coincidentally contain "data:" or
-	// "event:" in their text content.
-	if account.Type == AccountTypeOAuth {
-		bodyLooksLikeSSE := bytes.Contains(body, []byte("data:")) || bytes.Contains(body, []byte("event:"))
-		if bodyLooksLikeSSE {
-			return s.handleSSEToJSON(resp, c, body, originalModel, mappedModel)
-		}
 	}
 
 	usageValue, usageOK := extractOpenAIUsageFromJSONBytes(body)
@@ -4890,6 +4879,25 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 func isEventStreamResponse(header http.Header) bool {
 	contentType := strings.ToLower(header.Get("Content-Type"))
 	return strings.Contains(contentType, "text/event-stream")
+}
+
+func looksLikeOpenAINonStreamingSSEBody(body []byte) bool {
+	if len(body) == 0 || !bytes.Contains(body, []byte("data:")) {
+		return false
+	}
+	bodyText := string(body)
+	if _, ok := extractCodexFinalResponse(bodyText); ok {
+		return true
+	}
+	if _, _, ok := extractOpenAISSETerminalEvent(bodyText); ok {
+		return true
+	}
+	for _, line := range strings.Split(bodyText, "\n") {
+		if data, ok := extractOpenAISSEDataLine(line); ok && strings.TrimSpace(data) == "[DONE]" {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *OpenAIGatewayService) handleSSEToJSON(resp *http.Response, c *gin.Context, body []byte, originalModel, mappedModel string) (*openaiNonStreamingResult, error) {

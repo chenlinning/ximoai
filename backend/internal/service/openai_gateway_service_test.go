@@ -1587,6 +1587,84 @@ func TestOpenAINonStreamingContentTypeDefault(t *testing.T) {
 	}
 }
 
+func TestOpenAINonStreamingAPIKeyConvertsSSEBodyWithoutEventStreamContentType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{}
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+
+	body := []byte("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_123\",\"model\":\"gpt-5.4\",\"usage\":{\"input_tokens\":3,\"output_tokens\":5,\"input_tokens_details\":{\"cached_tokens\":1}},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"ok\"}]}]}}\n\n")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader(body)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+
+	result, err := svc.handleNonStreamingResponse(c.Request.Context(), resp, c, &Account{Type: AccountTypeAPIKey}, "gpt-5.4", "gpt-5.4")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotNil(t, result.usage)
+	require.Equal(t, 3, result.usage.InputTokens)
+	require.Equal(t, 5, result.usage.OutputTokens)
+	require.Equal(t, 1, result.usage.CacheReadInputTokens)
+	require.JSONEq(t, `{"id":"resp_123","model":"gpt-5.4","usage":{"input_tokens":3,"output_tokens":5,"input_tokens_details":{"cached_tokens":1}},"output":[{"type":"message","content":[{"type":"output_text","text":"ok"}]}]}`, rec.Body.String())
+	require.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+}
+
+func TestOpenAINonStreamingDoesNotTreatJSONTextAsSSEBody(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cfg := &config.Config{
+		Security: config.SecurityConfig{
+			ResponseHeaders: config.ResponseHeaderConfig{Enabled: false},
+		},
+	}
+	svc := &OpenAIGatewayService{cfg: cfg}
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+
+	body := []byte(`{"usage":{"input_tokens":1,"output_tokens":2},"output":[{"content":[{"text":"literal data: response.completed"}]}]}`)
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader(body)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+
+	result, err := svc.handleNonStreamingResponse(c.Request.Context(), resp, c, &Account{Type: AccountTypeAPIKey}, "model", "model")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.JSONEq(t, string(body), rec.Body.String())
+	require.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+}
+
+func TestOpenAINonStreamingPassthroughConvertsSSEBodyWithoutEventStreamContentType(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	svc := &OpenAIGatewayService{}
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/", nil)
+
+	body := []byte("data: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_456\",\"model\":\"gpt-5.4\",\"usage\":{\"input_tokens\":7,\"output_tokens\":11},\"output\":[{\"type\":\"message\",\"content\":[{\"type\":\"output_text\",\"text\":\"done\"}]}]}}\n\n")
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader(body)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+
+	result, err := svc.handleNonStreamingResponsePassthrough(c.Request.Context(), resp, c, "gpt-5.4", "gpt-5.4")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotNil(t, result.usage)
+	require.Equal(t, 7, result.usage.InputTokens)
+	require.Equal(t, 11, result.usage.OutputTokens)
+	require.JSONEq(t, `{"id":"resp_456","model":"gpt-5.4","usage":{"input_tokens":7,"output_tokens":11},"output":[{"type":"message","content":[{"type":"output_text","text":"done"}]}]}`, rec.Body.String())
+	require.Contains(t, rec.Header().Get("Content-Type"), "application/json")
+}
+
 func TestOpenAIStreamingHeadersOverride(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{
