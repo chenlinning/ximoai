@@ -196,7 +196,7 @@
                 </template>
 
                 <div
-                  v-if="group.pricing.intervals.length > 0"
+                  v-if="displayIntervals(group.pricing, group.rate).length > 0"
                   class="mt-2 border-t border-gray-200 pt-2 dark:border-dark-700"
                 >
                   <p class="mb-1 text-xs font-medium text-gray-500 dark:text-dark-400">
@@ -204,15 +204,15 @@
                   </p>
                   <div class="space-y-1">
                     <div
-                      v-for="(interval, idx) in group.pricing.intervals"
-                      :key="idx"
+                      v-for="interval in displayIntervals(group.pricing, group.rate)"
+                      :key="interval.key"
                       class="flex items-start justify-between gap-3 text-xs"
                     >
                       <span class="text-gray-500 dark:text-dark-400">
-                        {{ intervalLabel(interval) }}
+                        {{ interval.label }}
                       </span>
                       <span class="text-right font-mono text-gray-800 dark:text-gray-100">
-                        {{ intervalPrice(interval, group.pricing.billing_mode, group.rate) }}
+                        {{ interval.price }}
                       </span>
                     </div>
                   </div>
@@ -269,15 +269,18 @@ const PriceLine = (
     unit: string
     scale: number
   }
-) =>
-  h('div', { class: 'flex items-start justify-between gap-3' }, [
+) => {
+  if (!hasDisplayPrice(props.value)) return null
+
+  return h('div', { class: 'flex items-start justify-between gap-3' }, [
     h('span', { class: 'text-gray-500 dark:text-dark-400' }, props.label),
     h(
       'span',
       { class: 'text-right font-mono font-medium text-orange-600 dark:text-orange-400' },
-      props.value == null ? '-' : `${formatScaled(props.value, props.scale)} ${props.unit}`
+      `${formatScaled(props.value, props.scale)} ${props.unit}`
     )
   ])
+}
 
 interface ModelGroup {
   key: string
@@ -293,6 +296,12 @@ interface ModelEntry {
   name: string
   platform: string
   groups: ModelGroup[]
+}
+
+interface DisplayInterval {
+  key: string
+  label: string
+  price: string
 }
 
 const { t } = useI18n()
@@ -384,13 +393,21 @@ function scaledPrice(value: number | null, rate: number): number | null {
   return value == null ? null : value * rate
 }
 
+function hasDisplayPrice(value: number | null): value is number {
+  return value != null && value > 0
+}
+
+function formatDisplayPrice(value: number | null, scale: number): string | null {
+  return hasDisplayPrice(value) ? formatScaled(value, scale) : null
+}
+
 function intervalLabel(interval: UserPricingInterval): string {
   if (interval.tier_label) return interval.tier_label
   const max = interval.max_tokens == null ? t('modelPlaza.intervalUnlimited') : interval.max_tokens
   return `${interval.min_tokens} - ${max}`
 }
 
-function intervalPrice(interval: UserPricingInterval, mode: BillingMode, rate: number): string {
+function intervalPrice(interval: UserPricingInterval, mode: BillingMode, rate: number): string | null {
   if (mode === BILLING_MODE_PER_REQUEST || mode === BILLING_MODE_IMAGE || mode === BILLING_MODE_VIDEO) {
     const unitKey =
       mode === BILLING_MODE_IMAGE
@@ -398,11 +415,31 @@ function intervalPrice(interval: UserPricingInterval, mode: BillingMode, rate: n
         : mode === BILLING_MODE_VIDEO
           ? 'modelPlaza.perVideoUnit'
           : 'modelPlaza.perRequestUnit'
-    return `${formatScaled(scaledPrice(interval.per_request_price, rate), 1)} ${t(unitKey)}`
+    const price = formatDisplayPrice(scaledPrice(interval.per_request_price, rate), 1)
+    return price ? `${price} ${t(unitKey)}` : null
   }
-  const input = formatScaled(scaledPrice(interval.input_price, rate), perMillionScale)
-  const output = formatScaled(scaledPrice(interval.output_price, rate), perMillionScale)
-  return `${input} / ${output} ${t('modelPlaza.perMillionUnit')}`
+  const input = formatDisplayPrice(scaledPrice(interval.input_price, rate), perMillionScale)
+  const output = formatDisplayPrice(scaledPrice(interval.output_price, rate), perMillionScale)
+  const parts = [
+    input ? `${t('modelPlaza.inputPrice')} ${input}` : null,
+    output ? `${t('modelPlaza.outputPrice')} ${output}` : null
+  ].filter((part): part is string => Boolean(part))
+
+  return parts.length > 0 ? `${parts.join(' / ')} ${t('modelPlaza.perMillionUnit')}` : null
+}
+
+function displayIntervals(pricing: UserSupportedModelPricing, rate: number): DisplayInterval[] {
+  return pricing.intervals
+    .map((interval, idx) => {
+      const price = intervalPrice(interval, pricing.billing_mode, rate)
+      if (!price) return null
+      return {
+        key: `${idx}:${intervalLabel(interval)}`,
+        label: intervalLabel(interval),
+        price
+      }
+    })
+    .filter((interval): interval is DisplayInterval => interval != null)
 }
 
 function groupRate(group: UserAvailableGroup, userRates: Record<number, number>): number {
