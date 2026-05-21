@@ -314,6 +314,21 @@ func TestOpenAIMissingResponsesDependencies(t *testing.T) {
 	})
 }
 
+func TestOpenAIWebSocketUsesAPIKeyPlatformForScheduling(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/realtime", nil)
+	groupID := int64(42)
+	c.Set(string(middleware.ContextKeyAPIKey), &service.APIKey{
+		ID:      7,
+		GroupID: &groupID,
+		Group:   &service.Group{Platform: "acme"},
+	})
+
+	require.Equal(t, "acme", openAIWebSocketSchedulePlatform(c))
+}
+
 func TestOpenAIEnsureResponsesDependencies(t *testing.T) {
 	t.Run("missing_dependencies_returns_503", func(t *testing.T) {
 		gin.SetMode(gin.TestMode)

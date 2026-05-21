@@ -215,3 +215,27 @@ func TestOpenAIWSProtocolResolver_Resolve_ModeRouterV2(t *testing.T) {
 		require.Equal(t, "account_concurrency_invalid", decision.Reason)
 	})
 }
+
+func TestOpenAIWSProtocolResolver_Resolve_OpenAICompatibleCustomAPIKey(t *testing.T) {
+	cfg := &config.Config{}
+	cfg.Gateway.OpenAIWS.Enabled = true
+	cfg.Gateway.OpenAIWS.APIKeyEnabled = true
+	cfg.Gateway.OpenAIWS.ResponsesWebsocketsV2 = true
+
+	account := &Account{
+		Platform: "acme",
+		Type:     AccountTypeAPIKey,
+		Extra: map[string]any{
+			"openai_apikey_responses_websockets_v2_enabled": true,
+		},
+	}
+
+	decision := NewOpenAIWSProtocolResolver(cfg).Resolve(account)
+	require.Equal(t, OpenAIUpstreamTransportResponsesWebsocketV2, decision.Transport)
+	require.Equal(t, "ws_v2_enabled", decision.Reason)
+
+	cfg.Gateway.OpenAIWS.APIKeyEnabled = false
+	decision = NewOpenAIWSProtocolResolver(cfg).Resolve(account)
+	require.Equal(t, OpenAIUpstreamTransportHTTPSSE, decision.Transport)
+	require.Equal(t, "apikey_disabled", decision.Reason)
+}

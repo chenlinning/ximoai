@@ -79,6 +79,10 @@ func RegisterGatewayRoutes(
 		})
 		gateway.POST("/responses/*subpath", func(c *gin.Context) {
 			if isGroupOpenAICompatible(c, platformService) {
+				if isOpenAIResponsesPassthroughSubpath(c) {
+					h.OpenAIGateway.ResponsesPassthrough(c)
+					return
+				}
 				h.OpenAIGateway.Responses(c)
 				return
 			}
@@ -149,6 +153,10 @@ func RegisterGatewayRoutes(
 	// OpenAI Responses API锛堜笉甯1鍓嶇紑鐨勫埆鍚嶏級鈥?auto-route based on group platform
 	responsesHandler := func(c *gin.Context) {
 		if isGroupOpenAICompatible(c, platformService) {
+			if isOpenAIResponsesPassthroughSubpath(c) {
+				h.OpenAIGateway.ResponsesPassthrough(c)
+				return
+			}
 			h.OpenAIGateway.Responses(c)
 			return
 		}
@@ -208,7 +216,7 @@ func RegisterGatewayRoutes(
 		bodyLimit:       bodyLimit,
 		clientRequestID: clientRequestID,
 		opsErrorLogger:  opsErrorLogger,
-		endpointNorm:     endpointNorm,
+		endpointNorm:    endpointNorm,
 		apiKeyAuth:      apiKeyAuth,
 		requireGroup:    requireGroupAnthropic,
 		platformService: platformService,

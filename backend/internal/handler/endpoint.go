@@ -20,6 +20,10 @@ const (
 	EndpointResponses         = "/v1/responses"
 	EndpointImagesGenerations = "/v1/images/generations"
 	EndpointImagesEdits       = "/v1/images/edits"
+	EndpointAudioSpeech       = "/v1/audio/speech"
+	EndpointAudioTranscribe   = "/v1/audio/transcriptions"
+	EndpointAudioTranslate    = "/v1/audio/translations"
+	EndpointRealtime          = "/v1/realtime"
 	EndpointGeminiModels      = "/v1beta/models"
 )
 
@@ -50,6 +54,14 @@ func NormalizeInboundEndpoint(path string) string {
 		return EndpointImagesGenerations
 	case strings.Contains(path, EndpointImagesEdits) || strings.Contains(path, "/images/edits"):
 		return EndpointImagesEdits
+	case strings.Contains(path, EndpointAudioSpeech) || strings.Contains(path, "/audio/speech"):
+		return EndpointAudioSpeech
+	case strings.Contains(path, EndpointAudioTranscribe) || strings.Contains(path, "/audio/transcriptions"):
+		return EndpointAudioTranscribe
+	case strings.Contains(path, EndpointAudioTranslate) || strings.Contains(path, "/audio/translations"):
+		return EndpointAudioTranslate
+	case strings.Contains(path, EndpointRealtime) || strings.Contains(path, "/realtime"):
+		return EndpointRealtime
 	case strings.Contains(path, EndpointResponses):
 		return EndpointResponses
 	case strings.Contains(path, EndpointGeminiModels):
@@ -75,7 +87,9 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 
 	switch platform {
 	case service.PlatformOpenAI:
-		if inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits {
+		if inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits ||
+			inbound == EndpointAudioSpeech || inbound == EndpointAudioTranscribe ||
+			inbound == EndpointAudioTranslate || inbound == EndpointRealtime {
 			return inbound
 		}
 		// OpenAI forwards everything to the Responses API.

@@ -130,6 +130,80 @@ func TestBuildUpstreamModelsRequestsForAPIKeyAccounts(t *testing.T) {
 	require.Equal(t, "antigravity-key", antigravityReq.Header.Get("x-api-key"))
 }
 
+func TestBuildUpstreamModelsRequestUsesCustomPlatformProtocol(t *testing.T) {
+	t.Parallel()
+
+	platformService := NewPlatformService(&platformRepoStubForPlatformService{
+		platforms: map[string]Platform{
+			"custom-openai": {
+				Slug:        "custom-openai",
+				DisplayName: "Custom OpenAI",
+				Protocol:    PlatformProtocolOpenAICompatible,
+				BaseURL:     "https://openai.example.com/v1",
+				AuthModes:   []string{AccountTypeAPIKey},
+				Enabled:     true,
+			},
+			"custom-gemini": {
+				Slug:        "custom-gemini",
+				DisplayName: "Custom Gemini",
+				Protocol:    PlatformProtocolGemini,
+				BaseURL:     "https://gemini.example.com/v1beta",
+				AuthModes:   []string{AccountTypeAPIKey},
+				Enabled:     true,
+			},
+			"custom-anthropic": {
+				Slug:        "custom-anthropic",
+				DisplayName: "Custom Anthropic",
+				Protocol:    PlatformProtocolAnthropic,
+				BaseURL:     "https://anthropic.example.com/v1",
+				AuthModes:   []string{AccountTypeAPIKey},
+				Enabled:     true,
+			},
+		},
+	})
+	svc := &AccountTestService{
+		cfg:             upstreamModelSyncTestConfig(),
+		platformService: platformService,
+	}
+	ctx := context.Background()
+
+	openAIReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
+		Platform: "custom-openai",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "openai-key",
+			"base_url": "https://openai.example.com/v1",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://openai.example.com/v1/models", openAIReq.URL.String())
+	require.Equal(t, "Bearer openai-key", openAIReq.Header.Get("Authorization"))
+
+	geminiReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
+		Platform: "custom-gemini",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "gemini-key",
+			"base_url": "https://gemini.example.com/v1beta",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://gemini.example.com/v1beta/models", geminiReq.URL.String())
+	require.Equal(t, "gemini-key", geminiReq.Header.Get("x-goog-api-key"))
+
+	anthropicReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
+		Platform: "custom-anthropic",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "anthropic-key",
+			"base_url": "https://anthropic.example.com/v1",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://anthropic.example.com/v1/models", anthropicReq.URL.String())
+	require.Equal(t, "anthropic-key", anthropicReq.Header.Get("x-api-key"))
+}
+
 func TestBuildAntigravityAPIKeyModelsRequestRejectsOfficialCloudCodeBase(t *testing.T) {
 	t.Parallel()
 

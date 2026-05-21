@@ -257,7 +257,7 @@ func (s *defaultOpenAIAccountScheduler) Select(
 		previousResponseID = ""
 		req.PreviousResponseID = ""
 		req.RequireCompact = false
-		if req.RequiredTransport != OpenAIUpstreamTransportHTTPSSE {
+		if req.RequiredTransport != OpenAIUpstreamTransportHTTPSSE && req.RequiredTransport != OpenAIUpstreamTransportResponsesWebsocketV2 {
 			req.RequiredTransport = OpenAIUpstreamTransportHTTPSSE
 		}
 	}
@@ -1074,7 +1074,7 @@ func (s *OpenAIGatewayService) selectAccountWithScheduler(
 	if platform != PlatformOpenAI {
 		previousResponseID = ""
 		requireCompact = false
-		if requiredTransport != OpenAIUpstreamTransportHTTPSSE {
+		if requiredTransport != OpenAIUpstreamTransportHTTPSSE && requiredTransport != OpenAIUpstreamTransportResponsesWebsocketV2 {
 			requiredTransport = OpenAIUpstreamTransportHTTPSSE
 		}
 	}

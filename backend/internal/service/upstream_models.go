@@ -138,6 +138,31 @@ func (s *AccountTestService) buildUpstreamModelsRequest(ctx context.Context, acc
 	case account.IsAnthropic():
 		return s.buildAnthropicUpstreamModelsRequest(ctx, account)
 	default:
+		return s.buildCustomPlatformUpstreamModelsRequest(ctx, account)
+	}
+}
+
+func (s *AccountTestService) buildCustomPlatformUpstreamModelsRequest(ctx context.Context, account *Account) (*http.Request, error) {
+	if s.platformService == nil {
+		return nil, newUpstreamModelSyncUnsupportedError(
+			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), nil,
+		)
+	}
+	platform, err := s.platformService.GetBySlug(ctx, account.Platform)
+	if err != nil || platform == nil || !platform.Enabled {
+		return nil, newUpstreamModelSyncUnsupportedError(
+			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), err,
+		)
+	}
+
+	switch {
+	case platform.IsOpenAICompatible():
+		return s.buildOpenAIUpstreamModelsRequest(ctx, account)
+	case platform.IsGeminiCompatible():
+		return s.buildGeminiUpstreamModelsRequest(ctx, account)
+	case platform.IsAnthropicCompatible():
+		return s.buildAnthropicUpstreamModelsRequest(ctx, account)
+	default:
 		return nil, newUpstreamModelSyncUnsupportedError(
 			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), nil,
 		)

@@ -2079,6 +2079,7 @@ func (s *adminServiceImpl) normalizeAccountCredentialsForPlatform(ctx context.Co
 	if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
 		return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_BASE_URL_REQUIRED", "base_url is required for custom platforms")
 	}
+	credentials["platform_protocol"] = platform.Protocol
 	return credentials, nil
 }
 

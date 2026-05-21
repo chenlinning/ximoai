@@ -262,7 +262,7 @@ const protocolLabel = (protocol: string) => {
 const capabilitiesForProtocol = (protocol: string) => {
   if (protocol === 'anthropic') return ['messages']
   if (protocol === 'gemini') return ['messages', 'native_gemini']
-  return ['responses', 'chat_completions', 'images', 'videos']
+  return ['responses', 'chat_completions', 'images', 'videos', 'audio', 'realtime']
 }
 
 const displayColor = (platform: Platform) => {

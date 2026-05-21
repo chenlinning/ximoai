@@ -285,6 +285,46 @@ func TestAccount_ResolveOpenAIResponsesWebSocketV2Mode(t *testing.T) {
 	})
 }
 
+func TestAccount_OpenAICompatibleCustomAPIKeyResponsesWebSocketV2(t *testing.T) {
+	account := &Account{
+		Platform: "acme",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"platform_protocol": PlatformProtocolOpenAICompatible,
+		},
+		Extra: map[string]any{
+			"openai_apikey_responses_websockets_v2_enabled": true,
+		},
+	}
+	require.True(t, account.IsOpenAIResponsesWebSocketV2Enabled())
+
+	account.Extra = map[string]any{
+		"openai_apikey_responses_websockets_v2_mode": OpenAIWSIngressModePassthrough,
+	}
+	require.Equal(t, OpenAIWSIngressModePassthrough, account.ResolveOpenAIResponsesWebSocketV2Mode(OpenAIWSIngressModeOff))
+}
+
+func TestAccount_OpenAICompatibleCustomAPIKeyHonorsStoredPlatformProtocol(t *testing.T) {
+	openAICompatible := &Account{
+		Platform: "acme",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"platform_protocol": PlatformProtocolOpenAICompatible,
+		},
+	}
+	require.True(t, openAICompatible.IsOpenAICompatibleCustomAPIKey())
+
+	customGemini := &Account{
+		Platform: "custom_gemini",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"platform_protocol": PlatformProtocolGemini,
+		},
+	}
+	require.False(t, customGemini.IsOpenAICompatibleCustomAPIKey())
+	require.False(t, customGemini.IsOpenAIResponsesWebSocketV2Enabled())
+}
+
 func TestAccount_OpenAIWSExtraFlags(t *testing.T) {
 	account := &Account{
 		Platform: PlatformOpenAI,

@@ -142,6 +142,75 @@ func TestAccountHandlerGetAvailableModels_OpenAIOAuthPassthroughFallsBackToDefau
 	require.NotEqual(t, "gpt-5", resp.Data[0].ID)
 }
 
+func TestAccountHandlerGetAvailableModels_CustomPlatformWithoutMappingReturnsEmpty(t *testing.T) {
+	svc := &availableModelsAdminService{
+		stubAdminService: newStubAdminService(),
+		account: service.Account{
+			ID:          46,
+			Name:        "custom-openai-compatible",
+			Platform:    "mengfactory",
+			Type:        service.AccountTypeAPIKey,
+			Status:      service.StatusActive,
+			Credentials: map[string]any{},
+		},
+	}
+	router := setupAvailableModelsRouter(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/46/models", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Empty(t, resp.Data)
+}
+
+func TestAccountHandlerGetAvailableModels_CustomPlatformUsesExplicitMapping(t *testing.T) {
+	svc := &availableModelsAdminService{
+		stubAdminService: newStubAdminService(),
+		account: service.Account{
+			ID:       47,
+			Name:     "custom-openai-compatible",
+			Platform: "mengfactory",
+			Type:     service.AccountTypeAPIKey,
+			Status:   service.StatusActive,
+			Credentials: map[string]any{
+				"model_mapping": map[string]any{
+					"vendor-audio": "vendor-audio",
+					"vendor-video": "vendor-video",
+				},
+			},
+		},
+	}
+	router := setupAvailableModelsRouter(svc)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/47/models", nil)
+	router.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var resp struct {
+		Data []struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"display_name"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp.Data, 2)
+	ids := []string{resp.Data[0].ID, resp.Data[1].ID}
+	require.ElementsMatch(t, []string{"vendor-audio", "vendor-video"}, ids)
+	for _, model := range resp.Data {
+		require.Equal(t, model.ID, model.DisplayName)
+	}
+}
+
 func TestAccountHandlerSyncUpstreamModels_ConfigErrorReturnsBadRequest(t *testing.T) {
 	svc := &availableModelsAdminService{
 		stubAdminService: newStubAdminService(),

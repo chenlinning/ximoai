@@ -11,6 +11,12 @@ vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
       getAvailableModels
+    },
+    platforms: {
+      list: vi.fn().mockResolvedValue([
+        { slug: 'gemini', protocol: 'native' },
+        { slug: 'openai', protocol: 'openai' }
+      ])
     }
   }
 }))
@@ -135,8 +141,10 @@ describe('AccountTestModal', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1)
     const [, request] = (global.fetch as any).mock.calls[0]
-    expect(JSON.parse(request.body)).toEqual({
+    expect(JSON.parse(request.body)).toMatchObject({
       model_id: 'gemini-3.1-flash-image',
+      test_type: 'image',
+      mode: 'default',
       prompt: 'draw a tiny orange cat astronaut'
     })
 

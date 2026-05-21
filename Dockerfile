@@ -18,6 +18,8 @@ ARG GOSUMDB=sum.golang.google.cn
 # -----------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS frontend-builder
 
+ENV NODE_OPTIONS=--max-old-space-size=1536
+
 WORKDIR /app/frontend
 
 # Install pnpm (pinned to v9 to match CI and keep builds reproducible)

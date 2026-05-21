@@ -371,7 +371,7 @@ export function getModelsByPlatform(platform: string): string[] {
     case 'spark': return sparkModels
     case 'hunyuan': return hunyuanModels
     case 'perplexity': return perplexityModels
-    default: return claudeModels
+    default: return []
   }
 }
 

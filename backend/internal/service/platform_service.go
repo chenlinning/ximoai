@@ -262,7 +262,7 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 	}
 	if input.Protocol == PlatformProtocolOpenAI {
 		input.Slug = PlatformOpenAI
-		input.BaseURL = "https://api.openai.com"
+		input.BaseURL = PlatformDefaultBaseURLOpenAI
 	}
 	if len(input.AuthModes) == 0 {
 		return nil, infraerrors.BadRequest("INVALID_PLATFORM_AUTH_MODES", "auth_modes is required")
@@ -298,6 +298,8 @@ func defaultCustomPlatformCapabilities(protocol string) []string {
 			PlatformCapabilityChatCompletions,
 			PlatformCapabilityImages,
 			PlatformCapabilityVideos,
+			PlatformCapabilityAudio,
+			PlatformCapabilityRealtime,
 		}
 	}
 }
@@ -341,6 +343,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Slug:         PlatformAnthropic,
 			DisplayName:  "Anthropic",
 			Protocol:     PlatformProtocolNative,
+			BaseURL:      PlatformDefaultBaseURLAnthropic,
 			AuthModes:    []string{AccountTypeOAuth, AccountTypeSetupToken, AccountTypeAPIKey, AccountTypeBedrock},
 			Capabilities: []string{PlatformCapabilityMessages},
 			Color:        "#D97706",
@@ -353,13 +356,15 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Slug:        PlatformOpenAI,
 			DisplayName: "OpenAI",
 			Protocol:    PlatformProtocolOpenAI,
-			BaseURL:     "https://api.openai.com",
+			BaseURL:     PlatformDefaultBaseURLOpenAI,
 			AuthModes:   []string{AccountTypeOAuth, AccountTypeAPIKey},
 			Capabilities: []string{
 				PlatformCapabilityResponses,
 				PlatformCapabilityChatCompletions,
 				PlatformCapabilityImages,
 				PlatformCapabilityVideos,
+				PlatformCapabilityAudio,
+				PlatformCapabilityRealtime,
 				PlatformCapabilityCodex,
 			},
 			Color:     "#10A37F",
@@ -372,6 +377,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Slug:         PlatformGemini,
 			DisplayName:  "Gemini",
 			Protocol:     PlatformProtocolNative,
+			BaseURL:      PlatformDefaultBaseURLGemini,
 			AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey, AccountTypeServiceAccount},
 			Capabilities: []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini},
 			Color:        "#4285F4",
@@ -384,6 +390,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Slug:         PlatformAntigravity,
 			DisplayName:  "Antigravity",
 			Protocol:     PlatformProtocolNative,
+			BaseURL:      PlatformDefaultBaseURLAntigravity,
 			AuthModes:    []string{AccountTypeOAuth, AccountTypeUpstream, AccountTypeAPIKey},
 			Capabilities: []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini},
 			Color:        "#7C3AED",

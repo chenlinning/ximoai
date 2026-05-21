@@ -138,9 +138,25 @@ func TestPlatformService_CreateNormalizesOpenAICompatiblePlatform(t *testing.T) 
 		PlatformCapabilityChatCompletions,
 		PlatformCapabilityImages,
 		PlatformCapabilityVideos,
+		PlatformCapabilityAudio,
+		PlatformCapabilityRealtime,
 	}, created.Capabilities)
 	require.True(t, created.Enabled)
 	require.False(t, created.Builtin)
+}
+
+func TestPlatformService_BuiltinPlatformsExposeDefaultBaseURLs(t *testing.T) {
+	platforms := builtinPlatforms(true)
+
+	baseURLs := map[string]string{}
+	for _, platform := range platforms {
+		baseURLs[platform.Slug] = platform.BaseURL
+	}
+
+	require.Equal(t, PlatformDefaultBaseURLAnthropic, baseURLs[PlatformAnthropic])
+	require.Equal(t, PlatformDefaultBaseURLOpenAI, baseURLs[PlatformOpenAI])
+	require.Equal(t, PlatformDefaultBaseURLGemini, baseURLs[PlatformGemini])
+	require.Equal(t, PlatformDefaultBaseURLAntigravity, baseURLs[PlatformAntigravity])
 }
 
 func TestPlatformService_CreateAssignsDeterministicColor(t *testing.T) {

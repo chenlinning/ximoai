@@ -1245,7 +1245,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 	)
 	selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 		ctx,
-		service.PlatformOpenAI,
+		openAIWebSocketSchedulePlatform(c),
 		apiKey.GroupID,
 		previousResponseID,
 		sessionHash,
@@ -1433,6 +1433,14 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		return
 	}
 	reqLog.Info("openai.websocket_ingress_closed", zap.Int64("account_id", account.ID))
+}
+
+func openAIWebSocketSchedulePlatform(c *gin.Context) string {
+	apiKey, ok := middleware2.GetAPIKeyFromContext(c)
+	if !ok {
+		return service.PlatformOpenAI
+	}
+	return openAIPlatformForAPIKey(apiKey)
 }
 
 func (h *OpenAIGatewayHandler) recoverResponsesPanic(c *gin.Context, streamStarted *bool) {

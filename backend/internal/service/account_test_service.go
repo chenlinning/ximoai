@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -54,11 +55,58 @@ const (
 	defaultGeminiTextTestPrompt  = "hi"
 	defaultGeminiImageTestPrompt = "Generate a cute orange cat astronaut sticker on a clean pastel background."
 	defaultOpenAIImageTestPrompt = "Generate a cute orange cat astronaut sticker on a clean pastel background."
+	defaultOpenAIAudioTestInput  = "hi"
+	defaultOpenAIVideoTestPrompt = "A tiny test video of a sunrise over mountains."
+	defaultOpenAIVideoSeconds    = 4
+	defaultOpenAIVideoSize       = "720x1280"
+)
+
+const (
+	AccountTestTypeAuto  = "auto"
+	AccountTestTypeText  = "text"
+	AccountTestTypeImage = "image"
+	AccountTestTypeAudio = "audio"
+	AccountTestTypeVideo = "video"
 )
 
 // isOpenAIImageModel checks if the model is an OpenAI image generation model (e.g. gpt-image-2).
 func isOpenAIImageModel(model string) bool {
 	return strings.HasPrefix(strings.ToLower(model), "gpt-image-")
+}
+
+func isOpenAIAudioModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	return strings.Contains(model, "audio") ||
+		strings.Contains(model, "realtime") ||
+		strings.Contains(model, "tts") ||
+		strings.HasPrefix(model, "whisper")
+}
+
+func isOpenAIVideoModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	return strings.Contains(model, "video") ||
+		strings.HasPrefix(model, "sora-") ||
+		strings.HasPrefix(model, "veo") ||
+		strings.Contains(model, "t2v") ||
+		strings.Contains(model, "i2v") ||
+		strings.Contains(model, "r2v")
+}
+
+type AccountConnectionTestOptions struct {
+	Prompt   string
+	Mode     string
+	TestType string
+	Seconds  int
+	Size     string
+}
+
+func normalizeAccountTestType(testType string) string {
+	switch strings.ToLower(strings.TrimSpace(testType)) {
+	case AccountTestTypeText, AccountTestTypeImage, AccountTestTypeAudio, AccountTestTypeVideo:
+		return strings.ToLower(strings.TrimSpace(testType))
+	default:
+		return AccountTestTypeAuto
+	}
 }
 
 // AccountTestService handles account testing operations
@@ -174,6 +222,13 @@ func createTestPayload(modelID string) (map[string]any, error) {
 // modelID is optional - if empty, defaults to claude.DefaultTestModel
 // mode is optional - "compact" routes OpenAI accounts to the /responses/compact probe path
 func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int64, modelID string, prompt string, mode string) error {
+	return s.TestAccountConnectionWithOptions(c, accountID, modelID, AccountConnectionTestOptions{
+		Prompt: prompt,
+		Mode:   mode,
+	})
+}
+
+func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, accountID int64, modelID string, opts AccountConnectionTestOptions) error {
 	ctx := c.Request.Context()
 
 	// Get account
@@ -184,15 +239,15 @@ func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int
 
 	// Route to platform-specific test method
 	if account.Platform == PlatformAntigravity {
-		return s.routeAntigravityTest(c, account, modelID, prompt)
+		return s.routeAntigravityTest(c, account, modelID, opts.Prompt)
 	}
 
 	if s.isOpenAIProtocolAccount(ctx, account) {
-		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
+		return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, opts)
 	}
 
 	if s.isGeminiProtocolAccount(ctx, account) {
-		return s.testGeminiAccountConnection(c, account, modelID, prompt)
+		return s.testGeminiAccountConnection(c, account, modelID, opts.Prompt)
 	}
 
 	if s.isAnthropicProtocolAccount(ctx, account) {
@@ -530,9 +585,16 @@ func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx co
 
 // testOpenAIAccountConnection tests an OpenAI account's connection
 func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account *Account, modelID string, prompt string, mode string) error {
+	return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, AccountConnectionTestOptions{
+		Prompt: prompt,
+		Mode:   mode,
+	})
+}
+
+func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Context, account *Account, modelID string, opts AccountConnectionTestOptions) error {
 	ctx := c.Request.Context()
-	_ = prompt
-	mode = normalizeAccountTestMode(mode)
+	mode := normalizeAccountTestMode(opts.Mode)
+	testType := normalizeAccountTestType(opts.TestType)
 
 	// Default to openai.DefaultTestModel for OpenAI testing
 	testModelID := modelID
@@ -543,14 +605,10 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	// Align test routing with gateway behavior: OpenAI accounts apply normal
 	// account model mapping, and compact mode applies compact-only mapping on top.
 	testModelID = account.GetMappedModel(testModelID)
-	if mode == AccountTestModeCompact {
-		testModelID = resolveOpenAICompactForwardModel(account, testModelID)
-		return s.testOpenAICompactConnection(c, account, testModelID)
-	}
 
 	// Route to image generation test if an image model is selected
-	if isOpenAIImageModel(testModelID) {
-		imagePrompt := strings.TrimSpace(prompt)
+	if testType == AccountTestTypeImage || (testType == AccountTestTypeAuto && isOpenAIImageModel(testModelID)) {
+		imagePrompt := strings.TrimSpace(opts.Prompt)
 		if imagePrompt == "" {
 			imagePrompt = defaultOpenAIImageTestPrompt
 		}
@@ -558,6 +616,25 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 			return s.testOpenAIImageAPIKey(c, ctx, account, testModelID, imagePrompt)
 		}
 		return s.testOpenAIImageOAuth(c, ctx, account, testModelID, imagePrompt)
+	}
+
+	if testType == AccountTestTypeAudio || (testType == AccountTestTypeAuto && isOpenAIAudioModel(testModelID)) {
+		if account.Type != AccountTypeAPIKey {
+			return s.sendErrorAndEnd(c, "OpenAI audio test currently supports API Key accounts only")
+		}
+		return s.testOpenAIAudioAPIKey(c, ctx, account, testModelID, opts.Prompt)
+	}
+
+	if testType == AccountTestTypeVideo || (testType == AccountTestTypeAuto && isOpenAIVideoModel(testModelID)) {
+		if account.Type != AccountTypeAPIKey {
+			return s.sendErrorAndEnd(c, "OpenAI video test currently supports API Key accounts only")
+		}
+		return s.testOpenAIVideoAPIKey(c, ctx, account, testModelID, opts)
+	}
+
+	if mode == AccountTestModeCompact {
+		testModelID = resolveOpenAICompactForwardModel(account, testModelID)
+		return s.testOpenAICompactConnection(c, account, testModelID)
 	}
 
 	// Determine authentication method and API URL
@@ -1447,6 +1524,167 @@ func (s *AccountTestService) testOpenAIImageAPIKey(c *gin.Context, ctx context.C
 		}
 	}
 
+	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+	return nil
+}
+
+// testOpenAIAudioAPIKey tests OpenAI-compatible speech generation using an API Key account.
+func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.Context, account *Account, modelID string, input string) error {
+	authToken := account.GetOpenAIApiKey()
+	if authToken == "" {
+		return s.sendErrorAndEnd(c, "No API key available")
+	}
+
+	baseURL := account.GetOpenAIBaseURL()
+	if baseURL == "" {
+		baseURL = "https://api.openai.com"
+	}
+	normalizedBaseURL, err := s.validateUpstreamBaseURL(baseURL)
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
+	}
+	apiURL := buildOpenAIEndpointURL(normalizedBaseURL, openAIAudioSpeechEndpoint)
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Flush()
+
+	s.sendEvent(c, TestEvent{Type: "test_start", Model: modelID})
+
+	audioInput := strings.TrimSpace(input)
+	if audioInput == "" {
+		audioInput = defaultOpenAIAudioTestInput
+	}
+
+	payload := map[string]any{
+		"model": modelID,
+		"input": audioInput,
+		"voice": "alloy",
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
+	if err != nil {
+		return s.sendErrorAndEnd(c, "Failed to create request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "audio/mpeg")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+
+	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Request failed: %s", err.Error()))
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read response: %s", err.Error()))
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+	}
+
+	s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Audio test returned %d bytes", len(body))})
+	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+	return nil
+}
+
+// testOpenAIVideoAPIKey tests OpenAI-compatible video creation using an API Key account.
+func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.Context, account *Account, modelID string, opts AccountConnectionTestOptions) error {
+	authToken := account.GetOpenAIApiKey()
+	if authToken == "" {
+		return s.sendErrorAndEnd(c, "No API key available")
+	}
+
+	baseURL := account.GetOpenAIBaseURL()
+	if baseURL == "" {
+		baseURL = "https://api.openai.com"
+	}
+	normalizedBaseURL, err := s.validateUpstreamBaseURL(baseURL)
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
+	}
+	apiURL := buildOpenAIVideosURL(normalizedBaseURL, openAIVideosEndpoint)
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Flush()
+
+	s.sendEvent(c, TestEvent{Type: "test_start", Model: modelID})
+
+	videoPrompt := strings.TrimSpace(opts.Prompt)
+	if videoPrompt == "" {
+		videoPrompt = defaultOpenAIVideoTestPrompt
+	}
+	videoSeconds := opts.Seconds
+	if videoSeconds <= 0 {
+		videoSeconds = defaultOpenAIVideoSeconds
+	}
+	videoSize := strings.TrimSpace(opts.Size)
+	if videoSize == "" {
+		videoSize = defaultOpenAIVideoSize
+	}
+
+	requestBody := &bytes.Buffer{}
+	writer := multipart.NewWriter(requestBody)
+	if err := writer.WriteField("model", modelID); err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
+	}
+	if err := writer.WriteField("prompt", videoPrompt); err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
+	}
+	if err := writer.WriteField("seconds", fmt.Sprintf("%d", videoSeconds)); err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
+	}
+	if err := writer.WriteField("size", videoSize); err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
+	}
+	if err := writer.Close(); err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, requestBody)
+	if err != nil {
+		return s.sendErrorAndEnd(c, "Failed to create request")
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+
+	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Request failed: %s", err.Error()))
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read response: %s", err.Error()))
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
+	}
+
+	message := "Video test request accepted"
+	if videoID := extractOpenAIVideoID(body); videoID != "" {
+		message = fmt.Sprintf("Video test created: %s", videoID)
+	}
+	s.sendEvent(c, TestEvent{Type: "content", Text: message})
 	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 	return nil
 }

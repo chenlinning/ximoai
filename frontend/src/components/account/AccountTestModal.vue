@@ -57,6 +57,17 @@
 
       <div v-if="isOpenAIAccount" class="space-y-1.5">
         <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {{ t('admin.accounts.testFormat') }}
+        </label>
+        <Select
+          v-model="testType"
+          :options="testFormatOptions"
+          :disabled="status === 'connecting'"
+        />
+      </div>
+
+      <div v-if="isOpenAIAccount && effectiveTestType === 'text'" class="space-y-1.5">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
           {{ t('admin.accounts.openai.testMode') }}
         </label>
         <Select
@@ -66,7 +77,7 @@
         />
       </div>
 
-      <div v-if="supportsImageTest" class="space-y-1.5">
+      <div v-if="isImageTest" class="space-y-1.5">
         <TextArea
           v-model="testPrompt"
           :label="t('admin.accounts.imagePromptLabel')"
@@ -75,6 +86,51 @@
           :disabled="status === 'connecting'"
           rows="3"
         />
+      </div>
+
+      <div v-if="isAudioTest" class="space-y-1.5">
+        <TextArea
+          v-model="audioInput"
+          :label="t('admin.accounts.audioInputLabel')"
+          :placeholder="t('admin.accounts.audioInputPlaceholder')"
+          :disabled="status === 'connecting'"
+          rows="2"
+        />
+      </div>
+
+      <div v-if="isVideoTest" class="space-y-3">
+        <TextArea
+          v-model="videoPrompt"
+          :label="t('admin.accounts.videoPromptLabel')"
+          :placeholder="t('admin.accounts.videoPromptPlaceholder')"
+          :disabled="status === 'connecting'"
+          rows="3"
+        />
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label class="space-y-1.5">
+            <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.accounts.videoSecondsLabel') }}
+            </span>
+            <input
+              v-model.number="videoSeconds"
+              type="number"
+              min="1"
+              max="20"
+              :disabled="status === 'connecting'"
+              class="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-500 dark:bg-dark-700 dark:text-gray-100 dark:disabled:bg-dark-600"
+            />
+          </label>
+          <div class="space-y-1.5">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ t('admin.accounts.videoSizeLabel') }}
+            </label>
+            <Select
+              v-model="videoSize"
+              :options="videoSizeOptions"
+              :disabled="status === 'connecting'"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Terminal Output -->
@@ -186,11 +242,7 @@
         </div>
         <span class="flex items-center gap-1">
           <Icon name="chat" size="sm" :stroke-width="2" />
-          {{
-            supportsImageTest
-              ? t('admin.accounts.imageTestMode')
-              : t('admin.accounts.testPrompt')
-          }}
+          {{ testInfoText }}
         </span>
       </div>
     </div>
@@ -250,7 +302,7 @@ import TextArea from '@/components/common/TextArea.vue'
 import { Icon } from '@/components/icons'
 import { useClipboard } from '@/composables/useClipboard'
 import { adminAPI } from '@/api/admin'
-import type { Account, ClaudeModel } from '@/types'
+import type { Account, ClaudeModel, Platform } from '@/types'
 
 const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
@@ -264,6 +316,8 @@ interface PreviewImage {
   url: string
   mimeType?: string
 }
+
+type AccountTestType = 'auto' | 'text' | 'image' | 'audio' | 'video'
 
 const props = defineProps<{
   show: boolean
@@ -282,17 +336,47 @@ const errorMessage = ref('')
 const availableModels = ref<ClaudeModel[]>([])
 const selectedModelId = ref('')
 const testPrompt = ref('')
+const audioInput = ref('hi')
+const videoPrompt = ref('A tiny test video of a sunrise over mountains.')
+const videoSeconds = ref(4)
+const videoSize = ref('720x1280')
 const loadingModels = ref(false)
 let abortController: AbortController | null = null
 const generatedImages = ref<PreviewImage[]>([])
 const testMode = ref<'default' | 'compact'>('default')
-const isOpenAIAccount = computed(() => props.account?.platform === 'openai')
+const testType = ref<AccountTestType>('auto')
+const activeTestType = ref<AccountTestType>('text')
+const platformProtocols = ref<Record<string, string>>({})
+const isOpenAIAccount = computed(() => {
+  if (!props.account) return false
+  if (props.account.platform === 'openai') return true
+  const protocol = platformProtocols.value[props.account.platform]
+  if (protocol) {
+    return protocol === 'openai' || protocol === 'openai_compatible'
+  }
+  return props.account.type === 'apikey' && !['anthropic', 'gemini', 'antigravity'].includes(props.account.platform)
+})
 const openAITestModeOptions = computed(() => [
   { value: 'default', label: t('admin.accounts.openai.testModeDefault') },
   { value: 'compact', label: t('admin.accounts.openai.testModeCompact') }
 ])
+const testFormatOptions = computed(() => [
+  { value: 'auto', label: t('admin.accounts.testFormatAuto') },
+  { value: 'text', label: t('admin.accounts.testFormatText') },
+  { value: 'image', label: t('admin.accounts.testFormatImage') },
+  { value: 'audio', label: t('admin.accounts.testFormatAudio') },
+  { value: 'video', label: t('admin.accounts.testFormatVideo') }
+])
+const videoSizeOptions = [
+  { value: '720x1280', label: '720x1280' },
+  { value: '1280x720', label: '1280x720' },
+  { value: '1024x1024', label: '1024x1024' }
+]
 const previewImageUrl = ref('')
 const prioritizedGeminiModels = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3-pro-preview', 'gemini-2.0-flash']
+const isOpenAIImageModel = (modelID: string) => modelID.startsWith('gpt-image-')
+const isOpenAIAudioModel = (modelID: string) => modelID.includes('audio') || modelID.includes('realtime') || modelID.includes('tts') || modelID.startsWith('whisper')
+const isOpenAIVideoModel = (modelID: string) => modelID.includes('video') || modelID.startsWith('sora-') || modelID.startsWith('veo') || modelID.includes('t2v') || modelID.includes('i2v') || modelID.includes('r2v')
 const supportsGeminiImageTest = computed(() => {
   const modelID = selectedModelId.value.toLowerCase()
   if (!modelID.startsWith('gemini-') || !modelID.includes('-image')) return false
@@ -300,13 +384,33 @@ const supportsGeminiImageTest = computed(() => {
   return props.account?.platform === 'gemini' || (props.account?.platform === 'antigravity' && props.account?.type === 'apikey')
 })
 
-const supportsOpenAIImageTest = computed(() => {
+const autoDetectedTestType = computed<AccountTestType>(() => {
   const modelID = selectedModelId.value.toLowerCase()
-  if (!modelID.startsWith('gpt-image-')) return false
-  return props.account?.platform === 'openai'
+  if (isOpenAIImageModel(modelID)) return 'image'
+  if (isOpenAIAudioModel(modelID)) return 'audio'
+  if (isOpenAIVideoModel(modelID)) return 'video'
+  return 'text'
 })
 
-const supportsImageTest = computed(() => supportsGeminiImageTest.value || supportsOpenAIImageTest.value)
+const effectiveTestType = computed<AccountTestType>(() => {
+  if (!isOpenAIAccount.value) return supportsGeminiImageTest.value ? 'image' : 'text'
+  return testType.value === 'auto' ? autoDetectedTestType.value : testType.value
+})
+const isImageTest = computed(() => supportsGeminiImageTest.value || (isOpenAIAccount.value && effectiveTestType.value === 'image'))
+const isAudioTest = computed(() => isOpenAIAccount.value && effectiveTestType.value === 'audio')
+const isVideoTest = computed(() => isOpenAIAccount.value && effectiveTestType.value === 'video')
+const testInfoText = computed(() => {
+  switch (effectiveTestType.value) {
+    case 'image':
+      return t('admin.accounts.imageTestMode')
+    case 'audio':
+      return t('admin.accounts.audioTestMode')
+    case 'video':
+      return t('admin.accounts.videoTestMode')
+    default:
+      return t('admin.accounts.testPrompt')
+  }
+})
 
 const sortTestModels = (models: ClaudeModel[]) => {
   const priorityMap = new Map(prioritizedGeminiModels.map((id, index) => [id, index]))
@@ -325,8 +429,14 @@ watch(
   async (newVal) => {
     if (newVal && props.account) {
       testPrompt.value = ''
+      audioInput.value = 'hi'
+      videoPrompt.value = 'A tiny test video of a sunrise over mountains.'
+      videoSeconds.value = 4
+      videoSize.value = '720x1280'
       testMode.value = 'default'
+      testType.value = 'auto'
       resetState()
+      await loadPlatformProtocols()
       await loadAvailableModels()
     } else {
       abortStream()
@@ -334,11 +444,30 @@ watch(
   }
 )
 
-watch(selectedModelId, () => {
-  if (supportsImageTest.value && !testPrompt.value.trim()) {
+watch([selectedModelId, testType], () => {
+  if (isImageTest.value && !testPrompt.value.trim()) {
     testPrompt.value = t('admin.accounts.imagePromptDefault')
   }
+  if (isAudioTest.value && !audioInput.value.trim()) {
+    audioInput.value = 'hi'
+  }
+  if (isVideoTest.value && !videoPrompt.value.trim()) {
+    videoPrompt.value = 'A tiny test video of a sunrise over mountains.'
+  }
 })
+
+const loadPlatformProtocols = async () => {
+  if (Object.keys(platformProtocols.value).length > 0) return
+  try {
+    const platforms = await adminAPI.platforms.list(true)
+    platformProtocols.value = platforms.reduce<Record<string, string>>((acc, platform: Platform) => {
+      acc[platform.slug] = platform.protocol
+      return acc
+    }, {})
+  } catch (error) {
+    console.error('Failed to load platform protocols:', error)
+  }
+}
 
 const loadAvailableModels = async () => {
   if (!props.account) return
@@ -406,6 +535,7 @@ const scrollToBottom = async () => {
 const startTest = async () => {
   if (!props.account || !selectedModelId.value) return
 
+  activeTestType.value = effectiveTestType.value
   resetState()
   status.value = 'connecting'
   addLine(t('admin.accounts.startingTestForAccount', { name: props.account.name }), 'text-blue-400')
@@ -429,8 +559,11 @@ const startTest = async () => {
       },
       body: JSON.stringify({
         model_id: selectedModelId.value,
-        prompt: supportsImageTest.value ? testPrompt.value.trim() : '',
-        mode: isOpenAIAccount.value ? testMode.value : 'default'
+        test_type: activeTestType.value,
+        prompt: buildTestPrompt(activeTestType.value),
+        seconds: activeTestType.value === 'video' ? videoSeconds.value : undefined,
+        size: activeTestType.value === 'video' ? videoSize.value : undefined,
+        mode: isOpenAIAccount.value && activeTestType.value === 'text' ? testMode.value : 'default'
       }),
       signal: abortController.signal
     })
@@ -481,6 +614,19 @@ const startTest = async () => {
   }
 }
 
+const buildTestPrompt = (type: AccountTestType) => {
+  switch (type) {
+    case 'image':
+      return testPrompt.value.trim()
+    case 'audio':
+      return audioInput.value.trim()
+    case 'video':
+      return videoPrompt.value.trim()
+    default:
+      return ''
+  }
+}
+
 const handleEvent = (event: {
   type: string
   text?: string
@@ -497,9 +643,13 @@ const handleEvent = (event: {
         addLine(t('admin.accounts.usingModel', { model: event.model }), 'text-cyan-400')
       }
       addLine(
-        supportsImageTest.value
-            ? t('admin.accounts.sendingImageRequest')
-            : t('admin.accounts.sendingTestMessage'),
+        activeTestType.value === 'image'
+          ? t('admin.accounts.sendingImageRequest')
+          : activeTestType.value === 'audio'
+            ? t('admin.accounts.sendingAudioRequest')
+            : activeTestType.value === 'video'
+              ? t('admin.accounts.sendingVideoRequest')
+              : t('admin.accounts.sendingTestMessage'),
         'text-gray-400'
       )
       addLine('', 'text-gray-300')

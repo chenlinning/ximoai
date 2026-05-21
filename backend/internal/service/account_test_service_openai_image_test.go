@@ -1,8 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +14,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func TestAccountTestService_OpenAIImageOAuthHandlesOutputItemDoneFallback(t *testing.T) {
@@ -87,4 +91,163 @@ func TestAccountTestService_OpenAIImageAPIKeyUsesConfiguredV1BaseURL(t *testing.
 	require.Equal(t, "Bearer test-api-key", upstream.lastReq.Header.Get("Authorization"))
 	require.Contains(t, rec.Body.String(), "data:image/png;base64,aGVsbG8=")
 	require.Contains(t, rec.Body.String(), "\"success\":true")
+}
+
+func TestAccountTestService_OpenAIAudioModelUsesAudioSpeechEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/1/test", nil)
+
+	upstream := &httpUpstreamRecorder{
+		resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"audio/mpeg"},
+			},
+			Body: io.NopCloser(strings.NewReader("mp3-bytes")),
+		},
+	}
+	svc := &AccountTestService{
+		httpUpstream: upstream,
+		cfg:          &config.Config{},
+	}
+	account := &Account{
+		ID:       55,
+		Name:     "openai-apikey",
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "test-api-key",
+			"base_url": "https://audio-upstream.example/v1",
+		},
+	}
+
+	err := svc.testOpenAIAccountConnection(c, account, "gpt-4o-audio-preview", "", "")
+	require.NoError(t, err)
+	require.NotNil(t, upstream.lastReq)
+	require.Equal(t, "https://audio-upstream.example/v1/audio/speech", upstream.lastReq.URL.String())
+	require.Equal(t, "Bearer test-api-key", upstream.lastReq.Header.Get("Authorization"))
+	require.Equal(t, "audio/mpeg", upstream.lastReq.Header.Get("Accept"))
+	require.Equal(t, "gpt-4o-audio-preview", gjson.GetBytes(upstream.lastBody, "model").String())
+	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "input").String())
+	require.Equal(t, "alloy", gjson.GetBytes(upstream.lastBody, "voice").String())
+	require.Contains(t, rec.Body.String(), "Audio test returned")
+	require.Contains(t, rec.Body.String(), "\"success\":true")
+}
+
+func TestAccountTestService_OpenAIVideoModelUsesVideosEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/1/test", nil)
+
+	upstream := &httpUpstreamRecorder{
+		resp: &http.Response{
+			StatusCode: http.StatusAccepted,
+			Header: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: io.NopCloser(strings.NewReader(`{"id":"video_123","status":"queued"}`)),
+		},
+	}
+	svc := &AccountTestService{
+		httpUpstream: upstream,
+		cfg:          &config.Config{},
+	}
+	account := &Account{
+		ID:       56,
+		Name:     "openai-apikey",
+		Platform: PlatformOpenAI,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "test-api-key",
+			"base_url": "https://video-upstream.example/v1",
+		},
+	}
+
+	err := svc.testOpenAIAccountConnection(c, account, "sora-2", "", "")
+	require.NoError(t, err)
+	require.NotNil(t, upstream.lastReq)
+	require.Equal(t, "https://video-upstream.example/v1/videos", upstream.lastReq.URL.String())
+	require.Equal(t, "Bearer test-api-key", upstream.lastReq.Header.Get("Authorization"))
+	require.Equal(t, "application/json", upstream.lastReq.Header.Get("Accept"))
+	form := parseMultipartFormValues(t, upstream.lastReq.Header.Get("Content-Type"), upstream.lastBody)
+	require.Equal(t, "sora-2", form["model"])
+	require.Equal(t, "A tiny test video of a sunrise over mountains.", form["prompt"])
+	require.Equal(t, "4", form["seconds"])
+	require.Equal(t, "720x1280", form["size"])
+	require.Contains(t, rec.Body.String(), "Video test created: video_123")
+	require.Contains(t, rec.Body.String(), "\"success\":true")
+}
+
+func TestAccountTestService_OpenAIMediaOAuthTestsReturnExplicitError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name      string
+		model     string
+		wantError string
+	}{
+		{
+			name:      "audio",
+			model:     "gpt-4o-audio-preview",
+			wantError: "OpenAI audio test currently supports API Key accounts only",
+		},
+		{
+			name:      "video",
+			model:     "sora-2",
+			wantError: "OpenAI video test currently supports API Key accounts only",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(rec)
+			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/1/test", nil)
+
+			upstream := &httpUpstreamRecorder{}
+			svc := &AccountTestService{
+				httpUpstream: upstream,
+				cfg:          &config.Config{},
+			}
+			account := &Account{
+				ID:       57,
+				Name:     "openai-oauth",
+				Platform: PlatformOpenAI,
+				Type:     AccountTypeOAuth,
+				Credentials: map[string]any{
+					"access_token": "test-token",
+				},
+			}
+
+			err := svc.testOpenAIAccountConnection(c, account, tt.model, "", "")
+			require.Error(t, err)
+			require.Empty(t, upstream.requests)
+			require.Contains(t, rec.Body.String(), tt.wantError)
+		})
+	}
+}
+
+func parseMultipartFormValues(t *testing.T, contentType string, body []byte) map[string]string {
+	t.Helper()
+
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	require.NoError(t, err)
+	require.Equal(t, "multipart/form-data", mediaType)
+	require.NotEmpty(t, params["boundary"])
+
+	reader := multipart.NewReader(bytes.NewReader(body), params["boundary"])
+	form, err := reader.ReadForm(1024 * 1024)
+	require.NoError(t, err)
+	defer func() { _ = form.RemoveAll() }()
+
+	values := make(map[string]string, len(form.Value))
+	for key, raw := range form.Value {
+		if len(raw) > 0 {
+			values[key] = raw[0]
+		}
+	}
+	return values
 }

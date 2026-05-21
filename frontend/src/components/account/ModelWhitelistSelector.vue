@@ -79,6 +79,7 @@
     <!-- Quick Actions -->
     <div class="mb-4 flex flex-wrap gap-2">
       <button
+        v-if="canFillBuiltInModels"
         type="button"
         @click="fillRelated"
         class="rounded-lg border border-blue-200 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30"
@@ -129,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { accountsAPI } from '@/api/admin/accounts'
@@ -144,6 +145,7 @@ const props = defineProps<{
   platform?: string
   platforms?: string[]
   accountId?: number
+  canSyncUpstream?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -157,6 +159,7 @@ const searchQuery = ref('')
 const customModel = ref('')
 const isComposing = ref(false)
 const isSyncingUpstream = ref(false)
+const syncedUpstreamModels = ref<string[]>([])
 const normalizedPlatforms = computed(() => {
   const rawPlatforms =
     props.platforms && props.platforms.length > 0
@@ -177,11 +180,12 @@ const normalizedPlatforms = computed(() => {
 const upstreamSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
 const canSyncUpstream = computed(() => {
   if (!props.accountId) return false
+  if (props.canSyncUpstream === true) return true
   if (normalizedPlatforms.value.length === 0) return true
   return normalizedPlatforms.value.some(platform => upstreamSyncPlatforms.has(platform.toLowerCase()))
 })
 
-const availableOptions = computed(() => {
+const builtInOptions = computed(() => {
   if (normalizedPlatforms.value.length === 0) {
     return allModels
   }
@@ -195,6 +199,29 @@ const availableOptions = computed(() => {
 
   return allModels.filter(model => allowedModels.has(model.value))
 })
+
+const availableOptions = computed(() => {
+  const options: { value: string; label: string }[] = []
+  const seen = new Set<string>()
+
+  const addOption = (model: string) => {
+    const value = model.trim()
+    if (!value || seen.has(value)) return
+    seen.add(value)
+    options.push({ value, label: value })
+  }
+
+  for (const model of builtInOptions.value) {
+    addOption(model.value)
+  }
+  for (const model of syncedUpstreamModels.value) {
+    addOption(model)
+  }
+
+  return options
+})
+
+const canFillBuiltInModels = computed(() => builtInOptions.value.length > 0)
 
 const filteredModels = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
@@ -254,11 +281,12 @@ const syncUpstreamModels = async () => {
   isSyncingUpstream.value = true
   try {
     const result = await accountsAPI.syncUpstreamModels(props.accountId)
-    const upstreamModels = result.models.map(model => model.trim()).filter(Boolean)
+    const upstreamModels = Array.from(new Set(result.models.map(model => model.trim()).filter(Boolean)))
     if (upstreamModels.length === 0) {
       appStore.showInfo(t('admin.accounts.syncUpstreamModelsEmpty'))
       return
     }
+    syncedUpstreamModels.value = upstreamModels
 
     const newModels = [...props.modelValue]
     let addedCount = 0
@@ -286,5 +314,12 @@ const syncUpstreamModels = async () => {
 const clearAll = () => {
   emit('update:modelValue', [])
 }
+
+watch(
+  () => `${props.accountId ?? ''}:${normalizedPlatforms.value.join('|')}`,
+  () => {
+    syncedUpstreamModels.value = []
+  }
+)
 
 </script>

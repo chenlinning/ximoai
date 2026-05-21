@@ -698,9 +698,12 @@ func (h *AccountHandler) Delete(c *gin.Context) {
 
 // TestAccountRequest represents the request body for testing an account
 type TestAccountRequest struct {
-	ModelID string `json:"model_id"`
-	Prompt  string `json:"prompt"`
-	Mode    string `json:"mode"`
+	ModelID  string `json:"model_id"`
+	Prompt   string `json:"prompt"`
+	Mode     string `json:"mode"`
+	TestType string `json:"test_type"`
+	Seconds  int    `json:"seconds"`
+	Size     string `json:"size"`
 }
 
 type SyncFromCRSRequest struct {
@@ -731,7 +734,13 @@ func (h *AccountHandler) Test(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	// Use AccountTestService to test the account with SSE streaming
-	if err := h.accountTestService.TestAccountConnection(c, accountID, req.ModelID, req.Prompt, req.Mode); err != nil {
+	if err := h.accountTestService.TestAccountConnectionWithOptions(c, accountID, req.ModelID, service.AccountConnectionTestOptions{
+		Prompt:   req.Prompt,
+		Mode:     req.Mode,
+		TestType: req.TestType,
+		Seconds:  req.Seconds,
+		Size:     req.Size,
+	}); err != nil {
 		// Error already sent via SSE, just log
 		return
 	}
@@ -1954,6 +1963,13 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 		return
 	}
 
+	// Custom platforms should not fall back to built-in Claude defaults. Their
+	// selectable models come from explicit mapping, usually after upstream sync.
+	if isCustomPlatformAccount(account) {
+		response.Success(c, buildCustomPlatformAvailableModels(account.GetModelMapping()))
+		return
+	}
+
 	// Handle Claude/Anthropic accounts
 	// For OAuth and Setup-Token accounts: return default models
 	if account.IsOAuth() {
@@ -1993,6 +2009,34 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 	}
 
 	response.Success(c, models)
+}
+
+func isCustomPlatformAccount(account *service.Account) bool {
+	if account == nil {
+		return false
+	}
+	switch service.NormalizePlatformSlug(account.Platform) {
+	case "", service.PlatformAnthropic, service.PlatformOpenAI, service.PlatformGemini, service.PlatformAntigravity:
+		return false
+	default:
+		return true
+	}
+}
+
+func buildCustomPlatformAvailableModels(mapping map[string]string) []openai.Model {
+	if len(mapping) == 0 {
+		return []openai.Model{}
+	}
+	models := make([]openai.Model, 0, len(mapping))
+	for requestedModel := range mapping {
+		models = append(models, openai.Model{
+			ID:          requestedModel,
+			Object:      "model",
+			Type:        "model",
+			DisplayName: requestedModel,
+		})
+	}
+	return models
 }
 
 // SyncUpstreamModels handles syncing live supported models from an account's upstream.

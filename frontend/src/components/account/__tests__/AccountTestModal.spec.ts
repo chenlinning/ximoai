@@ -11,6 +11,11 @@ vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
       getAvailableModels: getAvailableModelsMock
+    },
+    platforms: {
+      list: vi.fn().mockResolvedValue([
+        { slug: 'openai', protocol: 'openai' }
+      ])
     }
   }
 }))

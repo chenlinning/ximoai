@@ -123,7 +123,12 @@
 
             <!-- Whitelist Mode -->
             <div v-if="modelRestrictionMode === 'whitelist'">
-              <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
+              <ModelWhitelistSelector
+                v-model="allowedModels"
+                :platform="account?.platform || 'anthropic'"
+                :account-id="account?.id"
+                :can-sync-upstream="canSyncUpstreamModels"
+              />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
                 <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
@@ -438,7 +443,12 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
+            <ModelWhitelistSelector
+              v-model="allowedModels"
+              :platform="account?.platform || 'anthropic'"
+              :account-id="account?.id"
+              :can-sync-upstream="canSyncUpstreamModels"
+            />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
@@ -650,7 +660,12 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
+            <ModelWhitelistSelector
+              v-model="allowedModels"
+              :platform="account?.platform || 'anthropic'"
+              :account-id="account?.id"
+              :can-sync-upstream="canSyncUpstreamModels"
+            />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
@@ -2272,6 +2287,16 @@ const isOfficialOpenAI = computed(() =>
 const selectedProtocol = computed(() =>
   selectedPlatform.value?.protocol || ''
 )
+
+const upstreamModelSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
+const upstreamModelSyncProtocols = new Set(['anthropic', 'openai', 'openai_compatible', 'gemini'])
+const canSyncUpstreamModels = computed(() => {
+  if (!props.account?.id) return false
+  if (upstreamModelSyncPlatforms.has(props.account.platform)) return true
+
+  const platform = selectedPlatform.value
+  return Boolean(platform?.enabled && upstreamModelSyncProtocols.has(platform.protocol))
+})
 
 const apiKeyBaseUrlPlaceholder = computed(() => {
   if (selectedPlatform.value?.base_url) return selectedPlatform.value.base_url

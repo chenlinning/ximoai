@@ -13,9 +13,18 @@ const (
 	PlatformCapabilityChatCompletions = "chat_completions"
 	PlatformCapabilityImages          = "images"
 	PlatformCapabilityVideos          = "videos"
+	PlatformCapabilityAudio           = "audio"
+	PlatformCapabilityRealtime        = "realtime"
 	PlatformCapabilityCodex           = "codex"
 	PlatformCapabilityMessages        = "messages"
 	PlatformCapabilityNativeGemini    = "native_gemini"
+)
+
+const (
+	PlatformDefaultBaseURLAnthropic   = "https://api.anthropic.com"
+	PlatformDefaultBaseURLOpenAI      = "https://api.openai.com"
+	PlatformDefaultBaseURLGemini      = "https://generativelanguage.googleapis.com"
+	PlatformDefaultBaseURLAntigravity = "https://cloudcode-pa.googleapis.com"
 )
 
 type Platform struct {

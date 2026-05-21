@@ -969,6 +969,25 @@ func (a *Account) IsOpenAICompatibleAPIKey() bool {
 	return a != nil && a.Type == AccountTypeAPIKey
 }
 
+func (a *Account) IsOpenAICompatibleCustomAPIKey() bool {
+	if a == nil || a.Type != AccountTypeAPIKey {
+		return false
+	}
+	switch NormalizePlatformSlug(a.Platform) {
+	case "", PlatformOpenAI, PlatformAnthropic, PlatformGemini, PlatformAntigravity:
+		return false
+	}
+
+	protocol := strings.ToLower(strings.TrimSpace(a.GetCredential("platform_protocol")))
+	if protocol != "" {
+		return protocol == PlatformProtocolOpenAI || protocol == PlatformProtocolOpenAICompatible
+	}
+
+	// Backward compatibility for existing custom OpenAI-compatible accounts
+	// created before platform_protocol was stored in credentials.
+	return true
+}
+
 func (a *Account) IsAnthropic() bool {
 	return a.Platform == PlatformAnthropic
 }
@@ -1159,7 +1178,10 @@ func (a *Account) IsOpenAIPassthroughEnabled() bool {
 // 1. 按账号类型读取分类型字段
 // 2. 分类型字段缺失时，回退兼容字段
 func (a *Account) IsOpenAIResponsesWebSocketV2Enabled() bool {
-	if a == nil || !a.IsOpenAI() || a.Extra == nil {
+	if a == nil || a.Extra == nil {
+		return false
+	}
+	if !a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey() {
 		return false
 	}
 	if a.IsOpenAIOAuth() {
@@ -1167,7 +1189,7 @@ func (a *Account) IsOpenAIResponsesWebSocketV2Enabled() bool {
 			return enabled
 		}
 	}
-	if a.IsOpenAIApiKey() {
+	if a.IsOpenAIApiKey() || a.IsOpenAICompatibleCustomAPIKey() {
 		if enabled, ok := a.Extra["openai_apikey_responses_websockets_v2_enabled"].(bool); ok {
 			return enabled
 		}
@@ -1225,7 +1247,7 @@ func normalizeOpenAIWSIngressDefaultMode(mode string) string {
 // 4. defaultMode（非法时回退 ctx_pool）
 func (a *Account) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) string {
 	resolvedDefault := normalizeOpenAIWSIngressDefaultMode(defaultMode)
-	if a == nil || !a.IsOpenAI() {
+	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) {
 		return OpenAIWSIngressModeOff
 	}
 	if a.Extra == nil {
@@ -1270,7 +1292,7 @@ func (a *Account) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) stri
 			return mode
 		}
 	}
-	if a.IsOpenAIApiKey() {
+	if a.IsOpenAIApiKey() || a.IsOpenAICompatibleCustomAPIKey() {
 		if mode, ok := resolveModeString("openai_apikey_responses_websockets_v2_mode"); ok {
 			return mode
 		}
@@ -1294,7 +1316,7 @@ func (a *Account) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) stri
 // IsOpenAIWSForceHTTPEnabled 返回账号级"强制 HTTP"开关。
 // 字段：accounts.extra.openai_ws_force_http。
 func (a *Account) IsOpenAIWSForceHTTPEnabled() bool {
-	if a == nil || !a.IsOpenAI() || a.Extra == nil {
+	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra["openai_ws_force_http"].(bool)
@@ -1304,7 +1326,7 @@ func (a *Account) IsOpenAIWSForceHTTPEnabled() bool {
 // IsOpenAIWSAllowStoreRecoveryEnabled 返回账号级 store 恢复开关。
 // 字段：accounts.extra.openai_ws_allow_store_recovery。
 func (a *Account) IsOpenAIWSAllowStoreRecoveryEnabled() bool {
-	if a == nil || !a.IsOpenAI() || a.Extra == nil {
+	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra["openai_ws_allow_store_recovery"].(bool)

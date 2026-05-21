@@ -3201,7 +3201,7 @@ const fallbackPlatforms: Platform[] = [
     protocol: 'openai',
     base_url: 'https://api.openai.com',
     auth_modes: ['oauth', 'apikey'],
-    capabilities: ['responses', 'chat_completions', 'images', 'videos', 'codex'],
+    capabilities: ['responses', 'chat_completions', 'images', 'videos', 'audio', 'realtime', 'codex'],
     color: '#10A37F',
     enabled: true,
     builtin: true,
