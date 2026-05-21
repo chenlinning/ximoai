@@ -146,6 +146,8 @@ const props = defineProps<{
   platforms?: string[]
   accountId?: number
   canSyncUpstream?: boolean
+  upstreamModels?: string[]
+  syncUpstreamModels?: () => Promise<string[]>
 }>()
 
 const emit = defineEmits<{
@@ -179,6 +181,7 @@ const normalizedPlatforms = computed(() => {
 
 const upstreamSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
 const canSyncUpstream = computed(() => {
+  if (props.syncUpstreamModels) return props.canSyncUpstream !== false
   if (!props.accountId) return false
   if (props.canSyncUpstream === true) return true
   if (normalizedPlatforms.value.length === 0) return true
@@ -215,6 +218,9 @@ const availableOptions = computed(() => {
     addOption(model.value)
   }
   for (const model of syncedUpstreamModels.value) {
+    addOption(model)
+  }
+  for (const model of props.upstreamModels || []) {
     addOption(model)
   }
 
@@ -276,12 +282,14 @@ const fillRelated = () => {
 }
 
 const syncUpstreamModels = async () => {
-  if (!props.accountId || isSyncingUpstream.value) return
+  if ((!props.accountId && !props.syncUpstreamModels) || isSyncingUpstream.value) return
 
   isSyncingUpstream.value = true
   try {
-    const result = await accountsAPI.syncUpstreamModels(props.accountId)
-    const upstreamModels = Array.from(new Set(result.models.map(model => model.trim()).filter(Boolean)))
+    const models = props.syncUpstreamModels
+      ? await props.syncUpstreamModels()
+      : (await accountsAPI.syncUpstreamModels(props.accountId!)).models
+    const upstreamModels = Array.from(new Set(models.map(model => model.trim()).filter(Boolean)))
     if (upstreamModels.length === 0) {
       appStore.showInfo(t('admin.accounts.syncUpstreamModelsEmpty'))
       return

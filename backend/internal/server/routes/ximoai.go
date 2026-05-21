@@ -12,6 +12,11 @@ import (
 )
 
 func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	accounts := admin.Group("/accounts")
+	{
+		accounts.POST("/models/sync-upstream-preview", h.Admin.Account.SyncUpstreamModelsPreview)
+	}
+
 	platforms := admin.Group("/platforms")
 	{
 		platforms.GET("", h.Admin.Platform.List)

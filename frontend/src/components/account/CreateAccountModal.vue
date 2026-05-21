@@ -1083,7 +1083,13 @@
 
             <!-- Whitelist Mode -->
             <div v-if="modelRestrictionMode === 'whitelist'">
-              <ModelWhitelistSelector v-model="allowedModels" :platform="form.platform" />
+              <ModelWhitelistSelector
+                v-model="allowedModels"
+                :platform="form.platform"
+                :can-sync-upstream="canPreviewSyncUpstreamModels"
+                :upstream-models="previewSyncedUpstreamModels"
+                :sync-upstream-models="previewSyncUpstreamModels"
+              />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
                 <span v-if="allowedModels.length === 0">{{
@@ -3095,6 +3101,7 @@ import {
 import { useOpenAIOAuth } from '@/composables/useOpenAIOAuth'
 import { useGeminiOAuth } from '@/composables/useGeminiOAuth'
 import { useAntigravityOAuth } from '@/composables/useAntigravityOAuth'
+import { usePreviewUpstreamModelsSync } from '@/composables/usePreviewUpstreamModelsSync'
 import type {
   Proxy,
   AdminGroup,
@@ -3598,6 +3605,21 @@ const apiKeyPlaceholder = computed(() => {
   return 'sk-ant-...'
 })
 
+const {
+  canPreviewSyncUpstreamModels,
+  clearPreviewSyncedUpstreamModels,
+  previewSyncedUpstreamModels,
+  previewSyncUpstreamModels
+} = usePreviewUpstreamModelsSync({
+  platform: computed(() => form.platform),
+  accountType: computed(() => form.type),
+  selectedProtocol,
+  platformEnabled: computed(() => Boolean(selectedPlatform.value?.enabled)),
+  apiKey: apiKeyValue,
+  baseUrl: apiKeyBaseUrl,
+  baseUrlFallback: apiKeyBaseUrlPlaceholder
+})
+
 const platformIconName = (slug: string) => {
   if (slug === 'anthropic') return 'sparkles'
   if (slug === 'antigravity') return 'cloud'
@@ -3718,6 +3740,7 @@ watch(
   (newPlatform) => {
     // Reset base URL based on platform
     apiKeyBaseUrl.value = apiKeyBaseUrlPlaceholder.value
+    clearPreviewSyncedUpstreamModels()
     // Clear model-related settings
     allowedModels.value = []
     modelMappings.value = []
@@ -4146,6 +4169,7 @@ const resetForm = () => {
   openAICompactModelMappings.value = []
   modelRestrictionMode.value = 'whitelist'
   allowedModels.value = [...claudeModels] // Default fill related models
+  clearPreviewSyncedUpstreamModels()
 
   antigravityModelRestrictionMode.value = 'mapping'
   antigravityWhitelistModels.value = []

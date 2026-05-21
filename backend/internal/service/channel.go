@@ -7,17 +7,17 @@ import (
 	"time"
 )
 
-// BillingMode identifies how a model is billed.
+// BillingMode 计费模式
 type BillingMode string
 
 const (
-	BillingModeToken      BillingMode = "token"
-	BillingModePerRequest BillingMode = "per_request"
-	BillingModeImage      BillingMode = "image"
-	BillingModeVideo      BillingMode = "video"
+	BillingModeToken      BillingMode = "token"       // 按 token 区间计费
+	BillingModePerRequest BillingMode = "per_request" // 按次计费（支持上下文窗口分层）
+	BillingModeImage      BillingMode = "image"       // 图片计费（当前按次，预留 token 计费）
+	BillingModeVideo      BillingMode = "video"       // 视频计费（按次 / 分层规格）
 )
 
-// IsValid checks whether BillingMode is supported.
+// IsValid 检查 BillingMode 是否为合法值
 func (m BillingMode) IsValid() bool {
 	switch m {
 	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
@@ -32,29 +32,34 @@ const (
 	BillingModelSourceChannelMapped = "channel_mapped"
 )
 
-// Channel is an upstream channel entity.
+// Channel 渠道实体
 type Channel struct {
 	ID                 int64
 	Name               string
 	Description        string
 	Status             string
-	BillingModelSource string
-	RestrictModels     bool
-	Features           string
-	FeaturesConfig     map[string]any
+	BillingModelSource string         // "requested", "upstream", or "channel_mapped"
+	RestrictModels     bool           // 是否限制模型（仅允许定价列表中的模型）
+	Features           string         // 渠道特性描述（JSON 数组），用于支付页面展示
+	FeaturesConfig     map[string]any // 渠道功能配置（如 web search emulation）
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 
+	// 关联的分组 ID 列表
 	GroupIDs []int64
-
+	// 模型定价列表（每条含 Platform 字段）
 	ModelPricing []ChannelModelPricing
+	// 渠道级模型映射（按平台分组：platform → {src→dst}）
 	ModelMapping map[string]map[string]string
 
-	ApplyPricingToAccountStats bool
-	AccountStatsPricingRules   []AccountStatsPricingRule
+	// 账号统计定价
+	ApplyPricingToAccountStats bool                      // 是否应用渠道模型定价到账号统计
+	AccountStatsPricingRules   []AccountStatsPricingRule // 自定义账号统计定价规则（按 SortOrder 排序，先命中为准）
 }
 
-// AccountStatsPricingRule defines account-stat pricing overrides.
+// AccountStatsPricingRule 账号统计定价规则
+// 每条规则包含匹配条件（分组/账号）和独立的模型定价。
+// 多条规则按 SortOrder 排序，先命中为准。
 type AccountStatsPricingRule struct {
 	ID         int64
 	ChannelID  int64
@@ -62,52 +67,54 @@ type AccountStatsPricingRule struct {
 	GroupIDs   []int64
 	AccountIDs []int64
 	SortOrder  int
-	Pricing    []ChannelModelPricing // 閻熸瑥瀚崹顖炲礃閸涱垱鐣辨俊顖椻偓宕団偓椋庘偓瑙勭煯閻滎垶鏁嶉崼婵愭Щ闁活潿鍔庨獮鍥嫉婢跺﹦鏆板ù鐘活棑缁劑寮搁崟鍓佺
+	Pricing    []ChannelModelPricing // 规则内的模型定价（复用现有定价结构）
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
-// ChannelModelPricing defines pricing rules for models in a channel.
+// ChannelModelPricing 渠道模型定价条目
 type ChannelModelPricing struct {
 	ID               int64
 	ChannelID        int64
-	Platform         string
-	Models           []string
-	BillingMode      BillingMode
-	InputPrice       *float64
-	OutputPrice      *float64
-	CacheWritePrice  *float64
-	CacheReadPrice   *float64
-	ImageOutputPrice *float64
-	PerRequestPrice  *float64
-	Intervals        []PricingInterval
+	Platform         string            // 所属平台（anthropic/openai/gemini/...）
+	Models           []string          // 绑定的模型列表
+	BillingMode      BillingMode       // 计费模式
+	InputPrice       *float64          // 每 token 输入价格（USD）— 向后兼容 flat 定价
+	OutputPrice      *float64          // 每 token 输出价格（USD）
+	CacheWritePrice  *float64          // 缓存写入价格
+	CacheReadPrice   *float64          // 缓存读取价格
+	ImageOutputPrice *float64          // 图片输出价格（向后兼容）
+	PerRequestPrice  *float64          // 默认按次计费价格（USD）
+	Intervals        []PricingInterval // 区间定价列表
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
 
-// PricingInterval is a tier for token, per-request, image, or video pricing.
+// PricingInterval 定价区间（token 区间 / 按次分层 / 图片分辨率分层）
 type PricingInterval struct {
 	ID              int64
 	PricingID       int64
-	MinTokens       int
-	MaxTokens       *int
-	TierLabel       string
-	InputPrice      *float64
-	OutputPrice     *float64
-	CacheWritePrice *float64
-	CacheReadPrice  *float64
-	PerRequestPrice *float64
+	MinTokens       int      // 区间下界（含）
+	MaxTokens       *int     // 区间上界（不含），nil = 无上限
+	TierLabel       string   // 层级标签（按次/图片模式：1K, 2K, 4K, HD 等）
+	InputPrice      *float64 // token 模式：每 token 输入价
+	OutputPrice     *float64 // token 模式：每 token 输出价
+	CacheWritePrice *float64 // token 模式：缓存写入价
+	CacheReadPrice  *float64 // token 模式：缓存读取价
+	PerRequestPrice *float64 // 按次/图片模式：每次请求价格
 	SortOrder       int
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
 }
 
-// IsActive reports whether the channel is enabled.
+// IsActive 判断渠道是否启用
 func (c *Channel) IsActive() bool {
 	return c.Status == StatusActive
 }
 
-// normalizeBillingModelSource fills the default source for older rows.
+// normalizeBillingModelSource 若 BillingModelSource 为空则回填默认值 ChannelMapped。
+// 作为 *Channel 的实体方法集中管理默认值，service 层只需在 Channel 进入内存
+// （缓存装填、repo 读出）时调用一次，下游读路径就无需重复兜底。
 func (c *Channel) normalizeBillingModelSource() {
 	if c == nil {
 		return
@@ -117,7 +124,8 @@ func (c *Channel) normalizeBillingModelSource() {
 	}
 }
 
-// GetModelPricing finds pricing by model name, case-insensitively.
+// GetModelPricing 根据模型名查找渠道定价，未找到返回 nil。
+// 精确匹配，大小写不敏感。返回值拷贝，不污染缓存。
 func (c *Channel) GetModelPricing(model string) *ChannelModelPricing {
 	modelLower := strings.ToLower(model)
 
@@ -133,7 +141,9 @@ func (c *Channel) GetModelPricing(model string) *ChannelModelPricing {
 	return nil
 }
 
-// FindMatchingInterval finds the interval matching totalTokens using (min, max].
+// FindMatchingInterval 在区间列表中查找匹配 totalTokens 的区间。
+// 区间为左开右闭 (min, max]：min 不含，max 包含。
+// 第一个区间 min=0 时，0 token 不匹配任何区间（回退到默认价格）。
 func FindMatchingInterval(intervals []PricingInterval, totalTokens int) *PricingInterval {
 	for i := range intervals {
 		iv := &intervals[i]
@@ -144,12 +154,12 @@ func FindMatchingInterval(intervals []PricingInterval, totalTokens int) *Pricing
 	return nil
 }
 
-// GetIntervalForContext finds the pricing tier for a context size.
+// GetIntervalForContext 根据总 context token 数查找匹配的区间。
 func (p *ChannelModelPricing) GetIntervalForContext(totalTokens int) *PricingInterval {
 	return FindMatchingInterval(p.Intervals, totalTokens)
 }
 
-// GetTierByLabel finds a per-request/image/video tier by label.
+// GetTierByLabel 根据标签查找层级（用于 per_request / image / video 模式）
 func (p *ChannelModelPricing) GetTierByLabel(label string) *PricingInterval {
 	labelLower := strings.ToLower(label)
 	for i := range p.Intervals {
@@ -160,7 +170,7 @@ func (p *ChannelModelPricing) GetTierByLabel(label string) *PricingInterval {
 	return nil
 }
 
-// Clone returns a deep copy of ChannelModelPricing.
+// Clone 返回 ChannelModelPricing 的拷贝（切片独立，指针字段共享，调用方只读安全）
 func (p ChannelModelPricing) Clone() ChannelModelPricing {
 	cp := p
 	if p.Models != nil {
@@ -174,7 +184,7 @@ func (p ChannelModelPricing) Clone() ChannelModelPricing {
 	return cp
 }
 
-// Clone returns a deep copy of Channel.
+// Clone 返回 Channel 的深拷贝
 func (c *Channel) Clone() *Channel {
 	if c == nil {
 		return nil
@@ -226,7 +236,7 @@ func (c *Channel) Clone() *Channel {
 	return &cp
 }
 
-// IsWebSearchEmulationEnabled reports whether web-search emulation is enabled.
+// IsWebSearchEmulationEnabled 返回该渠道是否为指定平台启用了 web search 模拟。
 func (c *Channel) IsWebSearchEmulationEnabled(platform string) bool {
 	if c == nil || c.FeaturesConfig == nil {
 		return false
@@ -252,7 +262,17 @@ func deepCopyFeaturesConfig(src map[string]any) map[string]any {
 	return dst
 }
 
-// ValidateIntervals validates pricing tiers for the given billing mode.
+// ValidateIntervals 校验区间列表的合法性。
+//
+// mode 决定区间语义：
+//   - BillingModeToken（含空值）：区间是上下文 token 数分段 (min, max]，
+//     按 MinTokens 排序后无重叠，无界区间（MaxTokens=nil）必须是最后一个。
+//   - BillingModePerRequest / BillingModeImage / BillingModeVideo：区间是按 tier_label
+//     (1K/2K/4K 等) 分层，匹配走 label 不依赖 min/max，因此跳过区间重叠
+//     与 last-unlimited 校验，仅做单条字段自洽（min/max/价格非负）检查。
+//
+// 通用规则：MinTokens >= 0；MaxTokens 若非 nil 则 > 0 且 > MinTokens；
+// 所有价格字段 >= 0。
 func ValidateIntervals(intervals []PricingInterval, mode BillingMode) error {
 	if len(intervals) == 0 {
 		return nil
@@ -269,12 +289,14 @@ func ValidateIntervals(intervals []PricingInterval, mode BillingMode) error {
 		}
 	}
 
+	// per_request / image 模式按 tier_label 匹配，不做 token 区间重叠校验
 	if mode == BillingModePerRequest || mode == BillingModeImage || mode == BillingModeVideo {
 		return nil
 	}
 	return validateIntervalOverlap(sorted)
 }
 
+// validateSingleInterval 校验单个区间的字段合法性
 func validateSingleInterval(iv *PricingInterval, idx int) error {
 	if iv.MinTokens < 0 {
 		return fmt.Errorf("interval #%d: min_tokens (%d) must be >= 0", idx+1, iv.MinTokens)
@@ -291,6 +313,7 @@ func validateSingleInterval(iv *PricingInterval, idx int) error {
 	return validateIntervalPrices(iv, idx)
 }
 
+// validateIntervalPrices 校验区间内所有价格字段 >= 0
 func validateIntervalPrices(iv *PricingInterval, idx int) error {
 	prices := []struct {
 		name string
@@ -310,8 +333,10 @@ func validateIntervalPrices(iv *PricingInterval, idx int) error {
 	return nil
 }
 
+// validateIntervalOverlap 校验排序后的区间列表无重叠，且无界区间在最后
 func validateIntervalOverlap(sorted []PricingInterval) error {
 	for i, iv := range sorted {
+		// 无界区间必须是最后一个
 		if iv.MaxTokens == nil && i < len(sorted)-1 {
 			return fmt.Errorf("interval #%d: unbounded interval (max_tokens=null) must be the last one",
 				i+1)
@@ -320,6 +345,8 @@ func validateIntervalOverlap(sorted []PricingInterval) error {
 			continue
 		}
 		prev := sorted[i-1]
+		// 检查重叠：前一个区间的上界 > 当前区间的下界则重叠
+		// (min, max] 语义：prev 覆盖 (prev.Min, prev.Max]，cur 覆盖 (cur.Min, cur.Max]
 		if prev.MaxTokens == nil || *prev.MaxTokens > iv.MinTokens {
 			return fmt.Errorf("interval #%d and #%d overlap: prev max=%s > cur min=%d",
 				i, i+1, formatMaxTokensLabel(prev.MaxTokens), iv.MinTokens)
@@ -330,37 +357,37 @@ func validateIntervalOverlap(sorted []PricingInterval) error {
 
 func formatMaxTokensLabel(max *int) string {
 	if max == nil {
-		return "unbounded"
+		return "∞"
 	}
 	return fmt.Sprintf("%d", *max)
 }
 
-// ChannelUsageFields are channel fields embedded in usage records.
+// ChannelUsageFields 渠道相关的使用记录字段（嵌入到各平台的 RecordUsageInput 中）
 type ChannelUsageFields struct {
-	ChannelID          int64
-	OriginalModel      string
-	ChannelMappedModel string
-	BillingModelSource string
-	ModelMappingChain  string
+	ChannelID          int64  // 渠道 ID（0 = 无渠道）
+	OriginalModel      string // 用户原始请求模型（渠道映射前）
+	ChannelMappedModel string // 渠道映射后的模型名（无映射时等于 OriginalModel）
+	BillingModelSource string // 计费模型来源："requested" / "upstream" / "channel_mapped"
+	ModelMappingChain  string // 映射链描述，如 "a→b→c"
 }
 
-// SupportedModel is a concrete model exposed by a channel.
+// SupportedModel 渠道的一个支持模型条目（无通配符、可直接展示给用户）
 type SupportedModel struct {
-	Name     string
-	Platform string
-	Pricing  *ChannelModelPricing
+	Name     string               // 用户侧模型名
+	Platform string               // 所属平台
+	Pricing  *ChannelModelPricing // 定价详情（nil 表示未配置定价）
 }
 
-// wildcardSuffix 闁哄嫷鍨辫啯闁搞劌顑嗚啯鐎殿喖绻嬮懙鎴︽儍閸曨垪鍋撳璺哄赋缂佹绠戦幃妤冪磽閳ь剟寮介崶顏嶅敹闁挎稑鐗呯划搴ㄥ绩椤栨稑鐦悘蹇涚畺閸庢挳宕犺ぐ鎺戝赋闁挎稑顦埀?
+// wildcardSuffix 是模型模式中的通配符后缀标记（仅支持尾部匹配）。
 const wildcardSuffix = "*"
 
-// splitWildcardSuffix 閻忓繐妫欒啯闁搞劌顑嗚啯鐎殿喖绻戞刊鍫曞礆閸℃洝绀?(prefix, isWildcard)闁?//
+// splitWildcardSuffix 将模型模式拆分为 (prefix, isWildcard)。
 //
-//	"claude-opus-*"  闁?("claude-opus-", true)
-//	"claude-opus-4"  闁?("claude-opus-4", false)
-//	"*"              闁?("", true)
+//	"claude-opus-*"  → ("claude-opus-", true)
+//	"claude-opus-4"  → ("claude-opus-4", false)
+//	"*"              → ("", true)
 //
-// 婵炲鍔嶉崜浼存晬濮樺磭绠查柛銉у仧濞?prefix 濞ｅ洦绻冪€垫棃宕㈤悢濂夋綏濠㈠爢鍐瘓闁告劖鐟辩槐婵嬫偨鏉堫偆娈堕柣顫妽閺岀喖骞愭径鎰粯 ToLower闁?
+// 注意：返回的 prefix 保持原始大小写，由调用方按需 ToLower。
 func splitWildcardSuffix(pattern string) (prefix string, isWildcard bool) {
 	if strings.HasSuffix(pattern, wildcardSuffix) {
 		return strings.TrimSuffix(pattern, wildcardSuffix), true
@@ -368,7 +395,8 @@ func splitWildcardSuffix(pattern string) (prefix string, isWildcard bool) {
 	return pattern, false
 }
 
-// GetModelPricingByPlatform 闁革负鍔嶇€垫氨鈧鑹鹃柦鈺呭矗妫颁胶鐟撻柡灞诲劜婢规鍒掗崜褉鈧ê螣閳ュ磭鈧兘鎯冮崟顐ゆ毎濞寸姴鍤栫槐婵嬪嫉椤忓懎顥濋柛鎺撳缁绘垿宕?nil闁?// 濞?GetModelPricing 闁汇劌瀚亸顖炲礆椤愵剛绐楅柟?Platform 闂傚懏姊婚‖鍥晬瀹€鍕級闁稿繐绉峰▔鏇㈢嵁閸愭彃閰遍柛姘嫰閹洖螣閳ュ磭鈧鎷犻姘埍闂佹澘绉查埀?
+// GetModelPricingByPlatform 在指定平台下查找精确模型的定价，未找到返回 nil。
+// 与 GetModelPricing 的区别：按 Platform 隔离，避免跨平台同名模型误匹配。
 func (c *Channel) GetModelPricingByPlatform(platform, model string) *ChannelModelPricing {
 	if c == nil {
 		return nil
@@ -388,16 +416,22 @@ func (c *Channel) GetModelPricingByPlatform(platform, model string) *ChannelMode
 	return nil
 }
 
-// platformPricingIndex 闁哄嫷鍨板畷鐔哥▔椤忓嫰鎸柛娆擃暒缁楀懐鈧鐭悳顖涚┍閳╁啩绱栭柣銊ュ椤︽煡宕ラ崼銏犲亶鐎殿喗娲忛埀?// 濞戞挴鍋撴繛鍡忓墲婢瑰倿骞撹箛鎾崇ギ闁告瑯鍨伴幃鎾诲籍閼稿灚鏆滈柟闀愯兌缁ㄨ法娑甸鐣屽弨闁瑰灚鎷濈槐妾坸act 闁告帒妫欓弫顕€鏁嶆径澶岀憿闁哄牆顦花顓㈡焼瀹ュ懎鍧婇柨娑樻緥ildcard 闁告帒妫欓弫顕€鏁嶆径娑氱
-// 闂侇剙鐏濋崢?SupportedModels 閻庝絻顫夐惁鈩冪▔椤忓嫰鎸柛娆庡嵆閸ｅ憡寰勫鍡楊棁闁硅绻愰悾鐐瀹勬澘鐏欓悶娑栧妸閳?//
-// byLower 濞?names/originalCase 闁稿繐褰夐棅鈺呭触鐏炶偐顏卞┑鍌涱殔楠炴捇鏌屽鍫綈闁告帗鐟辩槐鐗堢?lower-case 婵☆垪鈧磭鈧兘宕ュ鍕 key闁?// 濡絾鐗旈柌婊堝川閹存帟鍘ǎ鍥ㄧ箘閺嗏偓闁稿繗娉涚敮顐ｆ叏鐎ｎ亗浜ｉ悘蹇撶箰閸熸捇濡存穱绌塵es 缂備礁鐡ㄧ€垫棃骞愭径濠勬毎濞寸姷鏌夐、鎴﹀箥椤愶絽浼庡銈呮惈缁參鎯冮崟顓€鏃傗偓瑙勪亢閸戭垱绂掗敐鍐ｅ亾
+// platformPricingIndex 是单个平台下定价信息的复合索引。
+// 一次扫描即可同时支持精确查找（exact 分支）与有序遍历（wildcard 分支），
+// 避免 SupportedModels 对每个平台重复扫描定价列表。
+//
+// byLower 与 names/originalCase 共享同一套去重规则：以 lower-case 模型名为 key，
+// 首个命中保留其原始大小写。names 维持按定价行扫描顺序的稳定迭代。
 type platformPricingIndex struct {
-	byLower      map[string]*ChannelModelPricing // lowercased model name 闁?pricing (Clone'd)
-	originalCase map[string]string               // lowercased model name 闁?original-case model name
+	byLower      map[string]*ChannelModelPricing // lowercased model name → pricing (Clone'd)
+	originalCase map[string]string               // lowercased model name → original-case model name
 	names        []string                        // priced model names in their ORIGINAL case, insertion-ordered, deduped case-insensitively (first wins)
 }
 
-// buildPricingIndex builds a platform/model lookup for pricing rules.
+// buildPricingIndex 对渠道的定价列表做一次扫描，按 platform 聚合为查找索引。
+// 索引值是定价条目的 Clone 指针，调用方可安全按需返回副本而不污染缓存。
+// 通配符后缀条目（如 "claude-*"）不被索引（它们是模式，不是具体模型名）。
+// 同一平台中以大小写不敏感方式去重，先出现者保留原始大小写。
 func buildPricingIndex(pricings []ChannelModelPricing) map[string]*platformPricingIndex {
 	idx := make(map[string]*platformPricingIndex)
 	for i := range pricings {
@@ -417,7 +451,7 @@ func buildPricingIndex(pricings []ChannelModelPricing) map[string]*platformPrici
 			}
 			lower := strings.ToLower(m)
 			if _, exists := pidx.byLower[lower]; exists {
-				continue // 濡絾鐗旈柌婊堝川閹存帟鍘柤铏矊閸ゎ參鏁嶉崸鍧卻e-insensitive 闁告ê顭烽崳鎼佸触鎼达綆鍎戝☉鎾亾濞戞搩浜滈悾鐐?/ 缂佹鍏涚粩瀛樼▔椤忓嫬鏂у┑顔碱儏閵囧洨浜歌箛鎾虫櫢闁?
+				continue // 首个命中胜出（case-insensitive 去重后第一个定价 / 第一个原始大小写）
 			}
 			cp := pricings[i].Clone()
 			pidx.byLower[lower] = &cp
@@ -428,14 +462,26 @@ func buildPricingIndex(pricings []ChannelModelPricing) map[string]*platformPrici
 	return idx
 }
 
-// SupportedModels 閻犱緤绱曢悾璇层€掗悩璁冲闁汇劌瀚弫顕€骞愭担榧撲線宕圭€ｎ亜鐏欓悶娑辩厜缁辨繄绱掗幘瀵镐函濞ｅ洦绻嗛惁澶嬬▔瀹ュ懏鍎撻梺顐ｅ哺閸樸倗绮敂琛″亾?//
-// 缂佺姵顨嗙涵鍫曟晬閸ь晣pping 闁?pricing 妤犵偞鍎兼禒鍫ユ晬婢舵稓绐?//
-//   - Pass A闁挎稑娼癮pping闁挎稑顧€缁变即鏌嗗鍛潑 ModelMapping
-//   - 缂侇喖澧介垾?src 闁?target闁挎稒纰嶅Ο澶岀矆閸濆嫭鍊?= src闁挎稑鐗忛弫銈夊箣閻ゎ垼娼掗悷娆愬釜缁辨岸鏁嶇仦鐣屾毎濞寸娀顥撻弫?target 闁革负鍔岄幃?platform 閻庤鐭悳顖炴煂鐏炲墽鍙€
-//     闁挎稑娼癮pping 闁衡偓閻熸澘鏅搁柛姘閻ゅ嫰姊介崨閭﹀悁閻犳劕婀卞▓鎴﹀及?target闁挎稒绋栫换鏍及椤栨粍鏆忛柟鎾敱閸斿懘鎯岄妷褎鐣?閻庡湱鍋ゅ顖炴嚍鏉堫偄鐎?闁挎稑顦埀?//     target 濞戞捁娅ｉ埞鏍箣閺嶏箒绀嬮梺顐ｅ哺閸樸倗绮敂鑺ヮ槯闂侇偀鍋撻柛鏍ㄧ墧鐠愮喖骞?src 闁煎浜濋悡锟犲Υ?//   - 闂侇偅宀搁崢銈囩箔?src闁挎稑鐗嗛々?"claude-3-*"闁挎稑顧€缁变即鎮介妸銉﹀€?platform 閻庤鐭悳顖炴煂鐏炶棄顤呯紓鍌楀亾闁告牕缍婇崢銈夋儍閸曨儫渚€宕圭€ｂ晝绋婂☉鎾虫惈閳ь剚鐟╅埀顒€顦惈宥咁嚕閳ь剟鏁?//     婵絽绻嬮柌婊堝磹濞嗘挴鍋撴径灞炬殢闁煎浜ｉ棅鈺冣偓瑙勭煯閻滎垶鏁嶉崼銉㈠亾濮樿泛甯崇紒妤嬬畱濠р偓闁哄拋鍨粩鎾嚋椤掍焦笑 passthrough闁挎稑顔揳rget 闂侇偅鑹鹃悥鑸电▕閻斿憡笑闂侇偅宀搁崢銈囩箔閿旇偐绀嗛柕?//   - "*" 闁告娲滅€?mapping key 閻犙傚嵆閳ь剚宀搁崢銈囩箔閿曗偓閸ㄥ酣寮ㄩ銈囩闁告挸绉剁槐鎴炵▔閾忓厜鏁?闁?闁稿繈鍔岄惈宥咁嚕閳ь剟鏁嶆径鍫氬亾?//   - Pass B闁挎稑娼穜icing-only闁挎稑顧€缁变即鏌嗗鍛潑 ModelPricing 濞戞搩鍘芥晶宥夊嫉婢舵劖濮滈梺顐ｅ哺閸樸倗绮敂渚ヤ線宕圭€ｅ墎绀夐悗浣冾潐濠€顓㈠捶?Pass A 婵烇綀顕ф慨鐐存交閸モ晜鐣?//     閻炴稏鍎电紞鍫ュ灳閺傝　鍋撻弮鈧Ο澶岀矆閸濆嫭鍊?= 閻庤鐭悳顖毼熼垾宕団偓鐑藉触瀹ュ繒绀夐悗瑙勭煯閻?= 闁煎浜ｉ棅鈺呮晬閸絿绠归柡鍕靛灠閸櫻囨煥椤旂粯鍙忓璺虹▌缁辨壆鈧鐭悳顖溾偓娑櫭﹢顏堝础閸忓懎鏁╅悶娑栧妽缁楊參鏌嗛幘瀛樻殰闁归晲娴囬姘熼垾宕団偓鐑芥晬?//     闁告鍘栨繛鍥р柦閿熺姴甯抽柡鍕Т閻ㄧ娀鏁嶆径鍫氬亾?//
+// SupportedModels 计算渠道的支持模型列表，结果保证不含通配符。
 //
-// 闁哄嫬澧介妵姘跺触瀹ュ懏鍤掑☉鎿冨幖閻ｇ偓绂掗柨瀣槯濞达綀娉曢弫?*閻庤鐭悳顖炴儍閸曨偄鏂у┑顔碱儏閵囧洨浜歌箛鎾虫櫢**闁挎稑鐗嗛悾鐐闁垮笑婵☆垪鈧磭鈧兘鐓鈥虫暅闁汇劌瀚花銊р偓鍦仦濞奸潧鈹冮幇鍓佺闁?// 闁?(Platform, Name) 缂佸鍟块悾楣冨箳閹烘垹纰嶉柨娑樻湰鐎?(Platform, lowercase(Name)) 闁告ê顭烽崳鎼佹晬鐏炶棄甯ラ柛鎺撳閳ь剙鎳撻崕銊╁礄閹巻鍋?//
-// 婵炲鍔嶉崜浼存晬濮橆剛鏆板ù鐘烘腹缁酣宕?channel.ModelPricing 闁告劕鎳忛悡锟犲箥闁款垪鍋撻弬琛″亾閺傚灝寮块悘鐐╁亾 LiteLLM 闁搞儳鍋犻幆銈夋偨鏉堫偆娈堕柣顫妽閺?
+// 算法（mapping ∪ pricing 并联）：
+//
+//   - Pass A（mapping）：遍历 ModelMapping
+//   - 精确 src → target：显示名 = src（用户视角），定价用 target 在同 platform 定价里查
+//     （mapping 改写后实际计费的是 target；这是用户感知的"实际花费"）。
+//     target 为空或为通配符时退化为按 src 自查。
+//   - 通配符 src（如 "claude-3-*"）：用同 platform 定价里前缀匹配的模型作为候选展开，
+//     每个候选用自身定价（通配符场景一般是 passthrough，target 通常也是通配符）。
+//   - "*" 单独 mapping key 走通配符分支（前缀为空 → 全展开）。
+//   - Pass B（pricing-only）：遍历 ModelPricing 中所有非通配符模型，对未在 Pass A 添加过的
+//     补齐——显示名 = 定价模型名，定价 = 自身（这是关键修复：定价存在即代表渠道支持该模型，
+//     即使没配映射）。
+//
+// 显示名命中定价时使用**定价的原始大小写**（定价是模型身份的事实来源）。
+// 按 (Platform, Name) 稳定排序，按 (Platform, lowercase(Name)) 去重，先到者胜出。
+//
+// 注意：定价仅在 channel.ModelPricing 内查找——全局 LiteLLM 回落由调用方
+// （`ChannelService.ListAvailable`）在合成展示数据时叠加。
 func (c *Channel) SupportedModels() []SupportedModel {
 	if c == nil {
 		return nil
@@ -453,6 +499,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	seen := make(map[dedupKey]struct{})
 	result := make([]SupportedModel, 0)
 
+	// lookup 在 platform pricing index 中按精确名查定价，命中时返回定价大小写。
 	lookup := func(pidx *platformPricingIndex, name string) (display string, pricing *ChannelModelPricing) {
 		if pidx == nil || name == "" {
 			return name, nil
@@ -477,7 +524,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 		})
 	}
 
-	// Pass A闁挎稒鐭划?mapping 閻忕偞娲栫槐?
+	// Pass A：从 mapping 展开
 	for platform, mapping := range c.ModelMapping {
 		if len(mapping) == 0 {
 			continue
@@ -498,7 +545,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 				}
 				continue
 			}
-			// 缂侇喖澧介垾?mapping闁挎稒鑹鹃悾鐐闁垮鐦?target 闁哄被鍎荤槐鐪沘rget 缂傚倸鎼妵?闂侇偅宀搁崢銈夊礆濞嗘挴鍋撻埀顒勫礌閺嶃劌鐦?src 闁?
+			// 精确 mapping：定价按 target 查；target 缺失/通配则退化按 src 查
 			pricingKey := target
 			if pricingKey == "" {
 				pricingKey = src
@@ -507,13 +554,13 @@ func (c *Channel) SupportedModels() []SupportedModel {
 				pricingKey = src
 			}
 			_, pricing := lookup(pidx, pricingKey)
-			// 闁哄嫬澧介妵姘跺触瀹ュ嫮鍠橀柛蹇撶墢閺?src 闁革负鍔岄悾鐐閻戣棄娅￠柣銊ュ鐢偅鎱ㄧ€ｎ亗浜ｉ悘蹇撶箰閸熸捇鏁嶉崼锝咁仧 src 闁哄牜鍓濋棅鈺呭及椤栨瑩鍤嬮悗瑙勭煯閻滎垰螣閳ュ磭鈧兘宕ュ蹇曠
+			// 显示名优先用 src 在定价里的原始大小写（若 src 本身是个定价模型名）
 			displayName, _ := lookup(pidx, src)
 			add(platform, displayName, pricing)
 		}
 	}
 
-	// Pass B闁挎稒鐭划?pricing 閻炴稏鍎电紞?mapping 闁哄牜浜ｉ々顐︽儎閺嶎偅鐣遍柛蹇氭腹缂嶅螣閳ュ磭鈧兘鏁嶉崼婊勫弿濠?閻庤鐭悳顖溾偓娑櫭﹢顏呮媴閸℃姊鹃梺鏉跨У濡惭呬焊?闁?濞戞挸绉靛Ο澶岀矆?闁?
+	// Pass B：从 pricing 补齐 mapping 未覆盖的具体模型（修复"定价存在但没配映射 → 不显示"）
 	for platform, pidx := range idx {
 		for _, name := range pidx.names {
 			display, pricing := lookup(pidx, name)

@@ -71,6 +71,42 @@ func setupSyncUpstreamModelsRouter(adminSvc service.AdminService, upstream servi
 	return router
 }
 
+type availableModelsPlatformRepo struct {
+	platforms map[string]service.Platform
+}
+
+func (r *availableModelsPlatformRepo) List(_ context.Context, _ bool) ([]service.Platform, error) {
+	out := make([]service.Platform, 0, len(r.platforms))
+	for _, platform := range r.platforms {
+		out = append(out, platform)
+	}
+	return out, nil
+}
+
+func (r *availableModelsPlatformRepo) GetBySlug(_ context.Context, slug string) (*service.Platform, error) {
+	platform, ok := r.platforms[service.NormalizePlatformSlug(slug)]
+	if !ok {
+		return nil, service.ErrPlatformNotFound
+	}
+	return &platform, nil
+}
+
+func (r *availableModelsPlatformRepo) Create(_ context.Context, _ *service.Platform) error {
+	return nil
+}
+
+func (r *availableModelsPlatformRepo) Update(_ context.Context, _ *service.Platform) error {
+	return nil
+}
+
+func (r *availableModelsPlatformRepo) Delete(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *availableModelsPlatformRepo) Usage(_ context.Context, _ string) (service.PlatformUsage, error) {
+	return service.PlatformUsage{}, nil
+}
+
 func TestAccountHandlerGetAvailableModels_OpenAIOAuthUsesExplicitModelMapping(t *testing.T) {
 	svc := &availableModelsAdminService{
 		stubAdminService: newStubAdminService(),

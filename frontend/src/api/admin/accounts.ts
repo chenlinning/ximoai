@@ -463,6 +463,25 @@ export async function syncUpstreamModels(id: number): Promise<SyncUpstreamModels
   return data
 }
 
+export interface SyncUpstreamModelsPreviewPayload {
+  platform: string
+  type: string
+  credentials: Record<string, unknown>
+}
+
+/**
+ * Sync live supported models using account fields before creating the account.
+ */
+export async function syncUpstreamModelsPreview(
+  payload: SyncUpstreamModelsPreviewPayload
+): Promise<SyncUpstreamModelsResult> {
+  const { data } = await apiClient.post<SyncUpstreamModelsResult>(
+    '/admin/accounts/models/sync-upstream-preview',
+    payload
+  )
+  return data
+}
+
 export interface CRSPreviewAccount {
   crs_account_id: string
   kind: string
@@ -678,6 +697,7 @@ export const accountsAPI = {
   setSchedulable,
   getAvailableModels,
   syncUpstreamModels,
+  syncUpstreamModelsPreview,
   generateAuthUrl,
   exchangeCode,
   refreshOpenAIToken,
