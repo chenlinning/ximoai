@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +16,10 @@ import (
 )
 
 func newGatewayRoutesTestRouter() *gin.Engine {
+	return newGatewayRoutesTestRouterWithPlatform(service.PlatformOpenAI, nil)
+}
+
+func newGatewayRoutesTestRouterWithPlatform(platform string, platformService *service.PlatformService) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
@@ -28,7 +33,7 @@ func newGatewayRoutesTestRouter() *gin.Engine {
 			groupID := int64(1)
 			c.Set(string(servermiddleware.ContextKeyAPIKey), &service.APIKey{
 				GroupID: &groupID,
-				Group:   &service.Group{Platform: service.PlatformOpenAI},
+				Group:   &service.Group{Platform: platform},
 			})
 			c.Next()
 		}),
@@ -36,11 +41,49 @@ func newGatewayRoutesTestRouter() *gin.Engine {
 		nil,
 		nil,
 		nil,
-		nil,
+		platformService,
 		&config.Config{},
 	)
 
 	return router
+}
+
+type gatewayRoutesPlatformRepo struct {
+	platforms map[string]service.Platform
+}
+
+func (r gatewayRoutesPlatformRepo) List(_ context.Context, includeDisabled bool) ([]service.Platform, error) {
+	out := make([]service.Platform, 0, len(r.platforms))
+	for _, platform := range r.platforms {
+		if includeDisabled || platform.Enabled {
+			out = append(out, platform)
+		}
+	}
+	return out, nil
+}
+
+func (r gatewayRoutesPlatformRepo) GetBySlug(_ context.Context, slug string) (*service.Platform, error) {
+	platform, ok := r.platforms[slug]
+	if !ok {
+		return nil, service.ErrPlatformNotFound
+	}
+	return &platform, nil
+}
+
+func (r gatewayRoutesPlatformRepo) Create(_ context.Context, _ *service.Platform) error {
+	return nil
+}
+
+func (r gatewayRoutesPlatformRepo) Update(_ context.Context, _ *service.Platform) error {
+	return nil
+}
+
+func (r gatewayRoutesPlatformRepo) Delete(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r gatewayRoutesPlatformRepo) Usage(_ context.Context, _ string) (service.PlatformUsage, error) {
+	return service.PlatformUsage{}, nil
 }
 
 func TestGatewayRoutesOpenAIResponsesCompactPathIsRegistered(t *testing.T) {
@@ -163,5 +206,77 @@ func TestGatewayRoutesOpenAIRealtimePathsAreRegistered(t *testing.T) {
 
 		router.ServeHTTP(w, req)
 		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should hit OpenAI realtime handler", path)
+	}
+}
+
+func TestGatewayRoutesCustomOpenAICompatibleCapabilitiesRejectDisabledEndpoints(t *testing.T) {
+	const platformSlug = "custom-openai"
+	platformService := service.NewPlatformService(gatewayRoutesPlatformRepo{
+		platforms: map[string]service.Platform{
+			platformSlug: {
+				Slug:         platformSlug,
+				DisplayName:  "Custom OpenAI",
+				Protocol:     service.PlatformProtocolOpenAICompatible,
+				BaseURL:      "https://example.com/v1",
+				AuthModes:    []string{service.AccountTypeAPIKey},
+				Capabilities: []string{service.PlatformCapabilityResponses},
+				Enabled:      true,
+			},
+		},
+	})
+	router := newGatewayRoutesTestRouterWithPlatform(platformSlug, platformService)
+
+	tests := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{method: http.MethodPost, path: "/v1/chat/completions", body: `{"model":"gpt-5","messages":[]}`},
+		{method: http.MethodPost, path: "/chat/completions", body: `{"model":"gpt-5","messages":[]}`},
+		{method: http.MethodPost, path: "/v1/images/generations", body: `{"model":"gpt-image-2","prompt":"cat"}`},
+		{method: http.MethodPost, path: "/images/generations", body: `{"model":"gpt-image-2","prompt":"cat"}`},
+		{method: http.MethodPost, path: "/v1/audio/speech", body: `{"model":"tts-1","input":"hello"}`},
+		{method: http.MethodPost, path: "/audio/speech", body: `{"model":"tts-1","input":"hello"}`},
+		{method: http.MethodPost, path: "/v1/videos", body: `{"model":"sora","prompt":"cat"}`},
+		{method: http.MethodPost, path: "/videos", body: `{"model":"sora","prompt":"cat"}`},
+		{method: http.MethodGet, path: "/v1/realtime"},
+		{method: http.MethodGet, path: "/realtime"},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNotFound, w.Code, "method=%s path=%s", tt.method, tt.path)
+	}
+}
+
+func TestGatewayRoutesCustomOpenAICompatibleMissingResponsesCapabilityDoesNotFallBack(t *testing.T) {
+	const platformSlug = "custom-openai-chat-only"
+	platformService := service.NewPlatformService(gatewayRoutesPlatformRepo{
+		platforms: map[string]service.Platform{
+			platformSlug: {
+				Slug:         platformSlug,
+				DisplayName:  "Custom OpenAI Chat Only",
+				Protocol:     service.PlatformProtocolOpenAICompatible,
+				BaseURL:      "https://example.com/v1",
+				AuthModes:    []string{service.AccountTypeAPIKey},
+				Capabilities: []string{service.PlatformCapabilityChatCompletions},
+				Enabled:      true,
+			},
+		},
+	})
+	router := newGatewayRoutesTestRouterWithPlatform(platformSlug, platformService)
+
+	for _, path := range []string{"/v1/responses", "/responses"} {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"gpt-5","input":"hello"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNotFound, w.Code, "path=%s", path)
+		require.Contains(t, w.Body.String(), "Responses API is not supported for this platform")
 	}
 }

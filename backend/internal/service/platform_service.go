@@ -189,6 +189,14 @@ func (s *PlatformService) IsGeminiCompatible(ctx context.Context, slug string) b
 	return platform.IsGeminiCompatible()
 }
 
+func (s *PlatformService) SupportsCapability(ctx context.Context, slug string, capability string) bool {
+	platform, err := s.GetBySlug(ctx, slug)
+	if err != nil || platform == nil || !platform.Enabled {
+		return false
+	}
+	return platform.SupportsCapability(capability)
+}
+
 func (s *PlatformService) ValidateAccountPlatform(ctx context.Context, platformSlug, accountType string) error {
 	platform, err := s.GetBySlug(ctx, platformSlug)
 	if err != nil {

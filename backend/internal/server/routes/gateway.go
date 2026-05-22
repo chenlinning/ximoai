@@ -43,7 +43,10 @@ func RegisterGatewayRoutes(
 	{
 		// /v1/messages: auto-route based on group platform
 		gateway.POST("/messages", func(c *gin.Context) {
-			if isGroupOpenAICompatible(c, platformService) {
+			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
+				return
+			}
+			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
 				h.OpenAIGateway.Messages(c)
 				return
 			}
@@ -67,7 +70,10 @@ func RegisterGatewayRoutes(
 		gateway.GET("/usage", h.Gateway.Usage)
 		// OpenAI Responses API: auto-route based on group platform
 		gateway.POST("/responses", func(c *gin.Context) {
-			if isGroupOpenAICompatible(c, platformService) {
+			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
+				return
+			}
+			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
 				h.OpenAIGateway.Responses(c)
 				return
 			}
@@ -78,7 +84,10 @@ func RegisterGatewayRoutes(
 			h.Gateway.Responses(c)
 		})
 		gateway.POST("/responses/*subpath", func(c *gin.Context) {
-			if isGroupOpenAICompatible(c, platformService) {
+			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
+				return
+			}
+			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
 				if isOpenAIResponsesPassthroughSubpath(c) {
 					h.OpenAIGateway.ResponsesPassthrough(c)
 					return
@@ -92,10 +101,13 @@ func RegisterGatewayRoutes(
 			}
 			h.Gateway.Responses(c)
 		})
-		gateway.GET("/responses", officialOpenAIOnly(h.OpenAIGateway.ResponsesWebSocket))
+		gateway.GET("/responses", openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket))
 		// OpenAI Chat Completions API: auto-route based on group platform
 		gateway.POST("/chat/completions", func(c *gin.Context) {
-			if isGroupOpenAICompatible(c, platformService) {
+			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityChatCompletions, "Chat Completions API is not supported for this platform") {
+				return
+			}
+			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions) {
 				h.OpenAIGateway.ChatCompletions(c)
 				return
 			}
@@ -106,7 +118,7 @@ func RegisterGatewayRoutes(
 			h.Gateway.ChatCompletions(c)
 		})
 		gateway.POST("/images/generations", func(c *gin.Context) {
-			if !isGroupOpenAICompatible(c, platformService) {
+			if !isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityImages) {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": gin.H{
 						"type":    "not_found_error",
@@ -118,7 +130,7 @@ func RegisterGatewayRoutes(
 			h.OpenAIGateway.Images(c)
 		})
 		gateway.POST("/images/edits", func(c *gin.Context) {
-			if !isGroupOpenAICompatible(c, platformService) {
+			if !isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityImages) {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": gin.H{
 						"type":    "not_found_error",
@@ -152,7 +164,10 @@ func RegisterGatewayRoutes(
 
 	// OpenAI Responses API锛堜笉甯1鍓嶇紑鐨勫埆鍚嶏級鈥?auto-route based on group platform
 	responsesHandler := func(c *gin.Context) {
-		if isGroupOpenAICompatible(c, platformService) {
+		if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
+			return
+		}
+		if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
 			if isOpenAIResponsesPassthroughSubpath(c) {
 				h.OpenAIGateway.ResponsesPassthrough(c)
 				return
@@ -168,7 +183,7 @@ func RegisterGatewayRoutes(
 	}
 	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
-	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, officialOpenAIOnly(h.OpenAIGateway.ResponsesWebSocket))
+	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket))
 	codexDirect := r.Group("/backend-api/codex")
 	codexDirect.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic)
 	{
@@ -178,7 +193,10 @@ func RegisterGatewayRoutes(
 	}
 	// OpenAI Chat Completions API锛堜笉甯1鍓嶇紑鐨勫埆鍚嶏級鈥?auto-route based on group platform
 	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
-		if isGroupOpenAICompatible(c, platformService) {
+		if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityChatCompletions, "Chat Completions API is not supported for this platform") {
+			return
+		}
+		if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions) {
 			h.OpenAIGateway.ChatCompletions(c)
 			return
 		}
@@ -189,7 +207,7 @@ func RegisterGatewayRoutes(
 		h.Gateway.ChatCompletions(c)
 	})
 	r.POST("/images/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
-		if !isGroupOpenAICompatible(c, platformService) {
+		if !isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityImages) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": gin.H{
 					"type":    "not_found_error",
@@ -201,7 +219,7 @@ func RegisterGatewayRoutes(
 		h.OpenAIGateway.Images(c)
 	})
 	r.POST("/images/edits", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
-		if !isGroupOpenAICompatible(c, platformService) {
+		if !isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityImages) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": gin.H{
 					"type":    "not_found_error",
