@@ -22,6 +22,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai_compat"
@@ -354,6 +355,9 @@ type OpenAIGatewayService struct {
 	openaiAccountStats            *openAIAccountRuntimeStats
 
 	openaiWSFallbackUntil               sync.Map // key: int64(accountID), value: time.Time
+	openaiAccountRuntimeBlockUntil      sync.Map // key: int64(accountID), value: time.Time
+	openaiOAuth429WindowStartUnixNano   atomic.Int64
+	openaiOAuth429WindowCount           atomic.Int64
 	openaiWSRetryMetrics                openAIWSRetryMetrics
 	responseHeaderFilter                *responseheaders.CompiledHeaderFilter
 	codexSnapshotThrottle               *accountWriteThrottle
@@ -422,6 +426,12 @@ func NewOpenAIGatewayService(
 		videoJobRepo:          openAIVideoJobRepo,
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
 		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
+	}
+	if rateLimitService != nil {
+		rateLimitService.SetAccountRuntimeBlocker(svc)
+	}
+	if openAITokenProvider != nil {
+		openAITokenProvider.SetAccountRuntimeBlocker(svc)
 	}
 	svc.logOpenAIWSModeBootstrap()
 	return svc
@@ -965,7 +975,7 @@ func appendCodexCLIOnlyRejectedRequestFields(fields []zap.Field, c *gin.Context,
 		zap.String("request_path", strings.TrimSpace(req.URL.Path)),
 		zap.String("request_query", strings.TrimSpace(req.URL.RawQuery)),
 		zap.String("request_host", strings.TrimSpace(req.Host)),
-		zap.String("request_client_ip", strings.TrimSpace(c.ClientIP())),
+		zap.String("request_client_ip", strings.TrimSpace(ip.GetClientIP(c))),
 		zap.String("request_remote_addr", strings.TrimSpace(req.RemoteAddr)),
 		zap.String("request_user_agent", strings.TrimSpace(req.Header.Get("User-Agent"))),
 		zap.String("request_content_type", strings.TrimSpace(req.Header.Get("Content-Type"))),
@@ -1397,12 +1407,17 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.C
 		return nil, noAvailableOpenAISelectionError(requestedModel, compactBlocked)
 	}
 
-	// 4. 闂傚倷娴囧畷鍨叏瀹曞洨鐭嗗ù锝堫潐濞呯姴霉閻樺樊鍎愰柛瀣典邯閺屾盯鍩勯崘顏呭櫑闂佹悶鍔嶇换鍐╃┍婵犲浂鏁嶆繝濠傚暙婵箓姊虹粙娆惧剱闁归€涚窔钘濋弶鍫氭櫇绾惧ジ寮堕崼娑樺妞ゃ儱顑夐弻鐔割槹鎼粹寬銏ゆ煃鐟欏嫬鐏寸€规洖銈告慨鈧柍銉﹀墯娴犻亶姊?	// Set sticky session binding
+	hydrated, err := s.hydrateSelectedAccount(ctx, selected)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set sticky session binding
 	if sessionHash != "" {
 		_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, selected.ID, openaiStickySessionTTL)
 	}
 
-	return s.hydrateSelectedAccount(ctx, selected)
+	return hydrated, nil
 }
 
 // tryStickySessionHit 闂傚倷娴囬褏鎹㈤幇顔藉床闁瑰濮靛畷鏌ユ煕閳╁啰鈯曢柛搴★攻閵囧嫰寮介妸褋鈧帗銇勯埡鍐ㄥ幋妤犵偞鐗楀蹇涘礈瑜庨崑褔姊虹紒妯诲鞍閻㈩垽绻濆濠氭偄绾拌鲸鏅炲銈嗗坊閸嬫捇鏌涙繝鍛惞缂侇噯绲借灃闁告侗鍠栨禒顖炴⒑閹肩偛鍔橀柛鏂挎捣缁顫濋褎顔旈梺缁樺姌鐏忔瑧绮婚懡銈傚亾鐟欏嫭绌跨紓宥勭椤曪絾绂掔€ｅ灚鏅㈤梺閫炲苯澧撮挊婵嬫煃閸濆嫭鍣洪柣鎾存礃缁绘盯宕卞Ο鍝勵潕婵炲濮甸惄顖炲蓟?// 濠电姷鏁告慨鐑姐€傛禒瀣劦妞ゆ巻鍋撻柛鐔锋健閸┾偓妞ゆ巻鍋撶紓宥咃躬楠炲啫螣鐠囪尙绐為梺褰掑亰閸撴瑧绮ｅ☉銏♀拺闁荤喐澹嗛幗鐘绘偨椤栨粌鏋涚€规洏鍨介、妤呭焵椤掑嫬鐓″鑸靛姇缁犲鎮楀☉娆欎緵婵﹥瀵х换婵嬪閿濆棛銆愰柣搴㈢濠㈡﹢鎮鹃悜鑺ユ櫜闁告侗鍨卞▓婵嬫⒑閸濆嫷妲奸柛搴☆煼椤㈡瑦寰勯幇顓涙嫼濠电偠灏欑划顖涚箾閸ヮ剚鐓曢柡鍌濇硶閻掑摜鈧娲栫紞濠囥€佸☉妯锋婵炲棗瀛╅崬澶愭⒒娴ｅ憡鎯堥柛濠傛贡閳ь剛鐟抽崨顖滅劶闂侀€炲苯澧撮柡宀嬬秮閹晠宕橀幓鎹胶绱撴担鍝勑ｉ柛銊ャ偢婵＄敻骞囬弶鍧楁暅濠德板€撻悞锕€鈻嶉弽褉鏀介柣鎰綑閻忥箓鏌ㄩ弴妤佹珔閻撱倝鏌曢崼婵愭Ч闁绘挻鐩幃妤呮晲鎼粹€茬敖闂佹椿鍘兼鎼佲€︾捄銊﹀磯闁告繂瀚锋导鍐倵鐟欏嫭绌跨紓宥勭窔楠炴鎯旈妸銉э紲濠电姴锕ら幊蹇涘窗閹烘鈷掑ù锝呮啞閸熺偤鏌ｉ悤浣哥仸鐎规洖缍婇獮搴ㄦ寠婢跺鈧剟姊洪棃娑氬妞わ富鍨崇划鍫ュ幢濡偐顔曢梺绯曞墲閿氬┑顔碱槹閵囧嫯绠涢弮鈧崐鎰版煛瀹€瀣М闁诡喗鐟╁畷锝嗗緞濡椿妫ょ紓鍌氬€峰ù鍥ㄣ仈閸涘﹦鐝堕柛鈩冪☉缁狀垶鏌ｅΟ鑽ゃ偞闁衡偓娴犲鐓曢柍鈺佸暢婢规﹢鏌ｅ┑鎰仸闁哄备鍓濆鍕幢濡崵褰嗛梻浣告惈鐞氼偊宕濆畝鈧崣?nil闂?//
@@ -1439,6 +1454,10 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 
 	// 濠电姴鐥夐弶搴撳亾濡や焦鍙忛柟缁㈠枟閸庢銆掑锝呬壕闂佽鍨悞锕€顕ラ崟顓濇勃闁诡垎灞肩穿闂傚倷鐒︾€笛兠哄澶婄；闁规崘鍩栭崰鎰版煛婢跺顕滈柛瀣ㄥ劤閳ь剚顔栭崰鏇㈠础閹跺鈧礁鈽夊鍡樺兊濡炪倖鎸鹃崑娑欐櫠妤ｅ啯鈷掑ù锝呮啞閸熺偤鏌ｉ悤浣哥仸鐎规洖缍婇獮搴ㄦ寠婢跺鈧剟姊洪棃娑氬婵☆偅鐩妴鍛村蓟閵夈儳顔愰柡澶婄墕婢х晫澹曠捄銊х＜濠㈣泛顭堥崑銏ゆ煛鐏炲墽娲存鐐疵悾鐑藉炊閸℃劕鍔滈柕鍥у瀵挳濡搁妷銉交闂?	// Verify account is usable for current request
 	if !isOpenAIAccountEligibleForRequest(account, requestedModel, false, platform) {
+		return nil
+	}
+	if s.isOpenAIAccountRuntimeBlocked(account) {
+		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 		return nil
 	}
 	account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel, requireCompact, platform)
@@ -1585,8 +1604,8 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 			return nil, err
 		}
 		result, err := s.tryAcquireAccountSlot(ctx, account.ID, account.Concurrency)
-		if err == nil && result.Acquired {
-			return s.newSelectionResult(ctx, account, true, result.ReleaseFunc, nil)
+		if err == nil && result != nil && result.Acquired {
+			return s.newAcquiredSelectionResult(ctx, account, result.ReleaseFunc)
 		}
 		if stickyAccountID > 0 && stickyAccountID == account.ID && s.concurrencyService != nil {
 			waitingCount, _ := s.concurrencyService.GetAccountWaitingCount(ctx, account.ID)
@@ -1637,13 +1656,19 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 					account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel, requireCompact, platform)
 					if account == nil {
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+					} else if s.isOpenAIAccountRuntimeBlocked(account) {
+						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, account, requestedModel, requireCompact) {
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else {
 						result, err := s.tryAcquireAccountSlot(ctx, accountID, account.Concurrency)
-						if err == nil && result.Acquired {
+						if err == nil && result != nil && result.Acquired {
+							selection, selectErr := s.newAcquiredSelectionResult(ctx, account, result.ReleaseFunc)
+							if selectErr != nil {
+								return nil, selectErr
+							}
 							_ = s.refreshStickySessionTTL(ctx, groupID, sessionHash, openaiStickySessionTTL)
-							return s.newSelectionResult(ctx, account, true, result.ReleaseFunc, nil)
+							return selection, nil
 						}
 
 						waitingCount, _ := s.concurrencyService.GetAccountWaitingCount(ctx, accountID)
@@ -1675,6 +1700,9 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		if !acc.IsSchedulable() {
 			continue
 		}
+		if s.isOpenAIAccountRuntimeBlocked(acc) {
+			continue
+		}
 		if requestedModel != "" && !acc.IsModelSupported(requestedModel) {
 			continue
 		}
@@ -1697,6 +1725,92 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		})
 	}
 
+	tryAcquireFromLoadMap := func(loadMap map[int64]*AccountLoadInfo) (*AccountSelectionResult, bool, error) {
+		var available []accountWithLoad
+		for _, acc := range candidates {
+			loadInfo := loadMap[acc.ID]
+			if loadInfo == nil {
+				loadInfo = &AccountLoadInfo{AccountID: acc.ID}
+			}
+			if loadInfo.LoadRate < 100 {
+				available = append(available, accountWithLoad{
+					account:  acc,
+					loadInfo: loadInfo,
+				})
+			}
+		}
+
+		if len(available) == 0 {
+			return nil, false, nil
+		}
+
+		sort.SliceStable(available, func(i, j int) bool {
+			a, b := available[i], available[j]
+			if a.account.Priority != b.account.Priority {
+				return a.account.Priority < b.account.Priority
+			}
+			if a.loadInfo.LoadRate != b.loadInfo.LoadRate {
+				return a.loadInfo.LoadRate < b.loadInfo.LoadRate
+			}
+			switch {
+			case a.account.LastUsedAt == nil && b.account.LastUsedAt != nil:
+				return true
+			case a.account.LastUsedAt != nil && b.account.LastUsedAt == nil:
+				return false
+			case a.account.LastUsedAt == nil && b.account.LastUsedAt == nil:
+				return false
+			default:
+				return a.account.LastUsedAt.Before(*b.account.LastUsedAt)
+			}
+		})
+		shuffleWithinSortGroups(available)
+
+		selectionOrder := make([]accountWithLoad, 0, len(available))
+		if requireCompact {
+			appendTier := func(out []accountWithLoad, tier int) []accountWithLoad {
+				for _, item := range available {
+					if openAICompactSupportTier(item.account) == tier {
+						out = append(out, item)
+					}
+				}
+				return out
+			}
+			selectionOrder = appendTier(selectionOrder, 2)
+			selectionOrder = appendTier(selectionOrder, 1)
+			// tier 0 候选作为兜底追加：DB recheck 时若发现 cache tier 0 实际
+			// 已升级为 1/2（探测刚跑完，cache 尚未刷新），仍可正常命中。
+			selectionOrder = appendTier(selectionOrder, 0)
+		} else {
+			selectionOrder = append(selectionOrder, available...)
+		}
+
+		for _, item := range selectionOrder {
+			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, item.account, requestedModel, false, platform)
+			if fresh == nil {
+				continue
+			}
+			fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact, platform)
+			if fresh == nil {
+				continue
+			}
+			if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
+				continue
+			}
+			result, err := s.tryAcquireAccountSlot(ctx, fresh.ID, fresh.Concurrency)
+			if err == nil && result != nil && result.Acquired {
+				selection, selectErr := s.newAcquiredSelectionResult(ctx, fresh, result.ReleaseFunc)
+				if selectErr != nil {
+					return nil, true, selectErr
+				}
+				if sessionHash != "" {
+					_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, openaiStickySessionTTL)
+				}
+				return selection, true, nil
+			}
+		}
+		return nil, true, nil
+	}
+
 	loadMap, err := s.concurrencyService.GetAccountsLoadBatch(ctx, accountLoads)
 	if err != nil {
 		ordered := append([]*Account(nil), candidates...)
@@ -1717,86 +1831,28 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 				continue
 			}
 			result, err := s.tryAcquireAccountSlot(ctx, fresh.ID, fresh.Concurrency)
-			if err == nil && result.Acquired {
+			if err == nil && result != nil && result.Acquired {
+				selection, selectErr := s.newAcquiredSelectionResult(ctx, fresh, result.ReleaseFunc)
+				if selectErr != nil {
+					return nil, selectErr
+				}
 				if sessionHash != "" {
 					_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, openaiStickySessionTTL)
 				}
-				return s.newSelectionResult(ctx, fresh, true, result.ReleaseFunc, nil)
+				return selection, nil
 			}
 		}
 	} else {
-		var available []accountWithLoad
-		for _, acc := range candidates {
-			loadInfo := loadMap[acc.ID]
-			if loadInfo == nil {
-				loadInfo = &AccountLoadInfo{AccountID: acc.ID}
-			}
-			if loadInfo.LoadRate < 100 {
-				available = append(available, accountWithLoad{
-					account:  acc,
-					loadInfo: loadInfo,
-				})
-			}
-		}
-
-		if len(available) > 0 {
-			sort.SliceStable(available, func(i, j int) bool {
-				a, b := available[i], available[j]
-				if a.account.Priority != b.account.Priority {
-					return a.account.Priority < b.account.Priority
-				}
-				if a.loadInfo.LoadRate != b.loadInfo.LoadRate {
-					return a.loadInfo.LoadRate < b.loadInfo.LoadRate
-				}
-				switch {
-				case a.account.LastUsedAt == nil && b.account.LastUsedAt != nil:
-					return true
-				case a.account.LastUsedAt != nil && b.account.LastUsedAt == nil:
-					return false
-				case a.account.LastUsedAt == nil && b.account.LastUsedAt == nil:
-					return false
-				default:
-					return a.account.LastUsedAt.Before(*b.account.LastUsedAt)
-				}
-			})
-			shuffleWithinSortGroups(available)
-
-			selectionOrder := make([]accountWithLoad, 0, len(available))
-			if requireCompact {
-				appendTier := func(out []accountWithLoad, tier int) []accountWithLoad {
-					for _, item := range available {
-						if openAICompactSupportTier(item.account) == tier {
-							out = append(out, item)
-						}
-					}
-					return out
-				}
-				selectionOrder = appendTier(selectionOrder, 2)
-				selectionOrder = appendTier(selectionOrder, 1)
-				// tier 0 闂傚倸鍊烽懗鍫曗€﹂崼銉︽櫇闁靛鏅滈崑锟犳煃閸濆嫭鍣归柣鎺戠仛閵囧嫰骞掗崱妞惧婵＄偑鍊х€靛矂宕板杈潟闁绘劕鎼猾宥夋煃瑜滈崜娑氬垝濞嗘劕绶為柟閭﹀厸缁卞爼姊洪崨濠冨闁稿瀚划濠氬蓟閵夛妇鍘甸梺缁樻尭濞寸兘骞楅悩宕囩闁告瑥顦辩粻鐐搭殽閻愯尙绠婚柟顔界矒閹稿﹥寰勫畝濠冃ラ梻鍌欒兌缁垶鎮烽妷鈺佺疇闁归偊鍠氶悳缁樹繆濡ゅ啫鐝?recheck 闂傚倸鍊风粈渚€骞栭锕€鐤い鏍仜绾惧潡鏌ゅù瀣澒闁稿鎸搁～婵嬪Ψ閵壯傜礄闁诲氦顫夊ú鈺冪礊娓氣偓閻涱喚鈧綆鍠楅崑鎰版煠绾板崬澧伴柡?cache tier 0 闂傚倷娴囬褎顨ョ粙鍖¤€块梺顒€绉寸壕濠氭煏閸繃濯奸柣?				// 闂備浇顕уù鐑藉箠閹捐绠熼梽鍥Φ閹版澘绀冮柕濞у嫭顔曢柣搴″帨閸嬫捇鏌嶈閸撶喖骞嗛埀顒併亜韫囨挻绁╂俊鍙夋そ閺?1/2闂傚倸鍊烽悞锔锯偓绗涘懐鐭欓柟杈鹃檮閸嬪鈹戦悩鎻掝仾闁哄棙绮撻弻鈩冨緞鐎ｅ墎绌块梺闈╁瘜閸樻悂宕戦幘缁樻櫜閹煎瓨绻勯惄搴ㄦ⒑鐠囪尙绠冲┑鐐╁亾闂佽鍠栫紞濠囧箖濠婂吘鐔兼惞闁稒妯婇梻鍌欐缁鳖喚绱為崱娑樼闁绘梻鍘ч弸浣衡偓骞垮劚濞茬娀宕戦幘鑸靛枂闁告洦鍋勭紞姒梙e 闂傚倷娴囬褏鎹㈤幇顔藉床闁瑰濮撮弸鍫⑩偓骞垮劚閹锋垿鎳撻幐搴涗簻闁规儳宕悘鈺冪磼閳ь剟宕卞☉娆屾嫼闂佸壊鐓堥崳顕€宕曢幇鐗堢厽闁圭虎鍨版禍楣冩⒒閸屾瑧鍔嶉悗绗涘懐鐭欓柟娆″眰鍔戦崺鈧い鎺戝€荤壕濂稿级閸稑濡跨紒鐘崇墱缁辨帡宕掑☉妯肩懆濡炪倖鎸搁妶绋跨暦閵娾晩鏁囬柍钘夋閺佺厧鈹戦悩鎰佸晱闁哥姵顨堥幑銏ゅ箛椤旇偐绛忔繛瀵稿Т椤戝棝宕戞径鎰厱妞ゆ劧绲剧粈鈧悗鐟版啞缁诲牓寮婚悢琛″亾濞戞顏嗙箔閳哄懏鐓曟慨妤€妫楁晶鎾煛?
-				selectionOrder = appendTier(selectionOrder, 0)
-			} else {
-				selectionOrder = append(selectionOrder, available...)
-			}
-
-			for _, item := range selectionOrder {
-				fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, item.account, requestedModel, false, platform)
-				if fresh == nil {
-					continue
-				}
-				fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel, requireCompact, platform)
-				if fresh == nil {
-					continue
-				}
-				if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel, requireCompact) {
-					continue
-				}
-				result, err := s.tryAcquireAccountSlot(ctx, fresh.ID, fresh.Concurrency)
-				if err == nil && result.Acquired {
-					if sessionHash != "" {
-						_ = s.setStickySessionAccountID(ctx, groupID, sessionHash, fresh.ID, openaiStickySessionTTL)
-					}
-					return s.newSelectionResult(ctx, fresh, true, result.ReleaseFunc, nil)
+		if selection, attempted, selectErr := tryAcquireFromLoadMap(loadMap); selectErr != nil {
+			return nil, selectErr
+		} else if selection != nil {
+			return selection, nil
+		} else if attempted {
+			if freshLoadMap, loadErr := s.concurrencyService.GetAccountsLoadBatchFresh(ctx, accountLoads); loadErr == nil {
+				if selection, _, selectErr := tryAcquireFromLoadMap(freshLoadMap); selectErr != nil {
+					return nil, selectErr
+				} else if selection != nil {
+					return selection, nil
 				}
 			}
 		}
@@ -1881,6 +1937,9 @@ func (s *OpenAIGatewayService) resolveFreshSchedulableOpenAIAccount(ctx context.
 	if !isOpenAIAccountEligibleForRequest(fresh, requestedModel, requireCompact, platform) {
 		return nil
 	}
+	if s.isOpenAIAccountRuntimeBlocked(fresh) {
+		return nil
+	}
 	return fresh
 }
 
@@ -1900,6 +1959,9 @@ func (s *OpenAIGatewayService) recheckSelectedOpenAIAccountFromDB(ctx context.Co
 		return nil
 	}
 	if !isOpenAIAccountEligibleForRequest(latest, requestedModel, requireCompact, platform) {
+		return nil
+	}
+	if s.isOpenAIAccountRuntimeBlocked(latest) {
 		return nil
 	}
 	return latest
@@ -1946,6 +2008,14 @@ func (s *OpenAIGatewayService) newSelectionResult(ctx context.Context, account *
 		ReleaseFunc: release,
 		WaitPlan:    waitPlan,
 	}, nil
+}
+
+func (s *OpenAIGatewayService) newAcquiredSelectionResult(ctx context.Context, account *Account, release func()) (*AccountSelectionResult, error) {
+	selection, err := s.newSelectionResult(ctx, account, true, release, nil)
+	if err != nil && release != nil {
+		release()
+	}
+	return selection, err
 }
 
 func (s *OpenAIGatewayService) schedulingConfig() config.GatewaySchedulingConfig {
@@ -2012,7 +2082,7 @@ func (s *OpenAIGatewayService) shouldFailoverOpenAIUpstreamResponse(statusCode i
 
 func (s *OpenAIGatewayService) handleFailoverSideEffects(ctx context.Context, resp *http.Response, account *Account) {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-	s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
+	s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 }
 
 // Forward forwards request to OpenAI API
@@ -3278,9 +3348,7 @@ func (s *OpenAIGatewayService) handleFailoverErrorResponsePassthrough(
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
 	logOpenAIInstructionsRequiredDebug(ctx, c, account, resp.StatusCode, upstreamMsg, requestBody, body)
-	if s.rateLimitService != nil {
-		_ = s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
-	}
+	_ = s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 		Platform:             account.Platform,
 		AccountID:            account.ID,
@@ -3321,12 +3389,9 @@ func (s *OpenAIGatewayService) handleErrorResponsePassthrough(
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
 	logOpenAIInstructionsRequiredDebug(ctx, c, account, resp.StatusCode, upstreamMsg, requestBody, body)
-	if s.rateLimitService != nil {
-		// Passthrough mode preserves the raw upstream error response, but runtime
-		// account state still needs to be updated so sticky routing can stop
-		// reusing a freshly rate-limited account.
-		_ = s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
-	}
+	// 透传模式保留原始上游错误响应，但运行态账号状态仍需更新，
+	// 避免粘性路由继续复用刚被限流的账号。
+	_ = s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 		Platform:             account.Platform,
 		AccountID:            account.ID,
@@ -4080,10 +4145,7 @@ func (s *OpenAIGatewayService) handleErrorResponse(
 	}
 
 	// Handle upstream error (mark account status)
-	shouldDisable := false
-	if s.rateLimitService != nil {
-		shouldDisable = s.rateLimitService.HandleUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
-	}
+	shouldDisable := s.handleOpenAIAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	kind := "http_error"
 	if shouldDisable {
 		kind = "failover"
@@ -4215,12 +4277,9 @@ func (s *OpenAIGatewayService) handleCompatErrorResponse(
 	}
 
 	// Track rate limits and decide whether to trigger secondary failover.
-	shouldDisable := false
-	if s.rateLimitService != nil {
-		shouldDisable = s.rateLimitService.HandleUpstreamError(
-			c.Request.Context(), account, resp.StatusCode, resp.Header, body,
-		)
-	}
+	shouldDisable := s.handleOpenAIAccountUpstreamError(
+		c.Request.Context(), account, resp.StatusCode, resp.Header, body,
+	)
 	kind := "http_error"
 	if shouldDisable {
 		kind = "failover"
