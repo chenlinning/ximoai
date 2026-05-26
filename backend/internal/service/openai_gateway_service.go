@@ -343,6 +343,7 @@ type OpenAIGatewayService struct {
 	balanceNotifyService  *BalanceNotifyService
 	settingService        *SettingService
 	videoJobRepo          OpenAIVideoJobRepository
+	userPlatformQuotaRepo UserPlatformQuotaRepository
 
 	openaiWSPoolOnce              sync.Once
 	openaiWSStateStoreOnce        sync.Once
@@ -387,6 +388,7 @@ func NewOpenAIGatewayService(
 	channelService *ChannelService,
 	balanceNotifyService *BalanceNotifyService,
 	settingService *SettingService,
+	userPlatformQuotaRepo UserPlatformQuotaRepository,
 	videoJobRepo ...OpenAIVideoJobRepository,
 ) *OpenAIGatewayService {
 	var openAIVideoJobRepo OpenAIVideoJobRepository
@@ -424,6 +426,7 @@ func NewOpenAIGatewayService(
 		balanceNotifyService:  balanceNotifyService,
 		settingService:        settingService,
 		videoJobRepo:          openAIVideoJobRepo,
+		userPlatformQuotaRepo: userPlatformQuotaRepo,
 		responseHeaderFilter:  compileResponseHeaderFilter(cfg),
 		codexSnapshotThrottle: newAccountWriteThrottle(openAICodexSnapshotPersistMinInterval),
 	}
@@ -528,12 +531,13 @@ func (s *OpenAIGatewayService) getCodexSnapshotThrottle() *accountWriteThrottle 
 
 func (s *OpenAIGatewayService) billingDeps() *billingDeps {
 	return &billingDeps{
-		accountRepo:          s.accountRepo,
-		userRepo:             s.userRepo,
-		userSubRepo:          s.userSubRepo,
-		billingCacheService:  s.billingCacheService,
-		deferredService:      s.deferredService,
-		balanceNotifyService: s.balanceNotifyService,
+		accountRepo:           s.accountRepo,
+		userRepo:              s.userRepo,
+		userSubRepo:           s.userSubRepo,
+		billingCacheService:   s.billingCacheService,
+		deferredService:       s.deferredService,
+		balanceNotifyService:  s.balanceNotifyService,
+		userPlatformQuotaRepo: s.userPlatformQuotaRepo,
 	}
 }
 
@@ -3230,6 +3234,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(WithHTTPUpstreamProfile(req.Context(), HTTPUpstreamProfileOpenAI))
 
 	// 闂傚倸鍊搁崐椋庢閿熺姴纾婚柛鏇ㄥ幗瀹曟煡鎮楅敐搴″妞ゎ偅娲熼弻娑㈠箻閼奸鍞归梺绋款儐閹瑰洭鎮伴鈧畷褰掝敊閸欍儳妫梻鍌欒兌绾爼寮插鍛煓闁规崘娉涢崹婵嬫煃閸濆嫭濯奸柡浣哥У缁绘繈宕归銏狀潓濠电偛鐗婅ぐ鍐煘閹达富鏁婇柣鎰靛墮濞堝矂姊虹粙鍖℃敾闁诡喖鍊规穱濠囨偨缁嬭法鐫勯梺鍓插亞閸犳劕鈻嶉弽顓熲拺闁告挻褰冩禍婵堢磼鐠囨彃顏€殿喗濞婂顕€宕奸悢鍝勫箞闂傚鍋勫ú銈夘敄閸涱喕绻嗛柟绋挎捣缁犻箖鏌涘☉妯绘悙婵炲眰鍊楅幉鎾晜闁款垰浜炬鐐茬仢閸旀岸鏌熼崘鍙夋崳缂侇喖鐗忛埀顒婄秵閸犳鎮￠妷锔剧闁瑰鍎戞笟娑欎繆閹绘帞鍩ｉ柡?
 	allowTimeoutHeaders := s.isOpenAIPassthroughTimeoutHeadersAllowed()
@@ -3958,6 +3963,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequest(ctx context.Context, c *gin.
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(WithHTTPUpstreamProfile(req.Context(), HTTPUpstreamProfileOpenAI))
 
 	// Set authentication header
 	req.Header.Set("authorization", "Bearer "+token)
@@ -5635,6 +5641,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			IsSubscriptionBill:    isSubscriptionBilling,
 			AccountRateMultiplier: accountRateMultiplier,
 			APIKeyService:         input.APIKeyService,
+			Platform:              PlatformFromAPIKey(apiKey),
 		}, s.billingDeps(), s.usageBillingRepo)
 		return err
 	}()

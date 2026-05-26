@@ -123,6 +123,7 @@ func ProvideOpenAIGatewayService(
 	channelService *ChannelService,
 	balanceNotifyService *BalanceNotifyService,
 	settingService *SettingService,
+	userPlatformQuotaRepo UserPlatformQuotaRepository,
 	videoJobRepo OpenAIVideoJobRepository,
 ) *OpenAIGatewayService {
 	return NewOpenAIGatewayService(
@@ -146,6 +147,7 @@ func ProvideOpenAIGatewayService(
 		channelService,
 		balanceNotifyService,
 		settingService,
+		userPlatformQuotaRepo,
 		videoJobRepo,
 	)
 }
@@ -466,8 +468,9 @@ func ProvideBillingCacheService(
 	rpmCache UserRPMCache,
 	rateRepo UserGroupRateRepository,
 	cfg *config.Config,
+	userPlatformQuotaRepo UserPlatformQuotaRepository,
 ) *BillingCacheService {
-	return NewBillingCacheService(cache, userRepo, subRepo, apiKeyRepo, rpmCache, rateRepo, cfg)
+	return NewBillingCacheService(cache, userRepo, subRepo, apiKeyRepo, rpmCache, rateRepo, cfg, userPlatformQuotaRepo)
 }
 
 // ProvideAPIKeyService wires APIKeyService and connects rate-limit cache invalidation.
