@@ -637,6 +637,29 @@ export interface BatchOperationResult {
   warnings?: Array<{ account_id: number; warning: string }>
 }
 
+export type AccountBatchTestType = 'auto' | 'text' | 'image' | 'audio' | 'video'
+
+export interface BatchTestAccountPayload {
+  account_ids: number[]
+  model_id: string
+  prompt?: string
+  mode?: 'default' | 'compact'
+  test_type?: AccountBatchTestType
+  seconds?: number
+  size?: string
+}
+
+export interface BatchTestAccountResult {
+  account_id: number
+  success: boolean
+  error?: string
+  latency_ms?: number
+}
+
+export interface BatchTestAccountResponse extends BatchOperationResult {
+  results: BatchTestAccountResult[]
+}
+
 /**
  * Batch clear account errors
  * @param accountIds - Array of account IDs
@@ -645,6 +668,16 @@ export interface BatchOperationResult {
 export async function batchClearError(accountIds: number[]): Promise<BatchOperationResult> {
   const { data } = await apiClient.post<BatchOperationResult>('/admin/accounts/batch-clear-error', {
     account_ids: accountIds
+  })
+  return data
+}
+
+/**
+ * Batch test account connections with one shared model.
+ */
+export async function batchTest(payload: BatchTestAccountPayload): Promise<BatchTestAccountResponse> {
+  const { data } = await apiClient.post<BatchTestAccountResponse>('/admin/accounts/batch-test', payload, {
+    timeout: 300000
   })
   return data
 }
@@ -711,6 +744,7 @@ export const accountsAPI = {
   importCodexSession,
   getAntigravityDefaultModelMapping,
   batchClearError,
+  batchTest,
   batchRefresh,
   setPrivacy
 }

@@ -38,6 +38,23 @@ const zhPatch: MessageTree = {
   admin: {
     accounts: {
       fillRelatedModels: '同步最新支持模型',
+      bulkActions: {
+        batchTest: '批量测试'
+      },
+      batchTest: {
+        title: '批量测试账号连接',
+        selectedCount: '已选择 {count} 个账号，所有账号将使用同一个模型测试。',
+        start: '开始批量测试',
+        waiting: '等待测试',
+        notStarted: '未开始',
+        success: '成功',
+        failed: '失败',
+        summary: '测试结果',
+        successCount: '成功 {count}',
+        failedCount: '失败 {count}',
+        accountId: '账号 #{id}',
+        loadingAccount: '正在加载账号信息'
+      },
       sendingAudioRequest: '发送语音测试请求...',
       sendingVideoRequest: '发送视频测试请求...',
       testFormat: '测试格式',
@@ -101,6 +118,23 @@ const enPatch: MessageTree = {
   admin: {
     accounts: {
       fillRelatedModels: 'Sync latest supported models',
+      bulkActions: {
+        batchTest: 'Batch test'
+      },
+      batchTest: {
+        title: 'Batch Test Account Connections',
+        selectedCount: '{count} accounts selected. All selected accounts will use the same model.',
+        start: 'Start Batch Test',
+        waiting: 'Waiting',
+        notStarted: 'Not started',
+        success: 'Success',
+        failed: 'Failed',
+        summary: 'Test result',
+        successCount: 'Success {count}',
+        failedCount: 'Failed {count}',
+        accountId: 'Account #{id}',
+        loadingAccount: 'Loading account details'
+      },
       sendingAudioRequest: 'Sending audio speech test request...',
       sendingVideoRequest: 'Sending video generation test request...',
       testFormat: 'Test format',
