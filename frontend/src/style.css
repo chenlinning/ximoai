@@ -439,6 +439,12 @@
     @apply hover:bg-amber-600 hover:shadow-md;
   }
 
+  .btn-info {
+    @apply bg-blue-500 text-white;
+    @apply shadow-sm;
+    @apply hover:bg-blue-600 hover:shadow-md;
+  }
+
   .btn-stripe {
     @apply bg-stripe-500 text-white shadow-sm;
     @apply hover:bg-stripe-600 hover:shadow-md;
