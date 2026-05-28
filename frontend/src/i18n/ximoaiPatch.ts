@@ -35,11 +35,28 @@ const zhPatch: MessageTree = {
     refresh: '刷新',
     loadError: '加载模型广场失败'
   },
+  common: {
+    apply: '应用',
+    clear: '清除',
+    creating: '创建中...',
+    login: '登录',
+    required: '必填',
+    sending: '发送中...',
+    tryAgain: '请重试'
+  },
   admin: {
     accounts: {
       fillRelatedModels: '同步最新支持模型',
+      fromModel: '源模型',
+      toModel: '目标模型',
       bulkActions: {
         batchTest: '批量测试'
+      },
+      oauth: {
+        openai: {
+          mobileRefreshTokenAuth: '手动输入 Mobile RT',
+          accessTokenAuth: '手动输入 AT'
+        }
       },
       batchTest: {
         title: '批量测试账号连接',
@@ -76,6 +93,38 @@ const zhPatch: MessageTree = {
       videoPreview: '视频结果',
       videoReceived: '已收到第 {count} 段测试视频',
       openVideoResult: '打开视频'
+    },
+    channels: {
+      noGroupsSelected: '{platform} 平台未选择分组，请至少选择一个分组或禁用该平台',
+      emptyModelsInPricing: '{platform} 平台下有定价条目未添加模型，请添加模型或删除该条目'
+    },
+    groups: {
+      failedToSave: '保存分组失败'
+    },
+    users: {
+      passwordCopied: '密码已复制'
+    },
+    ops: {
+      result: '结果',
+      timeRange: {
+        custom: '自定义'
+      },
+      customTimeRange: {
+        startTime: '开始时间',
+        endTime: '结束时间'
+      },
+      runtime: {
+        metricThresholds: '指标阈值配置',
+        metricThresholdsHint: '配置各项指标的告警阈值，超出阈值时将以红色显示',
+        slaMinPercent: 'SLA 最低百分比',
+        slaMinPercentHint: 'SLA 低于此值时显示为红色（默认：99.5%）',
+        ttftP99MaxMs: 'TTFT P99 最大值（毫秒）',
+        ttftP99MaxMsHint: 'TTFT P99 高于此值时显示为红色（默认：500ms）',
+        requestErrorRateMaxPercent: '请求错误率最大值（%）',
+        requestErrorRateMaxPercentHint: '请求错误率高于此值时显示为红色（默认：5%）',
+        upstreamErrorRateMaxPercent: '上游错误率最大值（%）',
+        upstreamErrorRateMaxPercentHint: '上游错误率高于此值时显示为红色（默认：5%）'
+      }
     }
   }
 }
@@ -115,11 +164,28 @@ const enPatch: MessageTree = {
     refresh: 'Refresh',
     loadError: 'Failed to load model plaza'
   },
+  common: {
+    apply: 'Apply',
+    clear: 'Clear',
+    creating: 'Creating...',
+    login: 'Login',
+    required: 'required',
+    sending: 'Sending...',
+    tryAgain: 'Please try again'
+  },
   admin: {
     accounts: {
       fillRelatedModels: 'Sync latest supported models',
+      fromModel: 'From model',
+      toModel: 'To model',
       bulkActions: {
         batchTest: 'Batch test'
+      },
+      oauth: {
+        openai: {
+          mobileRefreshTokenAuth: 'Enter Mobile RT manually',
+          accessTokenAuth: 'Enter AT manually'
+        }
       },
       batchTest: {
         title: 'Batch Test Account Connections',
@@ -156,6 +222,38 @@ const enPatch: MessageTree = {
       videoPreview: 'Generated video:',
       videoReceived: 'Received test video #{count}',
       openVideoResult: 'Open video'
+    },
+    channels: {
+      noGroupsSelected: '{platform} has no groups selected. Select at least one group or disable this platform.',
+      emptyModelsInPricing: '{platform} has a pricing entry without models. Add models or remove the entry.'
+    },
+    groups: {
+      failedToSave: 'Failed to save group'
+    },
+    users: {
+      passwordCopied: 'Password copied'
+    },
+    ops: {
+      result: 'Result',
+      timeRange: {
+        custom: 'Custom'
+      },
+      customTimeRange: {
+        startTime: 'Start time',
+        endTime: 'End time'
+      },
+      runtime: {
+        metricThresholds: 'Metric Thresholds',
+        metricThresholdsHint: 'Configure alert thresholds for metrics. Values exceeding thresholds are shown in red.',
+        slaMinPercent: 'SLA Minimum Percentage',
+        slaMinPercentHint: 'SLA below this value is shown in red (default: 99.5%).',
+        ttftP99MaxMs: 'TTFT P99 Maximum (ms)',
+        ttftP99MaxMsHint: 'TTFT P99 above this value is shown in red (default: 500ms).',
+        requestErrorRateMaxPercent: 'Request Error Rate Maximum (%)',
+        requestErrorRateMaxPercentHint: 'Request error rate above this value is shown in red (default: 5%).',
+        upstreamErrorRateMaxPercent: 'Upstream Error Rate Maximum (%)',
+        upstreamErrorRateMaxPercentHint: 'Upstream error rate above this value is shown in red (default: 5%).'
+      }
     }
   }
 }
