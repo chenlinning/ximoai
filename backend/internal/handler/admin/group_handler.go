@@ -113,9 +113,10 @@ type CreateGroupRequest struct {
 	RequirePrivacySet           bool                                      `json:"require_privacy_set"`
 	DefaultMappedModel          string                                    `json:"default_mapped_model"`
 	MessagesDispatchModelConfig service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	// 鍒嗙粍 RPM 涓婇檺锛? = 涓嶉檺鍒讹級
+	ModelsListConfig            service.GroupModelsListConfig             `json:"models_list_config"`
+	// Group RPM limit; 0 means unlimited.
 	RPMLimit int `json:"rpm_limit"`
-	// 浠庢寚瀹氬垎缁勫鍒惰处鍙凤紙鍒涘缓鍚庤嚜鍔ㄧ粦瀹氾級
+	// Copy accounts from selected groups after creating the group.
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
 
@@ -153,9 +154,10 @@ type UpdateGroupRequest struct {
 	RequirePrivacySet           *bool                                      `json:"require_privacy_set"`
 	DefaultMappedModel          *string                                    `json:"default_mapped_model"`
 	MessagesDispatchModelConfig *service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
-	// 鍒嗙粍 RPM 涓婇檺锛? = 涓嶉檺鍒讹級锛沶il 琛ㄧず鏈彁渚涗笉鏀瑰姩
+	ModelsListConfig            *service.GroupModelsListConfig             `json:"models_list_config"`
+	// Group RPM limit; 0 means unlimited, nil means unchanged.
 	RPMLimit *int `json:"rpm_limit"`
-	// 浠庢寚瀹氬垎缁勫鍒惰处鍙凤紙鍚屾鎿嶄綔锛氬厛娓呯┖褰撳墠鍒嗙粍鐨勮处鍙风粦瀹氾紝鍐嶇粦瀹氭簮鍒嗙粍鐨勮处鍙凤級
+	// Copy accounts from selected groups by replacing current bindings.
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
 
@@ -238,6 +240,28 @@ func (h *GroupHandler) GetByID(c *gin.Context) {
 	response.Success(c, dto.GroupFromServiceAdmin(group))
 }
 
+// GetModelsListCandidates handles getting candidate model IDs for custom /v1/models list.
+// GET /api/v1/admin/groups/:id/models-list-candidates
+func (h *GroupHandler) GetModelsListCandidates(c *gin.Context) {
+	groupID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || groupID < 0 {
+		response.BadRequest(c, "Invalid group ID")
+		return
+	}
+
+	models, err := h.adminService.GetGroupModelsListCandidates(
+		c.Request.Context(),
+		groupID,
+		c.Query("platform"),
+	)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	response.Success(c, gin.H{"models": models})
+}
+
 // Create handles creating a new group
 // POST /api/v1/admin/groups
 func (h *GroupHandler) Create(c *gin.Context) {
@@ -275,6 +299,7 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
 		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
+		ModelsListConfig:                req.ModelsListConfig,
 		RPMLimit:                        req.RPMLimit,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
 	})
@@ -330,6 +355,7 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
 		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
+		ModelsListConfig:                req.ModelsListConfig,
 		RPMLimit:                        req.RPMLimit,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
 	})
