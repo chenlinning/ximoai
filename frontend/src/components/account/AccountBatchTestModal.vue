@@ -33,8 +33,8 @@
           <Select
             v-model="selectedModelId"
             :options="modelOptions"
-            :disabled="loadingModels || testing"
-            :placeholder="loadingModels ? t('common.loading') + '...' : t('admin.accounts.selectTestModel')"
+            :disabled="modelSelectDisabled"
+            :placeholder="modelSelectPlaceholder"
             searchable
           />
         </div>
@@ -165,7 +165,7 @@
         </button>
         <button
           class="flex items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:bg-primary-400"
-          :disabled="testing || loadingModels || !selectedModelId || accountIds.length === 0"
+          :disabled="testing || !selectedModelId || accountIds.length === 0"
           @click="startBatchTest"
         >
           <Icon v-if="testing" name="refresh" size="sm" class="animate-spin" :stroke-width="2" />
@@ -212,10 +212,25 @@ const videoPrompt = ref('A tiny test video of a sunrise over mountains.')
 const videoSeconds = ref(4)
 const videoSize = ref('720x1280')
 const loadingModels = ref(false)
+const modelLoadSeq = ref(0)
 const testing = ref(false)
 const modelOptions = ref<Array<{ value: string; label: string }>>([])
 const results = ref<BatchTestAccountResult[]>([])
 const accountCache = ref<Record<number, Account>>({})
+
+const selectedModelLabel = computed(() => {
+  return modelOptions.value.find((option) => option.value === selectedModelId.value)?.label || ''
+})
+
+const isInitialModelLoading = computed(() => loadingModels.value && modelOptions.value.length === 0)
+
+const modelSelectDisabled = computed(() => testing.value || isInitialModelLoading.value)
+
+const modelSelectPlaceholder = computed(() => {
+  if (selectedModelLabel.value) return selectedModelLabel.value
+  if (isInitialModelLoading.value) return `${t('common.loading')}...`
+  return t('admin.accounts.selectTestModel')
+})
 
 const selectedAccountItems = computed(() => {
   return props.accountIds.map((id) => {
@@ -281,6 +296,7 @@ watch(
   async (show) => {
     if (!show) return
     selectedModelId.value = ''
+    modelOptions.value = []
     testType.value = 'auto'
     testMode.value = 'default'
     imagePrompt.value = t('admin.accounts.imagePromptDefault')
@@ -336,21 +352,33 @@ const loadMissingAccounts = async () => {
 }
 
 const loadModels = async () => {
+  const loadSeq = ++modelLoadSeq.value
   loadingModels.value = true
   try {
-    const modelMap = new Map<string, string>()
+    const applyModels = (models: ClaudeModel[]) => {
+      if (loadSeq !== modelLoadSeq.value) return
+      const modelMap = new Map<string, string>()
+      mergeModels(modelMap, models)
+      modelOptions.value = [...modelMap.entries()].map(([value, label]) => ({ value, label }))
+      selectedModelId.value = modelOptions.value[0]?.value || ''
+    }
+
     for (const accountID of props.accountIds) {
+      if (loadSeq !== modelLoadSeq.value) return
       try {
         const models = await adminAPI.accounts.getAvailableModels(accountID)
-        mergeModels(modelMap, models)
+        if (models.length > 0) {
+          applyModels(models)
+          return
+        }
       } catch (error) {
         console.error('Failed to load account models:', accountID, error)
       }
     }
-    modelOptions.value = [...modelMap.entries()].map(([value, label]) => ({ value, label }))
-    selectedModelId.value = modelOptions.value[0]?.value || ''
   } finally {
-    loadingModels.value = false
+    if (loadSeq === modelLoadSeq.value) {
+      loadingModels.value = false
+    }
   }
 }
 
