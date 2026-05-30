@@ -24,7 +24,12 @@ services:
   # Sub2API Application
   # ===========================================================================
   sub2api:
-    image: weishaw/sub2api:latest
+    image: ${SUB2API_IMAGE:-ximoai/sub2api:latest}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
     container_name: sub2api
     restart: unless-stopped
     ulimits:
@@ -178,6 +183,45 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+
+  # ===========================================================================
+  # DirectAssist Signal Service
+  # ===========================================================================
+  direct-assist-signal:
+    image: ${SUB2API_IMAGE:-ximoai/sub2api:latest}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
+    container_name: direct-assist-signal
+    command: ["/app/direct-assist-signal"]
+    restart: unless-stopped
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:${DIRECT_ASSIST_SIGNAL_PORT:-47880}:47880"
+      - "${BIND_HOST:-0.0.0.0}:${DIRECT_ASSIST_UDP_PROBE_PORT:-47822}:47822/udp"
+    environment:
+      - DIRECT_ASSIST_SIGNAL_ADDR=0.0.0.0:47880
+      - DIRECT_ASSIST_UDP_PROBE_ADDR=0.0.0.0:47822
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_POOL_SIZE=${REDIS_POOL_SIZE:-128}
+      - REDIS_MIN_IDLE_CONNS=${REDIS_MIN_IDLE_CONNS:-10}
+      - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-false}
+      - TZ=${TZ:-Asia/Shanghai}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:47880/api/direct-assist/signal/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # ===========================================================================
   # PostgreSQL Database

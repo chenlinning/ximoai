@@ -75,6 +75,13 @@ RUN VERSION_VALUE="${VERSION}" && \
     -o /app/sub2api \
     ./cmd/server
 
+RUN DATE_VALUE="${DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X main.Commit=${COMMIT} -X main.Date=${DATE_VALUE}" \
+    -trimpath \
+    -o /app/direct-assist-signal \
+    ./cmd/direct-assist-signal
+
 # -----------------------------------------------------------------------------
 # Stage 3: PostgreSQL Client (version-matched with docker-compose)
 # -----------------------------------------------------------------------------
@@ -118,6 +125,7 @@ WORKDIR /app
 
 # Copy binary/resources with ownership to avoid extra full-layer chown copy
 COPY --from=backend-builder --chown=sub2api:sub2api /app/sub2api /app/sub2api
+COPY --from=backend-builder --chown=sub2api:sub2api /app/direct-assist-signal /app/direct-assist-signal
 COPY --from=backend-builder --chown=sub2api:sub2api /app/backend/resources /app/resources
 
 # Create data directory
@@ -128,7 +136,7 @@ COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Expose port (can be overridden by SERVER_PORT env var)
-EXPOSE 8080
+EXPOSE 8080 47880 47822/udp
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \

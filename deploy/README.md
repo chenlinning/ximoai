@@ -174,8 +174,9 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 docker compose -f docker-compose.local.yml restart sub2api
 
 # Update to latest version
-docker compose -f docker-compose.local.yml pull
-docker compose -f docker-compose.local.yml up -d
+git pull
+docker compose -f docker-compose.local.yml build sub2api direct-assist-signal
+docker compose -f docker-compose.local.yml up -d sub2api direct-assist-signal
 
 # Remove all data (caution!)
 docker compose -f docker-compose.local.yml down
@@ -198,8 +199,9 @@ docker compose logs -f sub2api
 docker compose restart sub2api
 
 # Update to latest version
-docker compose pull
-docker compose up -d
+git pull
+docker compose build sub2api direct-assist-signal
+docker compose up -d sub2api direct-assist-signal
 
 # Remove all data (caution!)
 docker compose down -v

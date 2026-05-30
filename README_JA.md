@@ -357,9 +357,10 @@ docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
 #### アップグレード
 
 ```bash
-# 最新イメージをプルしてコンテナを再作成
-docker compose -f docker-compose.local.yml pull
-docker compose -f docker-compose.local.yml up -d
+# 最新ソースを取得し、このリポジトリのイメージを再ビルドしてコンテナを再作成
+git pull
+docker compose -f docker-compose.local.yml build sub2api direct-assist-signal
+docker compose -f docker-compose.local.yml up -d sub2api direct-assist-signal
 ```
 
 #### 簡単な移行（ローカルディレクトリバージョン）
