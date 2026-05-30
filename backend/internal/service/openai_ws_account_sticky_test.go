@@ -48,6 +48,46 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_Hit(t *testing.T
 	}
 }
 
+func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_QuotaAutoPausedMiss(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(23)
+	account := Account{
+		ID:          77,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Concurrency: 2,
+		Extra: map[string]any{
+			"openai_apikey_responses_websockets_v2_enabled": true,
+			"codex_5h_used_percent":                         96.0,
+			"auto_pause_5h_threshold":                       0.95,
+		},
+	}
+	cache := &stubGatewayCache{}
+	store := NewOpenAIWSStateStore(cache)
+	cfg := newOpenAIWSV2TestConfig()
+	svc := &OpenAIGatewayService{
+		accountRepo:        stubOpenAIAccountRepo{accounts: []Account{account}},
+		cache:              cache,
+		cfg:                cfg,
+		concurrencyService: NewConcurrencyService(stubConcurrencyCache{}),
+		openaiWSStateStore: store,
+	}
+
+	require.NoError(t, store.BindResponseAccount(ctx, groupID, "resp_prev_quota", account.ID, time.Hour))
+
+	selection, err := svc.SelectAccountByPreviousResponseID(ctx, &groupID, "resp_prev_quota", "gpt-5.1", nil, false, PlatformOpenAI)
+	require.NoError(t, err)
+	require.Nil(t, selection, "previous_response_id sticky account should not be selected")
+
+	// Auto-pause is transient, so the binding is preserved: the chain can resume on the
+	// same account once the quota window resets.
+	boundAccountID, getErr := store.GetResponseAccount(ctx, groupID, "resp_prev_quota")
+	require.NoError(t, getErr)
+	require.Equal(t, account.ID, boundAccountID)
+}
+
 func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_RateLimitedMiss(t *testing.T) {
 	ctx := context.Background()
 	groupID := int64(23)
@@ -79,7 +119,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_RateLimitedMiss(
 
 	selection, err := svc.SelectAccountByPreviousResponseID(ctx, &groupID, "resp_prev_rl", "gpt-5.1", nil, false, PlatformOpenAI)
 	require.NoError(t, err)
-	require.Nil(t, selection, "限额中的账号不应继续命中 previous_response_id 粘连")
+	require.Nil(t, selection, "previous_response_id sticky account should not be selected")
 	boundAccountID, getErr := store.GetResponseAccount(ctx, groupID, "resp_prev_rl")
 	require.NoError(t, getErr)
 	require.Zero(t, boundAccountID)
@@ -131,7 +171,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_DBRuntimeRecheck
 
 	selection, err := svc.SelectAccountByPreviousResponseID(ctx, &groupID, "resp_prev_db_rl", "gpt-5.1", nil, false, PlatformOpenAI)
 	require.NoError(t, err)
-	require.Nil(t, selection, "DB 中已限流的账号不应继续命中 previous_response_id 粘连")
+	require.Nil(t, selection, "previous_response_id sticky account should not be selected")
 	boundAccountID, getErr := store.GetResponseAccount(ctx, groupID, "resp_prev_db_rl")
 	require.NoError(t, getErr)
 	require.Zero(t, boundAccountID)
@@ -199,7 +239,7 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_ForceHTTPIgnored
 
 	selection, err := svc.SelectAccountByPreviousResponseID(ctx, &groupID, "resp_prev_force_http", "gpt-5.1", nil, false, PlatformOpenAI)
 	require.NoError(t, err)
-	require.Nil(t, selection, "force_http 场景应忽略 previous_response_id 粘连")
+	require.Nil(t, selection, "previous_response_id sticky account should not be selected")
 }
 
 func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_BusyKeepsSticky(t *testing.T) {
@@ -240,8 +280,8 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_BusyKeepsSticky(
 
 	concurrencyCache := stubConcurrencyCache{
 		acquireResults: map[int64]bool{
-			21: false, // previous_response 命中的账号繁忙
-			22: true,  // 次优账号可用（若回退会命中）
+			21: false, // previous_response sticky account is busy.
+			22: true,  // fallback account is available but must not replace sticky binding.
 		},
 		waitCounts: map[int64]int{
 			21: 999,
@@ -266,6 +306,53 @@ func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_BusyKeepsSticky(
 	require.False(t, selection.Acquired)
 	require.NotNil(t, selection.WaitPlan)
 	require.Equal(t, int64(21), selection.WaitPlan.AccountID)
+}
+
+func TestOpenAIGatewayService_SelectAccountByPreviousResponseID_CapabilityMismatchKeepsSticky(t *testing.T) {
+	ctx := context.Background()
+	groupID := int64(25)
+	account := Account{
+		ID:          31,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"openai_capabilities": []any{"chat_completions"},
+		},
+		Extra: map[string]any{
+			"openai_apikey_responses_websockets_v2_enabled": true,
+		},
+	}
+	cache := &stubGatewayCache{}
+	store := NewOpenAIWSStateStore(cache)
+	cfg := newOpenAIWSV2TestConfig()
+	svc := &OpenAIGatewayService{
+		accountRepo:        stubOpenAIAccountRepo{accounts: []Account{account}},
+		cache:              cache,
+		cfg:                cfg,
+		concurrencyService: NewConcurrencyService(stubConcurrencyCache{}),
+		openaiWSStateStore: store,
+	}
+
+	require.NoError(t, store.BindResponseAccount(ctx, groupID, "resp_prev_capability", account.ID, time.Hour))
+
+	selection, err := svc.selectAccountByPreviousResponseIDForCapability(
+		ctx,
+		&groupID,
+		"resp_prev_capability",
+		"text-embedding-3-small",
+		nil,
+		OpenAIEndpointCapabilityEmbeddings,
+		false,
+		PlatformOpenAI,
+	)
+	require.NoError(t, err)
+	require.Nil(t, selection)
+	boundAccountID, getErr := store.GetResponseAccount(ctx, groupID, "resp_prev_capability")
+	require.NoError(t, getErr)
+	require.Equal(t, account.ID, boundAccountID)
 }
 
 func newOpenAIWSV2TestConfig() *config.Config {
