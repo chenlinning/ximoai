@@ -371,8 +371,8 @@ docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
 ```bash
 # 拉取最新源码，重新构建本仓库镜像并重建容器
 git pull
-docker compose -f docker-compose.local.yml build sub2api direct-assist-signal
-docker compose -f docker-compose.local.yml up -d sub2api direct-assist-signal
+docker compose -f docker-compose.local.yml build sub2api
+docker compose -f docker-compose.local.yml up -d sub2api
 ```
 
 #### 轻松迁移（本地目录版）

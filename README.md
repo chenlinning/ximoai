@@ -343,8 +343,8 @@ docker compose -f docker-compose.local.yml logs sub2api | grep "admin password"
 ```bash
 # Pull latest source, rebuild the local image, and recreate containers
 git pull
-docker compose -f docker-compose.local.yml build sub2api direct-assist-signal
-docker compose -f docker-compose.local.yml up -d sub2api direct-assist-signal
+docker compose -f docker-compose.local.yml build sub2api
+docker compose -f docker-compose.local.yml up -d sub2api
 ```
 
 #### Easy Migration (Local Directory Version)

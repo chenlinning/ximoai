@@ -67,11 +67,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /app/sub2api \
     ./cmd/server
 
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-s -w -X main.Commit=${COMMIT} -X main.Date=${DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
-    -o /app/direct-assist-signal \
-    ./cmd/direct-assist-signal
-
 # -----------------------------------------------------------------------------
 # Stage 3: Final Runtime Image
 # -----------------------------------------------------------------------------
@@ -99,7 +94,6 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=backend-builder /app/sub2api /app/sub2api
-COPY --from=backend-builder /app/direct-assist-signal /app/direct-assist-signal
 
 # Create data directory
 RUN mkdir -p /app/data && chown -R sub2api:sub2api /app
@@ -109,7 +103,7 @@ COPY deploy/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Expose port (can be overridden by SERVER_PORT env var)
-EXPOSE 8080 47880 47822/udp
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
