@@ -626,10 +626,10 @@ func validatePricingBillingMode(pricing []ChannelModelPricing) error {
 
 func checkBillingModeRequirements(p ChannelModelPricing) error {
 	if p.BillingMode == BillingModePerRequest || p.BillingMode == BillingModeImage || p.BillingMode == BillingModeVideo {
-		if p.PerRequestPrice == nil && len(p.Intervals) == 0 {
+		if !channelPricingHasPositivePerRequestPrice(p) {
 			return infraerrors.BadRequest(
 				"BILLING_MODE_MISSING_PRICE",
-				"per-request price or intervals required for per_request/image/video billing mode",
+				"positive per-request price or intervals required for per_request/image/video billing mode",
 			)
 		}
 	}

@@ -141,6 +141,15 @@ func (h *UsageHandler) List(c *gin.Context) {
 		bt := int8(val)
 		billingType = &bt
 	}
+	var zeroActualCost *bool
+	if raw := strings.TrimSpace(c.Query("zero_actual_cost")); raw != "" {
+		val, err := strconv.ParseBool(raw)
+		if err != nil {
+			response.BadRequest(c, "Invalid zero_actual_cost value, use true or false")
+			return
+		}
+		zeroActualCost = &val
+	}
 
 	// Parse date range
 	var startTime, endTime *time.Time
@@ -172,18 +181,19 @@ func (h *UsageHandler) List(c *gin.Context) {
 		SortOrder: c.DefaultQuery("sort_order", "desc"),
 	}
 	filters := usagestats.UsageLogFilters{
-		UserID:      userID,
-		APIKeyID:    apiKeyID,
-		AccountID:   accountID,
-		GroupID:     groupID,
-		Model:       model,
-		RequestType: requestType,
-		Stream:      stream,
-		BillingType: billingType,
-		BillingMode: billingMode,
-		StartTime:   startTime,
-		EndTime:     endTime,
-		ExactTotal:  exactTotal,
+		UserID:         userID,
+		APIKeyID:       apiKeyID,
+		AccountID:      accountID,
+		GroupID:        groupID,
+		Model:          model,
+		RequestType:    requestType,
+		Stream:         stream,
+		BillingType:    billingType,
+		BillingMode:    billingMode,
+		ZeroActualCost: zeroActualCost,
+		StartTime:      startTime,
+		EndTime:        endTime,
+		ExactTotal:     exactTotal,
 	}
 
 	records, result, err := h.usageService.ListWithFilters(c.Request.Context(), params, filters)
@@ -272,6 +282,15 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 		bt := int8(val)
 		billingType = &bt
 	}
+	var zeroActualCost *bool
+	if raw := strings.TrimSpace(c.Query("zero_actual_cost")); raw != "" {
+		val, err := strconv.ParseBool(raw)
+		if err != nil {
+			response.BadRequest(c, "Invalid zero_actual_cost value, use true or false")
+			return
+		}
+		zeroActualCost = &val
+	}
 
 	// Parse date range
 	userTZ := c.Query("timezone")
@@ -312,17 +331,18 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 
 	// Build filters and call GetStatsWithFilters
 	filters := usagestats.UsageLogFilters{
-		UserID:      userID,
-		APIKeyID:    apiKeyID,
-		AccountID:   accountID,
-		GroupID:     groupID,
-		Model:       model,
-		RequestType: requestType,
-		Stream:      stream,
-		BillingType: billingType,
-		BillingMode: billingMode,
-		StartTime:   &startTime,
-		EndTime:     &endTime,
+		UserID:         userID,
+		APIKeyID:       apiKeyID,
+		AccountID:      accountID,
+		GroupID:        groupID,
+		Model:          model,
+		RequestType:    requestType,
+		Stream:         stream,
+		BillingType:    billingType,
+		BillingMode:    billingMode,
+		ZeroActualCost: zeroActualCost,
+		StartTime:      &startTime,
+		EndTime:        &endTime,
 	}
 
 	var stats *usagestats.UsageStats

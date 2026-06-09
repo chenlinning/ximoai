@@ -3324,6 +3324,32 @@ const fallbackPlatforms: Platform[] = [
     builtin: true,
     created_at: '',
     updated_at: ''
+  },
+  {
+    slug: 'grok',
+    display_name: 'Grok',
+    protocol: 'openai_compatible',
+    base_url: 'https://api.mengfactory.cn',
+    auth_modes: ['apikey'],
+    capabilities: ['videos'],
+    color: '#111827',
+    enabled: true,
+    builtin: true,
+    created_at: '',
+    updated_at: ''
+  },
+  {
+    slug: 'kling_audio',
+    display_name: '可灵 Audio',
+    protocol: 'openai_compatible',
+    base_url: 'https://api.mengfactory.cn',
+    auth_modes: ['apikey'],
+    capabilities: ['audio'],
+    color: '#0EA5E9',
+    enabled: true,
+    builtin: true,
+    created_at: '',
+    updated_at: ''
   }
 ]
 

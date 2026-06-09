@@ -68,11 +68,11 @@ type OpenAIVideoJobRepository interface {
 }
 
 type OpenAIVideoRequest struct {
-	Endpoint    string
-	ContentType string
-	Model       string
-	Body        []byte
-	Multipart   bool
+	Endpoint       string
+	ContentType    string
+	Model          string
+	Body           []byte
+	Multipart      bool
 	SourceVideoIDs []string
 }
 
@@ -288,13 +288,17 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoMutation(
 			return nil, err
 		}
 	}
-	setOpsUpstreamRequestBody(c, forwardBody)
+	providerReq, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, parsed.Endpoint, forwardBody, forwardContentType)
+	if err != nil {
+		return nil, err
+	}
+	setOpsUpstreamRequestBody(c, providerReq.Body)
 
 	token, _, err := s.GetAccessToken(ctx, account)
 	if err != nil {
 		return nil, err
 	}
-	upstreamReq, err := s.buildOpenAIVideoRequest(ctx, c, account, http.MethodPost, parsed.Endpoint, forwardBody, forwardContentType, token)
+	upstreamReq, err := s.buildOpenAIVideoRequest(ctx, c, account, providerReq.Method, providerReq.Endpoint, providerReq.Body, providerReq.ContentType, token)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +474,11 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoJSON(
 	if err != nil {
 		return nil, err
 	}
-	upstreamReq, err := s.buildOpenAIVideoRequest(ctx, c, account, method, endpoint, nil, "", token)
+	providerReq, err := adaptOpenAIVideoProviderRequest(account, method, endpoint, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	upstreamReq, err := s.buildOpenAIVideoRequest(ctx, c, account, providerReq.Method, providerReq.Endpoint, providerReq.Body, providerReq.ContentType, token)
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +585,11 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoContent(ctx context.Context, c 
 	if err != nil {
 		return err
 	}
-	upstreamReq, err := s.buildOpenAIVideoRequest(ctx, c, account, http.MethodGet, endpoint, nil, "", token)
+	providerReq, err := adaptOpenAIVideoProviderRequest(account, http.MethodGet, endpoint, nil, "")
+	if err != nil {
+		return err
+	}
+	upstreamReq, err := s.buildOpenAIVideoRequest(ctx, c, account, providerReq.Method, providerReq.Endpoint, providerReq.Body, providerReq.ContentType, token)
 	if err != nil {
 		return err
 	}
@@ -589,6 +601,25 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoContent(ctx context.Context, c 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+		respBody, readErr := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
+		if readErr != nil {
+			return readErr
+		}
+		if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+			if videoURL := extractOpenAIVideoURL(respBody); videoURL != "" {
+				c.Redirect(http.StatusFound, videoURL)
+				return nil
+			}
+		}
+		responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+		contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
+		if contentType == "" {
+			contentType = "application/json"
+		}
+		c.Data(resp.StatusCode, contentType, respBody)
+		return nil
+	}
 	writeOpenAIVideoContentResponseHeaders(c.Writer.Header(), resp.Header)
 	c.Status(resp.StatusCode)
 	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
@@ -671,7 +702,11 @@ func (s *OpenAIGatewayService) buildOpenAIVideoRequest(
 		targetURL = buildOpenAIVideosURL(validatedURL, endpoint)
 	}
 	if c != nil && c.Request != nil && strings.TrimSpace(c.Request.URL.RawQuery) != "" {
-		targetURL += "?" + c.Request.URL.RawQuery
+		separator := "?"
+		if strings.Contains(targetURL, "?") {
+			separator = "&"
+		}
+		targetURL += separator + c.Request.URL.RawQuery
 	}
 
 	var reader io.Reader
@@ -764,7 +799,7 @@ func buildOpenAIVideosURL(base string, endpoint string) string {
 }
 
 func extractOpenAIVideoID(body []byte) string {
-	for _, path := range []string{"id", "video_id", "video.id", "data.id"} {
+	for _, path := range []string{"id", "video_id", "task_id", "video.id", "data.id", "data.video_id", "data.task_id"} {
 		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); value != "" {
 			return value
 		}

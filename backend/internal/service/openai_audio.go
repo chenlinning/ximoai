@@ -151,13 +151,17 @@ func (s *OpenAIGatewayService) ForwardAudio(
 	if err != nil {
 		return nil, err
 	}
-	setOpsUpstreamRequestBody(c, forwardBody)
+	providerReq, err := adaptOpenAIAudioProviderRequest(account, parsed.Endpoint, forwardBody, forwardContentType)
+	if err != nil {
+		return nil, err
+	}
+	setOpsUpstreamRequestBody(c, providerReq.Body)
 
 	token, _, err := s.GetAccessToken(ctx, account)
 	if err != nil {
 		return nil, err
 	}
-	upstreamReq, err := s.buildOpenAIAudioRequest(ctx, c, account, parsed.Endpoint, forwardBody, forwardContentType, token)
+	upstreamReq, err := s.buildOpenAIAudioRequest(ctx, c, account, providerReq.Method, providerReq.Endpoint, providerReq.Body, providerReq.ContentType, token)
 	if err != nil {
 		return nil, err
 	}
@@ -224,6 +228,7 @@ func (s *OpenAIGatewayService) buildOpenAIAudioRequest(
 	ctx context.Context,
 	c *gin.Context,
 	account *Account,
+	method string,
 	endpoint string,
 	body []byte,
 	contentType string,
@@ -239,10 +244,14 @@ func (s *OpenAIGatewayService) buildOpenAIAudioRequest(
 	}
 	targetURL := buildOpenAIEndpointURL(validatedURL, endpoint)
 	if c != nil && c.Request != nil && strings.TrimSpace(c.Request.URL.RawQuery) != "" {
-		targetURL += "?" + c.Request.URL.RawQuery
+		separator := "?"
+		if strings.Contains(targetURL, "?") {
+			separator = "&"
+		}
+		targetURL += separator + c.Request.URL.RawQuery
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, method, targetURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}

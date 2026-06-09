@@ -407,6 +407,32 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			CreatedAt:    now,
 			UpdatedAt:    now,
 		},
+		{
+			Slug:         PlatformGrok,
+			DisplayName:  "Grok",
+			Protocol:     PlatformProtocolOpenAICompatible,
+			BaseURL:      PlatformDefaultBaseURLMengFactory,
+			AuthModes:    []string{AccountTypeAPIKey},
+			Capabilities: []string{PlatformCapabilityVideos},
+			Color:        "#111827",
+			Enabled:      true,
+			Builtin:      true,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
+		{
+			Slug:         PlatformKlingAudio,
+			DisplayName:  "可灵 Audio",
+			Protocol:     PlatformProtocolOpenAICompatible,
+			BaseURL:      PlatformDefaultBaseURLMengFactory,
+			AuthModes:    []string{AccountTypeAPIKey},
+			Capabilities: []string{PlatformCapabilityAudio},
+			Color:        "#0EA5E9",
+			Enabled:      true,
+			Builtin:      true,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
 	}
 	if includeDisabled {
 		return platforms

@@ -2823,6 +2823,13 @@ func (r *usageLogRepository) ListWithFilters(ctx context.Context, params paginat
 		args = append(args, int16(*filters.BillingType))
 	}
 	conditions, args = appendUsageLogBillingModeWhereCondition(conditions, args, filters.BillingMode)
+	if filters.ZeroActualCost != nil {
+		if *filters.ZeroActualCost {
+			conditions = append(conditions, "actual_cost = 0")
+		} else {
+			conditions = append(conditions, "actual_cost > 0")
+		}
+	}
 	if filters.StartTime != nil {
 		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)+1))
 		args = append(args, *filters.StartTime)
@@ -3540,6 +3547,13 @@ func (r *usageLogRepository) GetStatsWithFilters(ctx context.Context, filters Us
 		args = append(args, int16(*filters.BillingType))
 	}
 	conditions, args = appendUsageLogBillingModeWhereCondition(conditions, args, filters.BillingMode)
+	if filters.ZeroActualCost != nil {
+		if *filters.ZeroActualCost {
+			conditions = append(conditions, "actual_cost = 0")
+		} else {
+			conditions = append(conditions, "actual_cost > 0")
+		}
+	}
 	if filters.StartTime != nil {
 		conditions = append(conditions, fmt.Sprintf("created_at >= $%d", len(args)+1))
 		args = append(args, *filters.StartTime)

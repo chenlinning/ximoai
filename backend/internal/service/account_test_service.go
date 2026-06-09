@@ -1736,13 +1736,25 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 		"input": audioInput,
 		"voice": "alloy",
 	}
+	if NormalizePlatformSlug(account.Platform) == PlatformKlingAudio {
+		payload["voice"] = "genshin_vindi2"
+		payload["voice_language"] = "zh"
+		payload["voice_speed"] = 1.0
+	}
 	payloadBytes, _ := json.Marshal(payload)
+	providerReq, err := adaptOpenAIAudioProviderRequest(account, openAIAudioSpeechEndpoint, payloadBytes, "application/json")
+	if err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	apiURL = buildOpenAIEndpointURL(normalizedBaseURL, providerReq.Endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, providerReq.Method, apiURL, bytes.NewReader(providerReq.Body))
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create request")
 	}
-	req.Header.Set("Content-Type", "application/json")
+	if strings.TrimSpace(providerReq.ContentType) != "" {
+		req.Header.Set("Content-Type", providerReq.ContentType)
+	}
 	req.Header.Set("Accept", "audio/mpeg")
 	req.Header.Set("Authorization", "Bearer "+authToken)
 
@@ -1766,6 +1778,21 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 	}
 	if len(body) > accountTestMediaPreviewLimitBytes {
 		return s.sendErrorAndEnd(c, "Audio response is too large to preview")
+	}
+	if NormalizePlatformSlug(account.Platform) == PlatformKlingAudio && gjson.ValidBytes(body) {
+		if audioURL := extractOpenAIAudioURL(body); audioURL != "" {
+			s.sendEvent(c, TestEvent{
+				Type:     "audio",
+				AudioURL: audioURL,
+				MimeType: "audio/mpeg",
+				Data:     json.RawMessage(body),
+			})
+			s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+			return nil
+		}
+		s.sendEvent(c, TestEvent{Type: "content", Text: string(body)})
+		s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+		return nil
 	}
 
 	mimeType := normalizeMediaContentType(resp.Header.Get("Content-Type"), "audio/mpeg")
@@ -1816,6 +1843,9 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	if videoSize == "" {
 		videoSize = defaultOpenAIVideoSize
 	}
+	if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+		videoSize = defaultGrokVideoSize
+	}
 
 	requestBody := &bytes.Buffer{}
 	writer := multipart.NewWriter(requestBody)
@@ -1831,15 +1861,27 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	if err := writer.WriteField("size", videoSize); err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
 	}
+	if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+		if err := writer.WriteField("aspect_ratio", defaultGrokVideoAspectRatio); err != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
+		}
+	}
 	if err := writer.Close(); err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
 	}
+	providerReq, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, openAIVideosEndpoint, requestBody.Bytes(), writer.FormDataContentType())
+	if err != nil {
+		return s.sendErrorAndEnd(c, err.Error())
+	}
+	apiURL = buildOpenAIVideosURL(normalizedBaseURL, providerReq.Endpoint)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, requestBody)
+	req, err := http.NewRequestWithContext(ctx, providerReq.Method, apiURL, bytes.NewReader(providerReq.Body))
 	if err != nil {
 		return s.sendErrorAndEnd(c, "Failed to create request")
 	}
-	req.Header.Set("Content-Type", writer.FormDataContentType())
+	if strings.TrimSpace(providerReq.ContentType) != "" {
+		req.Header.Set("Content-Type", providerReq.ContentType)
+	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+authToken)
 
@@ -1909,7 +1951,11 @@ func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx conte
 			}
 		}
 
-		statusCode, headers, body, err := s.doOpenAIVideoTestGet(ctx, account, baseURL, fmt.Sprintf("/v1/videos/%s", url.PathEscape(videoID)), "application/json")
+		statusEndpoint := fmt.Sprintf("/v1/videos/%s", url.PathEscape(videoID))
+		if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+			statusEndpoint = "/v1/video/query?id=" + url.QueryEscape(videoID)
+		}
+		statusCode, headers, body, err := s.doOpenAIVideoTestGet(ctx, account, baseURL, statusEndpoint, "application/json")
 		if err != nil {
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to fetch video status: %s", err.Error()))
 		}
@@ -2047,16 +2093,36 @@ func extractOpenAIVideoURL(body []byte) string {
 		"content_url",
 		"download_url",
 		"output_url",
+		"metadata.url",
 		"video.url",
 		"video.download_url",
 		"data.url",
 		"data.video_url",
 		"data.content_url",
 		"data.download_url",
+		"data.metadata.url",
 		"data.0.url",
 		"output.url",
 		"output.0.url",
 		"result.url",
+	} {
+		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); isPreviewableMediaURL(value) {
+			return value
+		}
+	}
+	return ""
+}
+
+func extractOpenAIAudioURL(body []byte) string {
+	for _, path := range []string{
+		"url",
+		"audio_url",
+		"data.url",
+		"data.audio_url",
+		"data.task_result.audios.0.url",
+		"task_result.audios.0.url",
+		"result.url",
+		"output.url",
 	} {
 		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); isPreviewableMediaURL(value) {
 			return value

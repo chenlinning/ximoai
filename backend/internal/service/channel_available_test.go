@@ -315,6 +315,7 @@ func TestFillGlobalPricingFallback_KeepsExistingPrice(t *testing.T) {
 
 func TestListAvailableChannelPricing_KeepsOnlyChannelPricedModels(t *testing.T) {
 	inputPrice := 0.000001
+	zeroPrice := 0.0
 	channels := []Channel{{
 		ID:       1,
 		Name:     "priced-channel",
@@ -323,14 +324,22 @@ func TestListAvailableChannelPricing_KeepsOnlyChannelPricedModels(t *testing.T) 
 		ModelMapping: map[string]map[string]string{
 			"openai": {
 				"gpt-priced":   "gpt-priced",
+				"gpt-zero":     "gpt-zero",
 				"gpt-unpriced": "gpt-unpriced",
 			},
 		},
-		ModelPricing: []ChannelModelPricing{{
-			Platform:   "openai",
-			Models:     []string{"gpt-priced"},
-			InputPrice: &inputPrice,
-		}},
+		ModelPricing: []ChannelModelPricing{
+			{
+				Platform:   "openai",
+				Models:     []string{"gpt-priced"},
+				InputPrice: &inputPrice,
+			},
+			{
+				Platform:   "openai",
+				Models:     []string{"gpt-zero"},
+				InputPrice: &zeroPrice,
+			},
+		},
 	}}
 	groupRepo := &stubGroupRepoForAvailable{
 		activeGroups: []Group{{ID: 1, Name: "default", Platform: "openai"}},

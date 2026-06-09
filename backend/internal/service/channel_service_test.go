@@ -2307,13 +2307,31 @@ func TestValidatePricingBillingMode(t *testing.T) {
 			name:    "per_request no price no intervals - invalid",
 			pricing: []ChannelModelPricing{{BillingMode: BillingModePerRequest}},
 			wantErr: true,
-			errMsg:  "per-request price or intervals required",
+			errMsg:  "positive per-request price or intervals required",
+		},
+		{
+			name: "per_request zero price - invalid",
+			pricing: []ChannelModelPricing{{
+				BillingMode:     BillingModePerRequest,
+				PerRequestPrice: testPtrFloat64(0),
+			}},
+			wantErr: true,
+			errMsg:  "positive per-request price or intervals required",
+		},
+		{
+			name: "video zero interval price - invalid",
+			pricing: []ChannelModelPricing{{
+				BillingMode: BillingModeVideo,
+				Intervals:   []PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(1000), PerRequestPrice: testPtrFloat64(0)}},
+			}},
+			wantErr: true,
+			errMsg:  "positive per-request price or intervals required",
 		},
 		{
 			name:    "image no price no intervals - invalid",
 			pricing: []ChannelModelPricing{{BillingMode: BillingModeImage}},
 			wantErr: true,
-			errMsg:  "per-request price or intervals required",
+			errMsg:  "positive per-request price or intervals required",
 		},
 		{
 			name:    "empty list - valid",
