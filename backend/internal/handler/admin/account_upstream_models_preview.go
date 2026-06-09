@@ -13,7 +13,9 @@ import (
 type SyncUpstreamModelsPreviewRequest struct {
 	Platform    string         `json:"platform" binding:"required"`
 	Type        string         `json:"type" binding:"required,oneof=apikey upstream"`
-	Credentials map[string]any `json:"credentials" binding:"required"`
+	Credentials map[string]any `json:"credentials"`
+	BaseURL     string         `json:"base_url"`
+	APIKey      string         `json:"api_key"`
 }
 
 // SyncUpstreamModelsPreview syncs live supported models before the account is created.
@@ -30,12 +32,23 @@ func (h *AccountHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 		return
 	}
 
+	credentials := req.Credentials
+	if credentials == nil {
+		credentials = map[string]any{}
+	}
+	if req.APIKey != "" {
+		credentials["api_key"] = req.APIKey
+	}
+	if req.BaseURL != "" {
+		credentials["base_url"] = req.BaseURL
+	}
+
 	account := &service.Account{
 		ID:          0,
 		Name:        "preview",
 		Platform:    service.NormalizePlatformSlug(req.Platform),
 		Type:        req.Type,
-		Credentials: req.Credentials,
+		Credentials: credentials,
 		Status:      service.StatusActive,
 	}
 	models, err := h.accountTestService.FetchUpstreamSupportedModels(c.Request.Context(), account)

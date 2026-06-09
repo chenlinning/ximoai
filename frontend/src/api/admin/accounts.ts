@@ -487,21 +487,25 @@ export async function syncUpstreamModels(id: number): Promise<SyncUpstreamModels
   return data
 }
 
-export interface SyncUpstreamModelsPreviewPayload {
+export interface SyncUpstreamPreviewParams {
   platform: string
   type: string
-  credentials: Record<string, unknown>
+  credentials?: Record<string, unknown>
+  base_url?: string
+  api_key?: string
 }
 
+export type SyncUpstreamModelsPreviewPayload = SyncUpstreamPreviewParams
+
 /**
- * Sync live supported models using account fields before creating the account.
+ * Preview upstream models without a saved account (create-flow)
+ * @param params - Connection credentials
+ * @returns List of model IDs returned by the upstream
  */
-export async function syncUpstreamModelsPreview(
-  payload: SyncUpstreamModelsPreviewPayload
-): Promise<SyncUpstreamModelsResult> {
+export async function syncUpstreamModelsPreview(params: SyncUpstreamPreviewParams): Promise<SyncUpstreamModelsResult> {
   const { data } = await apiClient.post<SyncUpstreamModelsResult>(
     '/admin/accounts/models/sync-upstream-preview',
-    payload
+    params
   )
   return data
 }
@@ -685,6 +689,16 @@ export interface BatchTestAccountResponse extends BatchOperationResult {
 }
 
 /**
+ * Revert account proxy to original before fallback
+ * @param id - Account ID
+ * @returns Success confirmation
+ */
+export async function revertProxyFallback(id: number): Promise<{ message: string }> {
+  const { data } = await apiClient.post<{ message: string }>(`/admin/accounts/${id}/revert-proxy-fallback`)
+  return data
+}
+
+/**
  * Batch clear account errors
  * @param accountIds - Array of account IDs
  * @returns Batch operation result
@@ -771,7 +785,8 @@ export const accountsAPI = {
   batchClearError,
   batchTest,
   batchRefresh,
-  setPrivacy
+  setPrivacy,
+  revertProxyFallback
 }
 
 export default accountsAPI
