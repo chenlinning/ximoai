@@ -314,6 +314,43 @@ func TestGatewayModels_CustomModelsListCanReturnEmptyWhenSelectionsUnavailable(t
 	require.Empty(t, modelIDsForTest(got.Data))
 }
 
+func TestGatewayModels_CustomModelsListEnabledWithEmptyListReturnsEmpty(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(28)
+	h := newGatewayModelsHandlerForTest(
+		&gatewayModelsAccountRepoStub{
+			byGroup: map[int64][]service.Account{
+				groupID: {
+					{ID: 1, Platform: service.PlatformOpenAI},
+				},
+			},
+		},
+	)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		Group: &service.Group{
+			ID:       groupID,
+			Platform: service.PlatformOpenAI,
+			ModelsListConfig: service.GroupModelsListConfig{
+				Enabled: true,
+				Models:  nil,
+			},
+		},
+	})
+
+	h.Models(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got gatewayModelsResponseForTest
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Empty(t, modelIDsForTest(got.Data))
+}
+
 func TestGatewayModels_CustomModelsListFiltersDefaultFallbackModels(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

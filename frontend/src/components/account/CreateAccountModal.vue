@@ -3329,7 +3329,7 @@ const fallbackPlatforms: Platform[] = [
     slug: 'grok',
     display_name: 'Grok',
     protocol: 'openai_compatible',
-    base_url: 'https://api.mengfactory.cn',
+    base_url: '',
     auth_modes: ['apikey'],
     capabilities: ['videos'],
     color: '#111827',
@@ -3342,7 +3342,7 @@ const fallbackPlatforms: Platform[] = [
     slug: 'kling_audio',
     display_name: '可灵 Audio',
     protocol: 'openai_compatible',
-    base_url: 'https://api.mengfactory.cn',
+    base_url: '',
     auth_modes: ['apikey'],
     capabilities: ['audio'],
     color: '#0EA5E9',
@@ -3775,7 +3775,9 @@ const selectedProtocol = computed(() =>
 )
 
 const isCustomAPIKeyOnlyPlatform = computed(() =>
-  !!selectedPlatform.value && !selectedPlatform.value.builtin
+  !!selectedPlatform.value
+  && selectedPlatform.value.auth_modes.length > 0
+  && selectedPlatform.value.auth_modes.every(mode => mode === 'apikey')
 )
 
 const isSelectedGeminiProtocol = computed(() =>

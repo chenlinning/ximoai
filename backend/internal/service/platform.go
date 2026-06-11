@@ -25,7 +25,6 @@ const (
 	PlatformDefaultBaseURLOpenAI      = "https://api.openai.com"
 	PlatformDefaultBaseURLGemini      = "https://generativelanguage.googleapis.com"
 	PlatformDefaultBaseURLAntigravity = "https://cloudcode-pa.googleapis.com"
-	PlatformDefaultBaseURLMengFactory = "https://api.mengfactory.cn"
 )
 
 type Platform struct {

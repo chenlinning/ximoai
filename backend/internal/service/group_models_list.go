@@ -28,5 +28,5 @@ func normalizeGroupModelsListConfig(cfg GroupModelsListConfig) GroupModelsListCo
 }
 
 func (g *Group) CustomModelsListEnabled() bool {
-	return g != nil && g.ModelsListConfig.Enabled && len(g.ModelsListConfig.Models) > 0
+	return g != nil && g.ModelsListConfig.Enabled
 }

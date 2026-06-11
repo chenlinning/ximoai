@@ -154,7 +154,7 @@
           <input
             v-model.trim="form.base_url"
             class="input font-mono"
-            :disabled="editingPlatform?.builtin"
+            :disabled="isBaseUrlDisabled"
             :placeholder="baseUrlPlaceholder"
             required
           />
@@ -299,13 +299,21 @@ const closeDialog = () => {
   showDialog.value = false
 }
 
+const isBuiltinBaseURLEditable = (platform?: Platform | null) =>
+  !!platform?.builtin && ['grok', 'kling_audio'].includes(platform.slug)
+
+const isBaseUrlDisabled = computed(() =>
+  !!editingPlatform.value?.builtin && !isBuiltinBaseURLEditable(editingPlatform.value)
+)
+
 const submitPlatform = async () => {
   saving.value = true
+  const canEditBaseURL = !editingPlatform.value?.builtin || isBuiltinBaseURLEditable(editingPlatform.value)
   const payload = {
     slug: form.slug.trim(),
     display_name: form.display_name.trim(),
     protocol: editingPlatform.value?.builtin ? editingPlatform.value.protocol : form.protocol,
-    base_url: editingPlatform.value?.builtin ? editingPlatform.value.base_url : form.base_url.trim(),
+    base_url: canEditBaseURL ? form.base_url.trim() : editingPlatform.value?.base_url || '',
     auth_modes: ['apikey'],
     capabilities: editingPlatform.value?.builtin
       ? editingPlatform.value.capabilities

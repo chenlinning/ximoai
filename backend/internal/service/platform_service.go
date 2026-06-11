@@ -118,7 +118,9 @@ func (s *PlatformService) Update(ctx context.Context, slug string, input Platfor
 		input.Protocol = current.Protocol
 		input.AuthModes = current.AuthModes
 		input.Capabilities = current.Capabilities
-		input.BaseURL = current.BaseURL
+		if !builtinPlatformBaseURLEditable(current.Slug) {
+			input.BaseURL = current.BaseURL
+		}
 	}
 	input.Slug = current.Slug
 	input.Builtin = current.Builtin
@@ -294,6 +296,15 @@ func isCustomPlatformProtocol(protocol string) bool {
 	}
 }
 
+func builtinPlatformBaseURLEditable(slug string) bool {
+	switch NormalizePlatformSlug(slug) {
+	case PlatformGrok, PlatformKlingAudio:
+		return true
+	default:
+		return false
+	}
+}
+
 func defaultCustomPlatformCapabilities(protocol string) []string {
 	switch protocol {
 	case PlatformProtocolAnthropic:
@@ -411,7 +422,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Slug:         PlatformGrok,
 			DisplayName:  "Grok",
 			Protocol:     PlatformProtocolOpenAICompatible,
-			BaseURL:      PlatformDefaultBaseURLMengFactory,
+			BaseURL:      "",
 			AuthModes:    []string{AccountTypeAPIKey},
 			Capabilities: []string{PlatformCapabilityVideos},
 			Color:        "#111827",
@@ -424,7 +435,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Slug:         PlatformKlingAudio,
 			DisplayName:  "可灵 Audio",
 			Protocol:     PlatformProtocolOpenAICompatible,
-			BaseURL:      PlatformDefaultBaseURLMengFactory,
+			BaseURL:      "",
 			AuthModes:    []string{AccountTypeAPIKey},
 			Capabilities: []string{PlatformCapabilityAudio},
 			Color:        "#0EA5E9",
