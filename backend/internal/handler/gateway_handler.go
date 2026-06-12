@@ -1000,53 +1000,21 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		platform = forcedPlatform
 	}
 
-	// Get available models from account configurations for the selected group platform.
-	availableModels := h.gatewayService.GetAvailableModels(c.Request.Context(), groupID, platform)
+	// /v1/models exposes only the sellable catalog configured in channel pricing.
+	// Account upstream mappings are routing details and must not leak into the
+	// client-facing model list.
+	availableModels := h.gatewayService.GetPricedModels(c.Request.Context(), groupID, platform)
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 		if len(apiKey.Group.ModelsListConfig.Models) == 0 {
 			writeCustomModelsList(c, platform, nil)
 			return
 		}
-		availableModels = filterModelsByCustomList(availableModels, defaultModelIDsForPlatform(platform), apiKey.Group.ModelsListConfig.Models)
+		availableModels = filterModelsByCustomList(availableModels, nil, apiKey.Group.ModelsListConfig.Models)
 		writeCustomModelsList(c, platform, availableModels)
 		return
 	}
 
-	if len(availableModels) > 0 {
-		writeModelsList(c, availableModels)
-		return
-	}
-
-	// Fallback to default models. Custom OpenAI-compatible platforms use the
-	// OpenAI model list when no account whitelist is configured.
-	normalizedPlatform := service.NormalizePlatformSlug(platform)
-	if h.isOpenAIProtocolPlatform(c.Request.Context(), normalizedPlatform) {
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data":   openai.DefaultModels,
-		})
-		return
-	}
-	if h.isGeminiProtocolPlatform(c.Request.Context(), normalizedPlatform) {
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data":   geminiModelsAsClaudeModels(),
-		})
-		return
-	}
-
-	if platform == service.PlatformGemini {
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data":   geminicli.DefaultModels,
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"object": "list",
-		"data":   claude.DefaultModels,
-	})
+	writeCustomModelsList(c, platform, availableModels)
 }
 
 func writeModelsList(c *gin.Context, modelIDs []string) {

@@ -10038,6 +10038,42 @@ func (s *GatewayService) GetAvailableModels(ctx context.Context, groupID *int64,
 	return cloneStringSlice(models)
 }
 
+// GetPricedModels returns the user-visible models configured with positive
+// channel pricing for the given group/platform. Account upstream model mappings
+// are intentionally ignored so /v1/models reflects the sellable model catalog.
+func (s *GatewayService) GetPricedModels(ctx context.Context, groupID *int64, platform string) []string {
+	if s == nil || s.channelService == nil || groupID == nil {
+		return nil
+	}
+
+	ch, err := s.channelService.GetChannelForGroup(ctx, *groupID)
+	if err != nil || ch == nil {
+		return nil
+	}
+
+	platform = NormalizePlatformSlug(platform)
+	supported := filterSupportedModelsWithPricing(ch.SupportedModels())
+	seen := make(map[string]struct{}, len(supported))
+	models := make([]string, 0, len(supported))
+	for _, model := range supported {
+		modelPlatform := NormalizePlatformSlug(model.Platform)
+		if platform != "" && modelPlatform != platform {
+			continue
+		}
+		name := strings.TrimSpace(model.Name)
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		models = append(models, name)
+	}
+	return models
+}
+
 func (s *GatewayService) InvalidateAvailableModelsCache(groupID *int64, platform string) {
 	if s == nil || s.modelsListCache == nil {
 		return

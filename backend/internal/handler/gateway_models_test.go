@@ -19,6 +19,13 @@ type gatewayModelsAccountRepoStub struct {
 	byGroup map[int64][]service.Account
 }
 
+type gatewayModelsChannelRepoStub struct {
+	service.ChannelRepository
+
+	channels       []service.Channel
+	groupPlatforms map[int64]string
+}
+
 type gatewayModelsResponseForTest struct {
 	Object string                    `json:"object"`
 	Data   []gatewayModelItemForTest `json:"data"`
@@ -43,27 +50,97 @@ func (s *gatewayModelsAccountRepoStub) ListSchedulableByGroupID(ctx context.Cont
 }
 
 func newGatewayModelsHandlerForTest(repo service.AccountRepository) *GatewayHandler {
+	return newGatewayModelsHandlerWithChannelService(repo, nil)
+}
+
+func newGatewayModelsHandlerWithPricing(channels []service.Channel, groupPlatforms map[int64]string) *GatewayHandler {
+	channelSvc := service.NewChannelService(
+		&gatewayModelsChannelRepoStub{
+			channels:       channels,
+			groupPlatforms: groupPlatforms,
+		},
+		nil,
+		nil,
+		nil,
+	)
+	return newGatewayModelsHandlerWithChannelService(&gatewayModelsAccountRepoStub{}, channelSvc)
+}
+
+func newGatewayModelsHandlerWithChannelService(repo service.AccountRepository, channelSvc *service.ChannelService) *GatewayHandler {
 	return &GatewayHandler{
 		gatewayService: service.NewGatewayService(
 			repo,
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
-			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+			nil, nil, nil, nil, nil, nil, nil, nil, nil, channelSvc, nil, nil, nil,
 		),
 	}
 }
 
-func TestGatewayModels_GeminiGroupFallsBackToGeminiModels(t *testing.T) {
+func (s *gatewayModelsChannelRepoStub) ListAll(ctx context.Context) ([]service.Channel, error) {
+	out := make([]service.Channel, len(s.channels))
+	copy(out, s.channels)
+	return out, nil
+}
+
+func (s *gatewayModelsChannelRepoStub) GetGroupPlatforms(ctx context.Context, groupIDs []int64) (map[int64]string, error) {
+	out := make(map[int64]string, len(groupIDs))
+	for _, groupID := range groupIDs {
+		if platform, ok := s.groupPlatforms[groupID]; ok {
+			out[groupID] = platform
+		}
+	}
+	return out, nil
+}
+
+func testPrice(v float64) *float64 {
+	return &v
+}
+
+func testPricedChannel(groupID int64, platform string, models ...string) service.Channel {
+	pricing := make([]service.ChannelModelPricing, 0, len(models))
+	for _, model := range models {
+		pricing = append(pricing, service.ChannelModelPricing{
+			Platform:    platform,
+			Models:      []string{model},
+			InputPrice:  testPrice(0.01),
+			OutputPrice: testPrice(0.02),
+		})
+	}
+	return service.Channel{
+		ID:           groupID,
+		Status:       service.StatusActive,
+		GroupIDs:     []int64{groupID},
+		ModelPricing: pricing,
+	}
+}
+
+func TestGatewayModels_GeminiGroupUsesPricedChannelModels(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(20)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{ID: 1, Platform: service.PlatformGemini},
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{
+			{
+				ID:       1,
+				Status:   service.StatusActive,
+				GroupIDs: []int64{groupID},
+				ModelPricing: []service.ChannelModelPricing{
+					{
+						Platform:    service.PlatformGemini,
+						Models:      []string{"gemini-priced"},
+						InputPrice:  testPrice(0.01),
+						OutputPrice: testPrice(0.02),
+					},
+					{
+						Platform:    service.PlatformAnthropic,
+						Models:      []string{"claude-priced"},
+						InputPrice:  testPrice(0.01),
+						OutputPrice: testPrice(0.02),
+					},
 				},
 			},
 		},
+		map[int64]string{groupID: service.PlatformGemini},
 	)
 
 	rec := httptest.NewRecorder()
@@ -80,15 +157,43 @@ func TestGatewayModels_GeminiGroupFallsBackToGeminiModels(t *testing.T) {
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
 	require.Equal(t, "list", got.Object)
-	require.Contains(t, modelIDsForTest(got.Data), "gemini-2.5-flash")
-	require.NotContains(t, modelIDsForTest(got.Data), "claude-sonnet-4-6")
+	require.Equal(t, []string{"gemini-priced"}, modelIDsForTest(got.Data))
 }
 
-func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
+func TestGatewayModels_IgnoresAccountMappingsAndFiltersPricedModelsByPlatform(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(21)
-	h := newGatewayModelsHandlerForTest(
+	channelSvc := service.NewChannelService(
+		&gatewayModelsChannelRepoStub{
+			channels: []service.Channel{
+				{
+					ID:       1,
+					Status:   service.StatusActive,
+					GroupIDs: []int64{groupID},
+					ModelPricing: []service.ChannelModelPricing{
+						{
+							Platform:    service.PlatformAnthropic,
+							Models:      []string{"claude-priced"},
+							InputPrice:  testPrice(0.01),
+							OutputPrice: testPrice(0.02),
+						},
+						{
+							Platform:    service.PlatformGemini,
+							Models:      []string{"gemini-priced"},
+							InputPrice:  testPrice(0.01),
+							OutputPrice: testPrice(0.02),
+						},
+					},
+				},
+			},
+			groupPlatforms: map[int64]string{groupID: service.PlatformGemini},
+		},
+		nil,
+		nil,
+		nil,
+	)
+	h := newGatewayModelsHandlerWithChannelService(
 		&gatewayModelsAccountRepoStub{
 			byGroup: map[int64][]service.Account{
 				groupID: {
@@ -113,6 +218,7 @@ func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
 				},
 			},
 		},
+		channelSvc,
 	)
 
 	rec := httptest.NewRecorder()
@@ -128,30 +234,16 @@ func TestGatewayModels_GeminiGroupFiltersMappedModelsByPlatform(t *testing.T) {
 
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, []string{"gemini-2.5-flash"}, modelIDsForTest(got.Data))
+	require.Equal(t, []string{"gemini-priced"}, modelIDsForTest(got.Data))
 }
 
-func TestGatewayModels_CustomModelsListDisabledKeepsOriginalModels(t *testing.T) {
+func TestGatewayModels_CustomModelsListDisabledKeepsPricedModels(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(22)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{
-						ID:       1,
-						Platform: service.PlatformOpenAI,
-						Credentials: map[string]any{
-							"model_mapping": map[string]any{
-								"gpt-5.5": "gpt-5.5",
-								"gpt-5.4": "gpt-5.4",
-							},
-						},
-					},
-				},
-			},
-		},
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{testPricedChannel(groupID, service.PlatformOpenAI, "gpt-5.4", "gpt-5.5")},
+		map[int64]string{groupID: service.PlatformOpenAI},
 	)
 
 	rec := httptest.NewRecorder()
@@ -177,28 +269,13 @@ func TestGatewayModels_CustomModelsListDisabledKeepsOriginalModels(t *testing.T)
 	require.Equal(t, []string{"gpt-5.4", "gpt-5.5"}, modelIDsForTest(got.Data))
 }
 
-func TestGatewayModels_CustomModelsListFiltersAndOrdersMappedModels(t *testing.T) {
+func TestGatewayModels_CustomModelsListFiltersAndOrdersPricedModels(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(23)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{
-						ID:       1,
-						Platform: service.PlatformOpenAI,
-						Credentials: map[string]any{
-							"model_mapping": map[string]any{
-								"gpt-5.4":         "gpt-5.4",
-								"gpt-5.5":         "gpt-5.5",
-								"legacy-gpt-2024": "legacy-gpt-2024",
-							},
-						},
-					},
-				},
-			},
-		},
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{testPricedChannel(groupID, service.PlatformOpenAI, "gpt-5.4", "gpt-5.5", "legacy-gpt-2024")},
+		map[int64]string{groupID: service.PlatformOpenAI},
 	)
 
 	rec := httptest.NewRecorder()
@@ -224,26 +301,30 @@ func TestGatewayModels_CustomModelsListFiltersAndOrdersMappedModels(t *testing.T
 	require.Equal(t, []string{"gpt-5.5", "gpt-5.4"}, modelIDsForTest(got.Data))
 }
 
-func TestGatewayModels_CustomModelsListKeepsConcreteModelAllowedByWildcardMapping(t *testing.T) {
+func TestGatewayModels_CustomModelsListKeepsConcreteModelAllowedByChannelWildcardMapping(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(26)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{
+			{
+				ID:       1,
+				Status:   service.StatusActive,
+				GroupIDs: []int64{groupID},
+				ModelPricing: []service.ChannelModelPricing{
 					{
-						ID:       1,
-						Platform: service.PlatformAnthropic,
-						Credentials: map[string]any{
-							"model_mapping": map[string]any{
-								"claude-*": "claude-sonnet-4-6",
-							},
-						},
+						Platform:    service.PlatformAnthropic,
+						Models:      []string{"claude-sonnet-4-6"},
+						InputPrice:  testPrice(0.01),
+						OutputPrice: testPrice(0.02),
 					},
+				},
+				ModelMapping: map[string]map[string]string{
+					service.PlatformAnthropic: {"claude-*": "claude-sonnet-4-6"},
 				},
 			},
 		},
+		map[int64]string{groupID: service.PlatformAnthropic},
 	)
 
 	rec := httptest.NewRecorder()
@@ -273,22 +354,9 @@ func TestGatewayModels_CustomModelsListCanReturnEmptyWhenSelectionsUnavailable(t
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(24)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{
-						ID:       1,
-						Platform: service.PlatformOpenAI,
-						Credentials: map[string]any{
-							"model_mapping": map[string]any{
-								"gpt-5.4": "gpt-5.4",
-							},
-						},
-					},
-				},
-			},
-		},
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{testPricedChannel(groupID, service.PlatformOpenAI, "gpt-5.4")},
+		map[int64]string{groupID: service.PlatformOpenAI},
 	)
 
 	rec := httptest.NewRecorder()
@@ -318,14 +386,9 @@ func TestGatewayModels_CustomModelsListEnabledWithEmptyListReturnsEmpty(t *testi
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(28)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{ID: 1, Platform: service.PlatformOpenAI},
-				},
-			},
-		},
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{testPricedChannel(groupID, service.PlatformOpenAI, "gpt-5.4")},
+		map[int64]string{groupID: service.PlatformOpenAI},
 	)
 
 	rec := httptest.NewRecorder()
@@ -351,19 +414,11 @@ func TestGatewayModels_CustomModelsListEnabledWithEmptyListReturnsEmpty(t *testi
 	require.Empty(t, modelIDsForTest(got.Data))
 }
 
-func TestGatewayModels_CustomModelsListFiltersDefaultFallbackModels(t *testing.T) {
+func TestGatewayModels_CustomModelsListDoesNotFallbackToDefaultModels(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(25)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{ID: 1, Platform: service.PlatformOpenAI},
-				},
-			},
-		},
-	)
+	h := newGatewayModelsHandlerWithPricing(nil, nil)
 
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -385,21 +440,16 @@ func TestGatewayModels_CustomModelsListFiltersDefaultFallbackModels(t *testing.T
 
 	var got gatewayModelsResponseForTest
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	require.Equal(t, []string{"gpt-5.5", "gpt-5.4"}, modelIDsForTest(got.Data))
+	require.Empty(t, modelIDsForTest(got.Data))
 }
 
-func TestGatewayModels_OpenAICustomModelsListKeepsOpenAIResponseShapeForDefaultFallback(t *testing.T) {
+func TestGatewayModels_OpenAIPricedModelsKeepOpenAIResponseShape(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	groupID := int64(27)
-	h := newGatewayModelsHandlerForTest(
-		&gatewayModelsAccountRepoStub{
-			byGroup: map[int64][]service.Account{
-				groupID: {
-					{ID: 1, Platform: service.PlatformOpenAI},
-				},
-			},
-		},
+	h := newGatewayModelsHandlerWithPricing(
+		[]service.Channel{testPricedChannel(groupID, service.PlatformOpenAI, "gpt-5.4", "gpt-5.5")},
+		map[int64]string{groupID: service.PlatformOpenAI},
 	)
 
 	rec := httptest.NewRecorder()
@@ -427,6 +477,45 @@ func TestGatewayModels_OpenAICustomModelsListKeepsOpenAIResponseShapeForDefaultF
 	require.NotZero(t, got.Data[0].Created)
 	require.Equal(t, "openai", got.Data[0].OwnedBy)
 	require.Empty(t, got.Data[0].CreatedAt)
+}
+
+func TestGatewayModels_NoChannelPricingReturnsEmptyEvenWhenAccountHasMappings(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(29)
+	h := newGatewayModelsHandlerWithChannelService(
+		&gatewayModelsAccountRepoStub{
+			byGroup: map[int64][]service.Account{
+				groupID: {
+					{
+						ID:       1,
+						Platform: service.PlatformOpenAI,
+						Credentials: map[string]any{
+							"model_mapping": map[string]any{
+								"account-only": "upstream-only",
+							},
+						},
+					},
+				},
+			},
+		},
+		nil,
+	)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		Group: &service.Group{ID: groupID, Platform: service.PlatformOpenAI},
+	})
+
+	h.Models(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got gatewayModelsResponseForTest
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Empty(t, modelIDsForTest(got.Data))
 }
 
 func modelIDsForTest(models []gatewayModelItemForTest) []string {

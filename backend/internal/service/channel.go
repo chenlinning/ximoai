@@ -509,6 +509,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	}
 	seen := make(map[dedupKey]struct{})
 	result := make([]SupportedModel, 0)
+	mappedTargets := make(map[dedupKey]struct{})
 
 	// lookup 在 platform pricing index 中按精确名查定价，命中时返回定价大小写。
 	lookup := func(pidx *platformPricingIndex, name string) (display string, pricing *ChannelModelPricing) {
@@ -533,6 +534,26 @@ func (c *Channel) SupportedModels() []SupportedModel {
 			Platform: platform,
 			Pricing:  pricing,
 		})
+	}
+
+	for platform, mapping := range c.ModelMapping {
+		for src, target := range mapping {
+			if _, srcWild := splitWildcardSuffix(src); srcWild {
+				continue
+			}
+			if target == "" {
+				continue
+			}
+			if _, targetWild := splitWildcardSuffix(target); targetWild {
+				continue
+			}
+			srcLower := strings.ToLower(strings.TrimSpace(src))
+			targetLower := strings.ToLower(strings.TrimSpace(target))
+			if srcLower == "" || targetLower == "" || srcLower == targetLower {
+				continue
+			}
+			mappedTargets[dedupKey{platform: platform, name: targetLower}] = struct{}{}
+		}
 	}
 
 	// Pass A：从 mapping 展开
@@ -574,6 +595,9 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	// Pass B：从 pricing 补齐 mapping 未覆盖的具体模型（修复"定价存在但没配映射 → 不显示"）
 	for platform, pidx := range idx {
 		for _, name := range pidx.names {
+			if _, hidden := mappedTargets[dedupKey{platform: platform, name: strings.ToLower(name)}]; hidden {
+				continue
+			}
 			display, pricing := lookup(pidx, name)
 			add(platform, display, pricing)
 		}
