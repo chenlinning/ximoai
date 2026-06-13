@@ -39,6 +39,12 @@ type gatewayModelItemForTest struct {
 	CreatedAt string `json:"created_at"`
 }
 
+type gatewayModelsUserGroupRateRepoStub struct {
+	service.UserGroupRateRepository
+
+	rate *float64
+}
+
 func (s *gatewayModelsAccountRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]service.Account, error) {
 	accounts, ok := s.byGroup[groupID]
 	if !ok {
@@ -67,10 +73,14 @@ func newGatewayModelsHandlerWithPricing(channels []service.Channel, groupPlatfor
 }
 
 func newGatewayModelsHandlerWithChannelService(repo service.AccountRepository, channelSvc *service.ChannelService) *GatewayHandler {
+	return newGatewayModelsHandlerWithDeps(repo, channelSvc, nil)
+}
+
+func newGatewayModelsHandlerWithDeps(repo service.AccountRepository, channelSvc *service.ChannelService, rateRepo service.UserGroupRateRepository) *GatewayHandler {
 	return &GatewayHandler{
 		gatewayService: service.NewGatewayService(
 			repo,
-			nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+			nil, nil, nil, nil, nil, rateRepo, nil, nil, nil, nil, nil, nil, nil,
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, channelSvc, nil, nil, nil,
 		),
 	}
@@ -90,6 +100,13 @@ func (s *gatewayModelsChannelRepoStub) GetGroupPlatforms(ctx context.Context, gr
 		}
 	}
 	return out, nil
+}
+
+func (s *gatewayModelsUserGroupRateRepoStub) GetByUserAndGroup(ctx context.Context, userID, groupID int64) (*float64, error) {
+	if s == nil {
+		return nil, nil
+	}
+	return s.rate, nil
 }
 
 func testPrice(v float64) *float64 {
@@ -477,6 +494,118 @@ func TestGatewayModels_OpenAIPricedModelsKeepOpenAIResponseShape(t *testing.T) {
 	require.NotZero(t, got.Data[0].Created)
 	require.Equal(t, "openai", got.Data[0].OwnedBy)
 	require.Empty(t, got.Data[0].CreatedAt)
+}
+
+func TestGatewayModels_IncludeEntryProtocolsReturnsCompactXimoAIMetadata(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(30)
+	userRate := 1.8
+	channelSvc := service.NewChannelService(
+		&gatewayModelsChannelRepoStub{
+			channels: []service.Channel{
+				{
+					ID:       1,
+					Status:   service.StatusActive,
+					GroupIDs: []int64{groupID},
+					ModelPricing: []service.ChannelModelPricing{
+						{
+							Platform:        service.PlatformGemini,
+							Models:          []string{"NanoBanana2"},
+							BillingMode:     service.BillingModeImage,
+							PerRequestPrice: testPrice(0.4),
+						},
+						{
+							Platform:    service.PlatformGemini,
+							Models:      []string{"gemini-3.5-flash"},
+							BillingMode: service.BillingModeToken,
+							InputPrice:  testPrice(0.01),
+							OutputPrice: testPrice(0.02),
+						},
+					},
+				},
+			},
+			groupPlatforms: map[int64]string{groupID: service.PlatformGemini},
+		},
+		nil,
+		nil,
+		nil,
+	)
+	h := newGatewayModelsHandlerWithDeps(
+		&gatewayModelsAccountRepoStub{},
+		channelSvc,
+		&gatewayModelsUserGroupRateRepoStub{rate: &userRate},
+	)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models?include_entry_protocols=1", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		UserID: 1001,
+		Group: &service.Group{
+			ID:               groupID,
+			Name:             "梦工厂 gemini",
+			Platform:         service.PlatformGemini,
+			SubscriptionType: service.SubscriptionTypeStandard,
+			RateMultiplier:   1.5,
+			IsExclusive:      true,
+			ModelsListConfig: service.GroupModelsListConfig{
+				Enabled: true,
+				Models:  []string{"NanoBanana2"},
+			},
+		},
+		GroupID: &groupID,
+	})
+
+	h.Models(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	require.Equal(t, "list", got["object"])
+
+	data, ok := got["data"].([]any)
+	require.True(t, ok)
+	require.Len(t, data, 1)
+
+	item, ok := data[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, map[string]any{
+		"id":     "NanoBanana2",
+		"object": "model",
+	}, map[string]any{
+		"id":     item["id"],
+		"object": item["object"],
+	})
+	require.NotContains(t, item, "created")
+	require.NotContains(t, item, "owned_by")
+	require.NotContains(t, item, "type")
+	require.NotContains(t, item, "display_name")
+
+	ximoai, ok := item["ximoai"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "openai", ximoai["default_entry_protocol"])
+	require.Equal(t, "/v1/images/generations", ximoai["default_endpoint"])
+	require.NotContains(t, ximoai, "platform")
+	require.NotContains(t, ximoai, "supported_entry_protocols")
+
+	group, ok := ximoai["group"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, float64(groupID), group["id"])
+	require.Equal(t, "梦工厂 gemini", group["name"])
+	require.Equal(t, service.SubscriptionTypeStandard, group["subscription_type"])
+	require.Equal(t, 1.5, group["rate_multiplier"])
+	require.Equal(t, 1.8, group["effective_rate_multiplier"])
+	require.Equal(t, true, group["is_exclusive"])
+	require.NotContains(t, group, "platform")
+
+	pricing, ok := ximoai["pricing"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, string(service.BillingModeImage), pricing["billing_mode"])
+	require.Equal(t, 0.4, pricing["per_request_price"])
+	require.Nil(t, pricing["input_price"])
+	require.Nil(t, pricing["output_price"])
 }
 
 func TestGatewayModels_NoChannelPricingReturnsEmptyEvenWhenAccountHasMappings(t *testing.T) {

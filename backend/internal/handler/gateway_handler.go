@@ -1000,21 +1000,164 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		platform = forcedPlatform
 	}
 
-	// /v1/models exposes only the sellable catalog configured in channel pricing.
-	// Account upstream mappings are routing details and must not leak into the
-	// client-facing model list.
-	availableModels := h.gatewayService.GetPricedModels(c.Request.Context(), groupID, platform)
+	includeEntryProtocols := c.Query("include_entry_protocols") == "1" || strings.EqualFold(c.Query("include_entry_protocols"), "true")
+	pricedDetails := h.gatewayService.GetPricedModelDetails(c.Request.Context(), groupID, platform)
+	availableModels := modelNamesFromPricedDetails(pricedDetails)
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 		if len(apiKey.Group.ModelsListConfig.Models) == 0 {
+			if includeEntryProtocols {
+				writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, apiKey, nil)
+				return
+			}
 			writeCustomModelsList(c, platform, nil)
 			return
 		}
 		availableModels = filterModelsByCustomList(availableModels, nil, apiKey.Group.ModelsListConfig.Models)
+		if includeEntryProtocols {
+			writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
+			return
+		}
 		writeCustomModelsList(c, platform, availableModels)
 		return
 	}
 
+	if includeEntryProtocols {
+		writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
+		return
+	}
 	writeCustomModelsList(c, platform, availableModels)
+}
+
+type modelListEntryProtocolItem struct {
+	ID     string                       `json:"id"`
+	Object string                       `json:"object"`
+	XimoAI modelListEntryProtocolXimoAI `json:"ximoai"`
+}
+
+type modelListEntryProtocolXimoAI struct {
+	DefaultEntryProtocol string                       `json:"default_entry_protocol"`
+	DefaultEndpoint      string                       `json:"default_endpoint"`
+	Group                *modelListEntryProtocolGroup `json:"group,omitempty"`
+	Pricing              *userSupportedModelPricing   `json:"pricing"`
+}
+
+type modelListEntryProtocolGroup struct {
+	ID                      int64   `json:"id"`
+	Name                    string  `json:"name"`
+	SubscriptionType        string  `json:"subscription_type"`
+	IsExclusive             bool    `json:"is_exclusive"`
+	RateMultiplier          float64 `json:"rate_multiplier"`
+	EffectiveRateMultiplier float64 `json:"effective_rate_multiplier"`
+}
+
+func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *service.GatewayService, apiKey *service.APIKey, details []service.GatewayPricedModelDetail) {
+	models := make([]modelListEntryProtocolItem, 0, len(details))
+	group := modelListEntryProtocolGroupFromAPIKey(c.Request.Context(), gatewaySvc, apiKey)
+	for _, detail := range details {
+		protocol, endpoint := defaultEntryProtocolForPricedModel(detail)
+		models = append(models, modelListEntryProtocolItem{
+			ID:     detail.Name,
+			Object: "model",
+			XimoAI: modelListEntryProtocolXimoAI{
+				DefaultEntryProtocol: protocol,
+				DefaultEndpoint:      endpoint,
+				Group:                group,
+				Pricing:              toUserPricing(detail.Pricing),
+			},
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"object": "list",
+		"data":   models,
+	})
+}
+
+func modelListEntryProtocolGroupFromAPIKey(ctx context.Context, gatewaySvc *service.GatewayService, apiKey *service.APIKey) *modelListEntryProtocolGroup {
+	if apiKey == nil || apiKey.Group == nil {
+		return nil
+	}
+	group := apiKey.Group
+	groupID := group.ID
+	if apiKey.GroupID != nil && *apiKey.GroupID > 0 {
+		groupID = *apiKey.GroupID
+	}
+	effectiveRate := group.RateMultiplier
+	if gatewaySvc != nil && apiKey.UserID > 0 && groupID > 0 {
+		effectiveRate = gatewaySvc.ResolveEffectiveGroupRateMultiplier(ctx, apiKey.UserID, groupID, group.RateMultiplier)
+	}
+	return &modelListEntryProtocolGroup{
+		ID:                      groupID,
+		Name:                    group.Name,
+		SubscriptionType:        group.SubscriptionType,
+		IsExclusive:             group.IsExclusive,
+		RateMultiplier:          group.RateMultiplier,
+		EffectiveRateMultiplier: effectiveRate,
+	}
+}
+
+func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail) (string, string) {
+	model := strings.TrimSpace(detail.Name)
+	platform := service.NormalizePlatformSlug(detail.Platform)
+	mode := service.BillingModeToken
+	if detail.Pricing != nil && detail.Pricing.BillingMode != "" {
+		mode = detail.Pricing.BillingMode
+	}
+
+	switch mode {
+	case service.BillingModeImage:
+		return "openai", "/v1/images/generations"
+	case service.BillingModeVideo:
+		if platform == service.PlatformGemini {
+			return "gemini", "/v1beta/models/" + model + ":generateVideos"
+		}
+		return "openai", "/v1/videos"
+	}
+
+	switch platform {
+	case service.PlatformAnthropic:
+		return "anthropic", "/v1/messages"
+	case service.PlatformGemini:
+		return "gemini", "/v1beta/models/" + model + ":generateContent"
+	case service.PlatformAntigravity:
+		if strings.HasPrefix(strings.ToLower(model), "gemini") {
+			return "gemini", "/antigravity/v1beta/models/" + model + ":generateContent"
+		}
+		return "anthropic", "/antigravity/v1/messages"
+	case service.PlatformKlingAudio:
+		return "openai", "/v1/audio/speech"
+	case service.PlatformGrok:
+		return "openai", "/v1/videos"
+	default:
+		return "openai", "/v1/responses"
+	}
+}
+
+func modelNamesFromPricedDetails(details []service.GatewayPricedModelDetail) []string {
+	models := make([]string, 0, len(details))
+	for _, detail := range details {
+		if strings.TrimSpace(detail.Name) == "" {
+			continue
+		}
+		models = append(models, detail.Name)
+	}
+	return models
+}
+
+func filterPricedModelDetailsByIDs(details []service.GatewayPricedModelDetail, modelIDs []string) []service.GatewayPricedModelDetail {
+	if len(details) == 0 || len(modelIDs) == 0 {
+		return nil
+	}
+	byID := make(map[string]service.GatewayPricedModelDetail, len(details))
+	for _, detail := range details {
+		byID[strings.ToLower(detail.Name)] = detail
+	}
+	out := make([]service.GatewayPricedModelDetail, 0, len(modelIDs))
+	for _, modelID := range modelIDs {
+		if detail, ok := byID[strings.ToLower(modelID)]; ok {
+			out = append(out, detail)
+		}
+	}
+	return out
 }
 
 func writeModelsList(c *gin.Context, modelIDs []string) {
