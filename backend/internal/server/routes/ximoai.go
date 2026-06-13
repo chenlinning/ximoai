@@ -49,11 +49,11 @@ func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayCo
 	gateway.POST("/audio/transcriptions", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityAudio, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/translations", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityAudio, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.GET("/realtime", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket))
-	gateway.POST("/videos", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))
-	gateway.GET("/videos", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))
-	gateway.POST("/videos/*subpath", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
-	gateway.GET("/videos/*subpath", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
-	gateway.DELETE("/videos/*subpath", openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
+	gateway.POST("/videos", openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))
+	gateway.GET("/videos", openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))
+	gateway.POST("/videos/*subpath", openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
+	gateway.GET("/videos/*subpath", openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
+	gateway.DELETE("/videos/*subpath", openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
 }
 
 func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
@@ -72,11 +72,11 @@ func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
 	r.POST("/audio/transcriptions", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityAudio, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.POST("/audio/translations", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityAudio, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.GET("/realtime", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket))...)
-	r.POST("/videos", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))...)
-	r.GET("/videos", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))...)
-	r.POST("/videos/*subpath", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
-	r.GET("/videos/*subpath", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
-	r.DELETE("/videos/*subpath", withXimoAICommon(common, openAICompatibleCapabilityOnly(ctx.platformService, service.PlatformCapabilityVideos, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
+	r.POST("/videos", withXimoAICommon(common, openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))...)
+	r.GET("/videos", withXimoAICommon(common, openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))...)
+	r.POST("/videos/*subpath", withXimoAICommon(common, openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
+	r.GET("/videos/*subpath", withXimoAICommon(common, openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
+	r.DELETE("/videos/*subpath", withXimoAICommon(common, openAIVideosCapabilityOnly(ctx.platformService, "Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
 }
 
 func withXimoAICommon(common []gin.HandlerFunc, last gin.HandlerFunc) []gin.HandlerFunc {

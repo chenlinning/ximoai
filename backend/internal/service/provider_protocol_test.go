@@ -59,6 +59,44 @@ func TestAdaptOpenAIVideoProviderRequestMapsGrokExtend(t *testing.T) {
 	require.Equal(t, float64(10), payload["start_time"])
 }
 
+func TestAdaptOpenAIVideoProviderRequestMapsGeminiGenerateVideos(t *testing.T) {
+	account := &Account{Platform: PlatformGemini, Type: AccountTypeAPIKey}
+	body := []byte(`{
+		"model":"veo-3.1-generate-preview",
+		"prompt":"city at sunset",
+		"aspect_ratio":"16:9",
+		"duration_seconds":8,
+		"n":2,
+		"negative_prompt":"rain"
+	}`)
+
+	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, "/v1/videos", body, "application/json")
+
+	require.NoError(t, err)
+	require.Equal(t, http.MethodPost, rewritten.Method)
+	require.Equal(t, "/v1beta/models/veo-3.1-generate-preview:generateVideos", rewritten.Endpoint)
+	require.Equal(t, "application/json", rewritten.ContentType)
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(rewritten.Body, &payload))
+	require.Equal(t, "city at sunset", payload["prompt"])
+	require.Equal(t, "rain", payload["negativePrompt"])
+	config, ok := payload["config"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "16:9", config["aspectRatio"])
+	require.Equal(t, float64(8), config["durationSeconds"])
+	require.Equal(t, float64(2), config["numberOfVideos"])
+}
+
+func TestAdaptOpenAIVideoProviderRequestMapsGeminiOperationQuery(t *testing.T) {
+	account := &Account{Platform: PlatformGemini, Type: AccountTypeAPIKey}
+
+	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodGet, "/v1/videos/operations%2Fvideo_123", nil, "")
+
+	require.NoError(t, err)
+	require.Equal(t, http.MethodGet, rewritten.Method)
+	require.Equal(t, "/v1beta/operations/video_123", rewritten.Endpoint)
+}
+
 func TestAdaptOpenAIAudioProviderRequestMapsKlingTTS(t *testing.T) {
 	account := &Account{Platform: "kling_audio"}
 	body := []byte(`{"model":"kling-audio-tts","input":"你好","voice":"voice_1","voice_language":"zh","voice_speed":1.1}`)

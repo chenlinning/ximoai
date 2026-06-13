@@ -2078,10 +2078,17 @@ func isMediaContentType(contentType, prefix string) bool {
 }
 
 func extractOpenAIVideoStatus(body []byte) string {
-	for _, path := range []string{"status", "video.status", "data.status"} {
+	for _, path := range []string{"status", "task_status", "video.status", "data.status"} {
 		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); value != "" {
 			return value
 		}
+	}
+	done := gjson.GetBytes(body, "done")
+	if done.Exists() {
+		if done.Bool() {
+			return "succeeded"
+		}
+		return "running"
 	}
 	return ""
 }
@@ -2105,6 +2112,8 @@ func extractOpenAIVideoURL(body []byte) string {
 		"output.url",
 		"output.0.url",
 		"result.url",
+		"response.generatedVideos.0.video.uri",
+		"generatedVideos.0.video.uri",
 	} {
 		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); isPreviewableMediaURL(value) {
 			return value

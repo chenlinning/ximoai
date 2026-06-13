@@ -10,6 +10,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -601,7 +602,7 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoContent(ctx context.Context, c 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+	if NormalizePlatformSlug(account.Platform) == PlatformGrok || account.IsGeminiCompatibleAPIKey() {
 		respBody, readErr := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
 		if readErr != nil {
 			return readErr
@@ -638,7 +639,15 @@ func (s *OpenAIGatewayService) ResolveOpenAIVideoJobAccount(ctx context.Context,
 	}
 	job, err := s.videoJobRepo.GetByVideoID(ctx, videoID)
 	if err != nil {
-		return nil, nil, err
+		if !strings.Contains(videoID, "/") {
+			if fallbackJob, fallbackErr := s.videoJobRepo.GetByVideoID(ctx, "operations/"+videoID); fallbackErr == nil {
+				job = fallbackJob
+				err = nil
+			}
+		}
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	account, err := s.accountRepo.GetByID(ctx, job.AccountID)
 	if err != nil {
@@ -692,6 +701,9 @@ func (s *OpenAIGatewayService) buildOpenAIVideoRequest(
 	contentType string,
 	token string,
 ) (*http.Request, error) {
+	if account.IsGeminiCompatibleAPIKey() {
+		return s.buildGeminiVideoRequest(ctx, c, account, method, endpoint, body, contentType, token)
+	}
 	targetURL := openAIVideosURL
 	baseURL := account.GetOpenAIBaseURL()
 	if baseURL != "" {
@@ -721,6 +733,60 @@ func (s *OpenAIGatewayService) buildOpenAIVideoRequest(
 	if c != nil && c.Request != nil {
 		for key, values := range c.Request.Header {
 			if !openaiPassthroughAllowedHeaders[strings.ToLower(key)] {
+				continue
+			}
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+	}
+	customUA := account.GetOpenAIUserAgent()
+	if customUA != "" {
+		req.Header.Set("User-Agent", customUA)
+	}
+	if strings.TrimSpace(contentType) != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	return req, nil
+}
+
+func (s *OpenAIGatewayService) buildGeminiVideoRequest(
+	ctx context.Context,
+	c *gin.Context,
+	account *Account,
+	method string,
+	endpoint string,
+	body []byte,
+	contentType string,
+	token string,
+) (*http.Request, error) {
+	baseURL := account.GetGeminiBaseURL(PlatformDefaultBaseURLGemini)
+	validatedURL, err := s.validateUpstreamBaseURL(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	targetURL := buildGeminiVideoURL(validatedURL, endpoint)
+	if c != nil && c.Request != nil && strings.TrimSpace(c.Request.URL.RawQuery) != "" {
+		separator := "?"
+		if strings.Contains(targetURL, "?") {
+			separator = "&"
+		}
+		targetURL += separator + c.Request.URL.RawQuery
+	}
+
+	var reader io.Reader
+	if len(body) > 0 {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, targetURL, reader)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("x-goog-api-key", token)
+	if c != nil && c.Request != nil {
+		for key, values := range c.Request.Header {
+			lowerKey := strings.ToLower(key)
+			if lowerKey == "authorization" || lowerKey == "x-goog-api-key" || !openaiPassthroughAllowedHeaders[lowerKey] {
 				continue
 			}
 			for _, value := range values {
@@ -798,8 +864,27 @@ func buildOpenAIVideosURL(base string, endpoint string) string {
 	return normalized + endpoint
 }
 
+func buildGeminiVideoURL(base string, endpoint string) string {
+	normalized := strings.TrimRight(strings.TrimSpace(base), "/")
+	endpoint = strings.TrimSpace(endpoint)
+	if endpoint == "" {
+		endpoint = "/v1beta"
+	}
+	if !strings.HasPrefix(endpoint, "/") {
+		endpoint = "/" + endpoint
+	}
+	if strings.HasPrefix(endpoint, "/v1beta/") || endpoint == "/v1beta" {
+		for _, suffix := range []string{"/v1beta/models", "/v1beta"} {
+			if strings.HasSuffix(normalized, suffix) {
+				return strings.TrimSuffix(normalized, suffix) + endpoint
+			}
+		}
+	}
+	return normalized + endpoint
+}
+
 func extractOpenAIVideoID(body []byte) string {
-	for _, path := range []string{"id", "video_id", "task_id", "video.id", "data.id", "data.video_id", "data.task_id"} {
+	for _, path := range []string{"id", "video_id", "task_id", "name", "operation.name", "video.id", "data.id", "data.video_id", "data.task_id", "data.name"} {
 		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); value != "" {
 			return value
 		}
@@ -819,8 +904,21 @@ func extractOpenAIVideoIDFromEndpoint(endpoint string) string {
 			switch next {
 			case "", "characters", "edits", "extensions":
 				return ""
+			case "operations":
+				if i+2 >= len(parts) {
+					return ""
+				}
+				value := strings.Join(parts[i+1:], "/")
+				value = strings.TrimSuffix(value, "/content")
+				if decoded, err := url.PathUnescape(value); err == nil {
+					value = decoded
+				}
+				return strings.TrimSpace(value)
 			default:
-				return next
+				if decoded, err := url.PathUnescape(next); err == nil {
+					next = decoded
+				}
+				return strings.TrimSpace(next)
 			}
 		}
 	}
@@ -919,7 +1017,7 @@ func (s *OpenAIGatewayService) saveOpenAIVideoJob(
 			responseJSON = parsed
 		}
 	}
-	status := strings.TrimSpace(gjson.GetBytes(body, "status").String())
+	status := extractOpenAIVideoStatus(body)
 	if meta.Platform == "" {
 		meta.Platform = account.Platform
 	}
@@ -960,7 +1058,7 @@ func (s *OpenAIGatewayService) refreshOpenAIVideoJob(ctx context.Context, videoI
 			responseJSON = parsed
 		}
 	}
-	status := strings.TrimSpace(gjson.GetBytes(body, "status").String())
+	status := extractOpenAIVideoStatus(body)
 	if status != "" {
 		job.Status = status
 	}

@@ -174,6 +174,7 @@ func RegisterGatewayRoutes(
 	{
 		gemini.GET("/models", h.Gateway.GeminiV1BetaListModels)
 		gemini.GET("/models/:model", h.Gateway.GeminiV1BetaGetModel)
+		gemini.GET("/operations/*operation", h.Gateway.GeminiV1BetaOperation)
 		// Gin treats ":" as a param marker, but Gemini uses "{model}:{action}" in the same segment.
 		gemini.POST("/models/*modelAction", h.Gateway.GeminiV1BetaModels)
 	}

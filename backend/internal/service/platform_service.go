@@ -310,7 +310,7 @@ func defaultCustomPlatformCapabilities(protocol string) []string {
 	case PlatformProtocolAnthropic:
 		return []string{PlatformCapabilityMessages}
 	case PlatformProtocolGemini:
-		return []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini}
+		return []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini, PlatformCapabilityVideos}
 	default:
 		return []string{
 			PlatformCapabilityResponses,
@@ -398,7 +398,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Protocol:     PlatformProtocolNative,
 			BaseURL:      PlatformDefaultBaseURLGemini,
 			AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey, AccountTypeServiceAccount},
-			Capabilities: []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini},
+			Capabilities: []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini, PlatformCapabilityVideos},
 			Color:        "#4285F4",
 			Enabled:      true,
 			Builtin:      true,

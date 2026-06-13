@@ -241,6 +241,16 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 		}
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		setOpsSelectedAccount(c, account.ID, account.Platform)
+		if account.Type != service.AccountTypeAPIKey {
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+			failedAccountIDs[account.ID] = struct{}{}
+			if switchCount >= maxAccountSwitches {
+				h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available compatible API Key accounts", streamStarted)
+				return
+			}
+			switchCount++
+			continue
+		}
 
 		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, false, &streamStarted, reqLog)
 		if !acquired {

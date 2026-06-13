@@ -1129,7 +1129,7 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 	}
 
 	switch action {
-	case "generateContent", "streamGenerateContent", "countTokens":
+	case "generateContent", "streamGenerateContent", "countTokens", "generateVideos":
 		// ok
 	default:
 		return nil, s.writeGoogleError(c, http.StatusNotFound, "Unsupported action: "+action)

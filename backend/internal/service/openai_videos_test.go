@@ -13,6 +13,7 @@ func TestExtractOpenAIVideoIDFromEndpointSkipsNestedCollections(t *testing.T) {
 	require.Equal(t, "video_123", extractOpenAIVideoIDFromEndpoint("/v1/videos/video_123"))
 	require.Equal(t, "video_123", extractOpenAIVideoIDFromEndpoint("/v1/videos/video_123/content"))
 	require.Equal(t, "video_123", extractOpenAIVideoIDFromEndpoint("/v1/videos/video_123/remix"))
+	require.Equal(t, "operations/video_123", extractOpenAIVideoIDFromEndpoint("/v1/videos/operations%2Fvideo_123"))
 	require.Empty(t, extractOpenAIVideoIDFromEndpoint("/v1/videos/characters/char_123"))
 	require.Empty(t, extractOpenAIVideoIDFromEndpoint("/v1/videos/edits"))
 	require.Empty(t, extractOpenAIVideoIDFromEndpoint("/v1/videos/extensions"))
@@ -33,6 +34,17 @@ func TestParseOpenAIVideoRequestExtractsSourceVideoIDs(t *testing.T) {
 func TestBuildOpenAIVideosURLHandlesVideosBase(t *testing.T) {
 	require.Equal(t, "https://api.example.com/v1/videos/video_123/content", buildOpenAIVideosURL("https://api.example.com/v1/videos", "/v1/videos/video_123/content"))
 	require.Equal(t, "https://api.example.com/v1/videos/extensions", buildOpenAIVideosURL("https://api.example.com/v1", "/v1/videos/extensions"))
+}
+
+func TestBuildGeminiVideoURLHandlesVersionedBase(t *testing.T) {
+	require.Equal(t, "https://generativelanguage.googleapis.com/v1beta/models/veo:generateVideos", buildGeminiVideoURL("https://generativelanguage.googleapis.com", "/v1beta/models/veo:generateVideos"))
+	require.Equal(t, "https://generativelanguage.googleapis.com/v1beta/operations/video_123", buildGeminiVideoURL("https://generativelanguage.googleapis.com/v1beta", "/v1beta/operations/video_123"))
+	require.Equal(t, "https://gemini.example.com/v1beta/operations/video_123", buildGeminiVideoURL("https://gemini.example.com/v1beta/models", "/v1beta/operations/video_123"))
+}
+
+func TestExtractOpenAIVideoIDReadsGeminiOperationName(t *testing.T) {
+	require.Equal(t, "operations/video_123", extractOpenAIVideoID([]byte(`{"name":"operations/video_123","done":false}`)))
+	require.Equal(t, "operations/video_456", extractOpenAIVideoID([]byte(`{"operation":{"name":"operations/video_456"}}`)))
 }
 
 func newGinContextForOpenAIVideoTest(path string, contentType string) *gin.Context {

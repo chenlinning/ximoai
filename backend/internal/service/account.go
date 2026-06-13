@@ -1075,6 +1075,16 @@ func (a *Account) IsOpenAICompatibleCustomAPIKey() bool {
 	return true
 }
 
+func (a *Account) IsGeminiCompatibleAPIKey() bool {
+	if a == nil || a.Type != AccountTypeAPIKey {
+		return false
+	}
+	if NormalizePlatformSlug(a.Platform) == PlatformGemini {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(a.GetCredential("platform_protocol")), PlatformProtocolGemini)
+}
+
 func (a *Account) IsAnthropic() bool {
 	return a.Platform == PlatformAnthropic
 }

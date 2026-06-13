@@ -31,7 +31,13 @@ type providerProtocolRequest struct {
 
 func adaptOpenAIVideoProviderRequest(account *Account, method string, endpoint string, body []byte, contentType string) (providerProtocolRequest, error) {
 	out := providerProtocolRequest{Method: method, Endpoint: endpoint, Body: body, ContentType: contentType}
-	if account == nil || NormalizePlatformSlug(account.Platform) != PlatformGrok {
+	if account == nil {
+		return out, nil
+	}
+	if account.IsGeminiCompatibleAPIKey() {
+		return adaptOpenAIVideoGeminiProviderRequest(method, endpoint, body, contentType)
+	}
+	if NormalizePlatformSlug(account.Platform) != PlatformGrok {
 		return out, nil
 	}
 
@@ -49,6 +55,23 @@ func adaptOpenAIVideoProviderRequest(account *Account, method string, endpoint s
 		return buildGrokVideoExtendRequest(payload)
 	}
 	return buildGrokVideoCreateRequest(payload)
+}
+
+func adaptOpenAIVideoGeminiProviderRequest(method string, endpoint string, body []byte, contentType string) (providerProtocolRequest, error) {
+	out := providerProtocolRequest{Method: method, Endpoint: endpoint, Body: body, ContentType: contentType}
+	videoID := extractOpenAIVideoIDFromEndpoint(endpoint)
+	if method == http.MethodGet && videoID != "" {
+		out.Endpoint = buildGeminiVideoOperationEndpoint(videoID)
+		return out, nil
+	}
+	if method != http.MethodPost || endpoint != "/v1/videos" {
+		return out, nil
+	}
+	payload, err := parseProviderProtocolPayload(body, contentType)
+	if err != nil {
+		return out, err
+	}
+	return buildGeminiVideoGenerateRequest(payload)
 }
 
 func adaptOpenAIAudioProviderRequest(account *Account, endpoint string, body []byte, contentType string) (providerProtocolRequest, error) {
@@ -124,6 +147,61 @@ func buildGrokVideoExtendRequest(payload map[string]any) (providerProtocolReques
 		body["size"] = value
 	}
 	return jsonProviderRequest(http.MethodPost, "/v1/video/extend", body)
+}
+
+func buildGeminiVideoGenerateRequest(payload map[string]any) (providerProtocolRequest, error) {
+	model := strings.TrimSpace(providerString(payload, "model"))
+	prompt := firstProviderString(payload, "prompt", "input")
+	if model == "" {
+		return providerProtocolRequest{}, fmt.Errorf("model is required")
+	}
+	if prompt == "" {
+		return providerProtocolRequest{}, fmt.Errorf("prompt is required")
+	}
+
+	body := map[string]any{
+		"prompt": prompt,
+	}
+	config := providerObject(payload, "config")
+	copyProviderValue(body, payload, "image", "image")
+	copyProviderValue(body, payload, "lastFrame", "lastFrame")
+	copyProviderValue(body, payload, "last_frame", "lastFrame")
+	copyProviderValue(body, payload, "referenceImages", "referenceImages")
+	copyProviderValue(body, payload, "reference_images", "referenceImages")
+	copyProviderValue(body, payload, "negativePrompt", "negativePrompt")
+	copyProviderValue(body, payload, "negative_prompt", "negativePrompt")
+	copyProviderValue(config, payload, "aspectRatio", "aspectRatio")
+	copyProviderValue(config, payload, "aspect_ratio", "aspectRatio")
+	copyProviderValue(config, payload, "durationSeconds", "durationSeconds")
+	copyProviderValue(config, payload, "duration_seconds", "durationSeconds")
+	copyProviderValue(config, payload, "numberOfVideos", "numberOfVideos")
+	copyProviderValue(config, payload, "number_of_videos", "numberOfVideos")
+	copyProviderValue(config, payload, "n", "numberOfVideos")
+	copyProviderValue(config, payload, "personGeneration", "personGeneration")
+	copyProviderValue(config, payload, "person_generation", "personGeneration")
+	if len(config) > 0 {
+		body["config"] = config
+	}
+
+	model = strings.TrimPrefix(strings.Trim(model, "/"), "models/")
+	return jsonProviderRequest(http.MethodPost, "/v1beta/models/"+url.PathEscape(model)+":generateVideos", body)
+}
+
+func buildGeminiVideoOperationEndpoint(videoID string) string {
+	videoID = strings.Trim(strings.TrimSpace(videoID), "/")
+	if decoded, err := url.PathUnescape(videoID); err == nil {
+		videoID = strings.Trim(decoded, "/")
+	}
+	switch {
+	case videoID == "":
+		return "/v1beta/operations"
+	case strings.HasPrefix(videoID, "v1beta/"):
+		return "/" + videoID
+	case strings.HasPrefix(videoID, "operations/"):
+		return "/v1beta/" + videoID
+	default:
+		return "/v1beta/operations/" + url.PathEscape(videoID)
+	}
 }
 
 func buildKlingAudioTTSRequest(payload map[string]any) (providerProtocolRequest, error) {
@@ -300,6 +378,32 @@ func providerStringSlice(payload map[string]any, paths ...string) []string {
 		}
 	}
 	return nil
+}
+
+func providerObject(payload map[string]any, path string) map[string]any {
+	value, ok := providerValue(payload, path)
+	if !ok || value == nil {
+		return map[string]any{}
+	}
+	if typed, ok := value.(map[string]any); ok {
+		out := make(map[string]any, len(typed))
+		for key, item := range typed {
+			out[key] = item
+		}
+		return out
+	}
+	return map[string]any{}
+}
+
+func copyProviderValue(dst map[string]any, src map[string]any, from string, to string) {
+	if dst == nil {
+		return
+	}
+	value, ok := providerValue(src, from)
+	if !ok || value == nil {
+		return
+	}
+	dst[to] = value
 }
 
 func providerPositiveIntDefault(payload map[string]any, fallback int, paths ...string) int {

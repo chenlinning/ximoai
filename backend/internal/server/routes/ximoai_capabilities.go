@@ -23,7 +23,7 @@ func groupPlatformSupportsCapability(c *gin.Context, platformService *service.Pl
 	if platform == "" {
 		return false
 	}
-	if platform == service.PlatformOpenAI {
+	if platform == service.PlatformOpenAI || platform == service.PlatformGemini {
 		return service.NewPlatformService(nil).SupportsCapability(c.Request.Context(), platform, capability)
 	}
 	if platformService == nil {
@@ -35,6 +35,22 @@ func groupPlatformSupportsCapability(c *gin.Context, platformService *service.Pl
 func openAICompatibleCapabilityOnly(platformService *service.PlatformService, capability string, message string, next gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isGroupOpenAICompatibleWithCapability(c, platformService, capability) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": gin.H{
+					"type":    "not_found_error",
+					"message": message,
+				},
+			})
+			return
+		}
+		next(c)
+	}
+}
+
+func openAIVideosCapabilityOnly(platformService *service.PlatformService, message string, next gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !(isGroupOpenAICompatible(c, platformService) || isGroupGeminiCompatible(c, platformService)) ||
+			!groupPlatformSupportsCapability(c, platformService, service.PlatformCapabilityVideos) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": gin.H{
 					"type":    "not_found_error",

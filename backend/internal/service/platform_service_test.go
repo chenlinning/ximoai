@@ -200,7 +200,7 @@ func TestPlatformService_CreateNormalizesCustomProtocolPlatforms(t *testing.T) {
 		{
 			name:         "gemini",
 			protocol:     PlatformProtocolGemini,
-			capabilities: []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini},
+			capabilities: []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini, PlatformCapabilityVideos},
 		},
 	}
 
