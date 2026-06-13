@@ -114,10 +114,10 @@
             <PricingRow
               v-if="
                 model.pricing.billing_mode === BILLING_MODE_IMAGE &&
-                model.pricing.image_output_price != null
+                displayUnitPrice(model.pricing) != null
               "
               :label="t(prefixKey('imageOutputPrice'))"
-              :value="model.pricing.image_output_price"
+              :value="displayUnitPrice(model.pricing)"
               :unit="t(prefixKey('unitPerRequest'))"
               :scale="1"
             />
@@ -169,6 +169,7 @@ import type { UserPricingInterval, UserSupportedModel } from '@/api/channels'
 import PlatformIcon from '@/components/common/PlatformIcon.vue'
 import type { GroupPlatform } from '@/types'
 import { platformBadgeClass, platformBorderClass, platformBadgeLightClass } from '@/utils/platformColors'
+import { displayUnitPrice } from '@/utils/modelPricingDisplay'
 
 const props = withDefaults(
   defineProps<{

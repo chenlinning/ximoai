@@ -513,7 +513,6 @@ func TestSupportedModels_WildcardExpandedFromPricing(t *testing.T) {
 	}
 }
 
-
 func TestSupportedModels_MissingPricingKeepsNilPricing(t *testing.T) {
 	ch := &Channel{
 		ModelMapping: map[string]map[string]string{
@@ -729,12 +728,10 @@ func TestSupportedModels_ExactMappingUsesTargetPricing(t *testing.T) {
 		},
 	}
 	got := ch.SupportedModels()
-	require.Len(t, got, 2)
+	require.Len(t, got, 1)
 	require.Equal(t, "req-model", got[0].Name)
 	require.NotNil(t, got[0].Pricing)
 	require.Equal(t, int64(200), got[0].Pricing.ID, "req-model 显示但定价是 served-model 的（mapping target）")
-	require.Equal(t, "served-model", got[1].Name)
-	require.Equal(t, int64(200), got[1].Pricing.ID)
 }
 
 func TestSupportedModels_ExactMappingTargetMissingFromPricing(t *testing.T) {

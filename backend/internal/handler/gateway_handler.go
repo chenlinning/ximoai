@@ -1103,6 +1103,13 @@ func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail)
 		mode = detail.Pricing.BillingMode
 	}
 
+	if shouldUseOpenAIImageEndpoint(detail, mode) {
+		return "openai", "/v1/images/generations"
+	}
+	if shouldUseOpenAISpeechEndpoint(model, mode) {
+		return "openai", "/v1/audio/speech"
+	}
+
 	switch mode {
 	case service.BillingModeImage:
 		return "openai", "/v1/images/generations"
@@ -1130,6 +1137,25 @@ func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail)
 	default:
 		return "openai", "/v1/responses"
 	}
+}
+
+func shouldUseOpenAIImageEndpoint(detail service.GatewayPricedModelDetail, mode service.BillingMode) bool {
+	if mode != service.BillingModePerRequest {
+		return false
+	}
+	if detail.Pricing != nil && detail.Pricing.ImageOutputPrice != nil {
+		return true
+	}
+	model := strings.ToLower(strings.TrimSpace(detail.Name))
+	return strings.Contains(model, "image")
+}
+
+func shouldUseOpenAISpeechEndpoint(model string, mode service.BillingMode) bool {
+	if mode == service.BillingModeImage || mode == service.BillingModeVideo {
+		return false
+	}
+	model = strings.ToLower(strings.TrimSpace(model))
+	return strings.Contains(model, "tts") || strings.Contains(model, "speech")
 }
 
 func modelNamesFromPricedDetails(details []service.GatewayPricedModelDetail) []string {

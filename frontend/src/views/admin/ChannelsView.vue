@@ -633,7 +633,7 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import { adminAPI } from '@/api/admin'
 import type { Channel, ChannelModelPricing, CreateChannelRequest, UpdateChannelRequest, AccountStatsPricingRule } from '@/api/admin/channels'
 import type { PricingFormEntry } from '@/components/admin/channel/types'
-import { mTokToPerToken, perTokenToMTok, apiIntervalsToForm, formIntervalsToAPI, findModelConflict, validateIntervals } from '@/components/admin/channel/types'
+import { perTokenToMTok, apiIntervalsToForm, findModelConflict, pricingFormEntryToAPI, validateIntervals } from '@/components/admin/channel/types'
 import type { AdminGroup, Platform } from '@/types'
 import type { Column } from '@/components/common/types'
 import {
@@ -1105,18 +1105,7 @@ function accountStatsRulesToAPI(): AccountStatsPricingRule[] {
         account_ids: rule.account_ids,
         pricing: rule.pricing
           .filter(p => p.models.length > 0)
-          .map(p => ({
-            platform: section.platform,
-            models: p.models,
-            billing_mode: p.billing_mode,
-            input_price: mTokToPerToken(p.input_price),
-            output_price: mTokToPerToken(p.output_price),
-            cache_write_price: mTokToPerToken(p.cache_write_price),
-            cache_read_price: mTokToPerToken(p.cache_read_price),
-            image_output_price: mTokToPerToken(p.image_output_price),
-            per_request_price: p.per_request_price != null && p.per_request_price !== '' ? Number(p.per_request_price) : null,
-            intervals: formIntervalsToAPI(p.intervals || [])
-          }))
+          .map(p => pricingFormEntryToAPI(section.platform, p))
       })
     }
   }
@@ -1145,18 +1134,7 @@ function formToAPI(): { group_ids: number[], model_pricing: ChannelModelPricing[
     // Model pricing with platform tag
     for (const entry of section.model_pricing) {
       if (entry.models.length === 0) continue
-      model_pricing.push({
-        platform: section.platform,
-        models: entry.models,
-        billing_mode: entry.billing_mode,
-        input_price: mTokToPerToken(entry.input_price),
-        output_price: mTokToPerToken(entry.output_price),
-        cache_write_price: mTokToPerToken(entry.cache_write_price),
-        cache_read_price: mTokToPerToken(entry.cache_read_price),
-        image_output_price: mTokToPerToken(entry.image_output_price),
-        per_request_price: entry.per_request_price != null && entry.per_request_price !== '' ? Number(entry.per_request_price) : null,
-        intervals: formIntervalsToAPI(entry.intervals || [])
-      })
+      model_pricing.push(pricingFormEntryToAPI(section.platform, entry))
     }
   }
 

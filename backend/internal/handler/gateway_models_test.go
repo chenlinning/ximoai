@@ -608,6 +608,67 @@ func TestGatewayModels_IncludeEntryProtocolsReturnsCompactXimoAIMetadata(t *test
 	require.Nil(t, pricing["output_price"])
 }
 
+func TestDefaultEntryProtocolForPricedModel_DetectsImageAndSpeechEndpoints(t *testing.T) {
+	imagePrice := testPrice(0.00003)
+	tests := []struct {
+		name         string
+		detail       service.GatewayPricedModelDetail
+		wantProtocol string
+		wantEndpoint string
+	}{
+		{
+			name: "openai image model billed per request uses images endpoint",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gpt-image-2",
+				Platform: service.PlatformOpenAI,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:      service.BillingModePerRequest,
+					ImageOutputPrice: imagePrice,
+					PerRequestPrice:  testPrice(0.1),
+				},
+			},
+			wantProtocol: "openai",
+			wantEndpoint: "/v1/images/generations",
+		},
+		{
+			name: "openai tts model uses speech endpoint",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gpt-audio-tts-hd",
+				Platform: service.PlatformOpenAI,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.0000003),
+					OutputPrice: testPrice(0.000018),
+				},
+			},
+			wantProtocol: "openai",
+			wantEndpoint: "/v1/audio/speech",
+		},
+		{
+			name: "openai audio preview is not treated as tts",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gpt-4o-audio-preview",
+				Platform: service.PlatformOpenAI,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.0000025),
+					OutputPrice: testPrice(0.00000318),
+				},
+			},
+			wantProtocol: "openai",
+			wantEndpoint: "/v1/responses",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotProtocol, gotEndpoint := defaultEntryProtocolForPricedModel(tt.detail)
+			require.Equal(t, tt.wantProtocol, gotProtocol)
+			require.Equal(t, tt.wantEndpoint, gotEndpoint)
+		})
+	}
+}
+
 func TestGatewayModels_NoChannelPricingReturnsEmptyEvenWhenAccountHasMappings(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

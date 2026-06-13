@@ -189,7 +189,7 @@
                 <template v-else-if="group.pricing.billing_mode === BILLING_MODE_IMAGE">
                   <PriceLine
                     :label="t('modelPlaza.imageOutputPrice')"
-                    :value="scaledPrice(group.pricing.image_output_price ?? group.pricing.per_request_price, group.rate)"
+                    :value="scaledPrice(displayUnitPrice(group.pricing), group.rate)"
                     :unit="t('modelPlaza.perImageUnit')"
                     :scale="1"
                   />
@@ -261,6 +261,7 @@ import {
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { useAppStore } from '@/stores/app'
 import type { Platform } from '@/types'
+import { displayUnitPrice } from '@/utils/modelPricingDisplay'
 
 const PriceLine = (
   props: {
