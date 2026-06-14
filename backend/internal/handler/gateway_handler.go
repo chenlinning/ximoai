@@ -1006,7 +1006,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 		if len(apiKey.Group.ModelsListConfig.Models) == 0 {
 			if includeEntryProtocols {
-				writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, apiKey, nil)
+				writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, h.platformService, apiKey, nil)
 				return
 			}
 			writeCustomModelsList(c, platform, nil)
@@ -1014,7 +1014,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		}
 		availableModels = filterModelsByCustomList(availableModels, nil, apiKey.Group.ModelsListConfig.Models)
 		if includeEntryProtocols {
-			writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
+			writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, h.platformService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
 			return
 		}
 		writeCustomModelsList(c, platform, availableModels)
@@ -1022,7 +1022,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	}
 
 	if includeEntryProtocols {
-		writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
+		writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, h.platformService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
 		return
 	}
 	writeCustomModelsList(c, platform, availableModels)
@@ -1037,6 +1037,10 @@ type modelListEntryProtocolItem struct {
 type modelListEntryProtocolXimoAI struct {
 	DefaultEntryProtocol string                       `json:"default_entry_protocol"`
 	DefaultEndpoint      string                       `json:"default_endpoint"`
+	ModelType            string                       `json:"model_type"`
+	ExecutionMode        string                       `json:"execution_mode"`
+	SupportsStream       bool                         `json:"supports_stream"`
+	SupportsPolling      bool                         `json:"supports_polling"`
 	Group                *modelListEntryProtocolGroup `json:"group,omitempty"`
 	Pricing              *userSupportedModelPricing   `json:"pricing"`
 }
@@ -1050,17 +1054,21 @@ type modelListEntryProtocolGroup struct {
 	EffectiveRateMultiplier float64 `json:"effective_rate_multiplier"`
 }
 
-func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *service.GatewayService, apiKey *service.APIKey, details []service.GatewayPricedModelDetail) {
+func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *service.GatewayService, platformSvc *service.PlatformService, apiKey *service.APIKey, details []service.GatewayPricedModelDetail) {
 	models := make([]modelListEntryProtocolItem, 0, len(details))
 	group := modelListEntryProtocolGroupFromAPIKey(c.Request.Context(), gatewaySvc, apiKey)
 	for _, detail := range details {
-		protocol, endpoint := defaultEntryProtocolForPricedModel(detail)
+		meta := publicEntryMetadataForPricedModel(detail, platformForEntryMetadata(c.Request.Context(), platformSvc, detail.Platform))
 		models = append(models, modelListEntryProtocolItem{
 			ID:     detail.Name,
 			Object: "model",
 			XimoAI: modelListEntryProtocolXimoAI{
-				DefaultEntryProtocol: protocol,
-				DefaultEndpoint:      endpoint,
+				DefaultEntryProtocol: meta.DefaultEntryProtocol,
+				DefaultEndpoint:      meta.DefaultEndpoint,
+				ModelType:            meta.ModelType,
+				ExecutionMode:        meta.ExecutionMode,
+				SupportsStream:       meta.SupportsStream,
+				SupportsPolling:      meta.SupportsPolling,
 				Group:                group,
 				Pricing:              toUserPricing(detail.Pricing),
 			},
@@ -1095,7 +1103,49 @@ func modelListEntryProtocolGroupFromAPIKey(ctx context.Context, gatewaySvc *serv
 	}
 }
 
-func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail) (string, string) {
+type publicEntryMetadata struct {
+	DefaultEntryProtocol string
+	DefaultEndpoint      string
+	ModelType            string
+	ExecutionMode        string
+	SupportsStream       bool
+	SupportsPolling      bool
+}
+
+func platformForEntryMetadata(ctx context.Context, platformSvc *service.PlatformService, slug string) *service.Platform {
+	if strings.TrimSpace(slug) == "" {
+		return nil
+	}
+	if platformSvc == nil {
+		platformSvc = service.NewPlatformService(nil)
+	}
+	platform, err := platformSvc.GetBySlug(ctx, slug)
+	if err != nil {
+		return nil
+	}
+	return platform
+}
+
+func publicEntryMetadataForPricedModel(detail service.GatewayPricedModelDetail, platformInfo *service.Platform) publicEntryMetadata {
+	protocol, endpoint := defaultEntryProtocolForPricedModel(detail, platformInfo)
+	modelType := publicModelTypeForPricedModel(detail, endpoint)
+	executionMode := "sync"
+	supportsPolling := false
+	if modelType == "video" {
+		executionMode = "async"
+		supportsPolling = true
+	}
+	return publicEntryMetadata{
+		DefaultEntryProtocol: protocol,
+		DefaultEndpoint:      endpoint,
+		ModelType:            modelType,
+		ExecutionMode:        executionMode,
+		SupportsStream:       supportsStreamForPublicEntry(endpoint, modelType),
+		SupportsPolling:      supportsPolling,
+	}
+}
+
+func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail, platformInfo *service.Platform) (string, string) {
 	model := strings.TrimSpace(detail.Name)
 	platform := service.NormalizePlatformSlug(detail.Platform)
 	mode := service.BillingModeToken
@@ -1103,27 +1153,15 @@ func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail)
 		mode = detail.Pricing.BillingMode
 	}
 
-	if shouldUseOpenAIImageEndpoint(detail, mode) {
-		return "openai", "/v1/images/generations"
-	}
-	if shouldUseOpenAISpeechEndpoint(model, mode) {
-		return "openai", "/v1/audio/speech"
-	}
-
-	switch mode {
-	case service.BillingModeImage:
-		return "openai", "/v1/images/generations"
-	case service.BillingModeVideo:
-		if platform == service.PlatformGemini {
-			return "gemini", "/v1beta/models/" + model + ":generateVideos"
-		}
-		return "openai", "/v1/videos"
-	}
-
 	switch platform {
+	case service.PlatformOpenAI:
+		return openAIEntryForPricedModel(detail, mode)
 	case service.PlatformAnthropic:
 		return "anthropic", "/v1/messages"
 	case service.PlatformGemini:
+		if mode == service.BillingModeVideo {
+			return "gemini", "/v1beta/models/" + model + ":generateVideos"
+		}
 		return "gemini", "/v1beta/models/" + model + ":generateContent"
 	case service.PlatformAntigravity:
 		if strings.HasPrefix(strings.ToLower(model), "gemini") {
@@ -1133,10 +1171,39 @@ func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail)
 	case service.PlatformKlingAudio:
 		return "openai", "/v1/audio/speech"
 	case service.PlatformGrok:
+		if mode == service.BillingModeVideo {
+			return "openai", "/v1/videos"
+		}
 		return "openai", "/v1/videos"
 	default:
-		return "openai", "/v1/responses"
+		if platformInfo != nil {
+			switch {
+			case platformInfo.IsAnthropicCompatible():
+				return "anthropic", "/v1/messages"
+			case platformInfo.IsGeminiCompatible():
+				if mode == service.BillingModeVideo {
+					return "gemini", "/v1beta/models/" + model + ":generateVideos"
+				}
+				return "gemini", "/v1beta/models/" + model + ":generateContent"
+			case platformInfo.IsOpenAICompatible():
+				return openAIEntryForPricedModel(detail, mode)
+			}
+		}
+		return openAIEntryForPricedModel(detail, mode)
 	}
+}
+
+func openAIEntryForPricedModel(detail service.GatewayPricedModelDetail, mode service.BillingMode) (string, string) {
+	if shouldUseOpenAIImageEndpoint(detail, mode) || mode == service.BillingModeImage {
+		return "openai", "/v1/images/generations"
+	}
+	if audioEndpoint := openAIAudioEndpointForModel(detail.Name, mode); audioEndpoint != "" {
+		return "openai", audioEndpoint
+	}
+	if mode == service.BillingModeVideo {
+		return "openai", "/v1/videos"
+	}
+	return "openai", "/v1/responses"
 }
 
 func shouldUseOpenAIImageEndpoint(detail service.GatewayPricedModelDetail, mode service.BillingMode) bool {
@@ -1150,12 +1217,53 @@ func shouldUseOpenAIImageEndpoint(detail service.GatewayPricedModelDetail, mode 
 	return strings.Contains(model, "image")
 }
 
-func shouldUseOpenAISpeechEndpoint(model string, mode service.BillingMode) bool {
+func openAIAudioEndpointForModel(model string, mode service.BillingMode) string {
 	if mode == service.BillingModeImage || mode == service.BillingModeVideo {
-		return false
+		return ""
 	}
 	model = strings.ToLower(strings.TrimSpace(model))
-	return strings.Contains(model, "tts") || strings.Contains(model, "speech")
+	switch {
+	case strings.Contains(model, "translat"):
+		return "/v1/audio/translations"
+	case strings.Contains(model, "transcrib") || strings.Contains(model, "transcript") || strings.Contains(model, "whisper") || strings.Contains(model, "stt"):
+		return "/v1/audio/transcriptions"
+	case strings.Contains(model, "tts") || strings.Contains(model, "speech"):
+		return "/v1/audio/speech"
+	default:
+		return ""
+	}
+}
+
+func publicModelTypeForPricedModel(detail service.GatewayPricedModelDetail, endpoint string) string {
+	mode := service.BillingModeToken
+	if detail.Pricing != nil && detail.Pricing.BillingMode != "" {
+		mode = detail.Pricing.BillingMode
+	}
+	switch {
+	case strings.Contains(endpoint, "/audio/transcriptions"):
+		return "transcription"
+	case strings.Contains(endpoint, "/audio/translations"):
+		return "translation"
+	case strings.Contains(endpoint, "/audio/speech"):
+		return "audio"
+	case strings.Contains(endpoint, "/videos") || strings.Contains(endpoint, ":generateVideos") || mode == service.BillingModeVideo:
+		return "video"
+	case strings.Contains(endpoint, "/images/") || mode == service.BillingModeImage || shouldUseOpenAIImageEndpoint(detail, mode):
+		return "image"
+	default:
+		return "chat"
+	}
+}
+
+func supportsStreamForPublicEntry(endpoint, modelType string) bool {
+	switch modelType {
+	case "chat":
+		return true
+	case "image":
+		return strings.Contains(endpoint, "/images/generations")
+	default:
+		return false
+	}
 }
 
 func modelNamesFromPricedDetails(details []service.GatewayPricedModelDetail) []string {

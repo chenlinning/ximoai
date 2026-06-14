@@ -437,8 +437,12 @@ Authorization: Bearer <api_key>
       "id": "NanoBanana2",
       "object": "model",
       "ximoai": {
-        "default_entry_protocol": "openai",
-        "default_endpoint": "/v1/images/generations",
+        "default_entry_protocol": "gemini",
+        "default_endpoint": "/v1beta/models/NanoBanana2:generateContent",
+        "model_type": "image",
+        "execution_mode": "sync",
+        "supports_stream": false,
+        "supports_polling": false,
         "group": {
           "id": 12,
           "name": "梦工厂 gemini",
@@ -468,6 +472,10 @@ Authorization: Bearer <api_key>
 ```text
 default_entry_protocol: 推荐入口协议，例如 openai、anthropic、gemini
 default_endpoint: 推荐入口端点
+model_type: 公共模型类型，可能为 chat、image、video、audio、transcription、translation
+execution_mode: 公共调用模式，sync 或 async
+supports_stream: 该公共入口是否支持流式返回
+supports_polling: 该公共入口是否需要/支持轮询查询结果
 group.id: 当前 API Key 绑定分组 ID
 group.name: 当前 API Key 绑定分组名称
 group.subscription_type: standard 或 subscription

@@ -45,6 +45,12 @@ type gatewayModelsUserGroupRateRepoStub struct {
 	rate *float64
 }
 
+type gatewayModelsPlatformRepoStub struct {
+	service.PlatformRepository
+
+	platforms map[string]service.Platform
+}
+
 func (s *gatewayModelsAccountRepoStub) ListSchedulableByGroupID(ctx context.Context, groupID int64) ([]service.Account, error) {
 	accounts, ok := s.byGroup[groupID]
 	if !ok {
@@ -83,7 +89,14 @@ func newGatewayModelsHandlerWithDeps(repo service.AccountRepository, channelSvc 
 			nil, nil, nil, nil, nil, rateRepo, nil, nil, nil, nil, nil, nil, nil,
 			nil, nil, nil, nil, nil, nil, nil, nil, nil, channelSvc, nil, nil, nil,
 		),
+		platformService: service.NewPlatformService(nil),
 	}
+}
+
+func newGatewayModelsHandlerWithPlatformService(repo service.AccountRepository, channelSvc *service.ChannelService, rateRepo service.UserGroupRateRepository, platformSvc *service.PlatformService) *GatewayHandler {
+	h := newGatewayModelsHandlerWithDeps(repo, channelSvc, rateRepo)
+	h.platformService = platformSvc
+	return h
 }
 
 func (s *gatewayModelsChannelRepoStub) ListAll(ctx context.Context) ([]service.Channel, error) {
@@ -107,6 +120,14 @@ func (s *gatewayModelsUserGroupRateRepoStub) GetByUserAndGroup(ctx context.Conte
 		return nil, nil
 	}
 	return s.rate, nil
+}
+
+func (s *gatewayModelsPlatformRepoStub) GetBySlug(ctx context.Context, slug string) (*service.Platform, error) {
+	platform, ok := s.platforms[service.NormalizePlatformSlug(slug)]
+	if !ok {
+		return nil, service.ErrPlatformNotFound
+	}
+	return &platform, nil
 }
 
 func testPrice(v float64) *float64 {
@@ -585,8 +606,12 @@ func TestGatewayModels_IncludeEntryProtocolsReturnsCompactXimoAIMetadata(t *test
 
 	ximoai, ok := item["ximoai"].(map[string]any)
 	require.True(t, ok)
-	require.Equal(t, "openai", ximoai["default_entry_protocol"])
-	require.Equal(t, "/v1/images/generations", ximoai["default_endpoint"])
+	require.Equal(t, "gemini", ximoai["default_entry_protocol"])
+	require.Equal(t, "/v1beta/models/NanoBanana2:generateContent", ximoai["default_endpoint"])
+	require.Equal(t, "image", ximoai["model_type"])
+	require.Equal(t, "sync", ximoai["execution_mode"])
+	require.Equal(t, false, ximoai["supports_stream"])
+	require.Equal(t, false, ximoai["supports_polling"])
 	require.NotContains(t, ximoai, "platform")
 	require.NotContains(t, ximoai, "supported_entry_protocols")
 
@@ -608,13 +633,90 @@ func TestGatewayModels_IncludeEntryProtocolsReturnsCompactXimoAIMetadata(t *test
 	require.Nil(t, pricing["output_price"])
 }
 
-func TestDefaultEntryProtocolForPricedModel_DetectsImageAndSpeechEndpoints(t *testing.T) {
+func TestGatewayModels_IncludeEntryProtocolsUsesCustomPlatformProtocol(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(31)
+	customPlatform := "custom-gemini"
+	channelSvc := service.NewChannelService(
+		&gatewayModelsChannelRepoStub{
+			channels: []service.Channel{
+				{
+					ID:       1,
+					Status:   service.StatusActive,
+					GroupIDs: []int64{groupID},
+					ModelPricing: []service.ChannelModelPricing{
+						{
+							Platform:    customPlatform,
+							Models:      []string{"custom-gemini-chat"},
+							BillingMode: service.BillingModeToken,
+							InputPrice:  testPrice(0.01),
+							OutputPrice: testPrice(0.02),
+						},
+					},
+				},
+			},
+			groupPlatforms: map[int64]string{groupID: customPlatform},
+		},
+		nil,
+		nil,
+		nil,
+	)
+	platformSvc := service.NewPlatformService(&gatewayModelsPlatformRepoStub{
+		platforms: map[string]service.Platform{
+			customPlatform: {
+				Slug:         customPlatform,
+				DisplayName:  "Custom Gemini",
+				Protocol:     service.PlatformProtocolGemini,
+				Capabilities: []string{service.PlatformCapabilityMessages, service.PlatformCapabilityNativeGemini},
+				Enabled:      true,
+			},
+		},
+	})
+	h := newGatewayModelsHandlerWithPlatformService(&gatewayModelsAccountRepoStub{}, channelSvc, nil, platformSvc)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models?include_entry_protocols=1", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		UserID: 1002,
+		Group: &service.Group{
+			ID:       groupID,
+			Name:     "custom gemini",
+			Platform: customPlatform,
+		},
+		GroupID: &groupID,
+	})
+
+	h.Models(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	data := got["data"].([]any)
+	require.Len(t, data, 1)
+	item := data[0].(map[string]any)
+	ximoai := item["ximoai"].(map[string]any)
+	require.Equal(t, "gemini", ximoai["default_entry_protocol"])
+	require.Equal(t, "/v1beta/models/custom-gemini-chat:generateContent", ximoai["default_endpoint"])
+	require.Equal(t, "chat", ximoai["model_type"])
+	require.Equal(t, "sync", ximoai["execution_mode"])
+	require.Equal(t, true, ximoai["supports_stream"])
+	require.Equal(t, false, ximoai["supports_polling"])
+}
+
+func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.T) {
 	imagePrice := testPrice(0.00003)
 	tests := []struct {
-		name         string
-		detail       service.GatewayPricedModelDetail
-		wantProtocol string
-		wantEndpoint string
+		name                string
+		detail              service.GatewayPricedModelDetail
+		platform            *service.Platform
+		wantProtocol        string
+		wantEndpoint        string
+		wantModelType       string
+		wantExecutionMode   string
+		wantSupportsStream  bool
+		wantSupportsPolling bool
 	}{
 		{
 			name: "openai image model billed per request uses images endpoint",
@@ -627,8 +729,69 @@ func TestDefaultEntryProtocolForPricedModel_DetectsImageAndSpeechEndpoints(t *te
 					PerRequestPrice:  testPrice(0.1),
 				},
 			},
-			wantProtocol: "openai",
-			wantEndpoint: "/v1/images/generations",
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/images/generations",
+			wantModelType:       "image",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  true,
+			wantSupportsPolling: false,
+		},
+		{
+			name: "gemini image model stays on gemini entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "NanoBanana2",
+				Platform: service.PlatformGemini,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModeImage,
+					PerRequestPrice: testPrice(0.4),
+				},
+			},
+			wantProtocol:        "gemini",
+			wantEndpoint:        "/v1beta/models/NanoBanana2:generateContent",
+			wantModelType:       "image",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  false,
+			wantSupportsPolling: false,
+		},
+		{
+			name: "gemini chat model stays on gemini generateContent entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gemini-3.5-flash",
+				Platform: service.PlatformGemini,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.0000015),
+					OutputPrice: testPrice(0.000009),
+				},
+			},
+			wantProtocol:        "gemini",
+			wantEndpoint:        "/v1beta/models/gemini-3.5-flash:generateContent",
+			wantModelType:       "chat",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  true,
+			wantSupportsPolling: false,
+		},
+		{
+			name: "custom gemini protocol platform uses gemini public entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "custom-gemini-chat",
+				Platform: "custom-gemini",
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.000001),
+					OutputPrice: testPrice(0.000002),
+				},
+			},
+			platform: &service.Platform{
+				Slug:     "custom-gemini",
+				Protocol: service.PlatformProtocolGemini,
+			},
+			wantProtocol:        "gemini",
+			wantEndpoint:        "/v1beta/models/custom-gemini-chat:generateContent",
+			wantModelType:       "chat",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  true,
+			wantSupportsPolling: false,
 		},
 		{
 			name: "openai tts model uses speech endpoint",
@@ -641,8 +804,12 @@ func TestDefaultEntryProtocolForPricedModel_DetectsImageAndSpeechEndpoints(t *te
 					OutputPrice: testPrice(0.000018),
 				},
 			},
-			wantProtocol: "openai",
-			wantEndpoint: "/v1/audio/speech",
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/audio/speech",
+			wantModelType:       "audio",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  false,
+			wantSupportsPolling: false,
 		},
 		{
 			name: "openai audio preview is not treated as tts",
@@ -655,16 +822,96 @@ func TestDefaultEntryProtocolForPricedModel_DetectsImageAndSpeechEndpoints(t *te
 					OutputPrice: testPrice(0.00000318),
 				},
 			},
-			wantProtocol: "openai",
-			wantEndpoint: "/v1/responses",
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/responses",
+			wantModelType:       "chat",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  true,
+			wantSupportsPolling: false,
+		},
+		{
+			name: "openai transcription model uses transcriptions endpoint",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "whisper-1",
+				Platform: service.PlatformOpenAI,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.000001),
+				},
+			},
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/audio/transcriptions",
+			wantModelType:       "transcription",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  false,
+			wantSupportsPolling: false,
+		},
+		{
+			name: "custom openai compatible video platform uses openai videos entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "custom-video-model",
+				Platform: "custom-openai-video",
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModeVideo,
+					PerRequestPrice: testPrice(0.4),
+				},
+			},
+			platform: &service.Platform{
+				Slug:     "custom-openai-video",
+				Protocol: service.PlatformProtocolOpenAICompatible,
+			},
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/videos",
+			wantModelType:       "video",
+			wantExecutionMode:   "async",
+			wantSupportsStream:  false,
+			wantSupportsPolling: true,
+		},
+		{
+			name: "grok custom adapter exposes openai videos entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "grok-video-3",
+				Platform: service.PlatformGrok,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModeVideo,
+					PerRequestPrice: testPrice(0.4),
+				},
+			},
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/videos",
+			wantModelType:       "video",
+			wantExecutionMode:   "async",
+			wantSupportsStream:  false,
+			wantSupportsPolling: true,
+		},
+		{
+			name: "kling audio custom adapter exposes openai speech entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "kling-audio",
+				Platform: service.PlatformKlingAudio,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModePerRequest,
+					PerRequestPrice: testPrice(0.25),
+				},
+			},
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/audio/speech",
+			wantModelType:       "audio",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  false,
+			wantSupportsPolling: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotProtocol, gotEndpoint := defaultEntryProtocolForPricedModel(tt.detail)
-			require.Equal(t, tt.wantProtocol, gotProtocol)
-			require.Equal(t, tt.wantEndpoint, gotEndpoint)
+			got := publicEntryMetadataForPricedModel(tt.detail, tt.platform)
+			require.Equal(t, tt.wantProtocol, got.DefaultEntryProtocol)
+			require.Equal(t, tt.wantEndpoint, got.DefaultEndpoint)
+			require.Equal(t, tt.wantModelType, got.ModelType)
+			require.Equal(t, tt.wantExecutionMode, got.ExecutionMode)
+			require.Equal(t, tt.wantSupportsStream, got.SupportsStream)
+			require.Equal(t, tt.wantSupportsPolling, got.SupportsPolling)
 		})
 	}
 }
