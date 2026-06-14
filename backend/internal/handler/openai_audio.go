@@ -66,6 +66,7 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 	setOpsEndpointContext(c, "", int16(service.RequestTypeFromLegacy(false, false)))
 
 	channelMapping, _ := h.gatewayService.ResolveChannelMappingAndRestrict(c.Request.Context(), apiKey.GroupID, parsed.Model)
+	routingModel := openAIChannelRoutingModel(parsed.Model, channelMapping)
 	if h.errorPassthroughService != nil {
 		service.BindErrorPassthroughService(c, h.errorPassthroughService)
 	}
@@ -106,7 +107,7 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 			apiKey.GroupID,
 			"",
 			sessionHash,
-			parsed.Model,
+			routingModel,
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportHTTPSSE,
 			false,

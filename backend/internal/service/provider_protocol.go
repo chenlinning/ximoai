@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	klingAudioPublicModel       = "kling-audio"
 	klingAudioTTSModel          = "kling-audio-tts"
 	klingCustomVoicesModel      = "kling-custom-voices"
 	klingPresetVoicesModel      = "kling-presets-voices"
@@ -89,7 +90,7 @@ func adaptOpenAIAudioProviderRequest(account *Account, endpoint string, body []b
 	}
 	model := strings.ToLower(strings.TrimSpace(providerString(payload, "model")))
 	switch model {
-	case klingAudioTTSModel:
+	case klingAudioPublicModel, klingAudioTTSModel:
 		return buildKlingAudioTTSRequest(payload)
 	case klingCustomVoicesModel:
 		return buildKlingCustomVoicesRequest(payload)

@@ -1197,6 +1197,9 @@ func openAIEntryForPricedModel(detail service.GatewayPricedModelDetail, mode ser
 	if shouldUseOpenAIImageEndpoint(detail, mode) || mode == service.BillingModeImage {
 		return "openai", "/v1/images/generations"
 	}
+	if isOpenAIAudioConversationModel(detail.Name, mode) {
+		return "openai", "/v1/chat/completions"
+	}
 	if audioEndpoint := openAIAudioEndpointForModel(detail.Name, mode); audioEndpoint != "" {
 		return "openai", audioEndpoint
 	}
@@ -1234,6 +1237,17 @@ func openAIAudioEndpointForModel(model string, mode service.BillingMode) string 
 	}
 }
 
+func isOpenAIAudioConversationModel(model string, mode service.BillingMode) bool {
+	if mode == service.BillingModeImage || mode == service.BillingModeVideo {
+		return false
+	}
+	model = strings.ToLower(strings.TrimSpace(model))
+	if !strings.Contains(model, "audio") {
+		return false
+	}
+	return openAIAudioEndpointForModel(model, mode) == ""
+}
+
 func publicModelTypeForPricedModel(detail service.GatewayPricedModelDetail, endpoint string) string {
 	mode := service.BillingModeToken
 	if detail.Pricing != nil && detail.Pricing.BillingMode != "" {
@@ -1245,6 +1259,8 @@ func publicModelTypeForPricedModel(detail service.GatewayPricedModelDetail, endp
 	case strings.Contains(endpoint, "/audio/translations"):
 		return "translation"
 	case strings.Contains(endpoint, "/audio/speech"):
+		return "audio"
+	case isOpenAIAudioConversationModel(detail.Name, mode):
 		return "audio"
 	case strings.Contains(endpoint, "/videos") || strings.Contains(endpoint, ":generateVideos") || mode == service.BillingModeVideo:
 		return "video"

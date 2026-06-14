@@ -115,6 +115,21 @@ func TestAdaptOpenAIAudioProviderRequestMapsKlingTTS(t *testing.T) {
 	require.Equal(t, 1.1, payload["voice_speed"])
 }
 
+func TestAdaptOpenAIAudioProviderRequestMapsKlingPublicAudioAlias(t *testing.T) {
+	account := &Account{Platform: "kling_audio"}
+	body := []byte(`{"model":"kling-audio","input":"hello","voice":"voice_1","voice_language":"zh"}`)
+
+	rewritten, err := adaptOpenAIAudioProviderRequest(account, openAIAudioSpeechEndpoint, body, "application/json")
+
+	require.NoError(t, err)
+	require.Equal(t, http.MethodPost, rewritten.Method)
+	require.Equal(t, "/kling/v1/audio/tts", rewritten.Endpoint)
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(rewritten.Body, &payload))
+	require.Equal(t, "hello", payload["text"])
+	require.Equal(t, "voice_1", payload["voice_id"])
+}
+
 func TestAdaptOpenAIAudioProviderRequestMapsKlingCustomVoiceCreateAndQuery(t *testing.T) {
 	account := &Account{Platform: "kling_audio"}
 	createBody := []byte(`{"model":"kling-custom-voices","voice_name":"demo","voice_url":"https://example.com/a.wav"}`)

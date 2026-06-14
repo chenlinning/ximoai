@@ -492,6 +492,9 @@ pricing.per_request_price: 按次价格
 pricing.intervals[]: 分层计价，字段同模型广场 pricing.intervals
 ```
 
+调用方应以 `default_endpoint` 为准构造请求，不要只按 `model_type` 固定选择端点。例如 `model_type=audio`
+既可能是 `/v1/audio/speech` 语音合成，也可能是 `/v1/chat/completions` 音频对话模型。
+
 ### Anthropic Messages 入口
 
 | 方法 | 路径 | 说明 |

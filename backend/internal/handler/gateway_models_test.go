@@ -812,7 +812,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantSupportsPolling: false,
 		},
 		{
-			name: "openai audio preview is not treated as tts",
+			name: "openai audio preview uses chat completions audio entry",
 			detail: service.GatewayPricedModelDetail{
 				Name:     "gpt-4o-audio-preview",
 				Platform: service.PlatformOpenAI,
@@ -823,10 +823,10 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 				},
 			},
 			wantProtocol:        "openai",
-			wantEndpoint:        "/v1/responses",
-			wantModelType:       "chat",
+			wantEndpoint:        "/v1/chat/completions",
+			wantModelType:       "audio",
 			wantExecutionMode:   "sync",
-			wantSupportsStream:  true,
+			wantSupportsStream:  false,
 			wantSupportsPolling: false,
 		},
 		{
@@ -914,6 +914,24 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			require.Equal(t, tt.wantSupportsPolling, got.SupportsPolling)
 		})
 	}
+}
+
+func TestOpenAIChannelRoutingModelUsesChannelMappedModel(t *testing.T) {
+	got := openAIChannelRoutingModel("gpt-audio-tts-hd", service.ChannelMappingResult{
+		Mapped:      true,
+		MappedModel: "tts-1-hd",
+	})
+
+	require.Equal(t, "tts-1-hd", got)
+}
+
+func TestOpenAIChannelRoutingModelFallsBackToRequestedModel(t *testing.T) {
+	got := openAIChannelRoutingModel("gpt-audio-tts-hd", service.ChannelMappingResult{
+		Mapped:      false,
+		MappedModel: "tts-1-hd",
+	})
+
+	require.Equal(t, "gpt-audio-tts-hd", got)
 }
 
 func TestGatewayModels_NoChannelPricingReturnsEmptyEvenWhenAccountHasMappings(t *testing.T) {
