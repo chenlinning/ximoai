@@ -130,6 +130,16 @@ func TestAdaptOpenAIAudioProviderRequestMapsKlingPublicAudioAlias(t *testing.T) 
 	require.Equal(t, "voice_1", payload["voice_id"])
 }
 
+func TestAdaptOpenAIAudioProviderRequestRejectsOpenAIVoiceNamesForKling(t *testing.T) {
+	account := &Account{Platform: "kling_audio"}
+	body := []byte(`{"model":"kling-audio","input":"hello","voice":"alloy"}`)
+
+	_, err := adaptOpenAIAudioProviderRequest(account, openAIAudioSpeechEndpoint, body, "application/json")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Kling voice_id is required")
+}
+
 func TestAdaptOpenAIAudioProviderRequestMapsKlingCustomVoiceCreateAndQuery(t *testing.T) {
 	account := &Account{Platform: "kling_audio"}
 	createBody := []byte(`{"model":"kling-custom-voices","voice_name":"demo","voice_url":"https://example.com/a.wav"}`)

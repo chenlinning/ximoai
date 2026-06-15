@@ -609,6 +609,7 @@ func TestGatewayModels_IncludeEntryProtocolsReturnsCompactXimoAIMetadata(t *test
 	require.Equal(t, "gemini", ximoai["default_entry_protocol"])
 	require.Equal(t, "/v1beta/models/NanoBanana2:generateContent", ximoai["default_endpoint"])
 	require.Equal(t, "image", ximoai["model_type"])
+	require.Equal(t, "image_generation", ximoai["operation_type"])
 	require.Equal(t, "sync", ximoai["execution_mode"])
 	require.Equal(t, false, ximoai["supports_stream"])
 	require.Equal(t, false, ximoai["supports_polling"])
@@ -700,9 +701,84 @@ func TestGatewayModels_IncludeEntryProtocolsUsesCustomPlatformProtocol(t *testin
 	require.Equal(t, "gemini", ximoai["default_entry_protocol"])
 	require.Equal(t, "/v1beta/models/custom-gemini-chat:generateContent", ximoai["default_endpoint"])
 	require.Equal(t, "chat", ximoai["model_type"])
+	require.Equal(t, "chat", ximoai["operation_type"])
 	require.Equal(t, "sync", ximoai["execution_mode"])
 	require.Equal(t, true, ximoai["supports_stream"])
 	require.Equal(t, false, ximoai["supports_polling"])
+}
+
+func TestGatewayModels_IncludeEntryProtocolsReturnsAudioContracts(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	groupID := int64(32)
+	channelSvc := service.NewChannelService(
+		&gatewayModelsChannelRepoStub{
+			channels: []service.Channel{
+				{
+					ID:       1,
+					Status:   service.StatusActive,
+					GroupIDs: []int64{groupID},
+					ModelPricing: []service.ChannelModelPricing{
+						{
+							Platform:        service.PlatformKlingAudio,
+							Models:          []string{"kling-audio", "kling-custom-voices"},
+							BillingMode:     service.BillingModePerRequest,
+							PerRequestPrice: testPrice(0.25),
+						},
+					},
+				},
+			},
+			groupPlatforms: map[int64]string{groupID: service.PlatformKlingAudio},
+		},
+		nil,
+		nil,
+		nil,
+	)
+	h := newGatewayModelsHandlerWithDeps(&gatewayModelsAccountRepoStub{}, channelSvc, nil)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/models?include_entry_protocols=1", nil)
+	c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+		UserID:  1003,
+		Group:   &service.Group{ID: groupID, Name: "可灵audio", Platform: service.PlatformKlingAudio},
+		GroupID: &groupID,
+	})
+
+	h.Models(c)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	data := got["data"].([]any)
+	require.Len(t, data, 2)
+
+	byID := map[string]map[string]any{}
+	for _, raw := range data {
+		item := raw.(map[string]any)
+		byID[item["id"].(string)] = item["ximoai"].(map[string]any)
+	}
+
+	tts := byID["kling-audio"]
+	require.Equal(t, "audio_tts", tts["operation_type"])
+	ttsRequest := tts["request_contract"].(map[string]any)
+	require.Contains(t, ttsRequest["required_fields"], "voice_id")
+	require.NotContains(t, ttsRequest["required_fields"], "voice")
+	ttsNotes := ttsRequest["field_notes"].(map[string]any)
+	require.Contains(t, ttsNotes["voice_id"], "Kling voice id")
+	ttsResponse := tts["response_contract"].(map[string]any)
+	require.Equal(t, "json_url", ttsResponse["delivery"])
+	require.Equal(t, "data.task_result.audios[0].url", ttsResponse["audio_url_path"])
+
+	custom := byID["kling-custom-voices"]
+	require.Equal(t, "voice_management", custom["operation_type"])
+	customRequest := custom["request_contract"].(map[string]any)
+	require.Contains(t, customRequest["create_required_fields"], "voice_name")
+	require.Contains(t, customRequest["create_required_fields"], "voice_url")
+	require.Contains(t, customRequest["query_required_fields"], "voice_id")
+	customResponse := custom["response_contract"].(map[string]any)
+	require.Equal(t, "json", customResponse["delivery"])
+	require.Equal(t, "data.task_result.voices[0].voice_id", customResponse["voice_id_path"])
 }
 
 func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.T) {
@@ -714,6 +790,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 		wantProtocol        string
 		wantEndpoint        string
 		wantModelType       string
+		wantOperationType   string
 		wantExecutionMode   string
 		wantSupportsStream  bool
 		wantSupportsPolling bool
@@ -732,6 +809,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/images/generations",
 			wantModelType:       "image",
+			wantOperationType:   "image_generation",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  true,
 			wantSupportsPolling: false,
@@ -749,6 +827,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "gemini",
 			wantEndpoint:        "/v1beta/models/NanoBanana2:generateContent",
 			wantModelType:       "image",
+			wantOperationType:   "image_generation",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  false,
 			wantSupportsPolling: false,
@@ -767,6 +846,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "gemini",
 			wantEndpoint:        "/v1beta/models/gemini-3.5-flash:generateContent",
 			wantModelType:       "chat",
+			wantOperationType:   "chat",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  true,
 			wantSupportsPolling: false,
@@ -789,6 +869,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "gemini",
 			wantEndpoint:        "/v1beta/models/custom-gemini-chat:generateContent",
 			wantModelType:       "chat",
+			wantOperationType:   "chat",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  true,
 			wantSupportsPolling: false,
@@ -807,6 +888,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/audio/speech",
 			wantModelType:       "audio",
+			wantOperationType:   "audio_tts",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  false,
 			wantSupportsPolling: false,
@@ -825,6 +907,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/chat/completions",
 			wantModelType:       "audio",
+			wantOperationType:   "chat_audio",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  false,
 			wantSupportsPolling: false,
@@ -842,6 +925,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/audio/transcriptions",
 			wantModelType:       "transcription",
+			wantOperationType:   "audio_transcription",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  false,
 			wantSupportsPolling: false,
@@ -863,6 +947,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/videos",
 			wantModelType:       "video",
+			wantOperationType:   "video_generation",
 			wantExecutionMode:   "async",
 			wantSupportsStream:  false,
 			wantSupportsPolling: true,
@@ -880,6 +965,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/videos",
 			wantModelType:       "video",
+			wantOperationType:   "video_generation",
 			wantExecutionMode:   "async",
 			wantSupportsStream:  false,
 			wantSupportsPolling: true,
@@ -897,6 +983,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantProtocol:        "openai",
 			wantEndpoint:        "/v1/audio/speech",
 			wantModelType:       "audio",
+			wantOperationType:   "audio_tts",
 			wantExecutionMode:   "sync",
 			wantSupportsStream:  false,
 			wantSupportsPolling: false,
@@ -909,6 +996,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			require.Equal(t, tt.wantProtocol, got.DefaultEntryProtocol)
 			require.Equal(t, tt.wantEndpoint, got.DefaultEndpoint)
 			require.Equal(t, tt.wantModelType, got.ModelType)
+			require.Equal(t, tt.wantOperationType, got.OperationType)
 			require.Equal(t, tt.wantExecutionMode, got.ExecutionMode)
 			require.Equal(t, tt.wantSupportsStream, got.SupportsStream)
 			require.Equal(t, tt.wantSupportsPolling, got.SupportsPolling)

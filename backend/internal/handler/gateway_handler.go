@@ -1038,9 +1038,12 @@ type modelListEntryProtocolXimoAI struct {
 	DefaultEntryProtocol string                       `json:"default_entry_protocol"`
 	DefaultEndpoint      string                       `json:"default_endpoint"`
 	ModelType            string                       `json:"model_type"`
+	OperationType        string                       `json:"operation_type"`
 	ExecutionMode        string                       `json:"execution_mode"`
 	SupportsStream       bool                         `json:"supports_stream"`
 	SupportsPolling      bool                         `json:"supports_polling"`
+	RequestContract      map[string]any               `json:"request_contract,omitempty"`
+	ResponseContract     map[string]any               `json:"response_contract,omitempty"`
 	Group                *modelListEntryProtocolGroup `json:"group,omitempty"`
 	Pricing              *userSupportedModelPricing   `json:"pricing"`
 }
@@ -1066,9 +1069,12 @@ func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *servic
 				DefaultEntryProtocol: meta.DefaultEntryProtocol,
 				DefaultEndpoint:      meta.DefaultEndpoint,
 				ModelType:            meta.ModelType,
+				OperationType:        meta.OperationType,
 				ExecutionMode:        meta.ExecutionMode,
 				SupportsStream:       meta.SupportsStream,
 				SupportsPolling:      meta.SupportsPolling,
+				RequestContract:      meta.RequestContract,
+				ResponseContract:     meta.ResponseContract,
 				Group:                group,
 				Pricing:              toUserPricing(detail.Pricing),
 			},
@@ -1107,9 +1113,12 @@ type publicEntryMetadata struct {
 	DefaultEntryProtocol string
 	DefaultEndpoint      string
 	ModelType            string
+	OperationType        string
 	ExecutionMode        string
 	SupportsStream       bool
 	SupportsPolling      bool
+	RequestContract      map[string]any
+	ResponseContract     map[string]any
 }
 
 func platformForEntryMetadata(ctx context.Context, platformSvc *service.PlatformService, slug string) *service.Platform {
@@ -1129,6 +1138,7 @@ func platformForEntryMetadata(ctx context.Context, platformSvc *service.Platform
 func publicEntryMetadataForPricedModel(detail service.GatewayPricedModelDetail, platformInfo *service.Platform) publicEntryMetadata {
 	protocol, endpoint := defaultEntryProtocolForPricedModel(detail, platformInfo)
 	modelType := publicModelTypeForPricedModel(detail, endpoint)
+	operationType := publicOperationTypeForPricedModel(detail, endpoint, modelType)
 	executionMode := "sync"
 	supportsPolling := false
 	if modelType == "video" {
@@ -1139,9 +1149,12 @@ func publicEntryMetadataForPricedModel(detail service.GatewayPricedModelDetail, 
 		DefaultEntryProtocol: protocol,
 		DefaultEndpoint:      endpoint,
 		ModelType:            modelType,
+		OperationType:        operationType,
 		ExecutionMode:        executionMode,
 		SupportsStream:       supportsStreamForPublicEntry(endpoint, modelType),
 		SupportsPolling:      supportsPolling,
+		RequestContract:      publicRequestContractForPricedModel(detail, operationType),
+		ResponseContract:     publicResponseContractForPricedModel(detail, operationType),
 	}
 }
 
@@ -1268,6 +1281,158 @@ func publicModelTypeForPricedModel(detail service.GatewayPricedModelDetail, endp
 		return "image"
 	default:
 		return "chat"
+	}
+}
+
+func publicOperationTypeForPricedModel(detail service.GatewayPricedModelDetail, endpoint, modelType string) string {
+	platform := service.NormalizePlatformSlug(detail.Platform)
+	model := strings.ToLower(strings.TrimSpace(detail.Name))
+	if platform == service.PlatformKlingAudio {
+		switch model {
+		case "kling-custom-voices":
+			return "voice_management"
+		case "kling-presets-voices":
+			return "voice_catalog"
+		default:
+			return "audio_tts"
+		}
+	}
+	switch modelType {
+	case "audio":
+		if strings.Contains(endpoint, "/v1/chat/completions") || isOpenAIAudioConversationModel(detail.Name, service.BillingModeToken) {
+			return "chat_audio"
+		}
+		return "audio_tts"
+	case "transcription":
+		return "audio_transcription"
+	case "translation":
+		return "audio_translation"
+	case "image":
+		return "image_generation"
+	case "video":
+		return "video_generation"
+	default:
+		return "chat"
+	}
+}
+
+func publicRequestContractForPricedModel(detail service.GatewayPricedModelDetail, operationType string) map[string]any {
+	platform := service.NormalizePlatformSlug(detail.Platform)
+	switch operationType {
+	case "chat_audio":
+		return map[string]any{
+			"required_fields": []string{"model", "messages", "modalities", "audio"},
+			"optional_fields": []string{"stream"},
+			"examples": map[string]any{
+				"modalities": []string{"text", "audio"},
+				"audio": map[string]any{
+					"voice":  "alloy",
+					"format": "wav",
+				},
+			},
+		}
+	case "audio_tts":
+		if platform == service.PlatformKlingAudio {
+			return map[string]any{
+				"required_fields": []string{"model", "input", "voice_id"},
+				"optional_fields": []string{"voice_language", "voice_speed"},
+				"field_notes": map[string]any{
+					"voice_id": "Must be a Kling voice id, not OpenAI voice names such as alloy or nova.",
+				},
+				"examples": map[string]any{
+					"voice_id":       "genshin_vindi2",
+					"voice_language": "zh",
+					"voice_speed":    1,
+				},
+			}
+		}
+		return map[string]any{
+			"required_fields": []string{"model", "input", "voice"},
+			"optional_fields": []string{"response_format", "speed"},
+		}
+	case "voice_management":
+		return map[string]any{
+			"create_required_fields": []string{"model", "voice_name", "voice_url"},
+			"query_required_fields":  []string{"model", "voice_id"},
+			"field_notes": map[string]any{
+				"voice_url": "A public voice reference file URL accepted by the upstream provider.",
+			},
+		}
+	case "voice_catalog":
+		return map[string]any{
+			"optional_fields": []string{"pageNum", "pageSize", "page_num", "page_size"},
+		}
+	case "audio_transcription", "audio_translation":
+		return map[string]any{
+			"required_fields": []string{"model", "file"},
+			"optional_fields": []string{"language", "prompt", "response_format", "temperature"},
+		}
+	case "video_generation":
+		return map[string]any{
+			"required_fields": []string{"model", "prompt"},
+			"optional_fields": []string{"images", "image_urls", "reference_images", "aspect_ratio", "size", "duration_seconds"},
+		}
+	case "image_generation":
+		return map[string]any{
+			"required_fields": []string{"model", "prompt"},
+			"optional_fields": []string{"n", "size", "quality", "response_format", "background"},
+		}
+	default:
+		return map[string]any{
+			"required_fields": []string{"model", "messages"},
+			"optional_fields": []string{"stream", "tools", "tool_choice", "response_format"},
+		}
+	}
+}
+
+func publicResponseContractForPricedModel(detail service.GatewayPricedModelDetail, operationType string) map[string]any {
+	platform := service.NormalizePlatformSlug(detail.Platform)
+	switch operationType {
+	case "chat_audio":
+		return map[string]any{
+			"delivery":        "openai_chat_audio_base64",
+			"audio_data_path": "choices[0].message.audio.data",
+			"transcript_path": "choices[0].message.audio.transcript",
+			"audio_id_path":   "choices[0].message.audio.id",
+			"expires_at_path": "choices[0].message.audio.expires_at",
+		}
+	case "audio_tts":
+		if platform == service.PlatformKlingAudio {
+			return map[string]any{
+				"delivery":       "json_url",
+				"audio_url_path": "data.task_result.audios[0].url",
+				"duration_path":  "data.task_result.audios[0].duration",
+				"task_id_path":   "data.task_id",
+			}
+		}
+		return map[string]any{
+			"delivery": "audio_binary",
+		}
+	case "voice_management":
+		return map[string]any{
+			"delivery":       "json",
+			"voice_id_path":  "data.task_result.voices[0].voice_id",
+			"trial_url_path": "data.task_result.voices[0].trial_url",
+			"task_id_path":   "data.task_id",
+		}
+	case "voice_catalog":
+		return map[string]any{
+			"delivery": "json",
+		}
+	case "video_generation":
+		return map[string]any{
+			"delivery":         "async_json",
+			"task_id_path":     "id",
+			"polling_endpoint": "/v1/videos/{id}",
+		}
+	case "image_generation":
+		return map[string]any{
+			"delivery": "json",
+		}
+	default:
+		return map[string]any{
+			"delivery": "json",
+		}
 	}
 }
 

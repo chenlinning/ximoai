@@ -175,6 +175,16 @@ func (s *OpenAIGatewayService) ForwardAudio(
 	if resp.StatusCode >= 400 {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 		upstreamMsg := sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody)))
+		if isKlingAudioInvalidVoiceResponse(account, upstreamMsg, respBody) {
+			if c != nil && !IsResponseCommitted(c) {
+				c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{
+					"message": "Voice id not found; use a Kling voice_id, not an OpenAI voice name",
+					"type":    "invalid_request_error",
+					"param":   "voice_id",
+				}})
+			}
+			return nil, fmt.Errorf("kling audio invalid voice_id: %s", upstreamMsg)
+		}
 		if s.shouldFailoverOpenAIUpstreamResponse(resp.StatusCode, upstreamMsg, respBody) {
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
 				Platform:           account.Platform,
@@ -222,6 +232,17 @@ func (s *OpenAIGatewayService) ForwardAudio(
 		ResponseHeaders: resp.Header.Clone(),
 		Duration:        time.Since(startTime),
 	}, nil
+}
+
+func isKlingAudioInvalidVoiceResponse(account *Account, upstreamMsg string, respBody []byte) bool {
+	if account == nil || NormalizePlatformSlug(account.Platform) != PlatformKlingAudio {
+		return false
+	}
+	message := strings.ToLower(strings.TrimSpace(upstreamMsg))
+	if message == "" && len(respBody) > 0 {
+		message = strings.ToLower(string(respBody))
+	}
+	return strings.Contains(message, "voice id not found")
 }
 
 func (s *OpenAIGatewayService) buildOpenAIAudioRequest(

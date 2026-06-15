@@ -495,6 +495,60 @@ pricing.intervals[]: 分层计价，字段同模型广场 pricing.intervals
 调用方应以 `default_endpoint` 为准构造请求，不要只按 `model_type` 固定选择端点。例如 `model_type=audio`
 既可能是 `/v1/audio/speech` 语音合成，也可能是 `/v1/chat/completions` 音频对话模型。
 
+### `/v1/models?include_entry_protocols=1` 调用契约字段
+
+开启 `include_entry_protocols=1` 后，每个模型的 `ximoai` 字段会额外返回调用契约，外部调用方应优先按这些字段构造请求和解析响应：
+
+```json
+{
+  "id": "kling-audio",
+  "object": "model",
+  "ximoai": {
+    "default_entry_protocol": "openai",
+    "default_endpoint": "/v1/audio/speech",
+    "model_type": "audio",
+    "operation_type": "audio_tts",
+    "execution_mode": "sync",
+    "supports_stream": false,
+    "supports_polling": false,
+    "request_contract": {
+      "required_fields": ["model", "input", "voice_id"],
+      "optional_fields": ["voice_language", "voice_speed"],
+      "field_notes": {
+        "voice_id": "Must be a Kling voice id, not OpenAI voice names such as alloy or nova."
+      },
+      "examples": {
+        "voice_id": "genshin_vindi2",
+        "voice_language": "zh",
+        "voice_speed": 1
+      }
+    },
+    "response_contract": {
+      "delivery": "json_url",
+      "audio_url_path": "data.task_result.audios[0].url",
+      "duration_path": "data.task_result.audios[0].duration",
+      "task_id_path": "data.task_id"
+    }
+  }
+}
+```
+
+`operation_type` 表示该模型在公共入口中的真实操作类型。常见值：
+
+| operation_type | 说明 |
+|---|---|
+| `chat` | 文本/多模态对话 |
+| `chat_audio` | OpenAI Chat Completions 音频对话，音频通常在 `choices[0].message.audio.data` |
+| `audio_tts` | 文本转语音 |
+| `audio_transcription` | 音频转写 |
+| `audio_translation` | 音频翻译 |
+| `image_generation` | 图像生成 |
+| `video_generation` | 视频生成，通常为异步任务 |
+| `voice_management` | 音色创建/查询，不是普通语音合成 |
+| `voice_catalog` | 音色列表查询 |
+
+外部调用方不要只按 `model_type` 固定选择请求格式。比如 `model_type=audio` 可能是 `/v1/audio/speech`，也可能是 `/v1/chat/completions` 的音频对话模型，还可能是可灵音色管理能力。应按 `operation_type`、`request_contract` 和 `response_contract` 决定请求字段和结果解析方式。
+
 ### Anthropic Messages 入口
 
 | 方法 | 路径 | 说明 |

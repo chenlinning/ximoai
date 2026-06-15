@@ -74,6 +74,51 @@ func TestOpenAIGatewayService_ForwardAudioPreservesRequest(t *testing.T) {
 	require.Equal(t, "mp3-bytes", rec.Body.String())
 }
 
+func TestOpenAIGatewayService_ForwardAudioMapsKlingInvalidVoiceToBadRequest(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	body := []byte(`{"model":"kling-audio","input":"hello","voice_id":"bad_voice"}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusTooManyRequests,
+		Header: http.Header{
+			"Content-Type": []string{"application/json"},
+		},
+		Body: io.NopCloser(strings.NewReader(`{"code":400,"message":"Voice id not found"}`)),
+	}}
+	svc := &OpenAIGatewayService{
+		cfg:          &config.Config{},
+		httpUpstream: upstream,
+	}
+	account := &Account{
+		ID:       78,
+		Name:     "kling",
+		Platform: PlatformKlingAudio,
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":  "sk-kling",
+			"base_url": "https://api.kling.test",
+		},
+	}
+
+	result, err := svc.ForwardAudio(context.Background(), c, account, body, &OpenAIAudioRequest{
+		Endpoint:    "/v1/audio/speech",
+		ContentType: "application/json",
+		Model:       "kling-audio",
+		Body:        body,
+	}, "")
+
+	require.Error(t, err)
+	require.Nil(t, result)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+	require.Contains(t, rec.Body.String(), "invalid_request_error")
+	require.Contains(t, rec.Body.String(), "Voice id not found")
+}
+
 func TestOpenAIGatewayService_ParseOpenAIAudioRequestMultipartModel(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

@@ -23,6 +23,19 @@ const (
 	defaultKlingVoiceLanguage   = "zh"
 )
 
+var openAIVoiceNames = map[string]struct{}{
+	"alloy":   {},
+	"ash":     {},
+	"ballad":  {},
+	"coral":   {},
+	"echo":    {},
+	"fable":   {},
+	"nova":    {},
+	"onyx":    {},
+	"sage":    {},
+	"shimmer": {},
+}
+
 type providerProtocolRequest struct {
 	Method      string
 	Endpoint    string
@@ -207,7 +220,14 @@ func buildGeminiVideoOperationEndpoint(videoID string) string {
 
 func buildKlingAudioTTSRequest(payload map[string]any) (providerProtocolRequest, error) {
 	text := firstProviderString(payload, "text", "input", "prompt")
-	voiceID := firstProviderString(payload, "voice_id", "voice")
+	voiceID := providerString(payload, "voice_id")
+	if voiceID == "" {
+		voice := providerString(payload, "voice")
+		if isOpenAIVoiceName(voice) {
+			return providerProtocolRequest{}, fmt.Errorf("Kling voice_id is required; %q is an OpenAI voice name and cannot be used as a Kling voice_id", voice)
+		}
+		voiceID = voice
+	}
 	if text == "" {
 		return providerProtocolRequest{}, fmt.Errorf("text is required")
 	}
@@ -225,6 +245,11 @@ func buildKlingAudioTTSRequest(payload map[string]any) (providerProtocolRequest,
 		body["voice_speed"] = value
 	}
 	return jsonProviderRequest(http.MethodPost, "/kling/v1/audio/tts", body)
+}
+
+func isOpenAIVoiceName(voice string) bool {
+	_, ok := openAIVoiceNames[strings.ToLower(strings.TrimSpace(voice))]
+	return ok
 }
 
 func buildKlingCustomVoicesRequest(payload map[string]any) (providerProtocolRequest, error) {
