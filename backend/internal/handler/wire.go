@@ -41,6 +41,7 @@ func ProvideAdminHandlers(
 	affiliateHandler *admin.AffiliateHandler,
 	platformHandler *admin.PlatformHandler,
 	complianceHandler *admin.ComplianceHandler,
+	membershipHandler *admin.MembershipHandler,
 ) *AdminHandlers {
 	return &AdminHandlers{
 		Dashboard:              dashboardHandler,
@@ -75,6 +76,7 @@ func ProvideAdminHandlers(
 		Affiliate:              affiliateHandler,
 		Platform:               platformHandler,
 		Compliance:             complianceHandler,
+		Membership:             membershipHandler,
 	}
 }
 
@@ -115,9 +117,11 @@ func ProvideHandlers(
 	paymentHandler *PaymentHandler,
 	paymentWebhookHandler *PaymentWebhookHandler,
 	availableChannelHandler *AvailableChannelHandler,
+	membershipHandler *MembershipHandler,
 	platformHandler *admin.PlatformHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
+	_ *service.MembershipExpiryService,
 ) *Handlers {
 	return &Handlers{
 		Auth:             authHandler,
@@ -136,6 +140,7 @@ func ProvideHandlers(
 		Payment:          paymentHandler,
 		PaymentWebhook:   paymentWebhookHandler,
 		AvailableChannel: availableChannelHandler,
+		Membership:       membershipHandler,
 		Platform:         platformHandler,
 	}
 }
@@ -158,6 +163,7 @@ var ProviderSet = wire.NewSet(
 	NewPaymentHandler,
 	NewPaymentWebhookHandler,
 	NewAvailableChannelHandler,
+	NewMembershipHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,
@@ -192,6 +198,7 @@ var ProviderSet = wire.NewSet(
 	admin.NewAffiliateHandler,
 	admin.NewPlatformHandler,
 	admin.NewComplianceHandler,
+	admin.NewMembershipHandler,
 
 	// AdminHandlers and Handlers constructors
 	ProvideAdminHandlers,

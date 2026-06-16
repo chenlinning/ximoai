@@ -1076,7 +1076,7 @@ func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *servic
 				RequestContract:      meta.RequestContract,
 				ResponseContract:     meta.ResponseContract,
 				Group:                group,
-				Pricing:              toUserPricing(detail.Pricing),
+				Pricing:              toUserPricing(scalePricingForModelList(detail.Pricing, group)),
 			},
 		})
 	}
@@ -1107,6 +1107,44 @@ func modelListEntryProtocolGroupFromAPIKey(ctx context.Context, gatewaySvc *serv
 		RateMultiplier:          group.RateMultiplier,
 		EffectiveRateMultiplier: effectiveRate,
 	}
+}
+
+func scalePricingForModelList(p *service.ChannelModelPricing, group *modelListEntryProtocolGroup) *service.ChannelModelPricing {
+	if p == nil {
+		return nil
+	}
+	rate := 1.0
+	if group != nil && group.EffectiveRateMultiplier > 0 {
+		rate = group.EffectiveRateMultiplier
+	}
+	if rate == 1 {
+		cp := p.Clone()
+		return &cp
+	}
+
+	cp := p.Clone()
+	scaleFloatPtr := func(v **float64) {
+		if v == nil || *v == nil {
+			return
+		}
+		scaled := **v * rate
+		*v = &scaled
+	}
+
+	scaleFloatPtr(&cp.InputPrice)
+	scaleFloatPtr(&cp.OutputPrice)
+	scaleFloatPtr(&cp.CacheWritePrice)
+	scaleFloatPtr(&cp.CacheReadPrice)
+	scaleFloatPtr(&cp.ImageOutputPrice)
+	scaleFloatPtr(&cp.PerRequestPrice)
+	for i := range cp.Intervals {
+		scaleFloatPtr(&cp.Intervals[i].InputPrice)
+		scaleFloatPtr(&cp.Intervals[i].OutputPrice)
+		scaleFloatPtr(&cp.Intervals[i].CacheWritePrice)
+		scaleFloatPtr(&cp.Intervals[i].CacheReadPrice)
+		scaleFloatPtr(&cp.Intervals[i].PerRequestPrice)
+	}
+	return &cp
 }
 
 type publicEntryMetadata struct {

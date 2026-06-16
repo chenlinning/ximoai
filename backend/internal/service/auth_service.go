@@ -75,6 +75,7 @@ type AuthService struct {
 	affiliateService      *AffiliateService
 	defaultSubAssigner    DefaultSubscriptionAssigner
 	userPlatformQuotaRepo UserPlatformQuotaRepository
+	membershipBootstrap   MembershipBootstrapper
 }
 
 type DefaultSubscriptionAssigner interface {
@@ -119,6 +120,10 @@ func NewAuthService(
 		defaultSubAssigner:    defaultSubAssigner,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 	}
+}
+
+func (s *AuthService) SetMembershipBootstrapper(bootstrapper MembershipBootstrapper) {
+	s.membershipBootstrap = bootstrapper
 }
 
 func (s *AuthService) EntClient() *dbent.Client {
@@ -862,6 +867,11 @@ func (s *AuthService) postAuthUserBootstrap(ctx context.Context, user *User, sig
 		signupSource = "email"
 	}
 	s.updateUserSignupSource(ctx, user.ID, signupSource)
+	if s.membershipBootstrap != nil {
+		if err := s.membershipBootstrap.AssignDefaultMembership(ctx, user.ID); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to assign default membership: user_id=%d err=%v", user.ID, err)
+		}
+	}
 
 	if touchLogin {
 		s.touchUserLogin(ctx, user.ID)

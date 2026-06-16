@@ -550,6 +550,37 @@ func ProvideAPIKeyService(
 	return svc
 }
 
+// ProvideMembershipService wires membership hooks into auth/admin/key services.
+func ProvideMembershipService(
+	repo MembershipRepository,
+	userRepo UserRepository,
+	groupRepo GroupRepository,
+	userGroupRateRepo UserGroupRateRepository,
+	apiKeyService *APIKeyService,
+	authService *AuthService,
+	adminService AdminService,
+) *MembershipService {
+	svc := NewMembershipService(repo, userRepo, groupRepo, userGroupRateRepo, apiKeyService)
+	if apiKeyService != nil {
+		apiKeyService.SetManagedAPIKeyPolicy(svc)
+	}
+	if authService != nil {
+		authService.SetMembershipBootstrapper(svc)
+	}
+	if hook, ok := adminService.(interface {
+		SetMembershipService(MembershipBootstrapper, MembershipGroupRateSyncer)
+	}); ok {
+		hook.SetMembershipService(svc, svc)
+	}
+	return svc
+}
+
+func ProvideMembershipExpiryService(membershipService *MembershipService) *MembershipExpiryService {
+	svc := NewMembershipExpiryService(membershipService, time.Hour)
+	svc.Start()
+	return svc
+}
+
 // ProviderSet is the Wire provider set for all services
 var ProviderSet = wire.NewSet(
 	// Core services
@@ -557,6 +588,8 @@ var ProviderSet = wire.NewSet(
 	NewUserService,
 	ProvideAPIKeyService,
 	ProvideAPIKeyAuthCacheInvalidator,
+	ProvideMembershipService,
+	ProvideMembershipExpiryService,
 	NewGroupService,
 	NewAccountService,
 	NewProxyService,

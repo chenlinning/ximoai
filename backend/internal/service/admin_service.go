@@ -558,10 +558,21 @@ type adminServiceImpl struct {
 	privacyClientFactory PrivacyClientFactory
 	platformService      *PlatformService
 	runtimeBlocker       AccountRuntimeBlocker
+	membershipBootstrap  MembershipBootstrapper
+	membershipRateSyncer MembershipGroupRateSyncer
 }
 
 type userGroupRateBatchReader interface {
 	GetByUserIDs(ctx context.Context, userIDs []int64) (map[int64]map[int64]float64, error)
+}
+
+type MembershipGroupRateSyncer interface {
+	SyncGroupRate(ctx context.Context, groupID int64) error
+}
+
+func (s *adminServiceImpl) SetMembershipService(bootstrapper MembershipBootstrapper, rateSyncer MembershipGroupRateSyncer) {
+	s.membershipBootstrap = bootstrapper
+	s.membershipRateSyncer = rateSyncer
 }
 
 // NewAdminService creates a new AdminService
@@ -722,6 +733,11 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 		return nil, err
 	}
 	s.assignDefaultSubscriptions(ctx, user.ID)
+	if s.membershipBootstrap != nil {
+		if err := s.membershipBootstrap.AssignDefaultMembership(ctx, user.ID); err != nil {
+			logger.LegacyPrintf("service.admin", "failed to assign default membership: user_id=%d err=%v", user.ID, err)
+		}
+	}
 	return user, nil
 }
 
@@ -2176,6 +2192,11 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
+	}
+	if input.RateMultiplier != nil && s.membershipRateSyncer != nil {
+		if err := s.membershipRateSyncer.SyncGroupRate(ctx, id); err != nil {
+			logger.LegacyPrintf("service.admin", "failed to sync membership group rate: group_id=%d err=%v", id, err)
+		}
 	}
 
 	// 如果指定了复制账号的源分组，同步绑定（替换当前分组的账号）

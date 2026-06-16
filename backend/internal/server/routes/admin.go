@@ -29,6 +29,9 @@ func RegisterAdminRoutes(
 		// 用户管理
 		registerUserManagementRoutes(admin, h)
 
+		// 会员等级管理
+		registerMembershipRoutes(admin, h)
+
 		// 分组管理
 		registerGroupRoutes(admin, h)
 
@@ -255,6 +258,7 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		users.GET("/:id/usage", h.Admin.User.GetUserUsage)
 		users.GET("/:id/balance-history", h.Admin.User.GetBalanceHistory)
 		users.POST("/:id/replace-group", h.Admin.User.ReplaceGroup)
+		users.POST("/:id/membership", h.Admin.Membership.AssignUser)
 		users.GET("/:id/rpm-status", h.Admin.User.GetUserRPMStatus)
 		users.POST("/batch-concurrency", h.Admin.User.BatchUpdateConcurrency)
 		users.GET("/:id/platform-quotas", h.Admin.User.GetUserPlatformQuotas)
@@ -264,6 +268,18 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		// User attribute values
 		users.GET("/:id/attributes", h.Admin.UserAttribute.GetUserAttributes)
 		users.PUT("/:id/attributes", h.Admin.UserAttribute.UpdateUserAttributes)
+	}
+}
+
+func registerMembershipRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	memberships := admin.Group("/memberships")
+	{
+		memberships.GET("", h.Admin.Membership.List)
+		memberships.POST("", h.Admin.Membership.Create)
+		memberships.GET("/:id", h.Admin.Membership.Get)
+		memberships.PUT("/:id", h.Admin.Membership.Update)
+		memberships.DELETE("/:id", h.Admin.Membership.Delete)
+		memberships.POST("/:id/sync", h.Admin.Membership.Sync)
 	}
 }
 

@@ -207,6 +207,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/membership',
+    name: 'Membership',
+    component: () => import('@/views/user/MembershipView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: '会员中心'
+    }
+  },
+  {
     path: '/usage',
     name: 'Usage',
     component: () => import('@/views/user/UsageView.vue'),
@@ -425,6 +435,16 @@ const routes: RouteRecordRaw[] = [
       title: 'Group Management',
       titleKey: 'admin.groups.title',
       descriptionKey: 'admin.groups.description'
+    }
+  },
+  {
+    path: '/admin/memberships',
+    name: 'AdminMemberships',
+    component: () => import('@/views/admin/MembershipsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: '会员管理'
     }
   },
   {
@@ -845,6 +865,7 @@ router.beforeEach(async (to, _from, next) => {
   if (authStore.isSimpleMode) {
     const restrictedPaths = [
       '/admin/groups',
+      '/admin/memberships',
       '/admin/subscriptions',
       '/admin/redeem',
       '/subscriptions',

@@ -87,6 +87,13 @@
           <template #cell-name="{ value, row }">
             <div class="flex items-center gap-1.5">
               <span class="font-medium text-gray-900 dark:text-white">{{ value }}</span>
+              <span
+                v-if="isManagedKey(row.id)"
+                class="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
+                :title="managedKeyReason(row.id)"
+              >
+                会员托管
+              </span>
               <Icon
                 v-if="row.ip_whitelist?.length > 0 || row.ip_blacklist?.length > 0"
                 name="shield"
@@ -331,8 +338,12 @@
               <!-- Toggle Status Button -->
               <button
                 @click="toggleKeyStatus(row)"
+                :disabled="isManagedKeyEnableBlocked(row)"
                 :class="[
                   'flex flex-col items-center gap-0.5 rounded-lg p-1.5 transition-colors',
+                  isManagedKeyEnableBlocked(row)
+                    ? 'cursor-not-allowed opacity-50'
+                    :
                   row.status === 'active'
                     ? 'text-gray-500 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400'
                     : 'text-gray-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400'
@@ -353,7 +364,9 @@
               <!-- Delete Button -->
               <button
                 @click="confirmDelete(row)"
+                :disabled="isManagedKey(row.id)"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                :class="isManagedKey(row.id) ? 'cursor-not-allowed opacity-50' : ''"
               >
                 <Icon name="trash" size="sm" />
                 <span class="text-xs">{{ t('common.delete') }}</span>
@@ -1053,7 +1066,7 @@
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 
 const { t } = useI18n()
-import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
+import { keysAPI, authAPI, usageAPI, userGroupsAPI, membershipAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import DataTable from '@/components/common/DataTable.vue'
@@ -1069,6 +1082,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import GroupBadge from '@/components/common/GroupBadge.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform } from '@/types'
+import type { MembershipSummary } from '@/api/membership'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
@@ -1120,6 +1134,7 @@ const now = ref(new Date())
 let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
 const userGroupRates = ref<Record<number, number>>({})
+const membershipSummary = ref<MembershipSummary | null>(null)
 
 const pagination = ref({
   page: 1,
@@ -1159,6 +1174,33 @@ const selectedKeyForGroup = computed(() => {
   if (groupSelectorKeyId.value === null) return null
   return apiKeys.value.find((k) => k.id === groupSelectorKeyId.value) || null
 })
+
+const managedKeyByApiKeyId = computed(() => {
+  const map = new Map<number, NonNullable<MembershipSummary['managed_keys']>[number]>()
+  for (const managed of membershipSummary.value?.managed_keys || []) {
+    map.set(managed.api_key_id, managed)
+  }
+  return map
+})
+
+const isManagedKey = (apiKeyId: number) => managedKeyByApiKeyId.value.has(apiKeyId)
+
+const managedKeyReason = (apiKeyId: number) => {
+  const managed = managedKeyByApiKeyId.value.get(apiKeyId)
+  if (!managed) return ''
+  const labels: Record<string, string> = {
+    membership_expired: '会员到期后由系统停用',
+    membership_group_removed: '会员等级不再包含该分组',
+    membership_level_disabled: '会员等级已停用',
+    repair_disabled: '系统修复任务停用'
+  }
+  return managed.disabled_reason ? (labels[managed.disabled_reason] || managed.disabled_reason) : '系统托管 Key'
+}
+
+const isManagedKeyEnableBlocked = (key: ApiKey) => {
+  if (!isManagedKey(key.id)) return false
+  return key.status !== 'active'
+}
 
 const setGroupButtonRef = (keyId: number, el: Element | ComponentPublicInstance | null) => {
   if (el instanceof HTMLElement) {
@@ -1359,6 +1401,14 @@ const loadPublicSettings = async () => {
   }
 }
 
+const loadMembershipSummary = async () => {
+  try {
+    membershipSummary.value = await membershipAPI.getCurrent()
+  } catch (error) {
+    console.error('Failed to load membership summary:', error)
+  }
+}
+
 const openUseKeyModal = (key: ApiKey) => {
   selectedKey.value = key
   showUseKeyModal.value = true
@@ -1415,6 +1465,10 @@ const editKey = (key: ApiKey) => {
 
 const toggleKeyStatus = async (key: ApiKey) => {
   const newStatus = key.status === 'active' ? 'inactive' : 'active'
+  if (newStatus === 'active' && isManagedKey(key.id)) {
+    appStore.showError(managedKeyReason(key.id) || '会员托管 Key 不能由用户自行启用')
+    return
+  }
   try {
     await keysAPI.toggleStatus(key.id, newStatus)
     appStore.showSuccess(
@@ -1481,6 +1535,10 @@ const closeGroupSelector = (event: MouseEvent) => {
 }
 
 const confirmDelete = (key: ApiKey) => {
+  if (isManagedKey(key.id)) {
+    appStore.showError('会员托管 Key 不能由用户删除')
+    return
+  }
   selectedKey.value = key
   showDeleteDialog.value = true
 }
@@ -1542,6 +1600,15 @@ const handleSubmit = async () => {
   submitting.value = true
   try {
     if (showEditModal.value && selectedKey.value) {
+      if (
+        isManagedKey(selectedKey.value.id) &&
+        selectedKey.value.status !== 'active' &&
+        formData.value.status === 'active'
+      ) {
+        appStore.showError(managedKeyReason(selectedKey.value.id) || '会员托管 Key 不能由用户自行启用')
+        submitting.value = false
+        return
+      }
       await keysAPI.update(selectedKey.value.id, {
         name: formData.value.name,
         group_id: formData.value.group_id,
@@ -1779,6 +1846,7 @@ onMounted(() => {
   loadGroups()
   loadUserGroupRates()
   loadPublicSettings()
+  loadMembershipSummary()
   document.addEventListener('click', closeGroupSelector)
   resetTimer = setInterval(() => { now.value = new Date() }, 60000)
 })

@@ -629,7 +629,7 @@ func TestGatewayModels_IncludeEntryProtocolsReturnsCompactXimoAIMetadata(t *test
 	pricing, ok := ximoai["pricing"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, string(service.BillingModeImage), pricing["billing_mode"])
-	require.Equal(t, 0.4, pricing["per_request_price"])
+	require.InDelta(t, 0.72, pricing["per_request_price"], 1e-12)
 	require.Nil(t, pricing["input_price"])
 	require.Nil(t, pricing["output_price"])
 }

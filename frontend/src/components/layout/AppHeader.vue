@@ -103,6 +103,14 @@
                   {{ displayName }}
                 </div>
                 <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
+                <div v-if="membershipSummary?.level" class="mt-2 rounded-lg bg-primary-50 px-2.5 py-1.5 text-xs dark:bg-primary-900/20">
+                  <div class="font-medium text-primary-700 dark:text-primary-300">
+                    {{ membershipSummary.level.name }}
+                  </div>
+                  <div class="mt-0.5 text-primary-600/80 dark:text-primary-300/80">
+                    {{ membershipExpiryText }}
+                  </div>
+                </div>
               </div>
 
               <!-- Balance (mobile only) -->
@@ -124,6 +132,11 @@
                 <router-link to="/keys" @click="closeDropdown" class="dropdown-item">
                   <Icon name="key" size="sm" />
                   {{ t('nav.apiKeys') }}
+                </router-link>
+
+                <router-link to="/membership" @click="closeDropdown" class="dropdown-item">
+                  <Icon name="badge" size="sm" />
+                  会员中心
                 </router-link>
 
                 <a
@@ -213,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
@@ -222,6 +235,7 @@ import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
+import { membershipAPI, type MembershipSummary } from '@/api/membership'
 
 const router = useRouter()
 const route = useRoute()
@@ -237,6 +251,7 @@ const dropdownRef = ref<HTMLElement | null>(null)
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => appStore.docUrl)
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
+const membershipSummary = ref<MembershipSummary | null>(null)
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -260,6 +275,11 @@ const userInitials = computed(() => {
 const displayName = computed(() => {
   if (!user.value) return ''
   return user.value.username || user.value.email?.split('@')[0] || ''
+})
+
+const membershipExpiryText = computed(() => {
+  if (!membershipSummary.value?.expires_at) return '长期有效'
+  return `到期：${new Date(membershipSummary.value.expires_at).toLocaleString()}`
 })
 
 const pageTitle = computed(() => {
@@ -294,6 +314,18 @@ function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
 }
 
+async function loadMembershipSummary() {
+  if (!user.value) {
+    membershipSummary.value = null
+    return
+  }
+  try {
+    membershipSummary.value = await membershipAPI.getCurrent()
+  } catch {
+    membershipSummary.value = null
+  }
+}
+
 function closeDropdown() {
   dropdownOpen.value = false
 }
@@ -322,6 +354,11 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  loadMembershipSummary()
+})
+
+watch(() => user.value?.id, () => {
+  loadMembershipSummary()
 })
 
 onBeforeUnmount(() => {

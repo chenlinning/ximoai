@@ -80,6 +80,8 @@ func RegisterUserRoutes(
 
 		registerXimoAIUserRoutes(authenticated, h)
 
+		authenticated.GET("/membership", h.Membership.GetCurrent)
+
 		// 使用记录
 		usage := authenticated.Group("/usage")
 		{

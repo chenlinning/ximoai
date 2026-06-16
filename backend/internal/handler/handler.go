@@ -38,6 +38,7 @@ type AdminHandlers struct {
 	Affiliate              *admin.AffiliateHandler
 	Platform               *admin.PlatformHandler
 	Compliance             *admin.ComplianceHandler
+	Membership             *admin.MembershipHandler
 }
 
 // Handlers contains all HTTP handlers
@@ -59,6 +60,7 @@ type Handlers struct {
 	PaymentWebhook   *PaymentWebhookHandler
 	AvailableChannel *AvailableChannelHandler
 	Platform         *admin.PlatformHandler
+	Membership       *MembershipHandler
 }
 
 // BuildInfo contains build-time information
