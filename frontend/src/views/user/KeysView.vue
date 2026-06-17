@@ -92,7 +92,7 @@
                 class="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-900/20 dark:text-primary-300"
                 :title="managedKeyReason(row.id)"
               >
-                会员托管
+                {{ t('membership.managedBadge') }}
               </span>
               <Icon
                 v-if="row.ip_whitelist?.length > 0 || row.ip_blacklist?.length > 0"
@@ -1188,13 +1188,10 @@ const isManagedKey = (apiKeyId: number) => managedKeyByApiKeyId.value.has(apiKey
 const managedKeyReason = (apiKeyId: number) => {
   const managed = managedKeyByApiKeyId.value.get(apiKeyId)
   if (!managed) return ''
-  const labels: Record<string, string> = {
-    membership_expired: '会员到期后由系统停用',
-    membership_group_removed: '会员等级不再包含该分组',
-    membership_level_disabled: '会员等级已停用',
-    repair_disabled: '系统修复任务停用'
-  }
-  return managed.disabled_reason ? (labels[managed.disabled_reason] || managed.disabled_reason) : '系统托管 Key'
+  if (!managed.disabled_reason) return t('membership.managedKeys')
+  const key = `membership.disabledReasons.${managed.disabled_reason}`
+  const translated = t(key)
+  return translated === key ? managed.disabled_reason : translated
 }
 
 const isManagedKeyEnableBlocked = (key: ApiKey) => {
@@ -1466,7 +1463,7 @@ const editKey = (key: ApiKey) => {
 const toggleKeyStatus = async (key: ApiKey) => {
   const newStatus = key.status === 'active' ? 'inactive' : 'active'
   if (newStatus === 'active' && isManagedKey(key.id)) {
-    appStore.showError(managedKeyReason(key.id) || '会员托管 Key 不能由用户自行启用')
+    appStore.showError(managedKeyReason(key.id) || t('membership.managedEnableBlocked'))
     return
   }
   try {
@@ -1536,7 +1533,7 @@ const closeGroupSelector = (event: MouseEvent) => {
 
 const confirmDelete = (key: ApiKey) => {
   if (isManagedKey(key.id)) {
-    appStore.showError('会员托管 Key 不能由用户删除')
+    appStore.showError(t('membership.managedDeleteBlocked'))
     return
   }
   selectedKey.value = key
@@ -1605,7 +1602,7 @@ const handleSubmit = async () => {
         selectedKey.value.status !== 'active' &&
         formData.value.status === 'active'
       ) {
-        appStore.showError(managedKeyReason(selectedKey.value.id) || '会员托管 Key 不能由用户自行启用')
+        appStore.showError(managedKeyReason(selectedKey.value.id) || t('membership.managedEnableBlocked'))
         submitting.value = false
         return
       }

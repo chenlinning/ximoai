@@ -74,14 +74,27 @@
             class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
             aria-label="User Menu"
           >
-            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm">
-              <img
-                v-if="avatarUrl"
-                :src="avatarUrl"
-                :alt="displayName"
-                class="h-full w-full object-cover"
+            <div class="relative">
+              <div
+                class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm"
+                :style="membershipSummary?.level ? membershipAvatarStyle(currentMembershipColor) : undefined"
               >
-              <span v-else>{{ userInitials }}</span>
+                <img
+                  v-if="avatarUrl"
+                  :src="avatarUrl"
+                  :alt="displayName"
+                  class="h-full w-full object-cover"
+                >
+                <span v-else>{{ userInitials }}</span>
+              </div>
+              <span
+                v-if="membershipSummary?.level"
+                class="absolute -bottom-1 left-1/2 max-w-16 -translate-x-1/2 truncate rounded-[3px] border border-white px-1 py-px text-[9px] font-semibold leading-none shadow-sm dark:border-dark-900"
+                :style="membershipBadgeStyle(currentMembershipColor)"
+                :title="currentMembershipName"
+              >
+                {{ currentMembershipName }}
+              </span>
             </div>
             <div class="hidden text-left md:block">
               <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -103,12 +116,25 @@
                   {{ displayName }}
                 </div>
                 <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
-                <div v-if="membershipSummary?.level" class="mt-2 rounded-lg bg-primary-50 px-2.5 py-1.5 text-xs dark:bg-primary-900/20">
-                  <div class="font-medium text-primary-700 dark:text-primary-300">
-                    {{ membershipSummary.level.name }}
-                  </div>
-                  <div class="mt-0.5 text-primary-600/80 dark:text-primary-300/80">
-                    {{ membershipExpiryText }}
+                <div
+                  v-if="membershipSummary?.level"
+                  class="mt-2 border-l-4 px-2.5 py-2 text-xs"
+                  :style="membershipPanelStyle(currentMembershipColor)"
+                >
+                  <div class="flex items-center gap-2">
+                    <MembershipLevelMark
+                      :code="membershipSummary.level.code"
+                      :color="membershipSummary.level.color"
+                      size="sm"
+                    />
+                    <div class="min-w-0">
+                      <div class="truncate font-medium" :style="{ color: membershipLevelColor }">
+                        {{ currentMembershipName }}
+                      </div>
+                      <div class="mt-0.5 text-gray-500 dark:text-dark-400">
+                        {{ membershipExpiryText }}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -136,7 +162,7 @@
 
                 <router-link to="/membership" @click="closeDropdown" class="dropdown-item">
                   <Icon name="badge" size="sm" />
-                  会员中心
+                  {{ t('nav.membership') }}
                 </router-link>
 
                 <a
@@ -231,11 +257,22 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
+import { formatDateTime } from '@/utils/format'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
+import MembershipLevelMark from '@/components/membership/MembershipLevelMark.vue'
 import { membershipAPI, type MembershipSummary } from '@/api/membership'
+import { onMembershipUpdated } from '@/utils/membershipEvents'
+import {
+  membershipAvatarStyle,
+  membershipBadgeStyle,
+  membershipLevelColor as fixedMembershipLevelColor,
+  membershipLevelDisplayName,
+  membershipPanelStyle,
+  normalizeMembershipColor
+} from '@/utils/membershipStyle'
 
 const router = useRouter()
 const route = useRoute()
@@ -248,10 +285,21 @@ const onboardingStore = useOnboardingStore()
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
+let stopMembershipUpdatedListener: (() => void) | null = null
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => appStore.docUrl)
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
 const membershipSummary = ref<MembershipSummary | null>(null)
+const currentMembershipColor = computed(() => fixedMembershipLevelColor(
+  membershipSummary.value?.level?.code,
+  membershipSummary.value?.level?.color
+))
+const membershipLevelColor = computed(() => normalizeMembershipColor(currentMembershipColor.value))
+const currentMembershipName = computed(() =>
+  membershipSummary.value?.level
+    ? membershipLevelDisplayName(membershipSummary.value.level.code, membershipSummary.value.level.name)
+    : ''
+)
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -278,8 +326,8 @@ const displayName = computed(() => {
 })
 
 const membershipExpiryText = computed(() => {
-  if (!membershipSummary.value?.expires_at) return '长期有效'
-  return `到期：${new Date(membershipSummary.value.expires_at).toLocaleString()}`
+  if (!membershipSummary.value?.expires_at) return t('membership.longTerm')
+  return t('membership.expiresAtInline', { time: formatDateTime(membershipSummary.value.expires_at) })
 })
 
 const pageTitle = computed(() => {
@@ -354,6 +402,7 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  stopMembershipUpdatedListener = onMembershipUpdated(loadMembershipSummary)
   loadMembershipSummary()
 })
 
@@ -363,6 +412,8 @@ watch(() => user.value?.id, () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  stopMembershipUpdatedListener?.()
+  stopMembershipUpdatedListener = null
 })
 </script>
 

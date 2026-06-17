@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/Wei-Shaw/sub2api/internal/handler/membershipview"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -25,5 +26,5 @@ func (h *MembershipHandler) GetCurrent(c *gin.Context) {
 	if response.ErrorFrom(c, err) {
 		return
 	}
-	response.Success(c, summary)
+	response.Success(c, membershipview.SummaryFromService(summary))
 }

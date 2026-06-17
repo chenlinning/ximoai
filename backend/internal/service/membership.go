@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
@@ -28,20 +30,27 @@ const (
 	ManagedKeyDisabledGroupRemoved      = "membership_group_removed"
 	ManagedKeyDisabledLevelDisabled     = "membership_level_disabled"
 	ManagedKeyDisabledRepairDisabled    = "repair_disabled"
+
+	defaultMembershipLevelColor = "#a15a2b"
 )
 
 var (
 	ErrMembershipLevelNotFound      = infraerrors.NotFound("MEMBERSHIP_LEVEL_NOT_FOUND", "membership level not found")
 	ErrMembershipDefaultNotFound    = infraerrors.NotFound("MEMBERSHIP_DEFAULT_NOT_FOUND", "default membership level not found")
 	ErrMembershipInvalidDiscount    = infraerrors.BadRequest("MEMBERSHIP_INVALID_DISCOUNT", "discount_rate must be >= 0")
+	ErrMembershipInvalidColor       = infraerrors.BadRequest("MEMBERSHIP_INVALID_COLOR", "color must be a valid hex color")
+	ErrMembershipFixedLevelsOnly    = infraerrors.BadRequest("MEMBERSHIP_FIXED_LEVELS_ONLY", "membership levels are fixed")
 	ErrMembershipManagedKeyDeletion = infraerrors.Forbidden("MEMBERSHIP_MANAGED_KEY_DELETE_FORBIDDEN", "membership managed api key cannot be deleted")
 	ErrMembershipManagedKeyEnable   = infraerrors.Forbidden("MEMBERSHIP_MANAGED_KEY_ENABLE_FORBIDDEN", "membership managed api key cannot be enabled by user")
 )
+
+var membershipLevelColorPattern = regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
 
 type MembershipLevel struct {
 	ID           int64     `json:"id"`
 	Name         string    `json:"name"`
 	Code         string    `json:"code"`
+	Color        string    `json:"color"`
 	DiscountRate float64   `json:"discount_rate"`
 	Enabled      bool      `json:"enabled"`
 	IsDefault    bool      `json:"is_default"`
@@ -65,6 +74,20 @@ type UserMembership struct {
 	Level             *MembershipLevel
 }
 
+type MembershipAssignment struct {
+	ID                int64
+	UserID            int64
+	MembershipLevelID int64
+	StartsAt          time.Time
+	ExpiresAt         *time.Time
+	Status            string
+	Source            string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	Level             *MembershipLevel
+	User              *User
+}
+
 type MembershipManagedKey struct {
 	ID                int64     `json:"id"`
 	UserID            int64     `json:"user_id"`
@@ -83,6 +106,7 @@ type MembershipSummary struct {
 	Level       *MembershipLevel       `json:"level"`
 	StartsAt    time.Time              `json:"starts_at"`
 	ExpiresAt   *time.Time             `json:"expires_at"`
+	Levels      []MembershipLevel      `json:"levels"`
 	Groups      []Group                `json:"groups"`
 	ManagedKeys []MembershipManagedKey `json:"managed_keys"`
 }
@@ -90,6 +114,7 @@ type MembershipSummary struct {
 type MembershipLevelInput struct {
 	Name         string
 	Code         string
+	Color        string
 	DiscountRate float64
 	Enabled      bool
 	IsDefault    bool
@@ -120,6 +145,7 @@ type MembershipRepository interface {
 	ListUserMembershipsByLevel(ctx context.Context, levelID int64) ([]UserMembership, error)
 	ListExpiredActiveUserMemberships(ctx context.Context, now time.Time, limit int) ([]UserMembership, error)
 	ListActiveUserMemberships(ctx context.Context, limit int) ([]UserMembership, error)
+	ListActiveUserMembershipsAfterID(ctx context.Context, afterID int64, limit int) ([]UserMembership, error)
 
 	ListManagedKeysByUser(ctx context.Context, userID int64) ([]MembershipManagedKey, error)
 	GetManagedKeyByUserGroup(ctx context.Context, userID, groupID int64) (*MembershipManagedKey, error)
@@ -168,6 +194,16 @@ func (s *MembershipService) CreateLevel(ctx context.Context, input MembershipLev
 	if input.DiscountRate < 0 {
 		return nil, ErrMembershipInvalidDiscount
 	}
+	def, ok := fixedMembershipLevelByCode(strings.TrimSpace(input.Code))
+	if !ok {
+		return nil, ErrMembershipFixedLevelsOnly
+	}
+	applyFixedMembershipLevelDefinition(&input, def)
+	color, err := normalizeMembershipLevelColor(input.Color)
+	if err != nil {
+		return nil, err
+	}
+	input.Color = color
 	level, err := s.repo.CreateMembershipLevel(ctx, input)
 	if err != nil {
 		return nil, err
@@ -179,6 +215,20 @@ func (s *MembershipService) UpdateLevel(ctx context.Context, id int64, input Mem
 	if input.DiscountRate < 0 {
 		return nil, ErrMembershipInvalidDiscount
 	}
+	existing, err := s.repo.GetMembershipLevel(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	def, ok := fixedMembershipLevelByCode(existing.Code)
+	if !ok {
+		return nil, ErrMembershipFixedLevelsOnly
+	}
+	applyFixedMembershipLevelDefinition(&input, def)
+	color, err := normalizeMembershipLevelColor(input.Color)
+	if err != nil {
+		return nil, err
+	}
+	input.Color = color
 	level, err := s.repo.UpdateMembershipLevel(ctx, id, input)
 	if err != nil {
 		return nil, err
@@ -190,6 +240,13 @@ func (s *MembershipService) UpdateLevel(ctx context.Context, id int64, input Mem
 }
 
 func (s *MembershipService) DisableLevel(ctx context.Context, id int64) error {
+	existing, err := s.repo.GetMembershipLevel(ctx, id)
+	if err != nil {
+		return err
+	}
+	if _, ok := fixedMembershipLevelByCode(existing.Code); ok {
+		return ErrMembershipFixedLevelsOnly
+	}
 	if err := s.repo.DisableMembershipLevel(ctx, id); err != nil {
 		return err
 	}
@@ -242,6 +299,44 @@ func (s *MembershipService) AssignMembership(ctx context.Context, input AssignMe
 	return s.GetUserMembership(ctx, input.UserID)
 }
 
+func (s *MembershipService) ListAssignments(ctx context.Context, limit int) ([]MembershipAssignment, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	memberships, err := s.repo.ListActiveUserMemberships(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	assignments := make([]MembershipAssignment, 0, len(memberships))
+	for _, membership := range memberships {
+		assignment := MembershipAssignment{
+			ID:                membership.ID,
+			UserID:            membership.UserID,
+			MembershipLevelID: membership.MembershipLevelID,
+			StartsAt:          membership.StartsAt,
+			ExpiresAt:         membership.ExpiresAt,
+			Status:            membership.Status,
+			Source:            membership.Source,
+			CreatedAt:         membership.CreatedAt,
+			UpdatedAt:         membership.UpdatedAt,
+		}
+		if level, err := s.repo.GetMembershipLevel(ctx, membership.MembershipLevelID); err == nil {
+			assignment.Level = level
+		} else {
+			logger.LegacyPrintf("service.membership", "load assignment level failed: membership_id=%d level_id=%d err=%v", membership.ID, membership.MembershipLevelID, err)
+		}
+		if s.userRepo != nil {
+			if user, err := s.userRepo.GetByID(ctx, membership.UserID); err == nil {
+				assignment.User = user
+			} else {
+				logger.LegacyPrintf("service.membership", "load assignment user failed: membership_id=%d user_id=%d err=%v", membership.ID, membership.UserID, err)
+			}
+		}
+		assignments = append(assignments, assignment)
+	}
+	return assignments, nil
+}
+
 func (s *MembershipService) GetUserMembership(ctx context.Context, userID int64) (*MembershipSummary, error) {
 	membership, err := s.repo.GetActiveUserMembership(ctx, userID)
 	if err != nil {
@@ -264,8 +359,15 @@ func (s *MembershipService) GetUserMembership(ctx context.Context, userID int64)
 	if err != nil {
 		return nil, err
 	}
+	levels, err := s.repo.ListMembershipLevels(ctx, false)
+	if err != nil {
+		return nil, err
+	}
 	groups := make([]Group, 0, len(level.Groups))
 	groups = append(groups, level.Groups...)
+	if levels == nil {
+		levels = make([]MembershipLevel, 0)
+	}
 	if keys == nil {
 		keys = make([]MembershipManagedKey, 0)
 	}
@@ -273,6 +375,7 @@ func (s *MembershipService) GetUserMembership(ctx context.Context, userID int64)
 		Level:       level,
 		StartsAt:    membership.StartsAt,
 		ExpiresAt:   membership.ExpiresAt,
+		Levels:      levels,
 		Groups:      groups,
 		ManagedKeys: keys,
 	}, nil
@@ -373,32 +476,59 @@ func (s *MembershipService) SyncGroupRate(ctx context.Context, groupID int64) er
 }
 
 func (s *MembershipService) ExpireMemberships(ctx context.Context) error {
-	expired, err := s.repo.ListExpiredActiveUserMemberships(ctx, time.Now(), 500)
-	if err != nil {
-		return err
-	}
-	for _, membership := range expired {
-		if err := s.expireToDefault(ctx, &membership, ManagedKeyDisabledMembershipExpired); err != nil {
-			logger.LegacyPrintf("service.membership", "expire membership failed: user_id=%d membership_id=%d err=%v", membership.UserID, membership.ID, err)
+	const batchSize = 500
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		expired, err := s.repo.ListExpiredActiveUserMemberships(ctx, time.Now(), batchSize)
+		if err != nil {
+			return err
+		}
+		if len(expired) == 0 {
+			return nil
+		}
+		var firstErr error
+		for _, membership := range expired {
+			if err := s.expireToDefault(ctx, &membership, ManagedKeyDisabledMembershipExpired); err != nil {
+				logger.LegacyPrintf("service.membership", "expire membership failed: user_id=%d membership_id=%d err=%v", membership.UserID, membership.ID, err)
+				if firstErr == nil {
+					firstErr = err
+				}
+			}
+		}
+		if firstErr != nil {
+			return firstErr
 		}
 	}
-	return nil
 }
 
 func (s *MembershipService) RepairMembershipState(ctx context.Context) error {
 	if err := s.ExpireMemberships(ctx); err != nil {
 		return err
 	}
-	active, err := s.repo.ListActiveUserMemberships(ctx, 5000)
-	if err != nil {
-		return err
-	}
-	for _, membership := range active {
-		if err := s.SyncUserMembership(ctx, membership.UserID); err != nil {
-			logger.LegacyPrintf("service.membership", "repair membership failed: user_id=%d membership_id=%d err=%v", membership.UserID, membership.ID, err)
+	const batchSize = 5000
+	var afterID int64
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		active, err := s.repo.ListActiveUserMembershipsAfterID(ctx, afterID, batchSize)
+		if err != nil {
+			return err
+		}
+		if len(active) == 0 {
+			return nil
+		}
+		for _, membership := range active {
+			if membership.ID > afterID {
+				afterID = membership.ID
+			}
+			if err := s.SyncUserMembership(ctx, membership.UserID); err != nil {
+				logger.LegacyPrintf("service.membership", "repair membership failed: user_id=%d membership_id=%d err=%v", membership.UserID, membership.ID, err)
+			}
 		}
 	}
-	return nil
 }
 
 func (s *MembershipService) EnsureManagedKey(ctx context.Context, userID, groupID, levelID int64) error {
@@ -411,15 +541,18 @@ func (s *MembershipService) EnsureManagedKey(ctx context.Context, userID, groupI
 	}
 	existing, err := s.repo.GetManagedKeyByUserGroup(ctx, userID, groupID)
 	if err == nil && existing != nil {
-		status := StatusAPIKeyActive
+		if shouldRestoreManagedAPIKey(existing) {
+			status := StatusAPIKeyActive
+			_, err := s.apiKeyService.Update(withManagedAPIKeyBypass(ctx), existing.APIKeyID, userID, UpdateAPIKeyRequest{Status: &status})
+			if err != nil {
+				return fmt.Errorf("restore membership api key: %w", err)
+			}
+			return s.repo.SetManagedKeyStatus(ctx, userID, groupID, ManagedKeyStatusActive, "", levelID)
+		}
 		if existing.APIKey != nil && existing.APIKey.Status == StatusAPIKeyActive {
-			status = existing.APIKey.Status
+			return s.repo.SetManagedKeyStatus(ctx, userID, groupID, ManagedKeyStatusActive, "", levelID)
 		}
-		_, err := s.apiKeyService.Update(withManagedAPIKeyBypass(ctx), existing.APIKeyID, userID, UpdateAPIKeyRequest{Status: &status})
-		if err != nil {
-			return fmt.Errorf("restore membership api key: %w", err)
-		}
-		return s.repo.SetManagedKeyStatus(ctx, userID, groupID, ManagedKeyStatusActive, "", levelID)
+		return s.repo.SetManagedKeyStatus(ctx, userID, groupID, existing.Status, existing.DisabledReason, levelID)
 	}
 	if err != nil && !errors.Is(err, ErrAPIKeyNotFound) {
 		return err
@@ -465,6 +598,28 @@ func (s *MembershipService) DisableManagedKey(ctx context.Context, userID, group
 
 func (s *MembershipService) RestoreManagedKey(ctx context.Context, userID, groupID, levelID int64) error {
 	return s.EnsureManagedKey(ctx, userID, groupID, levelID)
+}
+
+func shouldRestoreManagedAPIKey(key *MembershipManagedKey) bool {
+	if key == nil || key.APIKey == nil {
+		return false
+	}
+	if key.APIKey.Status != StatusAPIKeyDisabled || key.Status != ManagedKeyStatusDisabled {
+		return false
+	}
+	return isMembershipManagedKeyDisabledReason(key.DisabledReason)
+}
+
+func isMembershipManagedKeyDisabledReason(reason string) bool {
+	switch reason {
+	case ManagedKeyDisabledMembershipExpired,
+		ManagedKeyDisabledGroupRemoved,
+		ManagedKeyDisabledLevelDisabled,
+		ManagedKeyDisabledRepairDisabled:
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *MembershipService) GetManagedKeyByAPIKeyID(ctx context.Context, apiKeyID int64) (*MembershipManagedKey, error) {
@@ -516,6 +671,17 @@ func sortMembershipGroups(level *MembershipLevel) {
 		}
 		return level.Groups[i].SortOrder < level.Groups[j].SortOrder
 	})
+}
+
+func normalizeMembershipLevelColor(color string) (string, error) {
+	color = strings.TrimSpace(color)
+	if color == "" {
+		return defaultMembershipLevelColor, nil
+	}
+	if !membershipLevelColorPattern.MatchString(color) {
+		return "", ErrMembershipInvalidColor
+	}
+	return strings.ToLower(color), nil
 }
 
 type managedAPIKeyBypassContextKey struct{}

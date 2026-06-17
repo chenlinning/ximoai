@@ -1,10 +1,15 @@
 import { apiClient } from './client'
-import type { ApiKey, Group } from '@/types'
+import type { Group } from '@/types'
+
+export interface MembershipGroup extends Group {
+  effective_rate_multiplier?: number
+}
 
 export interface MembershipLevel {
   id: number
   name: string
   code: string
+  color: string
   discount_rate: number
   enabled: boolean
   is_default: boolean
@@ -12,7 +17,19 @@ export interface MembershipLevel {
   description: string
   created_at: string
   updated_at: string
-  groups?: Group[]
+  groups?: MembershipGroup[]
+}
+
+export interface MembershipAPIKey {
+  id: number
+  user_id: number
+  key_suffix?: string
+  masked_key?: string
+  name: string
+  status: string
+  group_id?: number | null
+  created_at: string
+  updated_at: string
 }
 
 export interface MembershipManagedKey {
@@ -25,16 +42,38 @@ export interface MembershipManagedKey {
   disabled_reason: string
   created_at: string
   updated_at: string
-  group?: Group
-  api_key?: ApiKey
+  group?: MembershipGroup
+  api_key?: MembershipAPIKey
 }
 
 export interface MembershipSummary {
   level: MembershipLevel | null
   starts_at: string
   expires_at: string | null
-  groups: Group[]
+  levels: MembershipLevel[]
+  groups: MembershipGroup[]
   managed_keys: MembershipManagedKey[]
+}
+
+export interface MembershipAssignmentUser {
+  id: number
+  email: string
+  username: string
+  status: string
+}
+
+export interface MembershipAssignment {
+  id: number
+  user_id: number
+  membership_level_id: number
+  starts_at: string
+  expires_at: string | null
+  status: string
+  source: string
+  created_at: string
+  updated_at: string
+  level?: MembershipLevel
+  user?: MembershipAssignmentUser
 }
 
 export async function getCurrent(): Promise<MembershipSummary> {

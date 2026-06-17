@@ -19,9 +19,36 @@ func NewMembershipRepository(sqlDB *sql.DB) service.MembershipRepository {
 	return &membershipRepository{sql: sqlDB}
 }
 
+func (r *membershipRepository) withTx(ctx context.Context, fn func(sqlExecutor) error) error {
+	beginner, ok := r.sql.(interface {
+		BeginTx(context.Context, *sql.TxOptions) (*sql.Tx, error)
+	})
+	if !ok {
+		return fn(r.sql)
+	}
+	tx, err := beginner.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
 func (r *membershipRepository) ListMembershipLevels(ctx context.Context, includeDisabled bool) ([]service.MembershipLevel, error) {
 	query := `
-		SELECT id, name, code, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at
+		SELECT id, name, code, color, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at
 		FROM membership_levels
 	`
 	var args []any
@@ -50,7 +77,7 @@ func (r *membershipRepository) ListMembershipLevels(ctx context.Context, include
 
 func (r *membershipRepository) GetMembershipLevel(ctx context.Context, id int64) (*service.MembershipLevel, error) {
 	rows, err := r.sql.QueryContext(ctx, `
-		SELECT id, name, code, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at
+		SELECT id, name, code, color, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at
 		FROM membership_levels
 		WHERE id = $1
 	`, id)
@@ -76,7 +103,7 @@ func (r *membershipRepository) GetMembershipLevel(ctx context.Context, id int64)
 
 func (r *membershipRepository) GetDefaultMembershipLevel(ctx context.Context) (*service.MembershipLevel, error) {
 	rows, err := r.sql.QueryContext(ctx, `
-		SELECT id, name, code, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at
+		SELECT id, name, code, color, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at
 		FROM membership_levels
 		WHERE is_default = TRUE AND enabled = TRUE
 		ORDER BY id ASC
@@ -103,52 +130,58 @@ func (r *membershipRepository) GetDefaultMembershipLevel(ctx context.Context) (*
 }
 
 func (r *membershipRepository) CreateMembershipLevel(ctx context.Context, input service.MembershipLevelInput) (*service.MembershipLevel, error) {
-	if input.IsDefault {
-		if _, err := r.sql.ExecContext(ctx, `UPDATE membership_levels SET is_default = FALSE, updated_at = NOW() WHERE is_default = TRUE`); err != nil {
-			return nil, err
-		}
-	}
 	var id int64
-	err := scanSingleRow(ctx, r.sql, `
-		INSERT INTO membership_levels (name, code, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-		RETURNING id
-	`, []any{input.Name, input.Code, input.DiscountRate, input.Enabled, input.IsDefault, input.SortOrder, input.Description}, &id)
+	err := r.withTx(ctx, func(q sqlExecutor) error {
+		if input.IsDefault {
+			if _, err := q.ExecContext(ctx, `UPDATE membership_levels SET is_default = FALSE, updated_at = NOW() WHERE is_default = TRUE`); err != nil {
+				return err
+			}
+		}
+		if err := scanSingleRow(ctx, q, `
+			INSERT INTO membership_levels (name, code, color, discount_rate, enabled, is_default, sort_order, description, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+			RETURNING id
+		`, []any{input.Name, input.Code, input.Color, input.DiscountRate, input.Enabled, input.IsDefault, input.SortOrder, input.Description}, &id); err != nil {
+			return err
+		}
+		return replaceLevelGroups(ctx, q, id, input.GroupIDs)
+	})
 	if err != nil {
-		return nil, err
-	}
-	if err := r.replaceLevelGroups(ctx, id, input.GroupIDs); err != nil {
 		return nil, err
 	}
 	return r.GetMembershipLevel(ctx, id)
 }
 
 func (r *membershipRepository) UpdateMembershipLevel(ctx context.Context, id int64, input service.MembershipLevelInput) (*service.MembershipLevel, error) {
-	if input.IsDefault {
-		if _, err := r.sql.ExecContext(ctx, `UPDATE membership_levels SET is_default = FALSE, updated_at = NOW() WHERE is_default = TRUE AND id <> $1`, id); err != nil {
-			return nil, err
+	err := r.withTx(ctx, func(q sqlExecutor) error {
+		if input.IsDefault {
+			if _, err := q.ExecContext(ctx, `UPDATE membership_levels SET is_default = FALSE, updated_at = NOW() WHERE is_default = TRUE AND id <> $1`, id); err != nil {
+				return err
+			}
 		}
-	}
-	result, err := r.sql.ExecContext(ctx, `
-		UPDATE membership_levels
-		SET name = $2,
-			code = $3,
-			discount_rate = $4,
-			enabled = $5,
-			is_default = $6,
-			sort_order = $7,
-			description = $8,
-			updated_at = NOW()
-		WHERE id = $1
-	`, id, input.Name, input.Code, input.DiscountRate, input.Enabled, input.IsDefault, input.SortOrder, input.Description)
+		result, err := q.ExecContext(ctx, `
+			UPDATE membership_levels
+			SET name = $2,
+				code = $3,
+				color = $4,
+				discount_rate = $5,
+				enabled = $6,
+				is_default = $7,
+				sort_order = $8,
+				description = $9,
+				updated_at = NOW()
+			WHERE id = $1
+		`, id, input.Name, input.Code, input.Color, input.DiscountRate, input.Enabled, input.IsDefault, input.SortOrder, input.Description)
+		if err != nil {
+			return err
+		}
+		affected, _ := result.RowsAffected()
+		if affected == 0 {
+			return service.ErrMembershipLevelNotFound
+		}
+		return replaceLevelGroups(ctx, q, id, input.GroupIDs)
+	})
 	if err != nil {
-		return nil, err
-	}
-	affected, _ := result.RowsAffected()
-	if affected == 0 {
-		return nil, service.ErrMembershipLevelNotFound
-	}
-	if err := r.replaceLevelGroups(ctx, id, input.GroupIDs); err != nil {
 		return nil, err
 	}
 	return r.GetMembershipLevel(ctx, id)
@@ -172,7 +205,7 @@ func (r *membershipRepository) DisableMembershipLevel(ctx context.Context, id in
 
 func (r *membershipRepository) ListMembershipLevelsByGroup(ctx context.Context, groupID int64) ([]service.MembershipLevel, error) {
 	rows, err := r.sql.QueryContext(ctx, `
-		SELECT ml.id, ml.name, ml.code, ml.discount_rate, ml.enabled, ml.is_default, ml.sort_order, ml.description, ml.created_at, ml.updated_at
+		SELECT ml.id, ml.name, ml.code, ml.color, ml.discount_rate, ml.enabled, ml.is_default, ml.sort_order, ml.description, ml.created_at, ml.updated_at
 		FROM membership_levels ml
 		JOIN membership_level_groups mlg ON mlg.membership_level_id = ml.id
 		WHERE mlg.group_id = $1
@@ -286,6 +319,19 @@ func (r *membershipRepository) ListActiveUserMemberships(ctx context.Context, li
 	`, limit)
 }
 
+func (r *membershipRepository) ListActiveUserMembershipsAfterID(ctx context.Context, afterID int64, limit int) ([]service.UserMembership, error) {
+	if limit <= 0 {
+		limit = 5000
+	}
+	return r.listUserMemberships(ctx, `
+		SELECT id, user_id, membership_level_id, starts_at, expires_at, status, source, created_at, updated_at
+		FROM user_memberships
+		WHERE status = 'active' AND id > $1
+		ORDER BY id ASC
+		LIMIT $2
+	`, afterID, limit)
+}
+
 func (r *membershipRepository) ListManagedKeysByUser(ctx context.Context, userID int64) ([]service.MembershipManagedKey, error) {
 	rows, err := r.sql.QueryContext(ctx, managedKeysSelectSQL()+`
 		WHERE mk.user_id = $1
@@ -373,14 +419,14 @@ func (r *membershipRepository) SetManagedKeyStatus(ctx context.Context, userID, 
 	return err
 }
 
-func (r *membershipRepository) replaceLevelGroups(ctx context.Context, levelID int64, groupIDs []int64) error {
-	if _, err := r.sql.ExecContext(ctx, `DELETE FROM membership_level_groups WHERE membership_level_id = $1`, levelID); err != nil {
+func replaceLevelGroups(ctx context.Context, q sqlExecutor, levelID int64, groupIDs []int64) error {
+	if _, err := q.ExecContext(ctx, `DELETE FROM membership_level_groups WHERE membership_level_id = $1`, levelID); err != nil {
 		return err
 	}
 	if len(groupIDs) == 0 {
 		return nil
 	}
-	_, err := r.sql.ExecContext(ctx, `
+	_, err := q.ExecContext(ctx, `
 		INSERT INTO membership_level_groups (membership_level_id, group_id, created_at)
 		SELECT $1, unnest($2::bigint[]), NOW()
 		ON CONFLICT (membership_level_id, group_id) DO NOTHING
@@ -449,6 +495,7 @@ func scanMembershipLevel(rows interface {
 		&level.ID,
 		&level.Name,
 		&level.Code,
+		&level.Color,
 		&level.DiscountRate,
 		&level.Enabled,
 		&level.IsDefault,

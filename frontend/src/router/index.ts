@@ -213,7 +213,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       requiresAdmin: false,
-      title: '会员中心'
+      title: 'Membership',
+      titleKey: 'nav.membership'
     }
   },
   {
@@ -444,7 +445,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       requiresAdmin: true,
-      title: '会员管理'
+      title: 'Membership Management',
+      titleKey: 'nav.membershipManagement'
     }
   },
   {

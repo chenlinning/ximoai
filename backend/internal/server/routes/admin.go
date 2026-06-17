@@ -276,6 +276,7 @@ func registerMembershipRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	{
 		memberships.GET("", h.Admin.Membership.List)
 		memberships.POST("", h.Admin.Membership.Create)
+		memberships.GET("/assignments", h.Admin.Membership.ListAssignments)
 		memberships.GET("/:id", h.Admin.Membership.Get)
 		memberships.PUT("/:id", h.Admin.Membership.Update)
 		memberships.DELETE("/:id", h.Admin.Membership.Delete)

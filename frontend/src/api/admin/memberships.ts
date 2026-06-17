@@ -1,14 +1,8 @@
 import { apiClient } from '../client'
-import type { MembershipLevel, MembershipSummary } from '../membership'
+import type { MembershipAssignment, MembershipLevel, MembershipSummary } from '../membership'
 
 export interface MembershipLevelRequest {
-  name?: string
-  code?: string
   discount_rate?: number
-  enabled?: boolean
-  is_default?: boolean
-  sort_order?: number
-  description?: string
   group_ids?: number[]
 }
 
@@ -40,6 +34,13 @@ export async function update(id: number, payload: MembershipLevelRequest): Promi
   return data
 }
 
+export async function listAssignments(limit = 200): Promise<MembershipAssignment[]> {
+  const { data } = await apiClient.get<MembershipAssignment[]>('/admin/memberships/assignments', {
+    params: { limit }
+  })
+  return data
+}
+
 export async function disable(id: number): Promise<{ message: string }> {
   const { data } = await apiClient.delete<{ message: string }>(`/admin/memberships/${id}`)
   return data
@@ -63,6 +64,7 @@ export const membershipsAPI = {
   getById,
   create,
   update,
+  listAssignments,
   disable,
   sync,
   assignUser

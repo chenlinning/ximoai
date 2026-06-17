@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/handler/membershipview"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
@@ -20,6 +21,7 @@ func NewMembershipHandler(membershipService *service.MembershipService) *Members
 type membershipLevelRequest struct {
 	Name         *string  `json:"name"`
 	Code         *string  `json:"code"`
+	Color        *string  `json:"color"`
 	DiscountRate *float64 `json:"discount_rate"`
 	Enabled      *bool    `json:"enabled"`
 	IsDefault    *bool    `json:"is_default"`
@@ -40,7 +42,7 @@ func (h *MembershipHandler) List(c *gin.Context) {
 	if response.ErrorFrom(c, err) {
 		return
 	}
-	response.Success(c, levels)
+	response.Success(c, membershipview.LevelsFromService(levels))
 }
 
 func (h *MembershipHandler) Get(c *gin.Context) {
@@ -52,7 +54,7 @@ func (h *MembershipHandler) Get(c *gin.Context) {
 	if response.ErrorFrom(c, err) {
 		return
 	}
-	response.Success(c, level)
+	response.Success(c, membershipview.LevelFromService(level))
 }
 
 func (h *MembershipHandler) Create(c *gin.Context) {
@@ -66,7 +68,7 @@ func (h *MembershipHandler) Create(c *gin.Context) {
 	if response.ErrorFrom(c, err) {
 		return
 	}
-	response.Created(c, level)
+	response.Created(c, membershipview.LevelFromService(level))
 }
 
 func (h *MembershipHandler) Update(c *gin.Context) {
@@ -88,7 +90,7 @@ func (h *MembershipHandler) Update(c *gin.Context) {
 	if response.ErrorFrom(c, err) {
 		return
 	}
-	response.Success(c, level)
+	response.Success(c, membershipview.LevelFromService(level))
 }
 
 func (h *MembershipHandler) Delete(c *gin.Context) {
@@ -113,6 +115,26 @@ func (h *MembershipHandler) Sync(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"message": "membership level synced"})
+}
+
+func (h *MembershipHandler) ListAssignments(c *gin.Context) {
+	limit := 200
+	if raw := c.Query("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			response.BadRequest(c, "invalid limit")
+			return
+		}
+		limit = parsed
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+	assignments, err := h.membershipService.ListAssignments(c.Request.Context(), limit)
+	if response.ErrorFrom(c, err) {
+		return
+	}
+	response.Success(c, membershipview.AssignmentsFromService(assignments))
 }
 
 func (h *MembershipHandler) AssignUser(c *gin.Context) {
@@ -144,7 +166,7 @@ func (h *MembershipHandler) AssignUser(c *gin.Context) {
 	if response.ErrorFrom(c, err) {
 		return
 	}
-	response.Success(c, summary)
+	response.Success(c, membershipview.SummaryFromService(summary))
 }
 
 func parseMembershipID(c *gin.Context) (int64, bool) {
@@ -164,6 +186,7 @@ func membershipLevelInputFromRequest(req membershipLevelRequest, existing *servi
 		input = service.MembershipLevelInput{
 			Name:         existing.Name,
 			Code:         existing.Code,
+			Color:        existing.Color,
 			DiscountRate: existing.DiscountRate,
 			Enabled:      existing.Enabled,
 			IsDefault:    existing.IsDefault,
@@ -180,6 +203,9 @@ func membershipLevelInputFromRequest(req membershipLevelRequest, existing *servi
 	}
 	if req.Code != nil {
 		input.Code = *req.Code
+	}
+	if req.Color != nil {
+		input.Color = *req.Color
 	}
 	if req.DiscountRate != nil {
 		input.DiscountRate = *req.DiscountRate

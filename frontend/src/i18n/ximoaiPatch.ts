@@ -2,7 +2,9 @@ type MessageTree = Record<string, any>
 
 const zhPatch: MessageTree = {
   nav: {
-    modelPlaza: '模型广场'
+    modelPlaza: '模型广场',
+    membership: '会员中心',
+    membershipManagement: '会员管理'
   },
   modelPlaza: {
     title: '模型广场',
@@ -34,6 +36,119 @@ const zhPatch: MessageTree = {
     retry: '重试',
     refresh: '刷新',
     loadError: '加载模型广场失败'
+  },
+  membership: {
+    levels: {
+      bronze: '黄铜会员',
+      silver: '白银会员',
+      gold: '黄金会员',
+      platinum: '铂金会员',
+      diamond: '钻石会员'
+    },
+    title: '会员中心',
+    description: '查看当前会员等级、可用分组和系统托管 API Key。',
+    loading: '正在加载会员信息...',
+    currentLevel: '当前会员等级',
+    unassigned: '未绑定会员等级',
+    defaultLevel: '默认等级',
+    discountRate: '折扣倍率',
+    expiresAt: '到期时间',
+    longTerm: '长期有效',
+    benefits: '会员权益',
+    benefitsDescription: '全部会员等级的折扣倍率和专属分组。',
+    current: '当前',
+    exclusiveGroups: '专属分组',
+    exclusiveGroupCount: '{count} 个',
+    noExclusiveGroups: '暂无专属分组',
+    noBenefits: '暂无可展示的会员权益。',
+    availableGroups: '可用分组',
+    publicGroup: '公开分组',
+    groupRate: '分组倍率',
+    effectiveRate: '实际结算倍率',
+    noGroups: '当前会员等级没有配置可用分组。',
+    managedKeys: '系统托管 Key',
+    managedBadge: '会员托管',
+    managedEnableBlocked: '会员托管 Key 不能由用户自行启用',
+    managedDeleteBlocked: '会员托管 Key 不能由用户删除',
+    enabled: '启用',
+    disabled: '停用',
+    groupFallback: '分组 #{id}',
+    noManagedKeys: '暂无系统托管 Key。',
+    loadFailed: '会员信息加载失败',
+    expiresAtInline: '到期：{time}',
+    disabledReasons: {
+      membership_expired: '会员到期',
+      membership_group_removed: '会员等级移除分组',
+      membership_level_disabled: '会员等级停用',
+      repair_disabled: '自动修复停用'
+    }
+  },
+  adminMemberships: {
+    title: '会员等级管理',
+    description: '配置会员等级、折扣倍率、可用分组，并可按用户 ID 分配会员等级。',
+    default: '默认',
+    unconfigured: '未配置',
+    noLevelsTitle: '暂无会员等级',
+    noLevelsDescription: '系统会通过迁移创建黄铜、白银、黄金、铂金、钻石五个固定会员等级。',
+    assignTitle: '分配用户会员等级',
+    assignDescription: '按用户 ID 分配或调整会员等级',
+    userId: '用户 ID',
+    level: '会员等级',
+    selectLevel: '选择会员等级',
+    expiresAt: '到期时间',
+    emptyExpiresAtHint: '留空表示长期有效',
+    assignButton: '分配会员',
+    assignmentsTitle: '已分配会员',
+    assignmentsDescription: '显示当前生效的用户会员等级，便于核对分配结果。',
+    userFallback: '用户 #{id}',
+    levelFallback: '会员等级 #{id}',
+    discount: '折扣',
+    longTerm: '长期有效',
+    editLevelTitle: '编辑会员等级',
+    noAssignmentsTitle: '暂无已分配会员',
+    noAssignmentsDescription: '为用户分配会员等级后，会在这里显示当前生效记录。',
+    configureLevel: '配置会员等级',
+    userRateFormula: '用户专属倍率 = 分组倍率 × 会员折扣',
+    availableGroups: '可用分组',
+    selectedCount: '已选 {count} 个',
+    exclusive: '专属',
+    public: '公开',
+    noSelectableGroups: '暂无可选分组。',
+    cancel: '取消',
+    save: '保存',
+    editUserLevel: '编辑用户会员等级',
+    columns: {
+      name: '会员等级',
+      discountRate: '折扣倍率',
+      groups: '可用分组',
+      sortOrder: '排序',
+      actions: '操作',
+      user: '用户',
+      level: '会员等级',
+      source: '来源',
+      startsAt: '开始时间',
+      expiresAt: '到期时间'
+    },
+    sources: {
+      system: '系统',
+      admin: '管理员',
+      purchase: '购买'
+    },
+    errors: {
+      loadFailed: '会员等级加载失败',
+      missingAssignInput: '请填写用户 ID 并选择会员等级',
+      selectLevel: '请选择会员等级',
+      saveFailed: '会员等级保存失败',
+      syncFailed: '会员等级同步失败',
+      assignFailed: '分配会员失败',
+      updateFailed: '会员等级更新失败'
+    },
+    success: {
+      updated: '会员等级已更新',
+      synced: '会员等级已同步',
+      assigned: '用户会员等级已分配',
+      userUpdated: '用户会员等级已更新'
+    }
   },
   common: {
     apply: '应用',
@@ -131,7 +246,9 @@ const zhPatch: MessageTree = {
 
 const enPatch: MessageTree = {
   nav: {
-    modelPlaza: 'Model Plaza'
+    modelPlaza: 'Model Plaza',
+    membership: 'Membership',
+    membershipManagement: 'Membership Management'
   },
   modelPlaza: {
     title: 'Model Plaza',
@@ -163,6 +280,119 @@ const enPatch: MessageTree = {
     retry: 'Retry',
     refresh: 'Refresh',
     loadError: 'Failed to load model plaza'
+  },
+  membership: {
+    levels: {
+      bronze: 'Brass Member',
+      silver: 'Silver Member',
+      gold: 'Gold Member',
+      platinum: 'Platinum Member',
+      diamond: 'Diamond Member'
+    },
+    title: 'Membership',
+    description: 'View your current membership level, available groups, and system-managed API keys.',
+    loading: 'Loading membership information...',
+    currentLevel: 'Current membership level',
+    unassigned: 'No membership level assigned',
+    defaultLevel: 'Default level',
+    discountRate: 'Discount rate',
+    expiresAt: 'Expires at',
+    longTerm: 'Long-term valid',
+    benefits: 'Membership Benefits',
+    benefitsDescription: 'Discount rates and exclusive groups for all membership levels.',
+    current: 'Current',
+    exclusiveGroups: 'Exclusive Groups',
+    exclusiveGroupCount: '{count}',
+    noExclusiveGroups: 'No exclusive groups',
+    noBenefits: 'No membership benefits to display.',
+    availableGroups: 'Available Groups',
+    publicGroup: 'Public group',
+    groupRate: 'Group rate',
+    effectiveRate: 'Effective billing rate',
+    noGroups: 'No available groups configured for the current membership level.',
+    managedKeys: 'System-Managed Keys',
+    managedBadge: 'Membership Managed',
+    managedEnableBlocked: 'Membership-managed keys cannot be enabled by users',
+    managedDeleteBlocked: 'Membership-managed keys cannot be deleted by users',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    groupFallback: 'Group #{id}',
+    noManagedKeys: 'No system-managed keys.',
+    loadFailed: 'Failed to load membership information',
+    expiresAtInline: 'Expires: {time}',
+    disabledReasons: {
+      membership_expired: 'Membership expired',
+      membership_group_removed: 'Group removed from membership level',
+      membership_level_disabled: 'Membership level disabled',
+      repair_disabled: 'Disabled by automatic repair'
+    }
+  },
+  adminMemberships: {
+    title: 'Membership Level Management',
+    description: 'Configure membership levels, discount rates, and available groups; assign levels by user ID.',
+    default: 'Default',
+    unconfigured: 'Not configured',
+    noLevelsTitle: 'No membership levels',
+    noLevelsDescription: 'Migrations create five fixed levels: Brass, Silver, Gold, Platinum, and Diamond.',
+    assignTitle: 'Assign User Membership',
+    assignDescription: 'Assign or update a membership level by user ID',
+    userId: 'User ID',
+    level: 'Membership Level',
+    selectLevel: 'Select membership level',
+    expiresAt: 'Expires at',
+    emptyExpiresAtHint: 'Leave empty for long-term validity',
+    assignButton: 'Assign Membership',
+    assignmentsTitle: 'Assigned Members',
+    assignmentsDescription: 'Shows active user membership assignments for verification.',
+    userFallback: 'User #{id}',
+    levelFallback: 'Membership level #{id}',
+    discount: 'Discount',
+    longTerm: 'Long-term valid',
+    editLevelTitle: 'Edit membership level',
+    noAssignmentsTitle: 'No assigned members',
+    noAssignmentsDescription: 'Active assignments will appear here after assigning membership levels to users.',
+    configureLevel: 'Configure Membership Level',
+    userRateFormula: 'User-specific rate = group rate × membership discount',
+    availableGroups: 'Available Groups',
+    selectedCount: '{count} selected',
+    exclusive: 'Exclusive',
+    public: 'Public',
+    noSelectableGroups: 'No selectable groups.',
+    cancel: 'Cancel',
+    save: 'Save',
+    editUserLevel: 'Edit User Membership',
+    columns: {
+      name: 'Membership Level',
+      discountRate: 'Discount Rate',
+      groups: 'Available Groups',
+      sortOrder: 'Sort',
+      actions: 'Actions',
+      user: 'User',
+      level: 'Membership Level',
+      source: 'Source',
+      startsAt: 'Starts At',
+      expiresAt: 'Expires At'
+    },
+    sources: {
+      system: 'System',
+      admin: 'Admin',
+      purchase: 'Purchase'
+    },
+    errors: {
+      loadFailed: 'Failed to load membership levels',
+      missingAssignInput: 'Enter a user ID and select a membership level',
+      selectLevel: 'Select a membership level',
+      saveFailed: 'Failed to save membership level',
+      syncFailed: 'Failed to sync membership level',
+      assignFailed: 'Failed to assign membership',
+      updateFailed: 'Failed to update membership level'
+    },
+    success: {
+      updated: 'Membership level updated',
+      synced: 'Membership level synced',
+      assigned: 'User membership assigned',
+      userUpdated: 'User membership updated'
+    }
   },
   common: {
     apply: 'Apply',
