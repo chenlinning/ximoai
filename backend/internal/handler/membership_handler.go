@@ -28,3 +28,16 @@ func (h *MembershipHandler) GetCurrent(c *gin.Context) {
 	}
 	response.Success(c, membershipview.SummaryFromService(summary))
 }
+
+func (h *MembershipHandler) GetExternalProfile(c *gin.Context) {
+	subject, ok := middleware2.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	summary, err := h.membershipService.GetUserMembership(c.Request.Context(), subject.UserID)
+	if response.ErrorFrom(c, err) {
+		return
+	}
+	response.Success(c, membershipview.ExternalProfileFromService(subject.UserID, summary))
+}

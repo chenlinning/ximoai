@@ -230,6 +230,107 @@ TOTP：
 | `POST` | `/api/v1/user/totp/enable` |
 | `POST` | `/api/v1/user/totp/disable` |
 
+### 子网站登录会员资料
+
+该接口用于子网站在用户完成本站登录后，读取当前登录用户的会员系统信息、可用分组和系统托管 API Key。它不接受 `user_id` 参数，只返回 JWT 所属用户的数据。
+
+| 方法 | 路径 | 鉴权 | 返回 |
+|---|---|---|---|
+| `GET` | `/api/v1/membership/external-profile` | 用户 JWT | `ExternalMembershipProfile` |
+
+请求示例：
+
+```http
+GET /api/v1/membership/external-profile HTTP/1.1
+Host: ximoai.cn
+Authorization: Bearer <jwt_access_token>
+```
+
+返回示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "reason": "",
+  "metadata": {},
+  "data": {
+    "user_id": 123,
+    "membership": {
+      "level": {
+        "id": 5,
+        "name": "钻石会员",
+        "code": "diamond",
+        "color": "#0099ff",
+        "discount_rate": 0.8,
+        "enabled": true,
+        "is_default": false,
+        "sort_order": 4,
+        "description": "",
+        "groups": []
+      },
+      "starts_at": "2026-06-18T00:00:00Z",
+      "expires_at": null,
+      "levels": [],
+      "groups": [
+        {
+          "id": 8,
+          "name": "codex自用",
+          "platform": "openai",
+          "rate_multiplier": 1,
+          "effective_rate_multiplier": 0.8,
+          "is_exclusive": true,
+          "status": "active",
+          "subscription_type": "standard"
+        }
+      ],
+      "managed_keys": [
+        {
+          "id": 1,
+          "user_id": 123,
+          "group_id": 8,
+          "api_key_id": 99,
+          "membership_level_id": 5,
+          "status": "active",
+          "disabled_reason": "",
+          "group": {},
+          "api_key": {
+            "id": 99,
+            "user_id": 123,
+            "key": "sk-full-managed-key",
+            "key_suffix": "d-key",
+            "masked_key": "sk-...d-key",
+            "name": "Membership Key - codex自用",
+            "status": "active",
+            "group_id": 8
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+字段说明：
+
+```text
+data.user_id: 当前 JWT 所属用户 ID
+data.membership.level: 当前会员等级
+data.membership.levels: 全部可展示会员等级及权益
+data.membership.groups: 当前会员等级可用分组；effective_rate_multiplier 为分组倍率与会员折扣后的实际结算倍率
+data.membership.managed_keys: 系统为该会员等级托管的 API Key 列表
+data.membership.managed_keys[].api_key.key: 完整 API Key，供子网站代表当前用户调用协议网关
+data.membership.managed_keys[].api_key.masked_key: 脱敏 Key，仅供展示
+```
+
+安全约定：
+
+```text
+该接口返回完整托管 API Key，只应由可信子网站服务端调用或在受控前端场景中使用。
+不要把返回结果写入公开日志、浏览器长期存储或第三方分析系统。
+会员中心展示接口 /api/v1/membership 仍只返回 masked_key/key_suffix，不返回完整 key。
+```
+
 ### 用户 API Key
 
 | 方法 | 路径 |

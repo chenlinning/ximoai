@@ -87,3 +87,37 @@ func TestSummaryFromServiceUsesFrontendFieldNamesAndEffectiveRates(t *testing.T)
 	require.Equal(t, "sk-...value", apiKey["masked_key"])
 	require.NotContains(t, string(body), "sk-membership-secret-value")
 }
+
+func TestExternalProfileFromServiceIncludesManagedAPIKey(t *testing.T) {
+	profile := ExternalProfileFromService(123, &service.MembershipSummary{
+		Level: &service.MembershipLevel{
+			ID:           10,
+			Name:         "VIP",
+			Code:         "vip",
+			DiscountRate: 0.8,
+		},
+		ManagedKeys: []service.MembershipManagedKey{
+			{
+				APIKey: &service.APIKey{
+					ID:  40,
+					Key: "sk-external-profile-secret",
+				},
+			},
+		},
+	})
+
+	body, err := json.Marshal(profile)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(body, &payload))
+	membership := payload["membership"].(map[string]any)
+	managedKeys := membership["managed_keys"].([]any)
+	managedKey := managedKeys[0].(map[string]any)
+	apiKey := managedKey["api_key"].(map[string]any)
+
+	require.Equal(t, float64(123), payload["user_id"])
+	require.Equal(t, "VIP", membership["level"].(map[string]any)["name"])
+	require.Equal(t, "sk-external-profile-secret", apiKey["key"])
+	require.Equal(t, "sk-...ecret", apiKey["masked_key"])
+}
