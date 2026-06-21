@@ -34,6 +34,7 @@ import riskControlAPI from './riskControl'
 import platformsAPI from './platforms'
 import adminComplianceAPI from './compliance'
 import membershipsAPI from './memberships'
+import ximodeskUpdateAPI from './ximodeskUpdate'
 
 /**
  * Unified admin API object for convenient access
@@ -69,7 +70,8 @@ export const adminAPI = {
   riskControl: riskControlAPI,
   platforms: platformsAPI,
   compliance: adminComplianceAPI,
-  memberships: membershipsAPI
+  memberships: membershipsAPI,
+  ximodeskUpdate: ximodeskUpdateAPI
 }
 
 export {
@@ -103,7 +105,8 @@ export {
   riskControlAPI,
   platformsAPI,
   adminComplianceAPI,
-  membershipsAPI
+  membershipsAPI,
+  ximodeskUpdateAPI
 }
 
 export default adminAPI

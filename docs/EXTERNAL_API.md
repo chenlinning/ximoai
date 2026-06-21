@@ -1,5 +1,174 @@
 # XimoAi External API Reference
 
+## XimoAPP Update Source API
+
+This update source is used by XimoDesk, mobile apps, and future Ximo clients. The website provides release metadata, generated package download URLs, and `sha256`; the client remains responsible for version comparison, prompting, downloading, checksum verification, and installation.
+
+Base URL:
+
+```text
+https://ximoai.cn
+```
+
+Endpoint:
+
+```http
+POST /api/ximoapp/:appKey/version/latest
+Content-Type: application/json
+```
+
+This endpoint returns raw update metadata, not the normal `{code,message,data}` REST envelope.
+
+Request example:
+
+```json
+{
+  "app_key": "ximo-mobile",
+  "version": "1.0.0",
+  "version_code": 100,
+  "platform": "android",
+  "os_version": "14",
+  "arch": "aarch64",
+  "channel": "stable",
+  "locale": "zh-CN",
+  "device_id": []
+}
+```
+
+Successful response:
+
+```json
+{
+  "app_key": "ximo-mobile",
+  "version": "2.0.0",
+  "version_code": 200,
+  "min_supported_version": "1.5.0",
+  "min_supported_version_code": 150,
+  "download_url": "https://ximoai.cn/downloads/ximoapp/XimoAPP-ximo-mobile-2.0.0-android-universal-all.apk",
+  "notes": "Fix startup stability",
+  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "force": false,
+  "package_type": "apk",
+  "file_size": 12345678,
+  "published_at": "2026-06-21T00:00:00Z"
+}
+```
+
+XimoDesk clients use `ximodesk` as the path `appKey`:
+
+```http
+POST /api/ximoapp/ximodesk/version/latest
+Content-Type: application/json
+```
+
+XimoDesk request example:
+
+```json
+{
+  "app": "XimoDesk",
+  "typ": "ximodesk-client",
+  "version": "1.0.0",
+  "os": "windows",
+  "os_version": "10/11",
+  "arch": "x86_64",
+  "channel": "stable",
+  "locale": "zh-CN",
+  "device_id": []
+}
+```
+
+XimoDesk response example:
+
+```json
+{
+  "version": "1.0.1",
+  "app_key": "ximodesk",
+  "download_url": "https://ximoai.cn/downloads/ximoapp/XimoAPP-ximodesk-1.0.1-windows-x86_64-zh-cn.msi",
+  "notes": "Fix connection stability and UI display",
+  "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "force": false
+}
+```
+
+No matching release, disabled update source, disabled app, or unsupported client:
+
+```http
+204 No Content
+```
+
+Matching fields:
+
+| Field | Supported values |
+| --- | --- |
+| `appKey` path parameter | Lowercase app key, for example `ximodesk`, `ximo-mobile`, `ximodesk-desktop` |
+| `app_key` body field | Optional fallback app key for generic endpoint |
+| `app` + `typ` | Optional client metadata. XimoDesk may send `XimoDesk` + `ximodesk-client`. |
+| `channel` | `stable`, `beta` |
+| `os` / `platform` | `windows`, `macos`, `linux`, `android`, `ios` |
+| `arch` | `x86_64`, `aarch64`, `universal` |
+| `locale` / `language` | Optional language tag, for example `zh-CN`, `en-US`, or `all` |
+
+`amd64` and `x64` are normalized to `x86_64`; `arm64` is normalized to `aarch64`; empty arch is normalized to `universal`. A `universal` release can match any requested architecture.
+
+Admin endpoints require administrator JWT authentication:
+
+```http
+Authorization: Bearer <jwt_access_token>
+```
+
+Admin endpoints:
+
+```http
+GET    /api/v1/admin/ximoapp/update
+PUT    /api/v1/admin/ximoapp/update
+POST   /api/v1/admin/ximoapp/update/packages
+DELETE /api/v1/admin/ximoapp/update/releases/:id
+```
+
+Multipart upload fields:
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `file` | Yes | Package file, supported extensions: `.msi`, `.zip`, `.exe`, `.dmg`, `.pkg`, `.apk`, `.aab`, `.ipa` |
+| `app_key` | No | App key, default `ximodesk` |
+| `version` | Yes | Release version, for example `1.0.1` |
+| `version_code` | No | Numeric build/version code, useful for mobile clients |
+| `min_supported_version` | No | Lowest version allowed to keep using the app |
+| `min_supported_version_code` | No | Lowest numeric version code allowed to keep using the app |
+| `channel` | No | `stable` or `beta`, default `stable` |
+| `os` | No | `windows`, `macos`, `linux`, `android`, or `ios`, default `windows` |
+| `arch` | No | `x86_64`, `aarch64`, or `universal`, default `universal` when empty |
+| `locale` | No | `zh-CN`, `en-US`, or `all`; empty means `all` |
+| `package_type` | No | Auto-detected from file extension when empty |
+| `notes` | No | Release notes returned to the app client |
+| `force` | No | `true` or `false`, default `false` |
+| `enabled` | No | `true` or `false`, default `true` |
+| `published_at` | No | Optional RFC3339 timestamp |
+
+The server stores files under `DATA_DIR/downloads/ximoapp` by default, calculates `sha256`, and generates public URLs under `/downloads/ximoapp/{file}`. Override storage and public URL with `XIMOAPP_PACKAGE_DIR` and `XIMOAPP_DOWNLOAD_BASE_URL`.
+
+Validation:
+
+- `app_key` must use lowercase letters, numbers, and hyphens.
+- `version` is required.
+- `download_url` must use HTTPS.
+- `download_url` host must be `ximoai.cn` or `www.ximoai.cn`.
+- `sha256` must be a 64-character hexadecimal string.
+- `channel` must be `stable` or `beta`.
+- `os` must be `windows`, `macos`, `linux`, `android`, or `ios`.
+- `arch` must be `x86_64`, `aarch64`, or `universal`.
+- `locale` must be `all` or a short language tag.
+- `package_type` must be `msi`, `zip`, `exe`, `dmg`, `pkg`, `apk`, `aab`, or `ipa`.
+
+Download route:
+
+```http
+GET /downloads/ximoapp/:file
+```
+
+
+## Existing XimoAi API Reference
+
 本文档按当前代码实现整理外部可调用接口。覆盖范围包括用户登录、用户后台、管理员后台、支付回调、协议网关、模型列表、模型广场、平台管理、异步视频任务查询等入口。
 
 ## 1. 基本约定

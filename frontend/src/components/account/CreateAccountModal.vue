@@ -3248,13 +3248,15 @@ const oauthStepTitle = computed(() => {
 // Platform-specific hints for API Key type
 const baseUrlHint = computed(() => {
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
-  if (form.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
+  if (selectedProtocol.value === 'openai_compatible') return t('admin.accounts.openaiCompatible.baseUrlHint')
+  if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
 })
 
 const apiKeyHint = computed(() => {
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.apiKeyHint')
-  if (form.platform === 'gemini') return t('admin.accounts.gemini.apiKeyHint')
+  if (selectedProtocol.value === 'openai_compatible') return t('admin.accounts.openaiCompatible.apiKeyHint')
+  if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return t('admin.accounts.gemini.apiKeyHint')
   return t('admin.accounts.apiKeyHint')
 })
 
@@ -3333,6 +3335,19 @@ const fallbackPlatforms: Platform[] = [
     auth_modes: ['apikey'],
     capabilities: ['videos'],
     color: '#111827',
+    enabled: true,
+    builtin: true,
+    created_at: '',
+    updated_at: ''
+  },
+  {
+    slug: 'openai-audio',
+    display_name: 'OpenAI Audio',
+    protocol: 'openai_compatible',
+    base_url: '',
+    auth_modes: ['apikey'],
+    capabilities: ['chat_completions', 'audio'],
+    color: '#0F766E',
     enabled: true,
     builtin: true,
     created_at: '',
@@ -3431,7 +3446,7 @@ const syncPreviewCredentials = computed(() => {
   return {
     platform: form.platform,
     type: form.type,
-    base_url: apiKeyBaseUrl.value || undefined,
+    base_url: apiKeyBaseUrl.value || apiKeyBaseUrlDefault.value || undefined,
     api_key: apiKeyValue.value
   }
 })
@@ -3784,11 +3799,17 @@ const isSelectedGeminiProtocol = computed(() =>
   selectedProtocol.value === 'gemini' || form.platform === 'gemini'
 )
 
-const apiKeyBaseUrlPlaceholder = computed(() => {
+const apiKeyBaseUrlDefault = computed(() => {
   if (selectedPlatform.value?.base_url) return selectedPlatform.value.base_url
   if (isOfficialOpenAI.value) return 'https://api.openai.com'
   if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (form.platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
+  if (selectedProtocol.value === 'anthropic' || form.platform === 'anthropic') return 'https://api.anthropic.com'
+  return ''
+})
+
+const apiKeyBaseUrlPlaceholder = computed(() => {
+  if (apiKeyBaseUrlDefault.value) return apiKeyBaseUrlDefault.value
   if (selectedProtocol.value === 'openai_compatible') return 'https://api.example.com/v1'
   return 'https://api.anthropic.com'
 })
@@ -3813,7 +3834,7 @@ const {
   platformEnabled: computed(() => Boolean(selectedPlatform.value?.enabled)),
   apiKey: apiKeyValue,
   baseUrl: apiKeyBaseUrl,
-  baseUrlFallback: apiKeyBaseUrlPlaceholder
+  baseUrlFallback: apiKeyBaseUrlDefault
 })
 
 const platformIconName = (slug: string) => {
@@ -3935,7 +3956,7 @@ watch(
   () => form.platform,
   (newPlatform) => {
     // Reset base URL based on platform
-    apiKeyBaseUrl.value = apiKeyBaseUrlPlaceholder.value
+    apiKeyBaseUrl.value = apiKeyBaseUrlDefault.value
     clearPreviewSyncedUpstreamModels()
     // Clear model-related settings
     allowedModels.value = []
@@ -4755,12 +4776,15 @@ const handleSubmit = async () => {
   }
 
   // Determine default base URL based on platform
-  const defaultBaseUrl = apiKeyBaseUrlPlaceholder.value
+  const defaultBaseUrl = apiKeyBaseUrlDefault.value
+  const baseUrl = apiKeyBaseUrl.value.trim() || defaultBaseUrl
 
   // Build credentials with optional model mapping
   const credentials: Record<string, unknown> = {
-    base_url: apiKeyBaseUrl.value.trim() || defaultBaseUrl,
     api_key: apiKeyValue.value.trim()
+  }
+  if (baseUrl) {
+    credentials.base_url = baseUrl
   }
   if (isSelectedGeminiProtocol.value) {
     credentials.tier_id = geminiTierAIStudio.value

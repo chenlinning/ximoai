@@ -2470,11 +2470,17 @@ const canSyncUpstreamModels = computed(() => {
   return Boolean(platform?.enabled && upstreamModelSyncProtocols.has(platform.protocol))
 })
 
-const apiKeyBaseUrlPlaceholder = computed(() => {
+const apiKeyBaseUrlDefault = computed(() => {
   if (selectedPlatform.value?.base_url) return selectedPlatform.value.base_url
   if (isOfficialOpenAI.value) return 'https://api.openai.com'
   if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (props.account?.platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
+  if (selectedProtocol.value === 'anthropic' || props.account?.platform === 'anthropic') return 'https://api.anthropic.com'
+  return ''
+})
+
+const apiKeyBaseUrlPlaceholder = computed(() => {
+  if (apiKeyBaseUrlDefault.value) return apiKeyBaseUrlDefault.value
   if (selectedProtocol.value === 'openai_compatible') return 'https://api.example.com/v1'
   return 'https://api.anthropic.com'
 })
@@ -2491,7 +2497,8 @@ const apiKeyPlaceholder = computed(() => {
 const baseUrlHint = computed(() => {
   if (!props.account) return t('admin.accounts.baseUrlHint')
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
-  if (props.account.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
+  if (selectedProtocol.value === 'openai_compatible') return t('admin.accounts.openaiCompatible.baseUrlHint')
+  if (selectedProtocol.value === 'gemini' || props.account.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
 })
 
@@ -2502,7 +2509,7 @@ function defaultBaseUrlForPlatform(platform: string): string {
   const protocol = platforms.value.find((item) => item.slug === platform)?.protocol
   if (platform === 'gemini' || protocol === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
-  if (protocol === 'openai_compatible') return 'https://api.example.com/v1'
+  if (protocol === 'openai_compatible') return ''
   return 'https://api.anthropic.com'
 }
 
@@ -2902,7 +2909,7 @@ const tempUnschedPresets = computed(() => [
 
 // Computed: default base URL based on platform
 const defaultBaseUrl = computed(() => {
-  return apiKeyBaseUrlPlaceholder.value
+  return apiKeyBaseUrlDefault.value
 })
 
 const mixedChannelWarningMessageText = computed(() => {
@@ -3753,9 +3760,11 @@ const handleSubmit = async () => {
       const shouldApplyModelMapping = !(isOfficialOpenAI.value && openaiPassthroughEnabled.value)
 
       // Always update credentials for apikey type to handle model mapping changes
-      const newCredentials: Record<string, unknown> = {
-        ...currentCredentials,
-        base_url: newBaseUrl
+      const newCredentials: Record<string, unknown> = { ...currentCredentials }
+      if (newBaseUrl) {
+        newCredentials.base_url = newBaseUrl
+      } else {
+        delete newCredentials.base_url
       }
 
       // Handle API key

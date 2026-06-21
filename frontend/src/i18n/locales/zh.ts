@@ -3558,6 +3558,10 @@ export default {
       apiKeyRequired: 'API Key *',
       apiKeyPlaceholder: 'sk-ant-api03-...',
       apiKeyHint: '您的 Claude Console API Key',
+      openaiCompatible: {
+        baseUrlHint: '按 OpenAI-compatible 协议请求上游；留空使用平台默认 Base URL，或填写该账号专用 Base URL',
+        apiKeyHint: '该 OpenAI-compatible 上游的 API Key',
+      },
       // OpenAI specific hints
       openai: {
         baseUrlHint: '留空使用官方 OpenAI API',

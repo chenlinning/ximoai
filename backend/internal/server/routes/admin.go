@@ -61,6 +61,7 @@ func RegisterAdminRoutes(
 
 		// 系统设置
 		registerSettingsRoutes(admin, h)
+		registerXimoDeskAdminRoutes(admin, settingService)
 
 		// 数据管理
 		registerDataManagementRoutes(admin, h)

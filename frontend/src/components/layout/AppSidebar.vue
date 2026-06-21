@@ -396,6 +396,36 @@ const ChannelIcon = {
     )
 }
 
+const PlatformIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M8.25 6.75h7.5M8.25 17.25h7.5M6.75 9.75h10.5a2.25 2.25 0 002.25-2.25v-1.5a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6v1.5a2.25 2.25 0 002.25 2.25zM6.75 20.25h10.5A2.25 2.25 0 0019.5 18v-1.5a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 16.5V18a2.25 2.25 0 002.25 2.25zM12 9.75v4.5'
+        })
+      ]
+    )
+}
+
+const ApplicationCenterIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M6.75 4.5h10.5a2.25 2.25 0 012.25 2.25v10.5a2.25 2.25 0 01-2.25 2.25H6.75a2.25 2.25 0 01-2.25-2.25V6.75A2.25 2.25 0 016.75 4.5zM8.25 8.25h3v3h-3v-3zM12.75 8.25h3v3h-3v-3zM8.25 12.75h3v3h-3v-3zM12.75 12.75h3v3h-3v-3z'
+        })
+      ]
+    )
+}
+
 const CreditCardIcon = {
   render: () =>
     h(
@@ -685,7 +715,7 @@ const flagAdminPayment = () => adminSettingsStore.paymentEnabled
 // Builds the user's own navigation items for regular users and admin personal links.
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
-  items.push(...ximoAIUserNavItems({ modelPlaza: ModelPlazaIcon }).map(toNavItem))
+  items.push(...ximoAIUserNavItems({ modelPlaza: ModelPlazaIcon, downloadCenter: OrderListIcon }).map(toNavItem))
   if (withDashboard) {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
   }
@@ -771,7 +801,7 @@ const adminNavItems = computed((): NavItem[] => {
     },
     { path: '/admin/subscriptions', label: t('nav.subscriptions'), icon: CreditCardIcon, hideInSimpleMode: true },
     { path: '/admin/accounts', label: t('nav.accounts'), icon: GlobeIcon },
-    ...ximoAIAdminNavItems({ platform: ServerIcon }).map(toNavItem),
+    ...ximoAIAdminNavItems({ platform: PlatformIcon, application: ApplicationCenterIcon }).map(toNavItem),
     { path: '/admin/announcements', label: t('nav.announcements'), icon: BellIcon },
     { path: '/admin/proxies', label: t('nav.proxies'), icon: ServerIcon },
     { path: '/admin/risk-control', label: t('nav.riskControl'), icon: ShieldIcon, hideInSimpleMode: true, featureFlag: flagRiskControl },

@@ -22,6 +22,7 @@ export { default as announcementsAPI } from './announcements'
 export { channelMonitorUserAPI } from './channelMonitor'
 export { platformsAPI } from './platforms'
 export { membershipAPI } from './membership'
+export { ximoAppAPI } from './ximoapp'
 
 // Admin APIs
 export { adminAPI } from './admin'

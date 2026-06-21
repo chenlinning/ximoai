@@ -3399,6 +3399,10 @@ export default {
       apiKeyRequired: 'API Key *',
       apiKeyPlaceholder: 'sk-ant-api03-...',
       apiKeyHint: 'Your Claude Console API Key',
+      openaiCompatible: {
+        baseUrlHint: 'Uses the OpenAI-compatible upstream protocol. Leave empty to use the platform default Base URL, or enter an account-specific Base URL.',
+        apiKeyHint: 'API Key for this OpenAI-compatible upstream',
+      },
       // OpenAI specific hints
       openai: {
         baseUrlHint: 'Leave default for official OpenAI API',
