@@ -4142,14 +4142,16 @@ func (s *AntigravityGatewayService) extractImageInputSize(body []byte) string {
 }
 
 // isImageGenerationModel 判断模型是否为图片生成模型
-// 支持的模型：gemini-3.1-flash-image, gemini-3-pro-image, gemini-2.5-flash-image 等
+// 支持的模型：gemini-3.1-flash-image, gemini-3-pro-image, gemini-2.5-flash-image, NanoBanana2/Pro 等
 func isImageGenerationModel(model string) bool {
 	modelLower := strings.ToLower(model)
 	// 移除 models/ 前缀
 	modelLower = strings.TrimPrefix(modelLower, "models/")
 
 	// 精确匹配或前缀匹配
-	return modelLower == "gemini-3.1-flash-image" ||
+	return modelLower == "nanobanana2" ||
+		modelLower == "nanobananapro" ||
+		modelLower == "gemini-3.1-flash-image" ||
 		modelLower == "gemini-3.1-flash-image-preview" ||
 		strings.HasPrefix(modelLower, "gemini-3.1-flash-image-") ||
 		modelLower == "gemini-3-pro-image" ||

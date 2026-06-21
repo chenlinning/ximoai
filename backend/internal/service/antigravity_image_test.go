@@ -15,6 +15,12 @@ func TestIsImageGenerationModel_GeminiProImage(t *testing.T) {
 	require.True(t, isImageGenerationModel("models/gemini-3-pro-image"))
 }
 
+func TestIsImageGenerationModel_NanoBananaAliases(t *testing.T) {
+	require.True(t, isImageGenerationModel("NanoBanana2"))
+	require.True(t, isImageGenerationModel("NanoBananaPro"))
+	require.True(t, isImageGenerationModel("models/NanoBanana2"))
+}
+
 // TestIsImageGenerationModel_GeminiFlashImage 测试 gemini-2.5-flash-image 识别
 func TestIsImageGenerationModel_GeminiFlashImage(t *testing.T) {
 	require.True(t, isImageGenerationModel("gemini-2.5-flash-image"))

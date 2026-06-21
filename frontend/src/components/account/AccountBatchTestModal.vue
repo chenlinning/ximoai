@@ -281,11 +281,17 @@ const videoSizeOptions = [
 const isOpenAIImageModel = (modelID: string) => modelID.startsWith('gpt-image-')
 const isOpenAIAudioModel = (modelID: string) => modelID.includes('audio') || modelID.includes('realtime') || modelID.includes('tts') || modelID.startsWith('whisper')
 const isOpenAIVideoModel = (modelID: string) => modelID.includes('video') || modelID.startsWith('sora-') || modelID.startsWith('veo') || modelID.includes('t2v') || modelID.includes('i2v') || modelID.includes('r2v')
+const isGeminiImageModel = (modelID: string) => {
+  const normalized = modelID.toLowerCase().replace(/^models\//, '')
+  return normalized === 'nanobanana2'
+    || normalized === 'nanobananapro'
+    || (normalized.startsWith('gemini-') && normalized.includes('-image'))
+}
 
 const effectiveTestType = computed<AccountBatchTestType>(() => {
   if (testType.value !== 'auto') return testType.value
   const modelID = selectedModelId.value.toLowerCase()
-  if (isOpenAIImageModel(modelID)) return 'image'
+  if (isOpenAIImageModel(modelID) || isGeminiImageModel(modelID)) return 'image'
   if (isOpenAIAudioModel(modelID)) return 'audio'
   if (isOpenAIVideoModel(modelID)) return 'video'
   return 'text'

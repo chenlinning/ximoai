@@ -40,7 +40,8 @@ Expected metadata:
 - `optional_fields` should include at least `stream`, `tools`, `tool_choice`, `text`, `reasoning`, `previous_response_id`, `store`, `include`, `max_output_tokens`, `temperature`, `top_p`.
 - `response_contract.delivery`: `openai_responses_json`
 - `response_contract.stream_delivery`: `openai_responses_sse`
-- Stream events should mention `response.output_text.delta`, `response.reasoning_summary_text.delta`, `response.completed`, `response.error`.
+- Stream events should mention `response.output_text.delta`, `response.completed`, `response.failed`, and `response.error`.
+- `reasoning` is a supported request parameter, but verified upstream responses did not expose visible reasoning content. Metadata must not claim a visible reasoning text path for OpenAI Responses.
 
 ### Anthropic Messages Chat
 
@@ -129,9 +130,11 @@ Expected metadata:
 - `request_contract.optional_fields`: `n,size,quality,response_format,background`
 - `request_contract.size.values`: `1024x1024,1536x1024,1024x1536`
 - `request_contract.size.aliases`: map common client intents such as `square`, `1:1`, `landscape`, `16:9`, `wide`, `portrait`, `9:16`, and `mobile_wallpaper` to the supported OpenAI sizes.
-- `response_contract.delivery`: `openai_image_json` or `json`
+- `request_contract.response_format.values`: `b64_json`
+- `response_contract.delivery`: `openai_image_json`
 - `response_contract.image_data_path`: `data[].b64_json`
 - No `stream_endpoint` unless a verified stream endpoint exists.
+- Do not advertise `response_format: url` until it passes live verification. The verified usable image return format is base64 JSON.
 
 Live validation:
 
@@ -326,23 +329,40 @@ Status as of 2026-06-21:
 - Done: Gemini image generation metadata now exposes `generationConfig.imageConfig.aspectRatio/imageSize` instead of OpenAI `size`.
 - Done: Image response contracts now expose protocol-specific `image_data_path`.
 - Done: OpenAI chat audio metadata remains non-stream and keeps the existing base64 audio contract.
+- Done: Added `method`, `request_content_type`, `stream_contract`, `tool_contract`, `thinking_contract`, `media_contract`, `polling_contract`, and `unsupported_capabilities` to the default metadata and mirrored entry protocol metadata.
+- Done: OpenAI Responses tool metadata advertises function tools only and explicitly marks `image_generation` as unsupported until verified.
+- Done: OpenAI Responses thinking metadata advertises request support and reasoning token usage path, but marks visible reasoning content as unavailable.
+- Done: OpenAI image metadata advertises `response_format: b64_json` only and records `response_format:url` plus SSE streaming as unsupported.
+- Done: Account testing now routes `gpt-4o-audio-preview` style models to `/v1/chat/completions` instead of `/v1/audio/speech`.
+- Done: Account testing now supports Gemini image JSON responses for `NanoBanana2` and `NanoBananaPro`.
+- Done: Account create/edit UI now treats `openai-audio`, `grok`, and `kling_audio` as OpenAI-compatible API key platforms for Base URL/API key hints.
 
 Changed files:
 
 - `backend/internal/handler/gateway_handler.go`
 - `backend/internal/handler/gateway_models_test.go`
+- `backend/internal/service/account_test_service.go`
+- `backend/internal/service/account_test_service_gemini_test.go`
+- `backend/internal/service/account_test_service_openai_image_test.go`
+- `backend/internal/service/antigravity_gateway_service.go`
+- `backend/internal/service/antigravity_image_test.go`
+- `frontend/src/components/account/AccountBatchTestModal.vue`
+- `frontend/src/components/account/AccountTestModal.vue`
+- `frontend/src/components/account/CreateAccountModal.vue`
+- `frontend/src/components/account/EditAccountModal.vue`
 - `docs/MODELS_ENTRY_PROTOCOL_METADATA_TASK.md`
 
 Implementation notes:
 
 - The metadata generation path is now protocol-aware instead of using a shared chat contract.
 - The top-level `request_contract` and `response_contract` mirror the default entry protocol for backward compatibility.
-- The new `entry_protocols` array is the authoritative place for protocol-specific endpoint, stream endpoint, request contract, and response contract.
+- The new `entry_protocols` array mirrors the default entry protocol with the same endpoint, stream endpoint, request contract, response contract, stream contract, tool contract, thinking contract, media contract, and polling contract. Downstream clients can use either the top-level default fields or `entry_protocols[0]`; they contain the same default contract.
 
-Current test expectations that must be changed:
+Current test expectations:
 
-- Tests that expect Gemini chat endpoint to be only `:generateContent` should be updated to include stream metadata.
-- Tests that expect `gpt-image-2` image generation to stream should be updated to `false`, unless a verified stream implementation is added.
+- Updated tests assert Gemini chat stream metadata via `:streamGenerateContent?alt=sse`.
+- Updated tests assert `gpt-image-2` image generation does not advertise SSE streaming.
+- Updated tests assert OpenAI chat audio uses `/v1/chat/completions`, not `/v1/audio/speech`.
 
 ## Acceptance Flow
 
@@ -581,11 +601,14 @@ Result:
 ### OpenAI Image
 
 - `/v1/models?include_entry_protocols=1` returned `gpt-image-2` with `supports_stream: true`.
-- No verified stream image request was performed to avoid unnecessary cost.
+- `POST /v1/images/generations` with `stream: true` returned normal JSON, not SSE.
+- `POST /v1/images/generations` with `response_format: url` timed out/returned upstream 504 during long live verification.
+- `POST /v1/images/generations` with `response_format: b64_json` returned `HTTP 200` and base64 image data.
 
 Result:
 
-- Returned stream support is not proven and should not be advertised.
+- Base64 JSON image generation works.
+- SSE streaming and URL response format are not verified usable and must not be advertised.
 
 ### OpenAI Audio
 
@@ -641,30 +664,52 @@ Date: 2026-06-21
 
 Unit tests:
 
-- PASS: `go test -tags unit ./internal/handler -run 'TestGatewayModels_IncludeEntryProtocols|TestPublicEntryMetadataForPricedModel'`
+- PASS: `go test ./internal/handler -run 'TestGatewayModels|TestPublicEntryMetadata' -count=1`
+- PASS: `go test ./internal/service -run 'TestAccountTestService_OpenAI|TestIsImageGenerationModel|TestPlatformService_BuiltinOpenAIAudioPlatform' -count=1`
+- PASS: `go test -tags unit ./internal/service -run 'TestCreateGeminiTestPayload|TestProcessGemini' -count=1`
+- PASS: `go test ./internal/handler ./internal/service -count=1`
+- PASS: `vue-tsc --noEmit -p tsconfig.json`
+- PASS: `vitest run src/components/account/__tests__/AccountTestModal.spec.ts src/components/account/__tests__/AccountBatchTestModal.spec.ts`
+- PASS: `git diff --check`
+
+Full backend sweep:
+
+- PARTIAL: `go test ./... -count=1`
+- Passed relevant packages including `internal/handler`, `internal/service`, `internal/handler/admin`, `internal/server/routes`, and related packages.
+- Failed outside this task scope:
+  - `ent/schema` attempted to download `golang.org/x/tools@v0.44.0` and failed due network access to `proxy.golang.org`. Retried with network permission and it still could not connect to Go proxy.
+  - `internal/config` has existing default configuration expectation failures unrelated to this metadata change.
 
 Verified by unit tests:
 
 - PASS: OpenAI Responses metadata requires `input` and not `messages`.
 - PASS: OpenAI Responses metadata exposes `reasoning`, `max_output_tokens`, and `openai_responses_sse`.
+- PASS: OpenAI Responses metadata marks visible reasoning content as unavailable and `image_generation` tool as unsupported.
 - PASS: Anthropic metadata requires `max_tokens` and exposes `thinking`.
+- PASS: Anthropic metadata exposes tool and thinking response paths.
 - PASS: Gemini metadata requires `contents` and not `messages`.
 - PASS: Gemini metadata exposes `stream_endpoint` as `:streamGenerateContent?alt=sse`.
+- PASS: Gemini metadata exposes function call and thinking response paths.
 - PASS: OpenAI image metadata returns `supports_stream: false`.
-- PASS: OpenAI image metadata exposes `size.values` and `size.aliases`.
+- PASS: OpenAI image metadata exposes `request_contract.fields.size.values`, `size.aliases`, and `response_format: b64_json`.
+- PASS: OpenAI image metadata marks `response_format:url` and `sse_streaming` as unsupported.
 - PASS: Gemini image metadata exposes `generationConfig.imageConfig.aspectRatio/imageSize` instead of OpenAI `size`.
 - PASS: Image response contracts expose protocol-specific `image_data_path`.
 - PASS: OpenAI audio preview metadata remains non-stream with `openai_chat_audio_base64`.
+- PASS: OpenAI audio account testing uses `/v1/chat/completions` with `modalities` and `audio`.
+- PASS: Gemini image account testing handles non-stream JSON image responses for `NanoBanana2`/`NanoBananaPro`.
+- PASS: OpenAI Audio account create/edit UI uses OpenAI-compatible Base URL/API key hints.
 
 Live requests:
 
 - Pending: Requires deployment of this local change before `/v1/models?include_entry_protocols=1` can be re-tested against `https://ximoai.cn`.
 - Previous live baseline is recorded in `Current Live Verification Results`.
 - PASS baseline: OpenAI `gpt-image-2` accepted `size: 1536x1024` on `/v1/images/generations` and returned one b64 image.
+- PASS baseline: OpenAI `gpt-4o-audio-preview` returned `HTTP 200`, `chat.completion`, WAV audio bytes, and transcript.
 - PASS baseline: Gemini `NanoBanana2` accepted `generationConfig.imageConfig.aspectRatio: 16:9` and `imageSize: 1K` on `/v1beta/models/NanoBanana2:generateContent` and returned one inline JPEG image.
 
 Final result:
 
 - Local metadata implementation: PASS.
 - Live post-deploy verification: PENDING.
-- Remaining risks: Live `/v1/models?include_entry_protocols=1` must be re-tested after deployment to confirm production returns the new image enum/alias contracts.
+- Remaining risks: Live `/v1/models?include_entry_protocols=1` must be re-tested after deployment to confirm production returns the new contracts, including image enum/alias fields, stream/tool/thinking/media contracts, and unsupported capability markers.

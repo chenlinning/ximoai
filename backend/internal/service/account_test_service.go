@@ -104,6 +104,20 @@ func isOpenAIAudioModel(model string) bool {
 		strings.HasPrefix(model, "whisper")
 }
 
+func isOpenAIChatAudioModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if !strings.Contains(model, "audio") {
+		return false
+	}
+	return !strings.Contains(model, "tts") &&
+		!strings.Contains(model, "speech") &&
+		!strings.Contains(model, "transcrib") &&
+		!strings.Contains(model, "transcript") &&
+		!strings.Contains(model, "translat") &&
+		!strings.Contains(model, "whisper") &&
+		!strings.Contains(model, "stt")
+}
+
 func isOpenAIVideoModel(model string) bool {
 	model = strings.ToLower(strings.TrimSpace(model))
 	return strings.Contains(model, "video") ||
@@ -644,6 +658,9 @@ func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Conte
 		if account.Type != AccountTypeAPIKey {
 			return s.sendErrorAndEnd(c, "OpenAI audio test currently supports API Key accounts only")
 		}
+		if isOpenAIChatAudioModel(testModelID) {
+			return s.testOpenAIChatAudioAPIKey(c, ctx, account, testModelID, opts.Prompt)
+		}
 		return s.testOpenAIAudioAPIKey(c, ctx, account, testModelID, opts.Prompt)
 	}
 
@@ -1008,6 +1025,7 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 
 	// Create test payload (Gemini format)
 	payload := createGeminiTestPayload(testModelID, prompt)
+	stream := !isImageGenerationModel(testModelID)
 
 	// Build request based on account type
 	var req *http.Request
@@ -1015,11 +1033,11 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 
 	switch account.Type {
 	case AccountTypeAPIKey:
-		req, err = s.buildGeminiAPIKeyRequest(ctx, account, testModelID, payload)
+		req, err = s.buildGeminiAPIKeyRequestWithStream(ctx, account, testModelID, payload, stream)
 	case AccountTypeOAuth:
-		req, err = s.buildGeminiOAuthRequest(ctx, account, testModelID, payload)
+		req, err = s.buildGeminiOAuthRequestWithStream(ctx, account, testModelID, payload, stream)
 	case AccountTypeServiceAccount:
-		req, err = s.buildGeminiServiceAccountRequest(ctx, account, testModelID, payload)
+		req, err = s.buildGeminiServiceAccountRequestWithStream(ctx, account, testModelID, payload, stream)
 	default:
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported account type: %s", account.Type))
 	}
@@ -1048,7 +1066,17 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
 
-	// Process SSE stream
+	if !stream {
+		body, err := io.ReadAll(io.LimitReader(resp.Body, accountTestMediaPreviewLimitBytes+1))
+		if err != nil {
+			return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read response: %s", err.Error()))
+		}
+		if len(body) > accountTestMediaPreviewLimitBytes {
+			return s.sendErrorAndEnd(c, "Gemini image response is too large to preview")
+		}
+		return s.processGeminiJSONResponse(c, body)
+	}
+
 	return s.processGeminiStream(c, resp.Body)
 }
 
@@ -1056,7 +1084,7 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 // APIKey 类型走原生协议（与 gateway_handler 路由一致），OAuth/Upstream 走 CRS 中转。
 func (s *AccountTestService) routeAntigravityTest(c *gin.Context, account *Account, modelID string, prompt string) error {
 	if account.Type == AccountTypeAPIKey {
-		if strings.HasPrefix(modelID, "gemini-") {
+		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(modelID)), "gemini-") || isImageGenerationModel(modelID) {
 			return s.testGeminiAccountConnection(c, account, modelID, prompt)
 		}
 		return s.testClaudeAccountConnection(c, account, modelID)
@@ -1106,6 +1134,10 @@ func (s *AccountTestService) testAntigravityAccountConnection(c *gin.Context, ac
 
 // buildGeminiAPIKeyRequest builds request for Gemini API Key accounts
 func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
+	return s.buildGeminiAPIKeyRequestWithStream(ctx, account, modelID, payload, true)
+}
+
+func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
 	apiKey := account.GetCredential("api_key")
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, fmt.Errorf("no API key available")
@@ -1120,9 +1152,13 @@ func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, accou
 		return nil, err
 	}
 
-	// Use streamGenerateContent for real-time feedback
-	fullURL := fmt.Sprintf("%s/v1beta/models/%s:streamGenerateContent?alt=sse",
-		strings.TrimRight(normalizedBaseURL, "/"), modelID)
+	action := "generateContent"
+	alt := ""
+	if stream {
+		action = "streamGenerateContent"
+		alt = "?alt=sse"
+	}
+	fullURL := fmt.Sprintf("%s/v1beta/models/%s:%s%s", strings.TrimRight(normalizedBaseURL, "/"), modelID, action, alt)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, bytes.NewReader(payload))
 	if err != nil {
@@ -1137,6 +1173,10 @@ func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, accou
 
 // buildGeminiOAuthRequest builds request for Gemini OAuth accounts
 func (s *AccountTestService) buildGeminiOAuthRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
+	return s.buildGeminiOAuthRequestWithStream(ctx, account, modelID, payload, true)
+}
+
+func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
 	if s.geminiTokenProvider == nil {
 		return nil, fmt.Errorf("gemini token provider not configured")
 	}
@@ -1158,7 +1198,13 @@ func (s *AccountTestService) buildGeminiOAuthRequest(ctx context.Context, accoun
 		if err != nil {
 			return nil, err
 		}
-		fullURL := fmt.Sprintf("%s/v1beta/models/%s:streamGenerateContent?alt=sse", strings.TrimRight(normalizedBaseURL, "/"), modelID)
+		action := "generateContent"
+		alt := ""
+		if stream {
+			action = "streamGenerateContent"
+			alt = "?alt=sse"
+		}
+		fullURL := fmt.Sprintf("%s/v1beta/models/%s:%s%s", strings.TrimRight(normalizedBaseURL, "/"), modelID, action, alt)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, bytes.NewReader(payload))
 		if err != nil {
@@ -1174,6 +1220,10 @@ func (s *AccountTestService) buildGeminiOAuthRequest(ctx context.Context, accoun
 }
 
 func (s *AccountTestService) buildGeminiServiceAccountRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
+	return s.buildGeminiServiceAccountRequestWithStream(ctx, account, modelID, payload, true)
+}
+
+func (s *AccountTestService) buildGeminiServiceAccountRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
 	if s.geminiTokenProvider == nil {
 		return nil, fmt.Errorf("gemini token provider not configured")
 	}
@@ -1181,7 +1231,11 @@ func (s *AccountTestService) buildGeminiServiceAccountRequest(ctx context.Contex
 	if err != nil {
 		return nil, fmt.Errorf("failed to get service account access token: %w", err)
 	}
-	fullURL, err := buildVertexGeminiURL(account.VertexProjectID(), account.VertexLocation(modelID), modelID, "streamGenerateContent", true)
+	action := "generateContent"
+	if stream {
+		action = "streamGenerateContent"
+	}
+	fullURL, err := buildVertexGeminiURL(account.VertexProjectID(), account.VertexLocation(modelID), modelID, action, stream)
 	if err != nil {
 		return nil, err
 	}
@@ -1358,6 +1412,69 @@ func (s *AccountTestService) processGeminiStream(c *gin.Context, body io.Reader)
 			return s.sendErrorAndEnd(c, errorMsg)
 		}
 	}
+}
+
+func (s *AccountTestService) processGeminiJSONResponse(c *gin.Context, body []byte) error {
+	var data map[string]any
+	if err := json.Unmarshal(body, &data); err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to parse Gemini response: %s", err.Error()))
+	}
+	if resp, ok := data["response"].(map[string]any); ok && resp != nil {
+		data = resp
+	}
+	if errData, ok := data["error"].(map[string]any); ok {
+		errorMsg := "Unknown error"
+		if msg, ok := errData["message"].(string); ok && msg != "" {
+			errorMsg = msg
+		}
+		return s.sendErrorAndEnd(c, errorMsg)
+	}
+	candidates, ok := data["candidates"].([]any)
+	if !ok || len(candidates) == 0 {
+		return s.sendErrorAndEnd(c, "No candidates returned from Gemini response")
+	}
+	emitted := false
+	for _, candidateValue := range candidates {
+		candidate, ok := candidateValue.(map[string]any)
+		if !ok {
+			continue
+		}
+		content, ok := candidate["content"].(map[string]any)
+		if !ok {
+			continue
+		}
+		parts, ok := content["parts"].([]any)
+		if !ok {
+			continue
+		}
+		for _, partValue := range parts {
+			part, ok := partValue.(map[string]any)
+			if !ok {
+				continue
+			}
+			if text, ok := part["text"].(string); ok && text != "" {
+				s.sendEvent(c, TestEvent{Type: "content", Text: text})
+				emitted = true
+			}
+			if inlineData, ok := part["inlineData"].(map[string]any); ok {
+				mimeType, _ := inlineData["mimeType"].(string)
+				data, _ := inlineData["data"].(string)
+				if strings.HasPrefix(strings.ToLower(mimeType), "image/") && data != "" {
+					s.sendEvent(c, TestEvent{
+						Type:     "image",
+						ImageURL: fmt.Sprintf("data:%s;base64,%s", mimeType, data),
+						MimeType: mimeType,
+					})
+					emitted = true
+				}
+			}
+		}
+	}
+	if !emitted {
+		return s.sendErrorAndEnd(c, "No text or image content returned from Gemini response")
+	}
+	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+	return nil
 }
 
 // createOpenAITestPayload creates a test payload for OpenAI Responses API
@@ -1697,6 +1814,104 @@ func (s *AccountTestService) testOpenAIImageAPIKey(c *gin.Context, ctx context.C
 		}
 	}
 
+	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+	return nil
+}
+
+func (s *AccountTestService) testOpenAIChatAudioAPIKey(c *gin.Context, ctx context.Context, account *Account, modelID string, input string) error {
+	authToken := account.GetOpenAIApiKey()
+	if authToken == "" {
+		return s.sendErrorAndEnd(c, "No API key available")
+	}
+
+	baseURL := account.GetOpenAIBaseURL()
+	if baseURL == "" {
+		baseURL = "https://api.openai.com"
+	}
+	normalizedBaseURL, err := s.validateUpstreamBaseURL(baseURL)
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
+	}
+	apiURL := buildOpenAIChatCompletionsURL(normalizedBaseURL)
+
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Flush()
+
+	s.sendEvent(c, TestEvent{Type: "test_start", Model: modelID})
+	s.sendEvent(c, TestEvent{Type: "status", Text: "正在通过 /v1/chat/completions 测试音频对话"})
+
+	audioInput := strings.TrimSpace(input)
+	if audioInput == "" {
+		audioInput = defaultOpenAIAudioTestInput
+	}
+	payload := map[string]any{
+		"model":      modelID,
+		"modalities": []string{"text", "audio"},
+		"audio": map[string]any{
+			"voice":  "alloy",
+			"format": "wav",
+		},
+		"messages": []map[string]any{{
+			"role":    "user",
+			"content": audioInput,
+		}},
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(payloadBytes))
+	if err != nil {
+		return s.sendErrorAndEnd(c, "Failed to create audio chat request")
+	}
+	req = req.WithContext(WithHTTPUpstreamProfile(req.Context(), HTTPUpstreamProfileOpenAI))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+
+	resp, err := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, s.tlsFPProfileService.ResolveTLSProfile(account))
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Audio chat API (/v1/chat/completions) request failed: %s", err.Error()))
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, accountTestMediaPreviewLimitBytes+1))
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read audio chat response: %s", err.Error()))
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Audio chat API (/v1/chat/completions) returned %d: %s", resp.StatusCode, string(body)))
+	}
+	if len(body) > accountTestMediaPreviewLimitBytes {
+		return s.sendErrorAndEnd(c, "Audio chat response is too large to preview")
+	}
+
+	audioB64 := strings.TrimSpace(gjson.GetBytes(body, "choices.0.message.audio.data").String())
+	if audioB64 == "" {
+		return s.sendErrorAndEnd(c, "No audio data returned from chat completions response")
+	}
+	audioBytes, err := base64.StdEncoding.DecodeString(audioB64)
+	if err != nil {
+		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to decode audio data: %s", err.Error()))
+	}
+	if len(audioBytes) > accountTestMediaPreviewLimitBytes {
+		return s.sendErrorAndEnd(c, "Decoded audio response is too large to preview")
+	}
+	if transcript := strings.TrimSpace(gjson.GetBytes(body, "choices.0.message.audio.transcript").String()); transcript != "" {
+		s.sendEvent(c, TestEvent{Type: "content", Text: transcript})
+	}
+	s.sendEvent(c, TestEvent{Type: "content", Text: fmt.Sprintf("Audio chat test returned %d bytes", len(audioBytes))})
+	s.sendEvent(c, TestEvent{
+		Type:     "audio",
+		AudioURL: "data:audio/wav;base64," + audioB64,
+		MimeType: "audio/wav",
+	})
 	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
 	return nil
 }

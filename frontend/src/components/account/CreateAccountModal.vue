@@ -3248,14 +3248,14 @@ const oauthStepTitle = computed(() => {
 // Platform-specific hints for API Key type
 const baseUrlHint = computed(() => {
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
-  if (selectedProtocol.value === 'openai_compatible') return t('admin.accounts.openaiCompatible.baseUrlHint')
+  if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.baseUrlHint')
   if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
 })
 
 const apiKeyHint = computed(() => {
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.apiKeyHint')
-  if (selectedProtocol.value === 'openai_compatible') return t('admin.accounts.openaiCompatible.apiKeyHint')
+  if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.apiKeyHint')
   if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return t('admin.accounts.gemini.apiKeyHint')
   return t('admin.accounts.apiKeyHint')
 })
@@ -3789,6 +3789,13 @@ const selectedProtocol = computed(() =>
   selectedPlatform.value?.protocol || ''
 )
 
+const isOpenAICompatibleAPIKeyPlatform = computed(() =>
+  selectedProtocol.value === 'openai_compatible'
+  || form.platform === 'openai-audio'
+  || form.platform === 'grok'
+  || form.platform === 'kling_audio'
+)
+
 const isCustomAPIKeyOnlyPlatform = computed(() =>
   !!selectedPlatform.value
   && selectedPlatform.value.auth_modes.length > 0
@@ -3810,7 +3817,7 @@ const apiKeyBaseUrlDefault = computed(() => {
 
 const apiKeyBaseUrlPlaceholder = computed(() => {
   if (apiKeyBaseUrlDefault.value) return apiKeyBaseUrlDefault.value
-  if (selectedProtocol.value === 'openai_compatible') return 'https://api.example.com/v1'
+  if (isOpenAICompatibleAPIKeyPlatform.value) return 'https://api.example.com/v1'
   return 'https://api.anthropic.com'
 })
 
@@ -3818,7 +3825,7 @@ const apiKeyPlaceholder = computed(() => {
   if (isOfficialOpenAI.value) return 'sk-proj-...'
   if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return 'AIza...'
   if (form.platform === 'antigravity') return 'sk-...'
-  if (selectedProtocol.value === 'openai_compatible') return 'sk-...'
+  if (isOpenAICompatibleAPIKeyPlatform.value) return 'sk-...'
   return 'sk-ant-...'
 })
 

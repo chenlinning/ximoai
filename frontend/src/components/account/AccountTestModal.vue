@@ -434,13 +434,18 @@ const videoSizeOptions = [
   { value: '1024x1024', label: '1024x1024' }
 ]
 const previewImageUrl = ref('')
-const prioritizedGeminiModels = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3-pro-preview', 'gemini-2.0-flash']
+const prioritizedGeminiModels = ['NanoBanana2', 'NanoBananaPro', 'gemini-3.1-flash-image', 'gemini-2.5-flash-image', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-3-flash-preview', 'gemini-3-pro-preview', 'gemini-2.0-flash']
 const isOpenAIImageModel = (modelID: string) => modelID.startsWith('gpt-image-')
 const isOpenAIAudioModel = (modelID: string) => modelID.includes('audio') || modelID.includes('realtime') || modelID.includes('tts') || modelID.startsWith('whisper')
 const isOpenAIVideoModel = (modelID: string) => modelID.includes('video') || modelID.startsWith('sora-') || modelID.startsWith('veo') || modelID.includes('t2v') || modelID.includes('i2v') || modelID.includes('r2v')
+const isGeminiImageModel = (modelID: string) => {
+  const normalized = modelID.toLowerCase().replace(/^models\//, '')
+  return normalized === 'nanobanana2'
+    || normalized === 'nanobananapro'
+    || (normalized.startsWith('gemini-') && normalized.includes('-image'))
+}
 const supportsGeminiImageTest = computed(() => {
-  const modelID = selectedModelId.value.toLowerCase()
-  if (!modelID.startsWith('gemini-') || !modelID.includes('-image')) return false
+  if (!isGeminiImageModel(selectedModelId.value)) return false
 
   return props.account?.platform === 'gemini' || (props.account?.platform === 'antigravity' && props.account?.type === 'apikey')
 })

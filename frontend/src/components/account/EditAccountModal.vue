@@ -2460,6 +2460,13 @@ const selectedProtocol = computed(() =>
   selectedPlatform.value?.protocol || ''
 )
 
+const isOpenAICompatibleAPIKeyPlatform = computed(() =>
+  selectedProtocol.value === 'openai_compatible'
+  || props.account?.platform === 'openai-audio'
+  || props.account?.platform === 'grok'
+  || props.account?.platform === 'kling_audio'
+)
+
 const upstreamModelSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
 const upstreamModelSyncProtocols = new Set(['anthropic', 'openai', 'openai_compatible', 'gemini'])
 const canSyncUpstreamModels = computed(() => {
@@ -2481,7 +2488,7 @@ const apiKeyBaseUrlDefault = computed(() => {
 
 const apiKeyBaseUrlPlaceholder = computed(() => {
   if (apiKeyBaseUrlDefault.value) return apiKeyBaseUrlDefault.value
-  if (selectedProtocol.value === 'openai_compatible') return 'https://api.example.com/v1'
+  if (isOpenAICompatibleAPIKeyPlatform.value) return 'https://api.example.com/v1'
   return 'https://api.anthropic.com'
 })
 
@@ -2489,7 +2496,7 @@ const apiKeyPlaceholder = computed(() => {
   if (isOfficialOpenAI.value) return 'sk-proj-...'
   if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'AIza...'
   if (props.account?.platform === 'antigravity') return 'sk-...'
-  if (selectedProtocol.value === 'openai_compatible') return 'sk-...'
+  if (isOpenAICompatibleAPIKeyPlatform.value) return 'sk-...'
   return 'sk-ant-...'
 })
 
@@ -2497,7 +2504,7 @@ const apiKeyPlaceholder = computed(() => {
 const baseUrlHint = computed(() => {
   if (!props.account) return t('admin.accounts.baseUrlHint')
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
-  if (selectedProtocol.value === 'openai_compatible') return t('admin.accounts.openaiCompatible.baseUrlHint')
+  if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.baseUrlHint')
   if (selectedProtocol.value === 'gemini' || props.account.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
 })
@@ -2506,6 +2513,7 @@ function defaultBaseUrlForPlatform(platform: string): string {
   const configured = platforms.value.find((item) => item.slug === platform)?.base_url
   if (configured) return configured
   if (platform === 'openai') return 'https://api.openai.com'
+  if (platform === 'openai-audio' || platform === 'grok' || platform === 'kling_audio') return ''
   const protocol = platforms.value.find((item) => item.slug === platform)?.protocol
   if (platform === 'gemini' || protocol === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'

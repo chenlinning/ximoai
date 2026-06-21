@@ -1000,6 +1000,22 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			require.Equal(t, tt.wantExecutionMode, got.ExecutionMode)
 			require.Equal(t, tt.wantSupportsStream, got.SupportsStream)
 			require.Equal(t, tt.wantSupportsPolling, got.SupportsPolling)
+			if got.OperationType == "chat_audio" {
+				require.Equal(t, http.MethodPost, got.Method)
+				require.Equal(t, "application/json", got.RequestContentType)
+				require.Contains(t, got.RequestContract["required_fields"], "modalities")
+				require.Contains(t, got.RequestContract["required_fields"], "audio")
+				require.NotContains(t, got.RequestContract["optional_fields"], "stream")
+				require.Equal(t, "choices[0].message.audio.data", got.ResponseContract["audio_data_path"])
+				require.Equal(t, "choices[0].message.audio.transcript", got.MediaContract["transcript_path"])
+				require.Contains(t, got.UnsupportedCaps, "sse_streaming")
+			}
+			if got.OperationType == "audio_tts" && got.DefaultEntryProtocol == "openai" && tt.detail.Platform == service.PlatformOpenAI {
+				require.Equal(t, "/v1/audio/speech", got.DefaultEndpoint)
+				require.Contains(t, got.RequestContract["required_fields"], "input")
+				require.Equal(t, "audio_binary", got.ResponseContract["delivery"])
+				require.Equal(t, "audio/wav", got.MediaContract["content_type"])
+			}
 		})
 	}
 }
@@ -1104,6 +1120,8 @@ func TestPublicEntryMetadataForPricedModel_ReturnsProtocolSpecificContracts(t *t
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := publicEntryMetadataForPricedModel(tt.detail, tt.platform)
+			require.Equal(t, http.MethodPost, got.Method)
+			require.Equal(t, "application/json", got.RequestContentType)
 			for _, field := range tt.wantRequired {
 				require.Contains(t, got.RequestContract["required_fields"], field)
 			}
@@ -1119,14 +1137,47 @@ func TestPublicEntryMetadataForPricedModel_ReturnsProtocolSpecificContracts(t *t
 			}
 			if tt.wantStreamEndpoint != "" {
 				require.Equal(t, tt.wantStreamEndpoint, got.StreamEndpoint)
+				require.NotNil(t, got.StreamContract)
+				require.Equal(t, true, got.StreamContract["supported"])
+				require.Equal(t, got.StreamEndpoint, got.StreamContract["endpoint"])
+			} else {
+				require.Nil(t, got.StreamContract)
+			}
+			if got.ModelType == "chat" {
+				require.NotNil(t, got.ToolContract)
+				require.Equal(t, true, got.ToolContract["supported"])
+				require.NotNil(t, got.ThinkingContract)
+				require.Equal(t, true, got.ThinkingContract["request_supported"])
+			}
+			if got.DefaultEntryProtocol == "openai" && got.DefaultEndpoint == "/v1/responses" {
+				require.Equal(t, "output[?type=function_call]", got.ToolContract["response_path"])
+				require.Equal(t, false, got.ThinkingContract["visible_content"])
+				require.Contains(t, got.UnsupportedCaps, "visible_reasoning_content")
+				require.Contains(t, got.UnsupportedCaps, "image_generation_tool")
+			}
+			if got.DefaultEntryProtocol == "anthropic" && got.ModelType == "chat" {
+				require.Equal(t, "content[?type=tool_use]", got.ToolContract["response_path"])
+				require.Equal(t, "content[?type=thinking].thinking", got.ThinkingContract["content_path"])
+				require.Equal(t, "delta.thinking", got.StreamContract["thinking_delta_path"])
+			}
+			if got.DefaultEntryProtocol == "gemini" && got.ModelType == "chat" {
+				require.Equal(t, "candidates[].content.parts[].functionCall", got.ToolContract["response_path"])
+				require.Equal(t, "candidates[].content.parts[?thought=true].text", got.ThinkingContract["content_path"])
+				require.Equal(t, "candidates[].content.parts[].text", got.StreamContract["text_delta_path"])
 			}
 			if got.OperationType == "image_generation" && got.DefaultEntryProtocol == "openai" {
-				sizeContract := got.RequestContract["size"].(map[string]any)
+				fields := got.RequestContract["fields"].(map[string]any)
+				sizeContract := fields["size"].(map[string]any)
 				require.Contains(t, sizeContract["values"], "1536x1024")
 				aliases := sizeContract["aliases"].(map[string]any)
 				require.Equal(t, "1536x1024", aliases["landscape"])
 				require.Equal(t, "1024x1536", aliases["mobile_wallpaper"])
+				responseFormat := fields["response_format"].(map[string]any)
+				require.Equal(t, []string{"b64_json"}, responseFormat["values"])
 				require.Equal(t, "data[].b64_json", got.ResponseContract["image_data_path"])
+				require.Equal(t, "data[].b64_json", got.MediaContract["data_path"])
+				require.Contains(t, got.UnsupportedCaps, "response_format:url")
+				require.Contains(t, got.UnsupportedCaps, "sse_streaming")
 			}
 			if got.OperationType == "image_generation" && got.DefaultEntryProtocol == "gemini" {
 				generationConfig := got.RequestContract["generationConfig"].(map[string]any)
@@ -1137,8 +1188,25 @@ func TestPublicEntryMetadataForPricedModel_ReturnsProtocolSpecificContracts(t *t
 				require.Contains(t, imageSize["values"], "4K")
 				require.Equal(t, "9:16", aspectRatio["aliases"].(map[string]any)["mobile_wallpaper"])
 				require.Equal(t, "candidates[].content.parts[].inlineData.data", got.ResponseContract["image_data_path"])
+				require.Equal(t, "candidates[].content.parts[].inlineData.data", got.MediaContract["data_path"])
+				require.Contains(t, got.MediaContract["size_request_paths"], "generationConfig.imageConfig.aspectRatio")
+				require.Empty(t, got.UnsupportedCaps)
 			}
 			require.NotEmpty(t, got.EntryProtocols)
+			entry := got.EntryProtocols[0]
+			require.Equal(t, got.DefaultEntryID, entry.ID)
+			require.Equal(t, got.DefaultEntryProtocol, entry.Protocol)
+			require.Equal(t, got.DefaultEndpoint, entry.Endpoint)
+			require.Equal(t, got.Method, entry.Method)
+			require.Equal(t, got.RequestContentType, entry.RequestContentType)
+			require.Equal(t, got.StreamEndpoint, entry.StreamEndpoint)
+			require.Equal(t, got.SupportsStream, entry.SupportsStream)
+			require.Equal(t, got.RequestContract, entry.RequestContract)
+			require.Equal(t, got.ResponseContract, entry.ResponseContract)
+			require.Equal(t, got.StreamContract, entry.StreamContract)
+			require.Equal(t, got.ToolContract, entry.ToolContract)
+			require.Equal(t, got.ThinkingContract, entry.ThinkingContract)
+			require.Equal(t, got.MediaContract, entry.MediaContract)
 		})
 	}
 }

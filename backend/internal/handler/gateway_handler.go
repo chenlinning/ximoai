@@ -1029,6 +1029,9 @@ type modelListEntryProtocolXimoAI struct {
 	DefaultEntryProtocol string                       `json:"default_entry_protocol"`
 	DefaultEndpoint      string                       `json:"default_endpoint"`
 	DefaultEntryID       string                       `json:"default_entry_id,omitempty"`
+	Method               string                       `json:"method"`
+	RequestContentType   string                       `json:"request_content_type"`
+	StreamEndpoint       string                       `json:"stream_endpoint,omitempty"`
 	ModelType            string                       `json:"model_type"`
 	OperationType        string                       `json:"operation_type"`
 	ExecutionMode        string                       `json:"execution_mode"`
@@ -1036,19 +1039,32 @@ type modelListEntryProtocolXimoAI struct {
 	SupportsPolling      bool                         `json:"supports_polling"`
 	RequestContract      map[string]any               `json:"request_contract,omitempty"`
 	ResponseContract     map[string]any               `json:"response_contract,omitempty"`
+	StreamContract       map[string]any               `json:"stream_contract,omitempty"`
+	ToolContract         map[string]any               `json:"tool_contract,omitempty"`
+	ThinkingContract     map[string]any               `json:"thinking_contract,omitempty"`
+	MediaContract        map[string]any               `json:"media_contract,omitempty"`
+	PollingContract      map[string]any               `json:"polling_contract,omitempty"`
+	UnsupportedCaps      []string                     `json:"unsupported_capabilities,omitempty"`
 	EntryProtocols       []modelListEntryProtocolInfo `json:"entry_protocols,omitempty"`
 	Group                *modelListEntryProtocolGroup `json:"group,omitempty"`
 	Pricing              *userSupportedModelPricing   `json:"pricing"`
 }
 
 type modelListEntryProtocolInfo struct {
-	ID               string         `json:"id"`
-	Protocol         string         `json:"protocol"`
-	Endpoint         string         `json:"endpoint"`
-	StreamEndpoint   string         `json:"stream_endpoint,omitempty"`
-	SupportsStream   bool           `json:"supports_stream"`
-	RequestContract  map[string]any `json:"request_contract,omitempty"`
-	ResponseContract map[string]any `json:"response_contract,omitempty"`
+	ID                 string         `json:"id"`
+	Protocol           string         `json:"protocol"`
+	Endpoint           string         `json:"endpoint"`
+	Method             string         `json:"method"`
+	RequestContentType string         `json:"request_content_type"`
+	StreamEndpoint     string         `json:"stream_endpoint,omitempty"`
+	SupportsStream     bool           `json:"supports_stream"`
+	RequestContract    map[string]any `json:"request_contract,omitempty"`
+	ResponseContract   map[string]any `json:"response_contract,omitempty"`
+	StreamContract     map[string]any `json:"stream_contract,omitempty"`
+	ToolContract       map[string]any `json:"tool_contract,omitempty"`
+	ThinkingContract   map[string]any `json:"thinking_contract,omitempty"`
+	MediaContract      map[string]any `json:"media_contract,omitempty"`
+	PollingContract    map[string]any `json:"polling_contract,omitempty"`
 }
 
 type modelListEntryProtocolGroup struct {
@@ -1072,6 +1088,9 @@ func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *servic
 				DefaultEntryProtocol: meta.DefaultEntryProtocol,
 				DefaultEndpoint:      meta.DefaultEndpoint,
 				DefaultEntryID:       meta.DefaultEntryID,
+				Method:               meta.Method,
+				RequestContentType:   meta.RequestContentType,
+				StreamEndpoint:       meta.StreamEndpoint,
 				ModelType:            meta.ModelType,
 				OperationType:        meta.OperationType,
 				ExecutionMode:        meta.ExecutionMode,
@@ -1079,6 +1098,12 @@ func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *servic
 				SupportsPolling:      meta.SupportsPolling,
 				RequestContract:      meta.RequestContract,
 				ResponseContract:     meta.ResponseContract,
+				StreamContract:       meta.StreamContract,
+				ToolContract:         meta.ToolContract,
+				ThinkingContract:     meta.ThinkingContract,
+				MediaContract:        meta.MediaContract,
+				PollingContract:      meta.PollingContract,
+				UnsupportedCaps:      meta.UnsupportedCaps,
 				EntryProtocols:       meta.EntryProtocols,
 				Group:                group,
 				Pricing:              toUserPricing(scalePricingForModelList(detail.Pricing, group)),
@@ -1156,6 +1181,8 @@ type publicEntryMetadata struct {
 	DefaultEntryProtocol string
 	DefaultEndpoint      string
 	DefaultEntryID       string
+	Method               string
+	RequestContentType   string
 	StreamEndpoint       string
 	ModelType            string
 	OperationType        string
@@ -1164,6 +1191,12 @@ type publicEntryMetadata struct {
 	SupportsPolling      bool
 	RequestContract      map[string]any
 	ResponseContract     map[string]any
+	StreamContract       map[string]any
+	ToolContract         map[string]any
+	ThinkingContract     map[string]any
+	MediaContract        map[string]any
+	PollingContract      map[string]any
+	UnsupportedCaps      []string
 	EntryProtocols       []modelListEntryProtocolInfo
 }
 
@@ -1192,14 +1225,24 @@ func publicEntryMetadataForPricedModel(detail service.GatewayPricedModelDetail, 
 		supportsPolling = true
 	}
 	entryID := publicEntryID(protocol, endpoint, operationType)
+	method := publicMethodForEntry(operationType)
+	requestContentType := publicRequestContentTypeForEntry(operationType)
 	streamEndpoint := publicStreamEndpointForEntry(protocol, endpoint, modelType)
 	supportsStream := streamEndpoint != ""
 	requestContract := publicRequestContractForPricedModel(detail, protocol, endpoint, modelType, operationType)
 	responseContract := publicResponseContractForPricedModel(detail, protocol, endpoint, modelType, operationType)
+	streamContract := publicStreamContractForPricedModel(protocol, endpoint, streamEndpoint, modelType, operationType)
+	toolContract := publicToolContractForPricedModel(protocol, endpoint, modelType, operationType)
+	thinkingContract := publicThinkingContractForPricedModel(protocol, endpoint, modelType, operationType)
+	mediaContract := publicMediaContractForPricedModel(protocol, endpoint, modelType, operationType)
+	pollingContract := publicPollingContractForPricedModel(endpoint, operationType)
+	unsupportedCaps := publicUnsupportedCapabilitiesForPricedModel(protocol, endpoint, modelType, operationType)
 	return publicEntryMetadata{
 		DefaultEntryProtocol: protocol,
 		DefaultEndpoint:      endpoint,
 		DefaultEntryID:       entryID,
+		Method:               method,
+		RequestContentType:   requestContentType,
 		StreamEndpoint:       streamEndpoint,
 		ModelType:            modelType,
 		OperationType:        operationType,
@@ -1208,14 +1251,27 @@ func publicEntryMetadataForPricedModel(detail service.GatewayPricedModelDetail, 
 		SupportsPolling:      supportsPolling,
 		RequestContract:      requestContract,
 		ResponseContract:     responseContract,
+		StreamContract:       streamContract,
+		ToolContract:         toolContract,
+		ThinkingContract:     thinkingContract,
+		MediaContract:        mediaContract,
+		PollingContract:      pollingContract,
+		UnsupportedCaps:      unsupportedCaps,
 		EntryProtocols: []modelListEntryProtocolInfo{{
-			ID:               entryID,
-			Protocol:         protocol,
-			Endpoint:         endpoint,
-			StreamEndpoint:   streamEndpoint,
-			SupportsStream:   supportsStream,
-			RequestContract:  requestContract,
-			ResponseContract: responseContract,
+			ID:                 entryID,
+			Protocol:           protocol,
+			Endpoint:           endpoint,
+			Method:             method,
+			RequestContentType: requestContentType,
+			StreamEndpoint:     streamEndpoint,
+			SupportsStream:     supportsStream,
+			RequestContract:    requestContract,
+			ResponseContract:   responseContract,
+			StreamContract:     streamContract,
+			ToolContract:       toolContract,
+			ThinkingContract:   thinkingContract,
+			MediaContract:      mediaContract,
+			PollingContract:    pollingContract,
 		}},
 	}
 }
@@ -1399,6 +1455,22 @@ func publicEntryID(protocol, endpoint, operationType string) string {
 	}
 }
 
+func publicMethodForEntry(operationType string) string {
+	switch operationType {
+	default:
+		return http.MethodPost
+	}
+}
+
+func publicRequestContentTypeForEntry(operationType string) string {
+	switch operationType {
+	case "audio_transcription", "audio_translation":
+		return "multipart/form-data"
+	default:
+		return "application/json"
+	}
+}
+
 func publicStreamEndpointForEntry(protocol, endpoint, modelType string) string {
 	if modelType != "chat" {
 		return ""
@@ -1442,7 +1514,20 @@ func publicRequestContractForPricedModel(detail service.GatewayPricedModelDetail
 	case "chat_audio":
 		return map[string]any{
 			"required_fields": []string{"model", "messages", "modalities", "audio"},
-			"optional_fields": []string{"stream"},
+			"optional_fields": []string{},
+			"fields": map[string]any{
+				"model":      map[string]any{"type": "string", "location": "body.model"},
+				"messages":   map[string]any{"type": "array", "location": "body.messages"},
+				"modalities": map[string]any{"type": "array", "location": "body.modalities", "values": []string{"text", "audio"}},
+				"audio": map[string]any{
+					"type":     "object",
+					"location": "body.audio",
+					"fields": map[string]any{
+						"voice":  map[string]any{"type": "string", "verified_values": []string{"alloy"}},
+						"format": map[string]any{"type": "string", "verified_values": []string{"wav"}},
+					},
+				},
+			},
 			"examples": map[string]any{
 				"modalities": []string{"text", "audio"},
 				"audio": map[string]any{
@@ -1469,6 +1554,20 @@ func publicRequestContractForPricedModel(detail service.GatewayPricedModelDetail
 		return map[string]any{
 			"required_fields": []string{"model", "input", "voice"},
 			"optional_fields": []string{"response_format", "speed"},
+			"fields": map[string]any{
+				"model":           map[string]any{"type": "string", "location": "body.model"},
+				"input":           map[string]any{"type": "string", "location": "body.input"},
+				"voice":           map[string]any{"type": "string", "location": "body.voice", "verified_values": []string{"alloy"}},
+				"response_format": map[string]any{"type": "string", "location": "body.response_format", "verified_values": []string{"wav"}},
+				"speed":           map[string]any{"type": "number", "location": "body.speed"},
+			},
+			"examples": map[string]any{
+				"audio": map[string]any{
+					"input":           "contract tts ok",
+					"voice":           "alloy",
+					"response_format": "wav",
+				},
+			},
 		}
 	case "voice_management":
 		return map[string]any{
@@ -1506,6 +1605,59 @@ func publicOpenAIResponsesChatRequestContract() map[string]any {
 	return map[string]any{
 		"required_fields": []string{"model", "input"},
 		"optional_fields": []string{"stream", "tools", "tool_choice", "text", "reasoning", "previous_response_id", "store", "include", "max_output_tokens", "temperature", "top_p"},
+		"fields": map[string]any{
+			"model": map[string]any{
+				"type":     "string",
+				"location": "body.model",
+			},
+			"input": map[string]any{
+				"type":     []string{"string", "array"},
+				"location": "body.input",
+			},
+			"stream": map[string]any{
+				"type":     "boolean",
+				"location": "body.stream",
+				"default":  false,
+			},
+			"tools": map[string]any{
+				"type":            "array",
+				"location":        "body.tools",
+				"supported_types": []string{"function"},
+				"unsupported_types": []string{
+					"image_generation",
+				},
+			},
+			"tool_choice": map[string]any{
+				"type":     []string{"string", "object"},
+				"location": "body.tool_choice",
+			},
+			"reasoning": map[string]any{
+				"type":     "object",
+				"location": "body.reasoning",
+				"notes":    "parameter is accepted, but visible reasoning content is not exposed by the verified upstream response",
+			},
+		},
+		"examples": map[string]any{
+			"text": map[string]any{
+				"input": "Reply exactly: ok",
+				"store": false,
+			},
+			"function_tool": map[string]any{
+				"tools": []map[string]any{{
+					"type":        "function",
+					"name":        "get_test_value",
+					"description": "Return a test value",
+					"parameters": map[string]any{
+						"type":                 "object",
+						"properties":           map[string]any{"code": map[string]any{"type": "string"}},
+						"required":             []string{"code"},
+						"additionalProperties": false,
+					},
+					"strict": true,
+				}},
+				"tool_choice": map[string]any{"type": "function", "name": "get_test_value"},
+			},
+		},
 	}
 }
 
@@ -1513,6 +1665,28 @@ func publicAnthropicMessagesChatRequestContract() map[string]any {
 	return map[string]any{
 		"required_fields": []string{"model", "messages", "max_tokens"},
 		"optional_fields": []string{"stream", "system", "tools", "tool_choice", "thinking", "temperature", "top_p", "metadata", "stop_sequences"},
+		"fields": map[string]any{
+			"model":      map[string]any{"type": "string", "location": "body.model"},
+			"messages":   map[string]any{"type": "array", "location": "body.messages"},
+			"max_tokens": map[string]any{"type": "integer", "location": "body.max_tokens"},
+			"stream":     map[string]any{"type": "boolean", "location": "body.stream", "default": false},
+			"tools": map[string]any{
+				"type":     "array",
+				"location": "body.tools",
+				"schema":   "Anthropic tools use name, description, input_schema",
+			},
+			"thinking": map[string]any{
+				"type":     "object",
+				"location": "body.thinking",
+				"example":  map[string]any{"type": "enabled", "budget_tokens": 512},
+			},
+		},
+		"examples": map[string]any{
+			"text": map[string]any{
+				"max_tokens": 80,
+				"messages":   []map[string]any{{"role": "user", "content": "Reply exactly: ok"}},
+			},
+		},
 	}
 }
 
@@ -1520,25 +1694,73 @@ func publicGeminiNativeChatRequestContract() map[string]any {
 	return map[string]any{
 		"required_fields": []string{"contents"},
 		"optional_fields": []string{"systemInstruction", "generationConfig", "safetySettings", "tools", "toolConfig"},
+		"fields": map[string]any{
+			"contents":          map[string]any{"type": "array", "location": "body.contents"},
+			"systemInstruction": map[string]any{"type": "object", "location": "body.systemInstruction"},
+			"generationConfig":  map[string]any{"type": "object", "location": "body.generationConfig"},
+			"tools": map[string]any{
+				"type":     "array",
+				"location": "body.tools",
+				"schema":   "Gemini native function declarations use tools[].functionDeclarations[]",
+			},
+			"toolConfig": map[string]any{"type": "object", "location": "body.toolConfig"},
+		},
+		"examples": map[string]any{
+			"text": map[string]any{
+				"contents": []map[string]any{{
+					"role":  "user",
+					"parts": []map[string]any{{"text": "Reply exactly: ok"}},
+				}},
+			},
+		},
 	}
 }
 
 func publicOpenAIImageRequestContract() map[string]any {
+	sizeContract := map[string]any{
+		"type":   "enum",
+		"values": []string{"1024x1024", "1536x1024", "1024x1536"},
+		"aliases": map[string]any{
+			"square":           "1024x1024",
+			"1:1":              "1024x1024",
+			"landscape":        "1536x1024",
+			"16:9":             "1536x1024",
+			"wide":             "1536x1024",
+			"portrait":         "1024x1536",
+			"9:16":             "1024x1536",
+			"mobile_wallpaper": "1024x1536",
+		},
+	}
 	return map[string]any{
 		"required_fields": []string{"model", "prompt"},
 		"optional_fields": []string{"n", "size", "quality", "response_format", "background"},
-		"size": map[string]any{
-			"type":   "enum",
-			"values": []string{"1024x1024", "1536x1024", "1024x1536"},
-			"aliases": map[string]any{
-				"square":           "1024x1024",
-				"1:1":              "1024x1024",
-				"landscape":        "1536x1024",
-				"16:9":             "1536x1024",
-				"wide":             "1536x1024",
-				"portrait":         "1024x1536",
-				"9:16":             "1024x1536",
-				"mobile_wallpaper": "1024x1536",
+		"fields": map[string]any{
+			"model":  map[string]any{"type": "string", "location": "body.model"},
+			"prompt": map[string]any{"type": "string", "location": "body.prompt"},
+			"n":      map[string]any{"type": "integer", "location": "body.n", "default": 1},
+			"size":   sizeContract,
+			"quality": map[string]any{
+				"type":     "string",
+				"location": "body.quality",
+			},
+			"background": map[string]any{
+				"type":     "string",
+				"location": "body.background",
+			},
+			"response_format": map[string]any{
+				"type":    "enum",
+				"values":  []string{"b64_json"},
+				"default": "b64_json",
+				"notes":   "url timed out in live verification and is intentionally not advertised",
+			},
+		},
+		"size": sizeContract,
+		"examples": map[string]any{
+			"image": map[string]any{
+				"prompt":          "A simple verification icon",
+				"n":               1,
+				"size":            "1024x1024",
+				"response_format": "b64_json",
 			},
 		},
 	}
@@ -1548,6 +1770,11 @@ func publicGeminiImageRequestContract() map[string]any {
 	return map[string]any{
 		"required_fields": []string{"contents"},
 		"optional_fields": []string{"generationConfig", "safetySettings"},
+		"fields": map[string]any{
+			"contents":         map[string]any{"type": "array", "location": "body.contents"},
+			"generationConfig": map[string]any{"type": "object", "location": "body.generationConfig"},
+			"safetySettings":   map[string]any{"type": "array", "location": "body.safetySettings"},
+		},
 		"generationConfig": map[string]any{
 			"responseModalities": map[string]any{
 				"type":    "array",
@@ -1580,6 +1807,18 @@ func publicGeminiImageRequestContract() map[string]any {
 				},
 			},
 		},
+		"examples": map[string]any{
+			"image": map[string]any{
+				"contents": []map[string]any{{
+					"role":  "user",
+					"parts": []map[string]any{{"text": "A simple verification icon"}},
+				}},
+				"generationConfig": map[string]any{
+					"responseModalities": []string{"TEXT", "IMAGE"},
+					"imageConfig":        map[string]any{"aspectRatio": "1:1", "imageSize": "1K"},
+				},
+			},
+		},
 	}
 }
 
@@ -1608,11 +1847,13 @@ func publicResponseContractForPricedModel(detail service.GatewayPricedModelDetai
 	switch operationType {
 	case "chat_audio":
 		return map[string]any{
-			"delivery":        "openai_chat_audio_base64",
-			"audio_data_path": "choices[0].message.audio.data",
-			"transcript_path": "choices[0].message.audio.transcript",
-			"audio_id_path":   "choices[0].message.audio.id",
-			"expires_at_path": "choices[0].message.audio.expires_at",
+			"delivery":           "openai_chat_audio_base64",
+			"audio_data_path":    "choices[0].message.audio.data",
+			"transcript_path":    "choices[0].message.audio.transcript",
+			"audio_id_path":      "choices[0].message.audio.id",
+			"expires_at_path":    "choices[0].message.audio.expires_at",
+			"usage_path":         "usage",
+			"finish_reason_path": "choices[0].finish_reason",
 		}
 	case "audio_tts":
 		if platform == service.PlatformKlingAudio {
@@ -1624,7 +1865,8 @@ func publicResponseContractForPricedModel(detail service.GatewayPricedModelDetai
 			}
 		}
 		return map[string]any{
-			"delivery": "audio_binary",
+			"delivery":     "audio_binary",
+			"content_type": "audio/wav",
 		}
 	case "voice_management":
 		return map[string]any{
@@ -1656,26 +1898,39 @@ func publicOpenAIResponsesChatResponseContract() map[string]any {
 	return map[string]any{
 		"delivery":        "openai_responses_json",
 		"stream_delivery": "openai_responses_sse",
-		"stream_events":   []string{"response.output_text.delta", "response.reasoning_summary_text.delta", "response.completed", "response.error"},
+		"text_paths":      []string{"output[].content[].text", "output_text"},
+		"usage_path":      "usage",
+		"status_path":     "status",
+		"output_path":     "output",
+		"stream_events":   []string{"response.output_text.delta", "response.completed", "response.failed", "response.error"},
 	}
 }
 
 func publicAnthropicMessagesChatResponseContract() map[string]any {
 	return map[string]any{
-		"delivery":             "anthropic_messages_json",
-		"stream_delivery":      "anthropic_messages_sse",
-		"stream_events":        []string{"message_start", "content_block_start", "content_block_delta", "message_delta", "message_stop"},
-		"thinking_block_type":  "thinking",
-		"thinking_tokens_path": "usage.output_tokens_details.thinking_tokens",
+		"delivery":                "anthropic_messages_json",
+		"stream_delivery":         "anthropic_messages_sse",
+		"text_paths":              []string{"content[?type=text].text"},
+		"usage_path":              "usage",
+		"finish_reason_path":      "stop_reason",
+		"stream_events":           []string{"message_start", "content_block_start", "content_block_delta", "message_delta", "message_stop"},
+		"thinking_block_type":     "thinking",
+		"thinking_text_path":      "content[?type=thinking].thinking",
+		"thinking_signature_path": "content[?type=thinking].signature",
 	}
 }
 
 func publicGeminiNativeChatResponseContract() map[string]any {
 	return map[string]any{
-		"delivery":             "gemini_generate_content_json",
-		"stream_delivery":      "gemini_sse",
-		"stream_events":        []string{"data"},
-		"thinking_tokens_path": "usageMetadata.thoughtsTokenCount",
+		"delivery":                  "gemini_generate_content_json",
+		"stream_delivery":           "gemini_sse",
+		"text_paths":                []string{"candidates[].content.parts[].text"},
+		"usage_path":                "usageMetadata",
+		"finish_reason_path":        "candidates[].finishReason",
+		"stream_events":             []string{"data"},
+		"stream_text_path":          "data.candidates[].content.parts[].text",
+		"stream_finish_reason_path": "data.candidates[].finishReason",
+		"thinking_tokens_path":      "usageMetadata.thoughtsTokenCount",
 	}
 }
 
@@ -1683,13 +1938,235 @@ func publicOpenAIImageResponseContract() map[string]any {
 	return map[string]any{
 		"delivery":        "openai_image_json",
 		"image_data_path": "data[].b64_json",
+		"image_mime_type": "image/png",
+		"usage_path":      "usage",
 	}
 }
 
 func publicGeminiImageResponseContract() map[string]any {
 	return map[string]any{
-		"delivery":        "gemini_generate_content_json",
-		"image_data_path": "candidates[].content.parts[].inlineData.data",
+		"delivery":             "gemini_generate_content_json",
+		"image_data_path":      "candidates[].content.parts[].inlineData.data",
+		"image_mime_type_path": "candidates[].content.parts[].inlineData.mimeType",
+		"text_paths":           []string{"candidates[].content.parts[].text"},
+		"usage_path":           "usageMetadata",
+		"finish_reason_path":   "candidates[].finishReason",
+	}
+}
+
+func publicStreamContractForPricedModel(protocol, endpoint, streamEndpoint, modelType, operationType string) map[string]any {
+	if streamEndpoint == "" || modelType != "chat" {
+		return nil
+	}
+	switch protocol {
+	case "openai":
+		if strings.Contains(endpoint, "/v1/responses") {
+			return map[string]any{
+				"supported":        true,
+				"endpoint":         streamEndpoint,
+				"request_field":    "stream",
+				"request_value":    true,
+				"delivery":         "sse",
+				"content_type":     "text/event-stream",
+				"text_delta_event": "response.output_text.delta",
+				"text_delta_path":  "delta",
+				"done_events":      []string{"response.completed"},
+				"error_events":     []string{"response.failed", "response.error", "error"},
+				"usage_path":       "response.usage",
+			}
+		}
+	case "anthropic":
+		return map[string]any{
+			"supported":           true,
+			"endpoint":            streamEndpoint,
+			"request_field":       "stream",
+			"request_value":       true,
+			"delivery":            "sse",
+			"content_type":        "text/event-stream",
+			"text_delta_event":    "content_block_delta",
+			"text_delta_path":     "delta.text",
+			"thinking_delta_path": "delta.thinking",
+			"done_events":         []string{"message_stop"},
+			"error_events":        []string{"error"},
+			"usage_path":          "message.usage",
+			"finish_reason_path":  "delta.stop_reason",
+		}
+	case "gemini":
+		return map[string]any{
+			"supported":          true,
+			"endpoint":           streamEndpoint,
+			"request_field":      "endpoint",
+			"delivery":           "sse",
+			"content_type":       "text/event-stream",
+			"text_delta_event":   "data",
+			"text_delta_path":    "candidates[].content.parts[].text",
+			"done_events":        []string{"data with candidates[].finishReason"},
+			"error_events":       []string{"error"},
+			"usage_path":         "usageMetadata",
+			"finish_reason_path": "candidates[].finishReason",
+		}
+	}
+	return nil
+}
+
+func publicToolContractForPricedModel(protocol, endpoint, modelType, operationType string) map[string]any {
+	if modelType != "chat" {
+		return nil
+	}
+	switch protocol {
+	case "openai":
+		if strings.Contains(endpoint, "/v1/responses") {
+			return map[string]any{
+				"supported":        true,
+				"types":            []string{"function"},
+				"request_path":     "tools[]",
+				"tool_choice_path": "tool_choice",
+				"response_path":    "output[?type=function_call]",
+				"fields": map[string]any{
+					"name_path":      "output[?type=function_call].name",
+					"arguments_path": "output[?type=function_call].arguments",
+					"call_id_path":   "output[?type=function_call].call_id",
+				},
+				"unsupported_types": []string{"image_generation"},
+			}
+		}
+	case "anthropic":
+		return map[string]any{
+			"supported":        true,
+			"types":            []string{"tool_use"},
+			"request_path":     "tools[]",
+			"tool_choice_path": "tool_choice",
+			"response_path":    "content[?type=tool_use]",
+			"fields": map[string]any{
+				"id_path":    "content[?type=tool_use].id",
+				"name_path":  "content[?type=tool_use].name",
+				"input_path": "content[?type=tool_use].input",
+			},
+		}
+	case "gemini":
+		return map[string]any{
+			"supported":        true,
+			"types":            []string{"functionDeclarations"},
+			"request_path":     "tools[].functionDeclarations[]",
+			"tool_choice_path": "toolConfig.functionCallingConfig",
+			"response_path":    "candidates[].content.parts[].functionCall",
+			"fields": map[string]any{
+				"name_path": "candidates[].content.parts[].functionCall.name",
+				"args_path": "candidates[].content.parts[].functionCall.args",
+			},
+		}
+	}
+	return nil
+}
+
+func publicThinkingContractForPricedModel(protocol, endpoint, modelType, operationType string) map[string]any {
+	if modelType != "chat" {
+		return nil
+	}
+	switch protocol {
+	case "openai":
+		if strings.Contains(endpoint, "/v1/responses") {
+			return map[string]any{
+				"request_supported": true,
+				"request_path":      "reasoning",
+				"visible_content":   false,
+				"usage_tokens_path": "usage.output_tokens_details.reasoning_tokens",
+				"notes":             "reasoning parameter is accepted, but verified responses did not expose visible reasoning content",
+			}
+		}
+	case "anthropic":
+		return map[string]any{
+			"request_supported": true,
+			"request_path":      "thinking",
+			"visible_content":   true,
+			"content_path":      "content[?type=thinking].thinking",
+			"signature_path":    "content[?type=thinking].signature",
+			"text_may_be_empty": true,
+		}
+	case "gemini":
+		return map[string]any{
+			"request_supported": true,
+			"request_path":      "generationConfig.thinkingConfig",
+			"visible_content":   true,
+			"content_path":      "candidates[].content.parts[?thought=true].text",
+			"signature_path":    "candidates[].content.parts[].thoughtSignature",
+			"usage_tokens_path": "usageMetadata.thoughtsTokenCount",
+		}
+	}
+	return nil
+}
+
+func publicMediaContractForPricedModel(protocol, endpoint, modelType, operationType string) map[string]any {
+	switch operationType {
+	case "image_generation":
+		if protocol == "gemini" {
+			return map[string]any{
+				"kind":           "image",
+				"delivery":       "json_base64",
+				"data_path":      "candidates[].content.parts[].inlineData.data",
+				"mime_type_path": "candidates[].content.parts[].inlineData.mimeType",
+				"size_request_paths": []string{
+					"generationConfig.imageConfig.aspectRatio",
+					"generationConfig.imageConfig.imageSize",
+				},
+			}
+		}
+		return map[string]any{
+			"kind":                       "image",
+			"delivery":                   "json_base64",
+			"data_path":                  "data[].b64_json",
+			"mime_type":                  "image/png",
+			"size_request_path":          "size",
+			"supported_response_formats": []string{"b64_json"},
+		}
+	case "chat_audio":
+		return map[string]any{
+			"kind":            "audio",
+			"delivery":        "json_base64",
+			"data_path":       "choices[0].message.audio.data",
+			"transcript_path": "choices[0].message.audio.transcript",
+			"verified_format": "wav",
+		}
+	case "audio_tts":
+		return map[string]any{
+			"kind":            "audio",
+			"delivery":        "binary",
+			"content_type":    "audio/wav",
+			"verified_format": "wav",
+		}
+	case "video_generation":
+		return map[string]any{
+			"kind":     "video",
+			"delivery": "async_or_binary",
+		}
+	}
+	return nil
+}
+
+func publicPollingContractForPricedModel(endpoint, operationType string) map[string]any {
+	if operationType != "video_generation" {
+		return nil
+	}
+	return map[string]any{
+		"supported":         true,
+		"task_id_path":      "id",
+		"status_path":       "status",
+		"polling_endpoint":  "/v1/videos/{id}",
+		"content_endpoint":  "/v1/videos/{id}/content",
+		"terminal_statuses": []string{"completed", "failed", "cancelled"},
+	}
+}
+
+func publicUnsupportedCapabilitiesForPricedModel(protocol, endpoint, modelType, operationType string) []string {
+	switch {
+	case protocol == "openai" && strings.Contains(endpoint, "/v1/responses"):
+		return []string{"visible_reasoning_content", "image_generation_tool"}
+	case protocol == "openai" && strings.Contains(endpoint, "/v1/images/generations"):
+		return []string{"response_format:url", "sse_streaming"}
+	case operationType == "chat_audio":
+		return []string{"sse_streaming"}
+	default:
+		return nil
 	}
 }
 

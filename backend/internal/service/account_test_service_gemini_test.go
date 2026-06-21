@@ -38,6 +38,25 @@ func TestCreateGeminiTestPayload_ImageModel(t *testing.T) {
 	require.Equal(t, "1:1", parsed.GenerationConfig.ImageConfig.AspectRatio)
 }
 
+func TestCreateGeminiTestPayload_NanoBananaImageAlias(t *testing.T) {
+	t.Parallel()
+
+	payload := createGeminiTestPayload("NanoBanana2", "draw a tiny robot")
+
+	var parsed struct {
+		GenerationConfig struct {
+			ResponseModalities []string `json:"responseModalities"`
+			ImageConfig        struct {
+				AspectRatio string `json:"aspectRatio"`
+			} `json:"imageConfig"`
+		} `json:"generationConfig"`
+	}
+
+	require.NoError(t, json.Unmarshal(payload, &parsed))
+	require.Equal(t, []string{"TEXT", "IMAGE"}, parsed.GenerationConfig.ResponseModalities)
+	require.Equal(t, "1:1", parsed.GenerationConfig.ImageConfig.AspectRatio)
+}
+
 func TestProcessGeminiStream_EmitsImageEvent(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
@@ -56,4 +75,23 @@ func TestProcessGeminiStream_EmitsImageEvent(t *testing.T) {
 	require.Contains(t, body, "\"type\":\"image\"")
 	require.Contains(t, body, "\"image_url\":\"data:image/png;base64,QUJD\"")
 	require.Contains(t, body, "\"mime_type\":\"image/png\"")
+}
+
+func TestProcessGeminiJSONResponse_EmitsImageEvent(t *testing.T) {
+	t.Parallel()
+	gin.SetMode(gin.TestMode)
+
+	ctx, recorder := newTestContext()
+	svc := &AccountTestService{}
+
+	body := []byte(`{"candidates":[{"finishReason":"STOP","content":{"parts":[{"inlineData":{"mimeType":"image/jpeg","data":"QUJD"}}]}}]}`)
+
+	err := svc.processGeminiJSONResponse(ctx, body)
+	require.NoError(t, err)
+
+	out := recorder.Body.String()
+	require.Contains(t, out, "\"type\":\"image\"")
+	require.Contains(t, out, "\"image_url\":\"data:image/jpeg;base64,QUJD\"")
+	require.Contains(t, out, "\"mime_type\":\"image/jpeg\"")
+	require.Contains(t, out, "\"success\":true")
 }

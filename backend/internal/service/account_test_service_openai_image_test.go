@@ -97,7 +97,7 @@ func TestAccountTestService_OpenAIImageAPIKeyUsesConfiguredV1BaseURL(t *testing.
 	require.Contains(t, rec.Body.String(), "\"success\":true")
 }
 
-func TestAccountTestService_OpenAIAudioModelUsesAudioSpeechEndpoint(t *testing.T) {
+func TestAccountTestService_OpenAIChatAudioModelUsesChatCompletionsEndpoint(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	rec := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(rec)
@@ -107,9 +107,9 @@ func TestAccountTestService_OpenAIAudioModelUsesAudioSpeechEndpoint(t *testing.T
 		resp: &http.Response{
 			StatusCode: http.StatusOK,
 			Header: http.Header{
-				"Content-Type": []string{"audio/mpeg"},
+				"Content-Type": []string{"application/json"},
 			},
-			Body: io.NopCloser(strings.NewReader("mp3-bytes")),
+			Body: io.NopCloser(strings.NewReader(`{"object":"chat.completion","choices":[{"finish_reason":"stop","message":{"audio":{"data":"d2F2LWJ5dGVz","transcript":"hi"}}}],"usage":{"prompt_tokens":1,"completion_tokens":1}}`)),
 		},
 	}
 	svc := &AccountTestService{
@@ -130,15 +130,16 @@ func TestAccountTestService_OpenAIAudioModelUsesAudioSpeechEndpoint(t *testing.T
 	err := svc.testOpenAIAccountConnection(c, account, "gpt-4o-audio-preview", "", "")
 	require.NoError(t, err)
 	require.NotNil(t, upstream.lastReq)
-	require.Equal(t, "https://audio-upstream.example/v1/audio/speech", upstream.lastReq.URL.String())
+	require.Equal(t, "https://audio-upstream.example/v1/chat/completions", upstream.lastReq.URL.String())
 	require.Equal(t, "Bearer test-api-key", upstream.lastReq.Header.Get("Authorization"))
-	require.Equal(t, "audio/mpeg", upstream.lastReq.Header.Get("Accept"))
+	require.Equal(t, "application/json", upstream.lastReq.Header.Get("Accept"))
 	require.Equal(t, "gpt-4o-audio-preview", gjson.GetBytes(upstream.lastBody, "model").String())
-	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "input").String())
-	require.Equal(t, "alloy", gjson.GetBytes(upstream.lastBody, "voice").String())
-	require.Contains(t, rec.Body.String(), "Audio test returned")
+	require.Equal(t, "hi", gjson.GetBytes(upstream.lastBody, "messages.0.content").String())
+	require.Equal(t, "alloy", gjson.GetBytes(upstream.lastBody, "audio.voice").String())
+	require.Equal(t, "wav", gjson.GetBytes(upstream.lastBody, "audio.format").String())
+	require.Contains(t, rec.Body.String(), "Audio chat test returned")
 	require.Contains(t, rec.Body.String(), `"type":"audio"`)
-	require.Contains(t, rec.Body.String(), `data:audio/mpeg;base64,bXAzLWJ5dGVz`)
+	require.Contains(t, rec.Body.String(), `data:audio/wav;base64,d2F2LWJ5dGVz`)
 	require.Contains(t, rec.Body.String(), "\"success\":true")
 }
 
