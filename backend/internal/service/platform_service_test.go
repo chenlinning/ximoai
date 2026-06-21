@@ -159,6 +159,23 @@ func TestPlatformService_BuiltinPlatformsExposeDefaultBaseURLs(t *testing.T) {
 	require.Equal(t, PlatformDefaultBaseURLAntigravity, baseURLs[PlatformAntigravity])
 }
 
+func TestPlatformService_BuiltinOpenAIAudioPlatform(t *testing.T) {
+	platforms := builtinPlatforms(true)
+
+	bySlug := map[string]Platform{}
+	for _, platform := range platforms {
+		bySlug[platform.Slug] = platform
+	}
+
+	platform := bySlug[PlatformOpenAIAudio]
+	require.Equal(t, "OpenAI Audio", platform.DisplayName)
+	require.Equal(t, PlatformProtocolOpenAICompatible, platform.Protocol)
+	require.Equal(t, []string{AccountTypeAPIKey}, platform.AuthModes)
+	require.ElementsMatch(t, []string{PlatformCapabilityChatCompletions, PlatformCapabilityAudio}, platform.Capabilities)
+	require.True(t, platform.Builtin)
+	require.True(t, builtinPlatformBaseURLEditable(PlatformOpenAIAudio))
+}
+
 func TestPlatformService_CreateAssignsDeterministicColor(t *testing.T) {
 	repo := &platformRepoStubForPlatformService{platforms: map[string]Platform{}}
 	svc := NewPlatformService(repo)

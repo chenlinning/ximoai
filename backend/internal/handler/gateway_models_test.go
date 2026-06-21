@@ -811,7 +811,7 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantModelType:       "image",
 			wantOperationType:   "image_generation",
 			wantExecutionMode:   "sync",
-			wantSupportsStream:  true,
+			wantSupportsStream:  false,
 			wantSupportsPolling: false,
 		},
 		{
@@ -1000,6 +1000,145 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			require.Equal(t, tt.wantExecutionMode, got.ExecutionMode)
 			require.Equal(t, tt.wantSupportsStream, got.SupportsStream)
 			require.Equal(t, tt.wantSupportsPolling, got.SupportsPolling)
+		})
+	}
+}
+
+func TestPublicEntryMetadataForPricedModel_ReturnsProtocolSpecificContracts(t *testing.T) {
+	tests := []struct {
+		name               string
+		detail             service.GatewayPricedModelDetail
+		platform           *service.Platform
+		wantRequired       []string
+		wantOptional       []string
+		wantNotRequired    []string
+		wantDelivery       string
+		wantStreamDelivery string
+		wantStreamEndpoint string
+	}{
+		{
+			name: "openai responses chat uses input contract",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gpt-5.4-mini",
+				Platform: service.PlatformOpenAI,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.00000075),
+					OutputPrice: testPrice(0.0000045),
+				},
+			},
+			wantRequired:       []string{"model", "input"},
+			wantOptional:       []string{"stream", "reasoning", "max_output_tokens"},
+			wantNotRequired:    []string{"messages"},
+			wantDelivery:       "openai_responses_json",
+			wantStreamDelivery: "openai_responses_sse",
+			wantStreamEndpoint: "/v1/responses",
+		},
+		{
+			name: "anthropic messages chat exposes thinking",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "claude-opus-4-6",
+				Platform: service.PlatformAnthropic,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.000005),
+					OutputPrice: testPrice(0.000025),
+				},
+			},
+			wantRequired:       []string{"model", "messages", "max_tokens"},
+			wantOptional:       []string{"stream", "thinking", "system"},
+			wantDelivery:       "anthropic_messages_json",
+			wantStreamDelivery: "anthropic_messages_sse",
+			wantStreamEndpoint: "/v1/messages",
+		},
+		{
+			name: "gemini native chat uses contents contract",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gemini-3.5-flash",
+				Platform: service.PlatformGemini,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.0000015),
+					OutputPrice: testPrice(0.000009),
+				},
+			},
+			wantRequired:       []string{"contents"},
+			wantOptional:       []string{"systemInstruction", "generationConfig", "tools"},
+			wantNotRequired:    []string{"messages"},
+			wantDelivery:       "gemini_generate_content_json",
+			wantStreamDelivery: "gemini_sse",
+			wantStreamEndpoint: "/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse",
+		},
+		{
+			name: "openai image exposes size enum aliases",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "gpt-image-2",
+				Platform: service.PlatformOpenAI,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModePerRequest,
+					PerRequestPrice: testPrice(0.05),
+				},
+			},
+			wantRequired:    []string{"model", "prompt"},
+			wantOptional:    []string{"size", "quality", "background"},
+			wantNotRequired: []string{"contents"},
+			wantDelivery:    "openai_image_json",
+		},
+		{
+			name: "gemini image exposes image config contract",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "NanoBanana2",
+				Platform: service.PlatformGemini,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModeImage,
+					PerRequestPrice: testPrice(0.2),
+				},
+			},
+			wantRequired:    []string{"contents"},
+			wantOptional:    []string{"generationConfig", "safetySettings"},
+			wantNotRequired: []string{"model", "prompt", "size"},
+			wantDelivery:    "gemini_generate_content_json",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := publicEntryMetadataForPricedModel(tt.detail, tt.platform)
+			for _, field := range tt.wantRequired {
+				require.Contains(t, got.RequestContract["required_fields"], field)
+			}
+			for _, field := range tt.wantOptional {
+				require.Contains(t, got.RequestContract["optional_fields"], field)
+			}
+			for _, field := range tt.wantNotRequired {
+				require.NotContains(t, got.RequestContract["required_fields"], field)
+			}
+			require.Equal(t, tt.wantDelivery, got.ResponseContract["delivery"])
+			if tt.wantStreamDelivery != "" {
+				require.Equal(t, tt.wantStreamDelivery, got.ResponseContract["stream_delivery"])
+			}
+			if tt.wantStreamEndpoint != "" {
+				require.Equal(t, tt.wantStreamEndpoint, got.StreamEndpoint)
+			}
+			if got.OperationType == "image_generation" && got.DefaultEntryProtocol == "openai" {
+				sizeContract := got.RequestContract["size"].(map[string]any)
+				require.Contains(t, sizeContract["values"], "1536x1024")
+				aliases := sizeContract["aliases"].(map[string]any)
+				require.Equal(t, "1536x1024", aliases["landscape"])
+				require.Equal(t, "1024x1536", aliases["mobile_wallpaper"])
+				require.Equal(t, "data[].b64_json", got.ResponseContract["image_data_path"])
+			}
+			if got.OperationType == "image_generation" && got.DefaultEntryProtocol == "gemini" {
+				generationConfig := got.RequestContract["generationConfig"].(map[string]any)
+				imageConfig := generationConfig["imageConfig"].(map[string]any)
+				aspectRatio := imageConfig["aspectRatio"].(map[string]any)
+				imageSize := imageConfig["imageSize"].(map[string]any)
+				require.Contains(t, aspectRatio["values"], "16:9")
+				require.Contains(t, imageSize["values"], "4K")
+				require.Equal(t, "9:16", aspectRatio["aliases"].(map[string]any)["mobile_wallpaper"])
+				require.Equal(t, "candidates[].content.parts[].inlineData.data", got.ResponseContract["image_data_path"])
+			}
+			require.NotEmpty(t, got.EntryProtocols)
 		})
 	}
 }

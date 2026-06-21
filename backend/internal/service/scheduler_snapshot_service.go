@@ -909,7 +909,7 @@ func (s *SchedulerSnapshotService) defaultBuckets(ctx context.Context) ([]Schedu
 }
 
 func builtinSchedulerPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity}
+	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformOpenAIAudio}
 }
 
 func dedupeBuckets(in []SchedulerBucket) []SchedulerBucket {

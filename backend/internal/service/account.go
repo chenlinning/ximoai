@@ -1176,13 +1176,13 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	if capability == "" {
 		return true
 	}
-	if !a.IsOpenAI() {
+	if !a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey() {
 		return false
 	}
 	switch capability {
 	case OpenAIEndpointCapabilityChatCompletions:
 	case OpenAIEndpointCapabilityEmbeddings:
-		if a.Type != AccountTypeAPIKey {
+		if !a.IsOpenAI() || a.Type != AccountTypeAPIKey {
 			return false
 		}
 	default:

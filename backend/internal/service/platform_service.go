@@ -298,7 +298,7 @@ func isCustomPlatformProtocol(protocol string) bool {
 
 func builtinPlatformBaseURLEditable(slug string) bool {
 	switch NormalizePlatformSlug(slug) {
-	case PlatformGrok, PlatformKlingAudio:
+	case PlatformGrok, PlatformOpenAIAudio, PlatformKlingAudio:
 		return true
 	default:
 		return false
@@ -426,6 +426,19 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			AuthModes:    []string{AccountTypeAPIKey},
 			Capabilities: []string{PlatformCapabilityVideos},
 			Color:        "#111827",
+			Enabled:      true,
+			Builtin:      true,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
+		{
+			Slug:         PlatformOpenAIAudio,
+			DisplayName:  "OpenAI Audio",
+			Protocol:     PlatformProtocolOpenAICompatible,
+			BaseURL:      "",
+			AuthModes:    []string{AccountTypeAPIKey},
+			Capabilities: []string{PlatformCapabilityChatCompletions, PlatformCapabilityAudio},
+			Color:        "#0F766E",
 			Enabled:      true,
 			Builtin:      true,
 			CreatedAt:    now,
