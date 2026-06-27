@@ -14,11 +14,13 @@ import (
 func resetViperWithJWTSecret(t *testing.T) {
 	t.Helper()
 	viper.Reset()
+	useIsolatedConfigSearchPath(t)
 	t.Setenv("JWT_SECRET", strings.Repeat("x", 32))
 }
 
 func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	viper.Reset()
+	useIsolatedConfigSearchPath(t)
 	t.Setenv("JWT_SECRET", "")
 
 	cfg, err := LoadForBootstrap()
@@ -28,6 +30,15 @@ func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	if cfg.JWT.Secret != "" {
 		t.Fatalf("LoadForBootstrap() should keep empty jwt.secret during bootstrap")
 	}
+}
+
+func useIsolatedConfigSearchPath(t *testing.T) {
+	t.Helper()
+
+	tempDir := t.TempDir()
+	t.Chdir(tempDir)
+	t.Setenv("DATA_DIR", tempDir)
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "config.yaml"), nil, 0o644))
 }
 
 func TestNormalizeRunMode(t *testing.T) {
@@ -1156,6 +1167,11 @@ func TestValidateConfigErrors(t *testing.T) {
 			name:    "billing circuit breaker half open",
 			mutate:  func(c *Config) { c.Billing.CircuitBreaker.HalfOpenRequests = 0 },
 			wantErr: "billing.circuit_breaker.half_open_requests",
+		},
+		{
+			name:    "billing minimum balance reserve",
+			mutate:  func(c *Config) { c.Billing.MinimumBalanceReserve = -0.01 },
+			wantErr: "billing.minimum_balance_reserve",
 		},
 		{
 			name:    "database max open conns",
