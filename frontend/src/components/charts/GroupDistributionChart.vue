@@ -175,7 +175,7 @@ const displayGroupStats = computed(() => {
   if (!props.groupStats?.length) return []
 
   const metricKey = props.metric === 'actual_cost' ? 'actual_cost' : 'total_tokens'
-  return [...props.groupStats].sort((a, b) => toFiniteNumber(b[metricKey]) - toFiniteNumber(a[metricKey]))
+  return [...props.groupStats].sort((a, b) => b[metricKey] - a[metricKey])
 })
 
 const chartData = computed(() => {
@@ -185,7 +185,7 @@ const chartData = computed(() => {
     labels: displayGroupStats.value.map((g) => g.group_name || String(g.group_id)),
     datasets: [
       {
-        data: displayGroupStats.value.map((g) => toFiniteNumber(props.metric === 'actual_cost' ? g.actual_cost : g.total_tokens)),
+        data: displayGroupStats.value.map((g) => props.metric === 'actual_cost' ? g.actual_cost : g.total_tokens),
         backgroundColor: chartColors.value.slice(0, displayGroupStats.value.length),
         borderWidth: 0
       }
@@ -227,24 +227,19 @@ const formatTokens = (value: number): string => {
   return value.toLocaleString()
 }
 
-const formatNumber = (value: number): string => {
-  return toFiniteNumber(value).toLocaleString()
+const formatNumber = (value?: number | null): string => {
+  return Number(value || 0).toLocaleString()
 }
 
-const toFiniteNumber = (value: unknown): number => {
-  const numberValue = Number(value)
-  return Number.isFinite(numberValue) ? numberValue : 0
-}
-
-const formatCost = (value: number | null | undefined): string => {
-  const safeValue = toFiniteNumber(value)
-  if (safeValue >= 1000) {
-    return (safeValue / 1000).toFixed(2) + 'K'
-  } else if (safeValue >= 1) {
-    return safeValue.toFixed(2)
-  } else if (safeValue >= 0.01) {
-    return safeValue.toFixed(3)
+const formatCost = (value?: number | null): string => {
+  const amount = Number(value || 0)
+  if (amount >= 1000) {
+    return (amount / 1000).toFixed(2) + 'K'
+  } else if (amount >= 1) {
+    return amount.toFixed(2)
+  } else if (amount >= 0.01) {
+    return amount.toFixed(3)
   }
-  return safeValue.toFixed(4)
+  return amount.toFixed(4)
 }
 </script>

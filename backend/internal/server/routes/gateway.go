@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RegisterGatewayRoutes 注册 API 网关路由（Claude/OpenAI/Gemini 兼容）
+// RegisterGatewayRoutes 娉ㄥ唽 API 缃戝叧璺敱锛圕laude/OpenAI/Gemini 鍏煎锛
 func RegisterGatewayRoutes(
 	r *gin.Engine,
 	h *handler.Handlers,
@@ -28,21 +28,11 @@ func RegisterGatewayRoutes(
 	opsErrorLogger := handler.OpsErrorLoggerMiddleware(opsService)
 	endpointNorm := handler.InboundEndpointMiddleware()
 
-	// 未分组 Key 拦截中间件（按协议格式区分错误响应）
+	// 鏈垎缁?Key 鎷︽埅涓棿浠讹紙鎸夊崗璁牸寮忓尯鍒嗛敊璇搷搴旓級
 	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
 	requireGroupGoogle := middleware.RequireGroupAssignment(settingService, middleware.GoogleErrorWriter)
 
-	rejectGrokUnsupportedEndpoint := func(c *gin.Context, endpoint string) {
-		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": endpoint + " is not supported for Grok groups",
-			},
-		})
-	}
-
-	// API网关（Claude API兼容）
+	// API缃戝叧锛圕laude API鍏煎锛
 	gateway := r.Group("/v1")
 	gateway.Use(bodyLimit)
 	gateway.Use(clientRequestID)
@@ -54,10 +44,6 @@ func RegisterGatewayRoutes(
 		// /v1/messages: auto-route based on group platform
 		gateway.POST("/messages", func(c *gin.Context) {
 			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
-				return
-			}
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Messages API")
 				return
 			}
 			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
@@ -116,20 +102,10 @@ func RegisterGatewayRoutes(
 			}
 			h.Gateway.Responses(c)
 		})
-		gateway.GET("/responses", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Responses WebSocket API")
-				return
-			}
-			openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket)(c)
-		})
+		gateway.GET("/responses", openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket))
 		// OpenAI Chat Completions API: auto-route based on group platform
 		gateway.POST("/chat/completions", func(c *gin.Context) {
 			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityChatCompletions, "Chat Completions API is not supported for this platform") {
-				return
-			}
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Chat Completions API")
 				return
 			}
 			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions) {
@@ -187,7 +163,7 @@ func RegisterGatewayRoutes(
 		})
 	}
 
-	// Gemini 原生 API 兼容层（Gemini SDK/CLI 直连）
+	// Gemini 鍘熺敓 API 鍏煎灞傦紙Gemini SDK/CLI 鐩磋繛锛
 	gemini := r.Group("/v1beta")
 	gemini.Use(bodyLimit)
 	gemini.Use(clientRequestID)
@@ -203,7 +179,7 @@ func RegisterGatewayRoutes(
 		gemini.POST("/models/*modelAction", h.Gateway.GeminiV1BetaModels)
 	}
 
-	// OpenAI Responses API（不带v1前缀的别名）— auto-route based on group platform
+	// OpenAI Responses API锛堜笉甯1鍓嶇紑鐨勫埆鍚嶏級鈥?auto-route based on group platform
 	responsesHandler := func(c *gin.Context) {
 		if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
 			return
@@ -224,33 +200,17 @@ func RegisterGatewayRoutes(
 	}
 	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
-	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformGrok {
-			rejectGrokUnsupportedEndpoint(c, "Responses WebSocket API")
-			return
-		}
-		openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket)(c)
-	})
+	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket))
 	codexDirect := r.Group("/backend-api/codex")
 	codexDirect.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic)
 	{
-		codexDirect.POST("/responses", responsesHandler)
-		codexDirect.POST("/responses/*subpath", responsesHandler)
-		codexDirect.GET("/responses", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Responses WebSocket API")
-				return
-			}
-			h.OpenAIGateway.ResponsesWebSocket(c)
-		})
+		codexDirect.POST("/responses", officialOpenAIOnly(h.OpenAIGateway.Responses))
+		codexDirect.POST("/responses/*subpath", officialOpenAIOnly(h.OpenAIGateway.Responses))
+		codexDirect.GET("/responses", officialOpenAIOnly(h.OpenAIGateway.ResponsesWebSocket))
 	}
-	// OpenAI Chat Completions API（不带v1前缀的别名）— auto-route based on group platform
+	// OpenAI Chat Completions API锛堜笉甯1鍓嶇紑鐨勫埆鍚嶏級鈥?auto-route based on group platform
 	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
 		if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityChatCompletions, "Chat Completions API is not supported for this platform") {
-			return
-		}
-		if getGroupPlatform(c) == service.PlatformGrok {
-			rejectGrokUnsupportedEndpoint(c, "Chat Completions API")
 			return
 		}
 		if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions) {
@@ -313,10 +273,10 @@ func RegisterGatewayRoutes(
 		handlers:        h,
 	})
 
-	// Antigravity 模型列表
+	// Antigravity 妯″瀷鍒楄〃
 	r.GET("/antigravity/models", gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.Gateway.AntigravityModels)
 
-	// Antigravity 专用路由（仅使用 antigravity 账户，不混合调度）
+	// Antigravity 涓撶敤璺敱锛堜粎浣跨敤 antigravity 璐︽埛锛屼笉娣峰悎璋冨害锛
 	antigravityV1 := r.Group("/antigravity/v1")
 	antigravityV1.Use(bodyLimit)
 	antigravityV1.Use(clientRequestID)

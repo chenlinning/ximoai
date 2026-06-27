@@ -90,19 +90,10 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 
 	switch platform {
 	case service.PlatformOpenAI:
-		if inbound == EndpointEmbeddings || inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits ||
-			inbound == EndpointAudioSpeech || inbound == EndpointAudioTranscribe || inbound == EndpointAudioTranslate ||
-			inbound == EndpointRealtime {
-			return inbound
-		}
-		// OpenAI forwards everything else to the Responses API.
-		if suffix := responsesSubpathSuffix(rawRequestPath); suffix != "" {
-			return EndpointResponses + suffix
-		}
-		return EndpointResponses
-
-	case service.PlatformGrok:
-		if inbound == EndpointEmbeddings || inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits {
+		if inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits ||
+			inbound == EndpointAudioSpeech || inbound == EndpointAudioTranscribe ||
+			inbound == EndpointAudioTranslate || inbound == EndpointRealtime ||
+			inbound == EndpointEmbeddings {
 			return inbound
 		}
 		// OpenAI forwards everything to the Responses API.

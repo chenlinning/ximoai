@@ -515,7 +515,7 @@ func (s *SchedulerSnapshotService) rebuildByGroupIDs(ctx context.Context, groupI
 	if len(groupIDs) == 0 {
 		return nil
 	}
-	platforms := s.schedulerPlatformsForGroupIDs(ctx, groupIDs)
+	platforms := s.platformsForGroupRebuild(ctx, groupIDs)
 	var firstErr error
 	for _, platform := range platforms {
 		if err := s.rebuildBucketsForPlatform(ctx, platform, groupIDs, reason, seen); err != nil && firstErr == nil {
@@ -555,6 +555,58 @@ func (s *SchedulerSnapshotService) rebuildBucketsForPlatform(ctx context.Context
 		}
 	}
 	return firstErr
+}
+
+func (s *SchedulerSnapshotService) platformsForGroupRebuild(ctx context.Context, groupIDs []int64) []string {
+	platforms := builtinSchedulerPlatforms()
+	if s == nil || s.isRunModeSimple() || s.groupRepo == nil {
+		return platforms
+	}
+
+	seen := make(map[string]struct{}, len(platforms)+len(groupIDs))
+	for _, platform := range platforms {
+		seen[platform] = struct{}{}
+	}
+	addPlatform := func(platform string) {
+		if platform == "" {
+			return
+		}
+		if _, ok := seen[platform]; ok {
+			return
+		}
+		seen[platform] = struct{}{}
+		platforms = append(platforms, platform)
+	}
+
+	for _, gid := range groupIDs {
+		if gid <= 0 {
+			continue
+		}
+		group, err := s.groupRepo.GetByID(ctx, gid)
+		if err != nil || group == nil {
+			continue
+		}
+		addPlatform(group.Platform)
+	}
+
+	if s.accountRepo != nil {
+		accounts, err := s.accountRepo.ListActive(ctx)
+		if err == nil {
+			for _, account := range accounts {
+				addPlatform(account.Platform)
+			}
+		}
+	}
+
+	groups, err := s.groupRepo.ListActive(ctx)
+	if err != nil {
+		return platforms
+	}
+	for _, group := range groups {
+		addPlatform(group.Platform)
+	}
+
+	return platforms
 }
 
 func (s *SchedulerSnapshotService) rebuildBuckets(ctx context.Context, buckets []SchedulerBucket, reason string) error {
@@ -817,7 +869,16 @@ func (s *SchedulerSnapshotService) fullRebuildInterval() time.Duration {
 
 func (s *SchedulerSnapshotService) defaultBuckets(ctx context.Context) ([]SchedulerBucket, error) {
 	buckets := make([]SchedulerBucket, 0)
-	platforms := s.defaultSchedulerPlatforms(ctx)
+	platforms := builtinSchedulerPlatforms()
+	if s.accountRepo != nil {
+		if accounts, err := s.accountRepo.ListActive(ctx); err == nil {
+			for _, account := range accounts {
+				if account.Platform != "" {
+					platforms = append(platforms, account.Platform)
+				}
+			}
+		}
+	}
 	for _, platform := range platforms {
 		buckets = append(buckets, SchedulerBucket{GroupID: 0, Platform: platform, Mode: SchedulerModeSingle})
 		buckets = append(buckets, SchedulerBucket{GroupID: 0, Platform: platform, Mode: SchedulerModeForced})
@@ -848,73 +909,7 @@ func (s *SchedulerSnapshotService) defaultBuckets(ctx context.Context) ([]Schedu
 }
 
 func builtinSchedulerPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformOpenAIAudio}
-}
-
-func (s *SchedulerSnapshotService) defaultSchedulerPlatforms(ctx context.Context) []string {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
-	if s != nil && s.accountRepo != nil {
-		if accounts, err := s.accountRepo.ListActive(ctx); err == nil {
-			for _, account := range accounts {
-				platforms = appendSchedulerPlatform(platforms, account.Platform)
-			}
-		}
-	}
-	return platforms
-}
-
-func (s *SchedulerSnapshotService) schedulerPlatformsForGroupIDs(ctx context.Context, groupIDs []int64) []string {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
-	if s == nil {
-		return platforms
-	}
-	for _, groupID := range groupIDs {
-		if groupID <= 0 {
-			continue
-		}
-		if s.groupRepo != nil {
-			if group, err := s.groupRepo.GetByIDLite(ctx, groupID); err == nil && group != nil {
-				platforms = appendSchedulerPlatform(platforms, group.Platform)
-			}
-		}
-		if s.accountRepo != nil {
-			if accounts, err := s.accountRepo.ListActive(ctx); err == nil {
-				for _, account := range accounts {
-					if schedulerAccountBelongsToGroup(account, groupID) {
-						platforms = appendSchedulerPlatform(platforms, account.Platform)
-					}
-				}
-			}
-		}
-	}
-	return platforms
-}
-
-func schedulerAccountBelongsToGroup(account Account, groupID int64) bool {
-	for _, id := range account.GroupIDs {
-		if id == groupID {
-			return true
-		}
-	}
-	for _, group := range account.AccountGroups {
-		if group.GroupID == groupID {
-			return true
-		}
-	}
-	return false
-}
-
-func appendSchedulerPlatform(platforms []string, platform string) []string {
-	platform = NormalizePlatformSlug(platform)
-	if platform == "" {
-		return platforms
-	}
-	for _, existing := range platforms {
-		if existing == platform {
-			return platforms
-		}
-	}
-	return append(platforms, platform)
+	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformOpenAIAudio}
 }
 
 func dedupeBuckets(in []SchedulerBucket) []SchedulerBucket {

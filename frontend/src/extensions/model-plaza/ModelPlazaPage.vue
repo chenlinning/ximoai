@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="mx-auto flex w-full max-w-none flex-col gap-6">
+    <div class="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 class="page-title">{{ t('modelPlaza.title') }}</h1>
@@ -48,7 +48,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="model-card-grid grid gap-4">
+      <div v-if="loading" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div v-for="idx in 6" :key="idx" class="card p-5">
           <div class="skeleton mb-4 h-5 w-2/3"></div>
           <div class="skeleton mb-6 h-4 w-24"></div>
@@ -72,7 +72,7 @@
         <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.noModels') }}</p>
       </div>
 
-      <div v-else class="model-card-grid grid gap-4">
+      <div v-else class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
           v-for="model in filteredModels"
           :key="model.key"
@@ -529,9 +529,3 @@ async function loadData() {
 
 onMounted(loadData)
 </script>
-
-<style scoped>
-.model-card-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-}
-</style>

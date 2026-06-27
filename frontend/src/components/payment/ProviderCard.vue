@@ -104,6 +104,6 @@ const modeLabel = computed(() => {
 })
 
 function isSelected(type: string): boolean {
-  return Array.isArray(props.provider.supported_types) && props.provider.supported_types.includes(type)
+  return props.provider.supported_types.includes(type)
 }
 </script>

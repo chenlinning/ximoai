@@ -165,7 +165,6 @@ func TestXimoDeskPackageUploadStoresFileAndResolvesLocale(t *testing.T) {
 	require.Equal(t, "zh-cn", release.Locale)
 	require.Equal(t, "msi", release.PackageType)
 	require.Equal(t, "1.0.2", release.Version)
-	require.GreaterOrEqual(t, release.VersionCode, int64(20000101000000))
 	require.Equal(t, "e5273b49adc1ccfc37836fa03584a811d957e58dca6d9c791fbcaddbd07fe159", release.SHA256)
 	require.FileExists(t, filepath.Join(dir, release.FileName))
 	require.Contains(t, release.DownloadURL, "/downloads/ximoapp/")

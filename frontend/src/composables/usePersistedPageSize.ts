@@ -4,10 +4,6 @@ const STORAGE_KEY = 'table-page-size'
 const SOURCE_STORAGE_KEY = 'table-page-size-source'
 
 export function getPersistedPageSize(fallback = getConfiguredTableDefaultPageSize()): number {
-  if (typeof window !== 'undefined' && window.__APP_CONFIG__?.table_default_page_size !== undefined) {
-    return normalizeTablePageSize(getConfiguredTableDefaultPageSize())
-  }
-
   if (typeof window !== 'undefined') {
     try {
       const storedSource = window.localStorage.getItem(SOURCE_STORAGE_KEY)

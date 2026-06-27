@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -81,14 +80,10 @@ func (s *SettingService) SaveXimoDeskPackageRelease(ctx context.Context, upload 
 		return nil, nil, infraerrors.BadRequest("INVALID_XIMOAPP_PACKAGE", "package file is empty")
 	}
 
-	uploadedAt := time.Now().UTC()
 	release.FileSize = written
 	release.SHA256 = hex.EncodeToString(hasher.Sum(nil))
 	release.DownloadURL = XimoDeskPackageDownloadURL(release.FileName)
-	release.UploadedAt = uploadedAt.Format(time.RFC3339)
-	if release.VersionCode == 0 {
-		release.VersionCode = ximoAppVersionCodeFromTime(uploadedAt)
-	}
+	release.UploadedAt = time.Now().UTC().Format(time.RFC3339)
 
 	dest, err := XimoDeskPackagePath(release.FileName)
 	if err != nil {
@@ -261,14 +256,6 @@ func normalizeXimoDeskUploadPackageType(packageType, originalName string) string
 func buildXimoDeskPackageFileName(release XimoDeskUpdateRelease) string {
 	name := fmt.Sprintf("XimoAPP-%s-%s-%s-%s-%s.%s", release.AppKey, release.Version, release.OS, release.Arch, release.Locale, release.PackageType)
 	return sanitizeXimoDeskFileName(name)
-}
-
-func ximoAppVersionCodeFromTime(value time.Time) int64 {
-	code, err := strconv.ParseInt(value.UTC().Format("20060102150405"), 10, 64)
-	if err != nil {
-		return value.UTC().Unix()
-	}
-	return code
 }
 
 func upsertXimoDeskRelease(releases []XimoDeskUpdateRelease, release XimoDeskUpdateRelease) []XimoDeskUpdateRelease {

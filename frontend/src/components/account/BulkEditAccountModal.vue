@@ -742,44 +742,44 @@
         </div>
       </div>
 
-      <!-- OpenAI OAuth: Codex app-server -->
+      <!-- OpenAI OAuth: 额外放行 Claude Code 的 Codex 插件 -->
       <div v-if="allOpenAIOAuth" class="border-t border-gray-200 pt-4 dark:border-dark-600">
         <div class="mb-3 flex items-center justify-between">
           <label
-            id="bulk-edit-openai-codex-app-server-label"
+            id="bulk-edit-openai-codex-allow-claude-code-label"
             class="input-label mb-0"
-            for="bulk-edit-openai-codex-app-server-enabled"
+            for="bulk-edit-openai-codex-allow-claude-code-enabled"
           >
-            {{ t('admin.accounts.openai.codexCLIOnlyAppServer') }}
+            {{ t('admin.accounts.openai.codexCLIOnlyAllowClaudeCode') }}
           </label>
           <input
-            v-model="enableCodexCLIOnlyAppServer"
-            id="bulk-edit-openai-codex-app-server-enabled"
+            v-model="enableCodexCLIOnlyAllowClaudeCode"
+            id="bulk-edit-openai-codex-allow-claude-code-enabled"
             type="checkbox"
-            aria-controls="bulk-edit-openai-codex-app-server"
+            aria-controls="bulk-edit-openai-codex-allow-claude-code"
             class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
           />
         </div>
         <div
-          id="bulk-edit-openai-codex-app-server"
-          :class="!enableCodexCLIOnlyAppServer && 'pointer-events-none opacity-50'"
+          id="bulk-edit-openai-codex-allow-claude-code"
+          :class="!enableCodexCLIOnlyAllowClaudeCode && 'pointer-events-none opacity-50'"
         >
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t('admin.accounts.openai.codexCLIOnlyAppServerDesc') }}
+            {{ t('admin.accounts.openai.codexCLIOnlyAllowClaudeCodeDesc') }}
           </p>
           <button
-            id="bulk-edit-openai-codex-app-server-toggle"
+            id="bulk-edit-openai-codex-allow-claude-code-toggle"
             type="button"
             :class="[
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
-              codexCLIOnlyAppServerEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
+              codexCLIOnlyAllowClaudeCodeEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-dark-600'
             ]"
-            @click="codexCLIOnlyAppServerEnabled = !codexCLIOnlyAppServerEnabled"
+            @click="codexCLIOnlyAllowClaudeCodeEnabled = !codexCLIOnlyAllowClaudeCodeEnabled"
           >
             <span
               :class="[
                 'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                codexCLIOnlyAppServerEnabled ? 'translate-x-5' : 'translate-x-0'
+                codexCLIOnlyAllowClaudeCodeEnabled ? 'translate-x-5' : 'translate-x-0'
               ]"
             />
           </button>
@@ -1263,7 +1263,7 @@ const enableOpenAIPassthrough = ref(false)
 const enableOpenAIWSMode = ref(false)
 const enableOpenAIAPIKeyWSMode = ref(false)
 const enableCodexCLIOnly = ref(false)
-const enableCodexCLIOnlyAppServer = ref(false)
+const enableCodexCLIOnlyAllowClaudeCode = ref(false)
 const enableOpenAICompactMode = ref(false)
 const enableOpenAICompactModelMapping = ref(false)
 const enableRpmLimit = ref(false)
@@ -1291,7 +1291,7 @@ const openaiPassthroughEnabled = ref(false)
 const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const codexCLIOnlyEnabled = ref(false)
-const codexCLIOnlyAppServerEnabled = ref(false)
+const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const openAICompactMode = ref<OpenAICompactMode>('auto')
 const openAICompactModelMappings = ref<ModelMapping[]>([])
 const rpmLimitEnabled = ref(false)
@@ -1542,15 +1542,9 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
     extra.codex_cli_only = codexCLIOnlyEnabled.value
   }
 
-  // 子开关从属于 codex_cli_only：仅当同一次批量编辑也把父开关设为开启时才写入，
-  // 与 Create/Edit 语义对齐，避免在父开关关闭的账号上写入无意义的孤立字段。
-  if (
-    enableCodexCLIOnlyAppServer.value &&
-    enableCodexCLIOnly.value &&
-    codexCLIOnlyEnabled.value
-  ) {
+  if (enableCodexCLIOnlyAllowClaudeCode.value) {
     const extra = ensureExtra()
-    extra.codex_cli_only_allow_app_server = codexCLIOnlyAppServerEnabled.value
+    extra.codex_cli_only_allowed_clients = codexCLIOnlyAllowClaudeCodeEnabled.value ? ['claude_code'] : []
   }
 
   if (enableOpenAICompactMode.value) {
@@ -1659,7 +1653,7 @@ const handleSubmit = async () => {
     enableOpenAIWSMode.value ||
     enableOpenAIAPIKeyWSMode.value ||
     enableCodexCLIOnly.value ||
-    enableCodexCLIOnlyAppServer.value ||
+    enableCodexCLIOnlyAllowClaudeCode.value ||
     enableOpenAICompactMode.value ||
     enableOpenAICompactModelMapping.value ||
     enableRpmLimit.value ||
@@ -1762,7 +1756,7 @@ watch(
       enableOpenAIWSMode.value = false
       enableOpenAIAPIKeyWSMode.value = false
       enableCodexCLIOnly.value = false
-      enableCodexCLIOnlyAppServer.value = false
+      enableCodexCLIOnlyAllowClaudeCode.value = false
       enableOpenAICompactMode.value = false
       enableOpenAICompactModelMapping.value = false
       enableRpmLimit.value = false
@@ -1786,7 +1780,7 @@ watch(
       openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
       openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
       codexCLIOnlyEnabled.value = false
-      codexCLIOnlyAppServerEnabled.value = false
+      codexCLIOnlyAllowClaudeCodeEnabled.value = false
       openAICompactMode.value = 'auto'
       openAICompactModelMappings.value = []
       rpmLimitEnabled.value = false
