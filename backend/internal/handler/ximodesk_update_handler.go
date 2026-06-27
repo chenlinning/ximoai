@@ -108,7 +108,6 @@ func (h *XimoDeskUpdateHandler) AdminUploadPackage(c *gin.Context) {
 		Arch:                    c.PostForm("arch"),
 		Locale:                  c.PostForm("locale"),
 		Version:                 c.PostForm("version"),
-		VersionCode:             parseXimoDeskInt64(c.PostForm("version_code")),
 		MinSupportedVersion:     c.PostForm("min_supported_version"),
 		MinSupportedVersionCode: parseXimoDeskInt64(c.PostForm("min_supported_version_code")),
 		PackageType:             c.PostForm("package_type"),
@@ -116,7 +115,6 @@ func (h *XimoDeskUpdateHandler) AdminUploadPackage(c *gin.Context) {
 		Notes:                   c.PostForm("notes"),
 		Force:                   parseXimoDeskBool(c.PostForm("force"), false),
 		Enabled:                 parseXimoDeskBool(c.PostForm("enabled"), true),
-		PublishedAt:             c.PostForm("published_at"),
 		Reader:                  file,
 	})
 	if response.ErrorFrom(c, err) {

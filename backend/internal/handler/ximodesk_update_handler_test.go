@@ -225,7 +225,6 @@ func TestXimoAppLatestMobileReturnsStandardMetadata(t *testing.T) {
 	require.NoError(t, writer.WriteField("arch", "universal"))
 	require.NoError(t, writer.WriteField("locale", "all"))
 	require.NoError(t, writer.WriteField("version", "2.0.0"))
-	require.NoError(t, writer.WriteField("version_code", "200"))
 	require.NoError(t, writer.WriteField("min_supported_version", "1.5.0"))
 	require.NoError(t, writer.WriteField("min_supported_version_code", "150"))
 	require.NoError(t, writer.WriteField("enabled", "true"))
@@ -241,6 +240,14 @@ func TestXimoAppLatestMobileReturnsStandardMetadata(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	r.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
+	var uploadResp struct {
+		Code int `json:"code"`
+		Data struct {
+			Release service.XimoDeskUpdateRelease `json:"release"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &uploadResp))
+	require.GreaterOrEqual(t, uploadResp.Data.Release.VersionCode, int64(20000101000000))
 
 	w = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPost, "/api/ximoapp/ximo-mobile/version/latest", strings.NewReader(`{"app_key":"ximo-mobile","version":"1.0.0","version_code":100,"platform":"android","arch":"aarch64","channel":"stable","locale":"zh-CN"}`))
@@ -252,7 +259,7 @@ func TestXimoAppLatestMobileReturnsStandardMetadata(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 	require.Equal(t, "ximo-mobile", got["app_key"])
 	require.Equal(t, "2.0.0", got["version"])
-	require.Equal(t, float64(200), got["version_code"])
+	require.Equal(t, float64(uploadResp.Data.Release.VersionCode), got["version_code"])
 	require.Equal(t, "1.5.0", got["min_supported_version"])
 	require.Equal(t, float64(150), got["min_supported_version_code"])
 	require.Contains(t, got["download_url"], "/downloads/ximoapp/")

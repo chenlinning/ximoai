@@ -176,6 +176,27 @@ func TestPlatformService_BuiltinOpenAIAudioPlatform(t *testing.T) {
 	require.True(t, builtinPlatformBaseURLEditable(PlatformOpenAIAudio))
 }
 
+func TestPlatformService_BuiltinGrokPlatformKeepsNativeOAuthBoundary(t *testing.T) {
+	platforms := builtinPlatforms(true)
+
+	bySlug := map[string]Platform{}
+	for _, platform := range platforms {
+		bySlug[platform.Slug] = platform
+	}
+
+	platform := bySlug[PlatformGrok]
+	require.Equal(t, "Grok", platform.DisplayName)
+	require.Equal(t, PlatformProtocolOpenAICompatible, platform.Protocol)
+	require.ElementsMatch(t, []string{AccountTypeOAuth, AccountTypeAPIKey}, platform.AuthModes)
+	require.ElementsMatch(t, []string{
+		PlatformCapabilityResponses,
+		PlatformCapabilityChatCompletions,
+		PlatformCapabilityVideos,
+	}, platform.Capabilities)
+	require.True(t, platform.Builtin)
+	require.True(t, builtinPlatformBaseURLEditable(PlatformGrok))
+}
+
 func TestPlatformService_CreateAssignsDeterministicColor(t *testing.T) {
 	repo := &platformRepoStubForPlatformService{platforms: map[string]Platform{}}
 	svc := NewPlatformService(repo)

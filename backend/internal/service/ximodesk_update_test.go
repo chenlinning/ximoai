@@ -166,6 +166,8 @@ func TestXimoDeskPackageUploadStoresFileAndResolvesLocale(t *testing.T) {
 	require.Equal(t, "msi", release.PackageType)
 	require.Equal(t, "1.0.2", release.Version)
 	require.GreaterOrEqual(t, release.VersionCode, int64(20000101000000))
+	require.NotEmpty(t, release.UploadedAt)
+	require.Equal(t, release.UploadedAt, release.PublishedAt)
 	require.Equal(t, "e5273b49adc1ccfc37836fa03584a811d957e58dca6d9c791fbcaddbd07fe159", release.SHA256)
 	require.FileExists(t, filepath.Join(dir, release.FileName))
 	require.Contains(t, release.DownloadURL, "/downloads/ximoapp/")
@@ -204,7 +206,6 @@ func TestXimoAppPackageUploadStoresMobileReleaseAndResolvesGenericEndpoint(t *te
 		Arch:                    "universal",
 		Locale:                  "all",
 		Version:                 "2.0.0",
-		VersionCode:             200,
 		MinSupportedVersion:     "1.5.0",
 		MinSupportedVersionCode: 150,
 		OriginalName:            "ximomobile.apk",
@@ -219,7 +220,7 @@ func TestXimoAppPackageUploadStoresMobileReleaseAndResolvesGenericEndpoint(t *te
 	require.Equal(t, "android", release.OS)
 	require.Equal(t, "universal", release.Arch)
 	require.Equal(t, "apk", release.PackageType)
-	require.EqualValues(t, 200, release.VersionCode)
+	require.GreaterOrEqual(t, release.VersionCode, int64(20000101000000))
 	require.Equal(t, "1.5.0", release.MinSupportedVersion)
 	require.EqualValues(t, 150, release.MinSupportedVersionCode)
 	require.Contains(t, release.DownloadURL, "/downloads/ximoapp/")
@@ -238,7 +239,7 @@ func TestXimoAppPackageUploadStoresMobileReleaseAndResolvesGenericEndpoint(t *te
 	require.True(t, ok)
 	require.Equal(t, "ximo-mobile", update.AppKey)
 	require.Equal(t, "2.0.0", update.Version)
-	require.EqualValues(t, 200, update.VersionCode)
+	require.EqualValues(t, release.VersionCode, update.VersionCode)
 	require.Equal(t, "1.5.0", update.MinSupportedVersion)
 	require.EqualValues(t, 150, update.MinSupportedVersionCode)
 }

@@ -32,7 +32,6 @@ type XimoDeskPackageUpload struct {
 	Arch                    string
 	Locale                  string
 	Version                 string
-	VersionCode             int64
 	MinSupportedVersion     string
 	MinSupportedVersionCode int64
 	PackageType             string
@@ -40,7 +39,6 @@ type XimoDeskPackageUpload struct {
 	Notes                   string
 	Force                   bool
 	Enabled                 bool
-	PublishedAt             string
 	Reader                  io.Reader
 }
 
@@ -86,6 +84,7 @@ func (s *SettingService) SaveXimoDeskPackageRelease(ctx context.Context, upload 
 	release.SHA256 = hex.EncodeToString(hasher.Sum(nil))
 	release.DownloadURL = XimoDeskPackageDownloadURL(release.FileName)
 	release.UploadedAt = uploadedAt.Format(time.RFC3339)
+	release.PublishedAt = release.UploadedAt
 	if release.VersionCode == 0 {
 		release.VersionCode = ximoAppVersionCodeFromTime(uploadedAt)
 	}
@@ -213,12 +212,10 @@ func buildXimoDeskReleaseFromUpload(upload XimoDeskPackageUpload) (XimoDeskUpdat
 		Locale:                  normalizeXimoDeskLocale(upload.Locale),
 		PackageType:             packageType,
 		Version:                 strings.TrimSpace(upload.Version),
-		VersionCode:             upload.VersionCode,
 		MinSupportedVersion:     strings.TrimSpace(upload.MinSupportedVersion),
 		MinSupportedVersionCode: upload.MinSupportedVersionCode,
 		Notes:                   strings.TrimSpace(upload.Notes),
 		Force:                   upload.Force,
-		PublishedAt:             strings.TrimSpace(upload.PublishedAt),
 	}
 	if release.AppKey == "" {
 		release.AppKey = defaultXimoAppKeyXimoDesk
