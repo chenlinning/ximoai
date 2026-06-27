@@ -59,7 +59,7 @@ import { useI18n } from 'vue-i18n'
 import type { AccountPlatform, AccountType } from '@/types'
 import PlatformIcon from './PlatformIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { platformBadgeLightClass, platformLabel } from '@/utils/platformColors'
+import { platformBadgeLightClass, platformLabel as getPlatformLabel } from '@/utils/platformColors'
 
 const { t } = useI18n()
 
@@ -73,7 +73,7 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const platformName = computed(() => platformLabel(props.platform))
+const platformName = computed(() => getPlatformLabel(props.platform))
 
 const typeLabel = computed(() => {
   switch (props.type) {
