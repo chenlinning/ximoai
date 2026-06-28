@@ -155,6 +155,10 @@ func (s *platformRepoStubForAdmin) Update(_ context.Context, _ *Platform) error 
 	panic("unexpected Update call")
 }
 
+func (s *platformRepoStubForAdmin) Rename(_ context.Context, _ string, _ *Platform) error {
+	panic("unexpected Rename call")
+}
+
 func (s *platformRepoStubForAdmin) Delete(_ context.Context, _ string) error {
 	panic("unexpected Delete call")
 }

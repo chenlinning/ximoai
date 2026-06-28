@@ -99,6 +99,10 @@ func (r *availableModelsPlatformRepo) Update(_ context.Context, _ *service.Platf
 	return nil
 }
 
+func (r *availableModelsPlatformRepo) Rename(_ context.Context, _ string, _ *service.Platform) error {
+	return nil
+}
+
 func (r *availableModelsPlatformRepo) Delete(_ context.Context, _ string) error {
 	return nil
 }

@@ -138,6 +138,18 @@ func (h *XimoDeskUpdateHandler) AdminDeleteRelease(c *gin.Context) {
 	response.Success(c, cfg)
 }
 
+func (h *XimoDeskUpdateHandler) AdminDeleteApp(c *gin.Context) {
+	if h == nil || h.settingService == nil {
+		response.InternalError(c, "XimoAPP update service is not configured")
+		return
+	}
+	cfg, err := h.settingService.DeleteXimoAppUpdateApp(c.Request.Context(), c.Param("appKey"))
+	if response.ErrorFrom(c, err) {
+		return
+	}
+	response.Success(c, cfg)
+}
+
 func (h *XimoDeskUpdateHandler) DownloadCenter(c *gin.Context) {
 	if h == nil || h.settingService == nil {
 		response.InternalError(c, "XimoAPP download center service is not configured")

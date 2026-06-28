@@ -51,7 +51,7 @@ func adaptOpenAIVideoProviderRequest(account *Account, method string, endpoint s
 	if account.IsGeminiCompatibleAPIKey() {
 		return adaptOpenAIVideoGeminiProviderRequest(method, endpoint, body, contentType)
 	}
-	if NormalizePlatformSlug(account.Platform) != PlatformGrok {
+	if !account.IsGrokVideo() {
 		return out, nil
 	}
 

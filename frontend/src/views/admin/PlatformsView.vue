@@ -123,12 +123,12 @@
       @close="closeDialog"
     >
       <form id="platform-form" class="space-y-4" @submit.prevent="submitPlatform">
-        <div v-if="editingPlatform?.builtin" class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-200">
+        <div v-if="editingPlatform?.builtin && isCoreBuiltinPlatform(editingPlatform)" class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:border-blue-800/40 dark:bg-blue-900/20 dark:text-blue-200">
           {{ t('admin.platforms.readOnlyBuiltin') }}
         </div>
         <div>
           <label class="input-label">{{ t('admin.platforms.slug') }}</label>
-          <input v-model.trim="form.slug" class="input font-mono" :disabled="!!editingPlatform" required />
+          <input v-model.trim="form.slug" class="input font-mono" required />
           <p v-if="!editingPlatform" class="input-hint">{{ t('admin.platforms.slugHint') }}</p>
         </div>
         <div>
@@ -138,7 +138,7 @@
         <div>
           <label class="input-label">{{ t('admin.platforms.protocol') }}</label>
           <input
-            v-if="editingPlatform?.builtin"
+            v-if="isProtocolDisabled"
             :value="protocolLabel(form.protocol)"
             class="input"
             disabled
@@ -299,24 +299,34 @@ const closeDialog = () => {
   showDialog.value = false
 }
 
-const isBuiltinBaseURLEditable = (platform?: Platform | null) =>
-  !!platform?.builtin && ['grok', 'kling_audio'].includes(platform.slug)
+const isCoreBuiltinPlatform = (platform?: Platform | null) =>
+  !!platform?.builtin && (
+    ['anthropic', 'openai', 'gemini', 'antigravity', 'grok'].includes(platform.slug) ||
+    platform.protocol === 'native' ||
+    platform.protocol === 'openai' ||
+    (platform.auth_modes || []).some((mode) => ['oauth', 'setup-token', 'upstream', 'service_account', 'bedrock'].includes(mode))
+  )
+
+const isProtocolDisabled = computed(() =>
+  isCoreBuiltinPlatform(editingPlatform.value)
+)
 
 const isBaseUrlDisabled = computed(() =>
-  !!editingPlatform.value?.builtin && !isBuiltinBaseURLEditable(editingPlatform.value)
+  isCoreBuiltinPlatform(editingPlatform.value)
 )
 
 const submitPlatform = async () => {
   saving.value = true
-  const canEditBaseURL = !editingPlatform.value?.builtin || isBuiltinBaseURLEditable(editingPlatform.value)
+  const canEditBaseURL = !isCoreBuiltinPlatform(editingPlatform.value)
+  const canEditProtocol = !isCoreBuiltinPlatform(editingPlatform.value)
   const payload = {
     slug: form.slug.trim(),
     display_name: form.display_name.trim(),
-    protocol: editingPlatform.value?.builtin ? editingPlatform.value.protocol : form.protocol,
+    protocol: canEditProtocol ? form.protocol : editingPlatform.value?.protocol || form.protocol,
     base_url: canEditBaseURL ? form.base_url.trim() : editingPlatform.value?.base_url || '',
     auth_modes: ['apikey'],
     capabilities: editingPlatform.value?.builtin
-      ? editingPlatform.value.capabilities
+      ? (canEditProtocol ? capabilitiesForProtocol(form.protocol) : editingPlatform.value.capabilities)
       : capabilitiesForProtocol(form.protocol),
     color: form.color.trim(),
     enabled: form.enabled,

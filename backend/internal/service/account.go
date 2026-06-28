@@ -199,6 +199,18 @@ func (a *Account) IsGrokOAuth() bool {
 	return a.IsGrok() && a.Type == AccountTypeOAuth
 }
 
+func (a *Account) IsGrokVideo() bool {
+	if a == nil {
+		return false
+	}
+	switch NormalizePlatformSlug(a.Platform) {
+	case PlatformGrokVideo:
+		return true
+	default:
+		return false
+	}
+}
+
 func (a *Account) IsOpenAICompatible() bool {
 	return a != nil && (a.Platform == PlatformOpenAI || a.Platform == PlatformGrok)
 }
@@ -1171,7 +1183,7 @@ func (a *Account) GetOpenAIRefreshToken() string {
 }
 
 func (a *Account) GetGrokBaseURL() string {
-	if !a.IsGrok() {
+	if !a.IsGrok() && !a.IsGrokVideo() {
 		return ""
 	}
 	baseURL := a.GetCredential("base_url")

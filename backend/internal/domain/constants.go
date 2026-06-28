@@ -23,6 +23,7 @@ const (
 	PlatformGemini      = "gemini"
 	PlatformAntigravity = "antigravity"
 	PlatformGrok        = "grok"
+	PlatformGrokVideo   = "grok-video"
 	PlatformOpenAIAudio = "openai-audio"
 	PlatformKlingAudio  = "kling_audio"
 )

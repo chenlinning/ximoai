@@ -35,6 +35,7 @@ type PlatformRepository interface {
 	GetBySlug(ctx context.Context, slug string) (*Platform, error)
 	Create(ctx context.Context, platform *Platform) error
 	Update(ctx context.Context, platform *Platform) error
+	Rename(ctx context.Context, oldSlug string, platform *Platform) error
 	Delete(ctx context.Context, slug string) error
 	Usage(ctx context.Context, slug string) (PlatformUsage, error)
 }
@@ -115,23 +116,36 @@ func (s *PlatformService) Update(ctx context.Context, slug string, input Platfor
 		return nil, err
 	}
 	if current.Builtin {
-		input.Protocol = current.Protocol
-		input.AuthModes = current.AuthModes
-		input.Capabilities = current.Capabilities
-		if !builtinPlatformBaseURLEditable(current.Slug) {
+		if !builtinPlatformProtocolEditable(*current) {
+			input.Protocol = current.Protocol
+			input.AuthModes = current.AuthModes
+			input.Capabilities = current.Capabilities
+		}
+		if !builtinPlatformBaseURLEditable(*current) {
 			input.BaseURL = current.BaseURL
 		}
 	}
-	input.Slug = current.Slug
+	input.Slug = NormalizePlatformSlug(input.Slug)
+	if input.Slug == "" || input.Slug == current.Slug {
+		input.Slug = current.Slug
+	} else if !platformSlugPattern.MatchString(input.Slug) {
+		return nil, infraerrors.BadRequest("INVALID_PLATFORM_SLUG", "platform slug must be 3-64 chars using lowercase letters, digits, hyphen or underscore")
+	}
 	input.Builtin = current.Builtin
 	platform, err := normalizePlatformInput(input, true)
 	if err != nil {
 		return nil, err
 	}
+	if current.Slug != platform.Slug {
+		if err := s.repo.Rename(ctx, current.Slug, platform); err != nil {
+			return nil, err
+		}
+		return s.repo.GetBySlug(ctx, platform.Slug)
+	}
 	if err := s.repo.Update(ctx, platform); err != nil {
 		return nil, err
 	}
-	return s.repo.GetBySlug(ctx, slug)
+	return s.repo.GetBySlug(ctx, platform.Slug)
 }
 
 func (s *PlatformService) Delete(ctx context.Context, slug string) error {
@@ -270,7 +284,10 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 			input.Capabilities = defaultCustomPlatformCapabilities(input.Protocol)
 		}
 	}
-	if input.Protocol == PlatformProtocolOpenAI {
+	if input.Protocol == PlatformProtocolOpenAI && !input.Builtin {
+		if input.Slug != PlatformOpenAI {
+			return nil, infraerrors.BadRequest("INVALID_PLATFORM_PROTOCOL", "openai protocol is reserved for the openai platform")
+		}
 		input.Slug = PlatformOpenAI
 		input.BaseURL = PlatformDefaultBaseURLOpenAI
 	}
@@ -296,13 +313,34 @@ func isCustomPlatformProtocol(protocol string) bool {
 	}
 }
 
-func builtinPlatformBaseURLEditable(slug string) bool {
-	switch NormalizePlatformSlug(slug) {
-	case PlatformGrok, PlatformOpenAIAudio, PlatformKlingAudio:
-		return true
-	default:
+func builtinPlatformSlugEditable(platform Platform) bool {
+	return platform.Builtin
+}
+
+func builtinPlatformProtocolEditable(platform Platform) bool {
+	return !isCoreBuiltinPlatform(platform)
+}
+
+func builtinPlatformBaseURLEditable(platform Platform) bool {
+	return !isCoreBuiltinPlatform(platform)
+}
+
+func isCoreBuiltinPlatform(platform Platform) bool {
+	if !platform.Builtin {
 		return false
 	}
+	switch NormalizePlatformSlug(platform.Slug) {
+	case PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok:
+		return true
+	}
+	if platform.Protocol == PlatformProtocolNative || platform.Protocol == PlatformProtocolOpenAI {
+		return true
+	}
+	return containsString(platform.AuthModes, AccountTypeOAuth) ||
+		containsString(platform.AuthModes, AccountTypeSetupToken) ||
+		containsString(platform.AuthModes, AccountTypeUpstream) ||
+		containsString(platform.AuthModes, AccountTypeServiceAccount) ||
+		containsString(platform.AuthModes, AccountTypeBedrock)
 }
 
 func defaultCustomPlatformCapabilities(protocol string) []string {
@@ -353,6 +391,16 @@ func normalizeStringSet(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func containsString(values []string, target string) bool {
+	target = strings.ToLower(strings.TrimSpace(target))
+	for _, value := range values {
+		if strings.ToLower(strings.TrimSpace(value)) == target {
+			return true
+		}
+	}
+	return false
 }
 
 func builtinPlatforms(includeDisabled bool) []Platform {
@@ -425,6 +473,19 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			BaseURL:      "",
 			AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey},
 			Capabilities: []string{PlatformCapabilityResponses, PlatformCapabilityChatCompletions, PlatformCapabilityVideos},
+			Color:        "#111827",
+			Enabled:      true,
+			Builtin:      true,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
+		{
+			Slug:         PlatformGrokVideo,
+			DisplayName:  "Grok-video",
+			Protocol:     PlatformProtocolOpenAICompatible,
+			BaseURL:      "",
+			AuthModes:    []string{AccountTypeAPIKey},
+			Capabilities: []string{PlatformCapabilityVideos},
 			Color:        "#111827",
 			Enabled:      true,
 			Builtin:      true,

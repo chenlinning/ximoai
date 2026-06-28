@@ -34,6 +34,7 @@ type XimoAppUpdateApp struct {
 	ClientType   string `json:"client_type,omitempty"`
 	ResponseMode string `json:"response_mode,omitempty"`
 	Enabled      *bool  `json:"enabled,omitempty"`
+	Hidden       bool   `json:"hidden,omitempty"`
 }
 
 type XimoDeskUpdateConfig struct {
@@ -220,7 +221,7 @@ func (s *SettingService) GetXimoAppDownloadCenter(ctx context.Context) (*XimoApp
 
 	appsByKey := map[string]XimoAppUpdateApp{}
 	for _, app := range cfg.Apps {
-		if app.Key == "" || (app.Enabled != nil && !*app.Enabled) {
+		if app.Key == "" || (app.Enabled != nil && !*app.Enabled) || app.Hidden {
 			continue
 		}
 		appsByKey[app.Key] = app
@@ -512,6 +513,7 @@ func ensureXimoAppInList(apps []XimoAppUpdateApp, appKey string) []XimoAppUpdate
 		ClientType:   "custom",
 		ResponseMode: "standard",
 		Enabled:      ximoDeskBoolPtr(true),
+		Hidden:       false,
 	})
 }
 

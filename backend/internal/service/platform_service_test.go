@@ -12,6 +12,7 @@ type platformRepoStubForPlatformService struct {
 	platforms map[string]Platform
 	usage     PlatformUsage
 	deleted   string
+	renamed   string
 }
 
 func (s *platformRepoStubForPlatformService) List(_ context.Context, includeDisabled bool) ([]Platform, error) {
@@ -45,6 +46,17 @@ func (s *platformRepoStubForPlatformService) Update(_ context.Context, platform 
 		return ErrPlatformNotFound
 	}
 	s.platforms[platform.Slug] = *platform
+	return nil
+}
+
+func (s *platformRepoStubForPlatformService) Rename(_ context.Context, oldSlug string, platform *Platform) error {
+	if s.platforms == nil {
+		return ErrPlatformNotFound
+	}
+	oldSlug = NormalizePlatformSlug(oldSlug)
+	delete(s.platforms, oldSlug)
+	s.platforms[platform.Slug] = *platform
+	s.renamed = oldSlug + "->" + platform.Slug
 	return nil
 }
 
@@ -173,7 +185,7 @@ func TestPlatformService_BuiltinOpenAIAudioPlatform(t *testing.T) {
 	require.Equal(t, []string{AccountTypeAPIKey}, platform.AuthModes)
 	require.ElementsMatch(t, []string{PlatformCapabilityChatCompletions, PlatformCapabilityAudio}, platform.Capabilities)
 	require.True(t, platform.Builtin)
-	require.True(t, builtinPlatformBaseURLEditable(PlatformOpenAIAudio))
+	require.True(t, builtinPlatformBaseURLEditable(platform))
 }
 
 func TestPlatformService_BuiltinGrokPlatformKeepsNativeOAuthBoundary(t *testing.T) {
@@ -194,7 +206,129 @@ func TestPlatformService_BuiltinGrokPlatformKeepsNativeOAuthBoundary(t *testing.
 		PlatformCapabilityVideos,
 	}, platform.Capabilities)
 	require.True(t, platform.Builtin)
-	require.True(t, builtinPlatformBaseURLEditable(PlatformGrok))
+	require.False(t, builtinPlatformBaseURLEditable(platform))
+	require.True(t, builtinPlatformSlugEditable(platform))
+}
+
+func TestPlatformService_BuiltinGrokVideoPlatform(t *testing.T) {
+	platforms := builtinPlatforms(true)
+
+	bySlug := map[string]Platform{}
+	for _, platform := range platforms {
+		bySlug[platform.Slug] = platform
+	}
+
+	platform := bySlug[PlatformGrokVideo]
+	require.Equal(t, "Grok-video", platform.DisplayName)
+	require.Equal(t, PlatformProtocolOpenAICompatible, platform.Protocol)
+	require.Equal(t, []string{AccountTypeAPIKey}, platform.AuthModes)
+	require.ElementsMatch(t, []string{PlatformCapabilityVideos}, platform.Capabilities)
+	require.True(t, platform.Builtin)
+	require.True(t, builtinPlatformSlugEditable(platform))
+	require.True(t, builtinPlatformProtocolEditable(platform))
+	require.True(t, builtinPlatformBaseURLEditable(platform))
+}
+
+func TestPlatformService_UpdateAllowsXimoAIBuiltinPlatformRename(t *testing.T) {
+	repo := &platformRepoStubForPlatformService{
+		platforms: map[string]Platform{
+			PlatformGrokVideo: {
+				Slug:         PlatformGrokVideo,
+				DisplayName:  "Grok-video",
+				Protocol:     PlatformProtocolOpenAICompatible,
+				BaseURL:      "https://video.old.test",
+				AuthModes:    []string{AccountTypeAPIKey},
+				Capabilities: []string{PlatformCapabilityVideos},
+				Enabled:      true,
+				Builtin:      true,
+			},
+		},
+	}
+	svc := NewPlatformService(repo)
+
+	updated, err := svc.Update(context.Background(), PlatformGrokVideo, Platform{
+		Slug:         "grok-video-x",
+		DisplayName:  "Grok Video X",
+		Protocol:     PlatformProtocolGemini,
+		BaseURL:      "https://video.new.test",
+		AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey},
+		Capabilities: []string{PlatformCapabilityVideos, PlatformCapabilityNativeGemini},
+		Color:        "#123456",
+		Enabled:      true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "grok-video->grok-video-x", repo.renamed)
+	require.Equal(t, "grok-video-x", updated.Slug)
+	require.Equal(t, PlatformProtocolGemini, updated.Protocol)
+	require.Equal(t, "https://video.new.test", updated.BaseURL)
+}
+
+func TestPlatformService_UpdateAllowsCoreBuiltinPlatformRenameButKeepsProtocolAndBaseURL(t *testing.T) {
+	repo := &platformRepoStubForPlatformService{
+		platforms: map[string]Platform{
+			PlatformGrok: {
+				Slug:         PlatformGrok,
+				DisplayName:  "Grok",
+				Protocol:     PlatformProtocolOpenAICompatible,
+				BaseURL:      "https://official.grok.test",
+				AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey},
+				Capabilities: []string{PlatformCapabilityResponses, PlatformCapabilityChatCompletions},
+				Enabled:      true,
+				Builtin:      true,
+			},
+		},
+	}
+	svc := NewPlatformService(repo)
+
+	updated, err := svc.Update(context.Background(), PlatformGrok, Platform{
+		Slug:        "grok-custom",
+		DisplayName: "Grok Custom",
+		Protocol:    PlatformProtocolGemini,
+		BaseURL:     "https://custom.grok.test",
+		AuthModes:   []string{AccountTypeAPIKey},
+		Enabled:     true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "grok->grok-custom", repo.renamed)
+	require.Equal(t, "grok-custom", updated.Slug)
+	require.Equal(t, PlatformProtocolOpenAICompatible, updated.Protocol)
+	require.Equal(t, "https://official.grok.test", updated.BaseURL)
+	require.ElementsMatch(t, []string{AccountTypeOAuth, AccountTypeAPIKey}, updated.AuthModes)
+}
+
+func TestPlatformService_UpdateKeepsCoreBuiltinProtocolLockedAfterRename(t *testing.T) {
+	repo := &platformRepoStubForPlatformService{
+		platforms: map[string]Platform{
+			"grok-custom": {
+				Slug:         "grok-custom",
+				DisplayName:  "Grok Custom",
+				Protocol:     PlatformProtocolOpenAICompatible,
+				BaseURL:      "https://official.grok.test",
+				AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey},
+				Capabilities: []string{PlatformCapabilityResponses, PlatformCapabilityChatCompletions},
+				Enabled:      true,
+				Builtin:      true,
+			},
+		},
+	}
+	svc := NewPlatformService(repo)
+
+	updated, err := svc.Update(context.Background(), "grok-custom", Platform{
+		Slug:        "grok-custom",
+		DisplayName: "Grok Custom",
+		Protocol:    PlatformProtocolGemini,
+		BaseURL:     "https://custom.grok.test",
+		AuthModes:   []string{AccountTypeAPIKey},
+		Enabled:     true,
+	})
+
+	require.NoError(t, err)
+	require.Empty(t, repo.renamed)
+	require.Equal(t, PlatformProtocolOpenAICompatible, updated.Protocol)
+	require.Equal(t, "https://official.grok.test", updated.BaseURL)
+	require.ElementsMatch(t, []string{AccountTypeOAuth, AccountTypeAPIKey}, updated.AuthModes)
 }
 
 func TestPlatformService_CreateAssignsDeterministicColor(t *testing.T) {

@@ -38,5 +38,6 @@ func registerXimoDeskAdminRoutes(admin *gin.RouterGroup, settingService *service
 		ximoapp.PUT("/update", h.AdminUpdate)
 		ximoapp.POST("/update/packages", h.AdminUploadPackage)
 		ximoapp.DELETE("/update/releases/:id", h.AdminDeleteRelease)
+		ximoapp.DELETE("/update/apps/:appKey", h.AdminDeleteApp)
 	}
 }

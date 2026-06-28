@@ -42,6 +42,7 @@ const (
 	PlatformGemini      = domain.PlatformGemini
 	PlatformAntigravity = domain.PlatformAntigravity
 	PlatformGrok        = domain.PlatformGrok
+	PlatformGrokVideo   = domain.PlatformGrokVideo
 	PlatformOpenAIAudio = domain.PlatformOpenAIAudio
 	PlatformKlingAudio  = domain.PlatformKlingAudio
 )
@@ -55,6 +56,7 @@ var AllowedQuotaPlatforms = []string{
 	PlatformGemini,
 	PlatformAntigravity,
 	PlatformGrok,
+	PlatformGrokVideo,
 	PlatformOpenAIAudio,
 	PlatformKlingAudio,
 }

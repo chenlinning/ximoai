@@ -2050,7 +2050,7 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	if videoSize == "" {
 		videoSize = defaultOpenAIVideoSize
 	}
-	if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+	if account.IsGrokVideo() {
 		videoSize = defaultGrokVideoSize
 	}
 
@@ -2068,7 +2068,7 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	if err := writer.WriteField("size", videoSize); err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
 	}
-	if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+	if account.IsGrokVideo() {
 		if err := writer.WriteField("aspect_ratio", defaultGrokVideoAspectRatio); err != nil {
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to create video request: %s", err.Error()))
 		}
@@ -2159,7 +2159,7 @@ func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx conte
 		}
 
 		statusEndpoint := fmt.Sprintf("/v1/videos/%s", url.PathEscape(videoID))
-		if NormalizePlatformSlug(account.Platform) == PlatformGrok {
+		if account.IsGrokVideo() {
 			statusEndpoint = "/v1/video/query?id=" + url.QueryEscape(videoID)
 		}
 		statusCode, headers, body, err := s.doOpenAIVideoTestGet(ctx, account, baseURL, statusEndpoint, "application/json")

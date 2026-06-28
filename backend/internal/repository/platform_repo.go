@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
@@ -120,6 +121,80 @@ WHERE slug = $1`,
 	if affected, _ := result.RowsAffected(); affected == 0 {
 		return service.ErrPlatformNotFound
 	}
+	return nil
+}
+
+func (r *platformRepository) Rename(ctx context.Context, oldSlug string, platform *service.Platform) error {
+	if platform == nil {
+		return errors.New("platform is nil")
+	}
+	authModes, err := json.Marshal(platform.AuthModes)
+	if err != nil {
+		return err
+	}
+	capabilities, err := json.Marshal(platform.Capabilities)
+	if err != nil {
+		return err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	result, err := tx.ExecContext(ctx, `
+UPDATE platforms
+SET slug = $2,
+    display_name = $3,
+    protocol = $4,
+    base_url = $5,
+    auth_modes = $6::jsonb,
+    capabilities = $7::jsonb,
+    color = $8,
+    enabled = $9,
+    updated_at = NOW()
+WHERE slug = $1`,
+		oldSlug, platform.Slug, platform.DisplayName, platform.Protocol, platform.BaseURL,
+		string(authModes), string(capabilities), platform.Color, platform.Enabled)
+	if err != nil {
+		return fmt.Errorf("rename platform: %w", err)
+	}
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return service.ErrPlatformNotFound
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE accounts SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename account platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE groups SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename group platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE channel_model_pricing SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename channel pricing platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE channel_account_stats_model_pricing SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename account stats pricing platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE channels SET model_mapping = jsonb_set(model_mapping - $1, ARRAY[$2], model_mapping -> $1, true), updated_at = NOW() WHERE model_mapping ? $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename channel mapping platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE openai_video_jobs SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename video job platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE openai_video_characters SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename video character platforms: %w", err)
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE user_platform_quotas SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
+		return fmt.Errorf("rename user platform quotas: %w", err)
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
 	return nil
 }
 

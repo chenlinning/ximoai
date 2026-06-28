@@ -30,6 +30,7 @@ export interface XimoAppUpdateApp {
   client_type?: string
   response_mode?: string
   enabled?: boolean
+  hidden?: boolean
 }
 
 export interface XimoDeskUpdateConfig {
@@ -66,11 +67,17 @@ export async function deleteRelease(id: string): Promise<XimoDeskUpdateConfig> {
   return data
 }
 
+export async function deleteApp(appKey: string): Promise<XimoDeskUpdateConfig> {
+  const { data } = await apiClient.delete<XimoDeskUpdateConfig>(`/admin/ximoapp/update/apps/${encodeURIComponent(appKey)}`)
+  return data
+}
+
 export const ximodeskUpdateAPI = {
   get,
   update,
   uploadPackage,
-  deleteRelease
+  deleteRelease,
+  deleteApp
 }
 
 export default ximodeskUpdateAPI

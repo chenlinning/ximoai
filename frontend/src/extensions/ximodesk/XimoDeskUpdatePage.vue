@@ -79,10 +79,19 @@
                     {{ app.key || 'app-key' }}
                   </p>
                 </div>
-                <label class="inline-flex shrink-0 items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                  <input v-model="app.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                  {{ t('ximoappUpdate.releaseEnabled', 'Enabled') }}
-                </label>
+                <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <input v-model="app.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    {{ t('ximoappUpdate.releaseEnabled', 'Enabled') }}
+                  </label>
+                  <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                    <input v-model="app.hidden" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    {{ t('ximoappUpdate.hiddenInDownloadCenter', 'Hidden in download center') }}
+                  </label>
+                  <button type="button" class="btn btn-danger btn-sm" :disabled="deletingAppKey === normalizeAppKey(app.key)" @click="deleteApp(app)">
+                    {{ deletingAppKey === normalizeAppKey(app.key) ? t('common.deleting', 'Deleting') : t('common.delete', 'Delete') }}
+                  </button>
+                </div>
               </div>
             </header>
 
@@ -256,67 +265,64 @@
               </div>
 
               <div v-else class="divide-y divide-gray-100 overflow-hidden rounded-md border border-gray-200 bg-white dark:divide-dark-700 dark:border-dark-700 dark:bg-dark-800">
-                <section
-                  v-for="release in appReleases(app.key)"
-                  :key="release.id || release.download_url"
-                  class="space-y-3 px-4 py-4"
-                >
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div class="min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <div class="font-semibold text-gray-900 dark:text-white">{{ release.version }}</div>
-                        <span class="rounded-full bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-600 dark:bg-dark-700 dark:text-gray-300">
-                          {{ release.channel }}
-                        </span>
-                        <span v-if="release.force" class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/25 dark:text-red-200">
-                          {{ t('ximoappUpdate.force', 'Force update') }}
-                        </span>
-                      </div>
-                      <div class="mt-1 font-mono text-xs text-gray-600 dark:text-gray-300">
-                        {{ release.os }} / {{ release.arch }} / {{ release.locale || 'all' }}
-                      </div>
-                      <div v-if="releaseTime(release)" class="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">
-                        {{ releaseTime(release) }}
-                      </div>
-                    </div>
-
-                    <div class="flex shrink-0 flex-wrap gap-2">
-                      <button type="button" class="btn btn-secondary btn-sm" @click="copyUrl(release.download_url)">
-                        {{ t('common.copy', 'Copy') }}
-                      </button>
+                <section v-for="release in appReleases(app.key)" :key="release.id || release.download_url">
+                  <div class="flex w-full items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-700/50">
+                    <button
+                      type="button"
+                      class="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      @click="toggleReleaseDetails(release)"
+                    >
+                      <Icon :name="isReleaseExpanded(release) ? 'chevronDown' : 'chevronRight'" size="xs" class="shrink-0 text-gray-500 dark:text-gray-400" />
+                      <span class="min-w-0 break-all font-semibold text-gray-900 dark:text-white">{{ release.version }}</span>
+                    </button>
+                    <div class="flex shrink-0 items-center gap-2">
+                      <label class="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300">
+                        <input v-model="release.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                        {{ t('ximoappUpdate.releaseEnabled', 'Enabled') }}
+                      </label>
                       <button type="button" class="btn btn-danger btn-sm" :disabled="deletingId === release.id" @click="deleteRelease(release)">
                         {{ deletingId === release.id ? t('common.deleting', 'Deleting') : t('common.delete', 'Delete') }}
                       </button>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
-                    <div class="min-w-0">
-                      <div class="text-gray-500 dark:text-gray-400">{{ t('ximoappUpdate.packageFile', 'Package File') }}</div>
-                      <div class="mt-1 break-all font-mono text-gray-800 dark:text-gray-200">{{ release.file_name || '-' }}</div>
-                      <div class="mt-1 text-gray-500 dark:text-gray-400">{{ formatBytes(release.file_size) }}</div>
+                  <div v-if="isReleaseExpanded(release)" class="space-y-3 border-t border-gray-100 px-4 py-4 dark:border-dark-700">
+                    <div class="grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
+                      <div class="min-w-0">
+                        <div class="text-gray-500 dark:text-gray-400">{{ t('ximoappUpdate.channel', 'Channel') }}</div>
+                        <div class="mt-1 font-mono text-gray-800 dark:text-gray-200">{{ release.channel }}</div>
+                      </div>
+                      <div class="min-w-0">
+                        <div class="text-gray-500 dark:text-gray-400">{{ t('ximoappUpdate.target', 'Target') }}</div>
+                        <div class="mt-1 font-mono text-gray-800 dark:text-gray-200">{{ release.os }} / {{ release.arch }} / {{ release.locale || 'all' }}</div>
+                        <div v-if="releaseTime(release)" class="mt-1 font-mono text-gray-500 dark:text-gray-400">{{ releaseTime(release) }}</div>
+                      </div>
+                      <div class="min-w-0">
+                        <div class="text-gray-500 dark:text-gray-400">{{ t('ximoappUpdate.packageFile', 'Package File') }}</div>
+                        <div class="mt-1 break-all font-mono text-gray-800 dark:text-gray-200">{{ release.file_name || '-' }}</div>
+                        <div class="mt-1 text-gray-500 dark:text-gray-400">{{ formatBytes(release.file_size) }}</div>
+                      </div>
+                      <div class="min-w-0 sm:col-span-2">
+                        <div class="text-gray-500 dark:text-gray-400">{{ t('ximoappUpdate.downloadUrl', 'Download URL') }}</div>
+                        <div class="mt-1 break-all font-mono text-gray-800 dark:text-gray-200">{{ release.download_url }}</div>
+                      </div>
+                      <div class="min-w-0 sm:col-span-2">
+                        <div class="text-gray-500 dark:text-gray-400">sha256</div>
+                        <div class="mt-1 break-all font-mono text-gray-500 dark:text-gray-400">{{ release.sha256 }}</div>
+                      </div>
                     </div>
-                    <div class="min-w-0">
-                      <div class="text-gray-500 dark:text-gray-400">{{ t('ximoappUpdate.downloadUrl', 'Download URL') }}</div>
-                      <div class="mt-1 break-all font-mono text-gray-800 dark:text-gray-200">{{ release.download_url }}</div>
-                    </div>
-                    <div class="min-w-0 sm:col-span-2">
-                      <div class="text-gray-500 dark:text-gray-400">sha256</div>
-                      <div class="mt-1 break-all font-mono text-gray-500 dark:text-gray-400">{{ release.sha256 }}</div>
-                    </div>
-                  </div>
 
-                  <input v-model.trim="release.notes" class="input h-9 text-xs" :placeholder="t('ximoappUpdate.notes', 'Release Notes')" />
+                    <input v-model.trim="release.notes" class="input h-9 text-xs" :placeholder="t('ximoappUpdate.notes', 'Release Notes')" />
 
-                  <div class="flex flex-wrap gap-4">
-                    <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                      <input v-model="release.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                      {{ t('ximoappUpdate.releaseEnabled', 'Enabled') }}
-                    </label>
-                    <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                      <input v-model="release.force" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                      {{ t('ximoappUpdate.force', 'Force update') }}
-                    </label>
+                    <div class="flex flex-wrap gap-2">
+                      <button type="button" class="btn btn-secondary btn-sm" @click="copyUrl(release.download_url)">
+                        {{ t('common.copy', 'Copy') }}
+                      </button>
+                      <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                        <input v-model="release.force" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                        {{ t('ximoappUpdate.force', 'Force update') }}
+                      </label>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -361,6 +367,8 @@ const loading = ref(false)
 const saving = ref(false)
 const uploadingKey = ref('')
 const deletingId = ref('')
+const deletingAppKey = ref('')
+const expandedReleaseKeys = ref(new Set<string>())
 
 const form = reactive<XimoDeskUpdateConfig>({
   enabled: false,
@@ -392,7 +400,8 @@ function normalizeApp(app: XimoAppUpdateApp): XimoAppUpdateApp {
     description: app.description || '',
     client_type: app.client_type || 'custom',
     response_mode: app.response_mode || 'standard',
-    enabled: app.enabled !== false
+    enabled: app.enabled !== false,
+    hidden: app.hidden === true
   }
 }
 
@@ -449,10 +458,40 @@ function appReleases(appKey: string): XimoDeskUpdateRelease[] {
   return releasesByApp.value.get(normalizeAppKey(appKey)) || []
 }
 
+function releaseKey(release: XimoDeskUpdateRelease): string {
+  return release.id || [
+    normalizeAppKey(release.app_key || 'ximodesk'),
+    release.channel,
+    release.os,
+    release.arch,
+    release.locale || 'all',
+    release.package_type || '',
+    release.version,
+    release.download_url
+  ].join(':')
+}
+
+function isReleaseExpanded(release: XimoDeskUpdateRelease): boolean {
+  return expandedReleaseKeys.value.has(releaseKey(release))
+}
+
+function toggleReleaseDetails(release: XimoDeskUpdateRelease) {
+  const key = releaseKey(release)
+  const next = new Set(expandedReleaseKeys.value)
+  if (next.has(key)) {
+    next.delete(key)
+  } else {
+    next.add(key)
+  }
+  expandedReleaseKeys.value = next
+}
+
 function applyConfig(config: XimoDeskUpdateConfig) {
   form.enabled = !!config.enabled
   form.apps = (config.apps || []).map(normalizeApp)
   form.releases.splice(0, form.releases.length, ...((config.releases || []).map(normalizeRelease)))
+  const keys = new Set(form.releases.map(releaseKey))
+  expandedReleaseKeys.value = new Set([...expandedReleaseKeys.value].filter((key) => keys.has(key)))
   form.apps.forEach((app, index) => {
     uploadState(index, app)
   })
@@ -468,7 +507,8 @@ function buildPayload(): XimoDeskUpdateConfig {
       description: (app.description || '').trim(),
       client_type: app.client_type || 'custom',
       response_mode: app.response_mode || 'standard',
-      enabled: app.enabled !== false
+      enabled: app.enabled !== false,
+      hidden: app.hidden === true
     })),
     releases: form.releases.map((release) => ({
       ...release,
@@ -496,6 +536,28 @@ function addApp() {
     response_mode: 'standard',
     enabled: true
   })
+}
+
+async function deleteApp(app: XimoAppUpdateApp) {
+  const appKey = normalizeAppKey(app.key)
+  if (!appKey) {
+    appStore.showError(t('ximoappUpdate.appKeyRequired', 'Please enter the app key before deleting'))
+    return
+  }
+  const ok = window.confirm(t('ximoappUpdate.confirmDeleteApp', 'Delete this app and all of its package releases?'))
+  if (!ok) {
+    return
+  }
+  deletingAppKey.value = appKey
+  try {
+    const config = await adminAPI.ximodeskUpdate.deleteApp(appKey)
+    applyConfig(config)
+    appStore.showSuccess(t('ximoappUpdate.appDeleted', 'App deleted'))
+  } catch (error) {
+    appStore.showError(extractApiErrorMessage(error, t('ximoappUpdate.deleteAppFailed', 'Failed to delete app')))
+  } finally {
+    deletingAppKey.value = ''
+  }
 }
 
 function onFileChange(index: number, app: XimoAppUpdateApp, event: Event) {
@@ -671,6 +733,6 @@ loadConfig()
 <style scoped>
 .ximoapp-app-grid {
   align-items: start;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 32rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 </style>

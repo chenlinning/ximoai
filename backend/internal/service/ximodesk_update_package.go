@@ -164,6 +164,53 @@ func (s *SettingService) DeleteXimoDeskUpdateRelease(ctx context.Context, id str
 	return s.GetXimoDeskUpdateConfig(ctx)
 }
 
+func (s *SettingService) DeleteXimoAppUpdateApp(ctx context.Context, appKey string) (*XimoDeskUpdateConfig, error) {
+	if s == nil || s.settingRepo == nil {
+		return nil, fmt.Errorf("setting service is not configured")
+	}
+	appKey = normalizeXimoAppKey(appKey)
+	if appKey == "" {
+		return nil, infraerrors.BadRequest("INVALID_XIMOAPP_UPDATE_APP", "app key is required")
+	}
+	cfg, err := s.GetXimoDeskUpdateConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil {
+		cfg = DefaultXimoDeskUpdateConfig()
+	}
+
+	nextApps := cfg.Apps[:0]
+	removed := false
+	for _, app := range cfg.Apps {
+		if normalizeXimoAppKey(app.Key) == appKey {
+			removed = true
+			continue
+		}
+		nextApps = append(nextApps, app)
+	}
+	if !removed {
+		return nil, infraerrors.BadRequest("INVALID_XIMOAPP_UPDATE_APP", "app not found")
+	}
+
+	nextReleases := cfg.Releases[:0]
+	for _, release := range cfg.Releases {
+		if normalizeXimoAppKey(release.AppKey) == appKey {
+			if fileName := sanitizeXimoDeskFileName(release.FileName); fileName != "" {
+				_ = os.Remove(filepath.Join(XimoDeskPackageDir(), fileName))
+			}
+			continue
+		}
+		nextReleases = append(nextReleases, release)
+	}
+	cfg.Apps = nextApps
+	cfg.Releases = nextReleases
+	if err := s.SaveXimoDeskUpdateConfig(ctx, cfg); err != nil {
+		return nil, err
+	}
+	return s.GetXimoDeskUpdateConfig(ctx)
+}
+
 func XimoDeskPackageDir() string {
 	if dir := strings.TrimSpace(os.Getenv(ximoAppPackageDirEnv)); dir != "" {
 		return dir

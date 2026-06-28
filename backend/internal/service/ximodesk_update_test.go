@@ -321,3 +321,78 @@ func TestXimoAppDownloadCenterReturnsEnabledAppsAndReleases(t *testing.T) {
 	require.Equal(t, "1.0.2", center.Apps[0].Releases[0].Version)
 	require.Equal(t, "newer build", center.Apps[0].Releases[0].Notes)
 }
+
+func TestXimoAppHiddenAppIsNotListedInDownloadCenterButStillResolvesUpdate(t *testing.T) {
+	svc, _ := newXimoDeskTestSettingService()
+	ctx := context.Background()
+	enabled := true
+	hidden := true
+
+	require.NoError(t, svc.SaveXimoDeskUpdateConfig(ctx, &XimoDeskUpdateConfig{
+		Enabled: true,
+		Apps: []XimoAppUpdateApp{
+			{
+				Key:         "ximodesk",
+				Name:        "XimoDesk",
+				Description: "Desktop client",
+				ClientType:  "desktop",
+				Enabled:     &enabled,
+			},
+			{
+				Key:         "hidden-app",
+				Name:        "Hidden App",
+				Description: "Not visible in download center",
+				ClientType:  "desktop",
+				Enabled:     &enabled,
+				Hidden:      hidden,
+			},
+		},
+		Releases: []XimoDeskUpdateRelease{
+			{
+				AppKey:      "ximodesk",
+				Enabled:     &enabled,
+				Channel:     "stable",
+				OS:          "windows",
+				Arch:        "x86_64",
+				Locale:      "zh-CN",
+				PackageType: "msi",
+				Version:     "1.0.1",
+				DownloadURL: "https://www.ximoai.cn/downloads/ximoapp/visible.msi",
+				Notes:       "visible app release",
+				SHA256:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			},
+			{
+				AppKey:      "hidden-app",
+				Enabled:     &enabled,
+				Channel:     "stable",
+				OS:          "windows",
+				Arch:        "x86_64",
+				Locale:      "zh-CN",
+				PackageType: "msi",
+				Version:     "2.0.0",
+				DownloadURL: "https://www.ximoai.cn/downloads/ximoapp/hidden-app.msi",
+				Notes:       "hidden app release",
+				SHA256:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			},
+		},
+	}))
+
+	center, err := svc.GetXimoAppDownloadCenter(ctx)
+	require.NoError(t, err)
+	require.Len(t, center.Apps, 1)
+	require.Equal(t, "ximodesk", center.Apps[0].Key)
+
+	update, ok, err := svc.ResolveXimoAppUpdate(ctx, "hidden-app", XimoDeskVersionRequest{
+		App:     "XimoDesk",
+		Type:    "ximodesk-client",
+		OS:      "windows",
+		Arch:    "amd64",
+		Channel: "stable",
+		Locale:  "zh-CN",
+		AppKey:  "hidden-app",
+	})
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NotNil(t, update)
+	require.Equal(t, "2.0.0", update.Version)
+}

@@ -9,7 +9,7 @@ import (
 )
 
 func TestAdaptOpenAIVideoProviderRequestMapsGrokCreate(t *testing.T) {
-	account := &Account{Platform: "grok"}
+	account := &Account{Platform: PlatformGrokVideo}
 	body := []byte(`{
 		"model":"grok-video-3-10s",
 		"prompt":"city at sunset",
@@ -34,7 +34,7 @@ func TestAdaptOpenAIVideoProviderRequestMapsGrokCreate(t *testing.T) {
 }
 
 func TestAdaptOpenAIVideoProviderRequestMapsGrokQuery(t *testing.T) {
-	account := &Account{Platform: "grok"}
+	account := &Account{Platform: PlatformGrokVideo}
 
 	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodGet, "/v1/videos/task_123", nil, "")
 
@@ -44,7 +44,7 @@ func TestAdaptOpenAIVideoProviderRequestMapsGrokQuery(t *testing.T) {
 }
 
 func TestAdaptOpenAIVideoProviderRequestMapsGrokExtend(t *testing.T) {
-	account := &Account{Platform: "grok"}
+	account := &Account{Platform: PlatformGrokVideo}
 	body := []byte(`{"model":"grok-video-3-10s","prompt":"extend it","video":{"id":"task_123"},"start_time":10}`)
 
 	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, "/v1/videos/extensions", body, "application/json")

@@ -602,7 +602,7 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoContent(ctx context.Context, c 
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if NormalizePlatformSlug(account.Platform) == PlatformGrok || account.IsGeminiCompatibleAPIKey() {
+	if account.IsGrokVideo() || account.IsGeminiCompatibleAPIKey() {
 		respBody, readErr := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
 		if readErr != nil {
 			return readErr
@@ -706,6 +706,9 @@ func (s *OpenAIGatewayService) buildOpenAIVideoRequest(
 	}
 	targetURL := openAIVideosURL
 	baseURL := account.GetOpenAIBaseURL()
+	if account.IsGrokVideo() {
+		baseURL = account.GetGrokBaseURL()
+	}
 	if baseURL != "" {
 		validatedURL, err := s.validateUpstreamBaseURL(baseURL)
 		if err != nil {
