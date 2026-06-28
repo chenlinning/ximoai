@@ -169,6 +169,7 @@ func TestPlatformService_BuiltinPlatformsExposeDefaultBaseURLs(t *testing.T) {
 	require.Equal(t, PlatformDefaultBaseURLOpenAI, baseURLs[PlatformOpenAI])
 	require.Equal(t, PlatformDefaultBaseURLGemini, baseURLs[PlatformGemini])
 	require.Equal(t, PlatformDefaultBaseURLAntigravity, baseURLs[PlatformAntigravity])
+	require.Equal(t, PlatformDefaultBaseURLGrok, baseURLs[PlatformGrok])
 }
 
 func TestPlatformService_BuiltinOpenAIAudioPlatform(t *testing.T) {
@@ -199,6 +200,7 @@ func TestPlatformService_BuiltinGrokPlatformKeepsNativeOAuthBoundary(t *testing.
 	platform := bySlug[PlatformGrok]
 	require.Equal(t, "Grok", platform.DisplayName)
 	require.Equal(t, PlatformProtocolOpenAICompatible, platform.Protocol)
+	require.Equal(t, PlatformDefaultBaseURLGrok, platform.BaseURL)
 	require.ElementsMatch(t, []string{AccountTypeOAuth, AccountTypeAPIKey}, platform.AuthModes)
 	require.ElementsMatch(t, []string{
 		PlatformCapabilityResponses,

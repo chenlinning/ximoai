@@ -84,10 +84,6 @@
                     <input v-model="app.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
                     {{ t('ximoappUpdate.releaseEnabled', 'Enabled') }}
                   </label>
-                  <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
-                    <input v-model="app.hidden" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                    {{ t('ximoappUpdate.hiddenInDownloadCenter', 'Hidden in download center') }}
-                  </label>
                   <button type="button" class="btn btn-danger btn-sm" :disabled="deletingAppKey === normalizeAppKey(app.key)" @click="deleteApp(app)">
                     {{ deletingAppKey === normalizeAppKey(app.key) ? t('common.deleting', 'Deleting') : t('common.delete', 'Delete') }}
                   </button>
@@ -121,6 +117,12 @@
                     <option value="mobile">mobile</option>
                     <option value="custom">custom</option>
                   </select>
+                </div>
+                <div class="flex items-end">
+                  <label class="flex min-h-9 items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input v-model="app.hidden" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    <span>{{ t('ximoappUpdate.hiddenInDownloadCenter', 'Hide from download center') }}</span>
+                  </label>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="input-label">{{ t('ximoappUpdate.appDescription', 'App Description') }}</label>
@@ -733,6 +735,6 @@ loadConfig()
 <style scoped>
 .ximoapp-app-grid {
   align-items: start;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 32rem), 1fr));
 }
 </style>

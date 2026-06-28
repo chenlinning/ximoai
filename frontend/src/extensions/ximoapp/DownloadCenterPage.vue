@@ -298,6 +298,7 @@ loadDownloadCenter()
 
 <style scoped>
 .download-app-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 32rem), 1fr));
 }
 </style>

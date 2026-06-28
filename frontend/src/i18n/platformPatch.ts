@@ -9,6 +9,9 @@ const zhPatch: MessageTree = {
     perVideoUnit: '/ 个视频',
     videoPrice: '视频价格',
   },
+  ximoappUpdate: {
+    hiddenInDownloadCenter: '\u4ece\u4e0b\u8f7d\u4e2d\u5fc3\u9690\u85cf',
+  },
   admin: {
     platforms: {
       title: '平台管理',
@@ -76,6 +79,9 @@ const enPatch: MessageTree = {
     billingModeVideo: 'Per Video',
     perVideoUnit: '/ video',
     videoPrice: 'Video Price',
+  },
+  ximoappUpdate: {
+    hiddenInDownloadCenter: 'Hide from download center',
   },
   admin: {
     platforms: {
