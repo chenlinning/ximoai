@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -141,57 +140,6 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 	}
 	if shouldFallbackGeminiModel(modelName, res) {
 		c.JSON(http.StatusOK, gemini.FallbackModel(modelName))
-		return
-	}
-	writeUpstreamResponse(c, res)
-}
-
-// GeminiV1BetaOperation proxies Gemini async operation polling endpoints.
-func (h *GatewayHandler) GeminiV1BetaOperation(c *gin.Context) {
-	apiKey, ok := middleware.GetAPIKeyFromContext(c)
-	if !ok || apiKey == nil {
-		googleError(c, http.StatusUnauthorized, "Invalid API key")
-		return
-	}
-
-	forcePlatform, hasForcePlatform := middleware.GetForcePlatformFromContext(c)
-	targetPlatform := forcePlatform
-	if !hasForcePlatform && apiKey.Group != nil {
-		targetPlatform = apiKey.Group.Platform
-	}
-	if !hasForcePlatform && !h.isGeminiProtocolPlatform(c.Request.Context(), targetPlatform) {
-		googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
-		return
-	}
-	if forcePlatform == service.PlatformAntigravity {
-		googleError(c, http.StatusNotFound, "Gemini operations are not supported for antigravity")
-		return
-	}
-
-	operationName := strings.Trim(strings.TrimSpace(c.Param("operation")), "/")
-	if decoded, err := url.PathUnescape(operationName); err == nil {
-		operationName = strings.Trim(decoded, "/")
-	}
-	if operationName == "" {
-		googleError(c, http.StatusBadRequest, "Missing operation in URL")
-		return
-	}
-	if strings.HasPrefix(operationName, "v1beta/") {
-		operationName = strings.TrimPrefix(operationName, "v1beta/")
-	}
-	if !strings.HasPrefix(operationName, "operations/") {
-		operationName = "operations/" + operationName
-	}
-
-	account, err := h.geminiCompatService.SelectAccountForAIStudioEndpoints(c.Request.Context(), apiKey.GroupID, targetPlatform)
-	if err != nil {
-		markOpsRoutingCapacityLimitedIfNoAvailable(c, err)
-		googleError(c, http.StatusServiceUnavailable, "No available Gemini accounts: "+err.Error())
-		return
-	}
-	res, err := h.geminiCompatService.ForwardAIStudioGET(c.Request.Context(), account, "/v1beta/"+operationName)
-	if err != nil {
-		googleError(c, http.StatusBadGateway, err.Error())
 		return
 	}
 	writeUpstreamResponse(c, res)

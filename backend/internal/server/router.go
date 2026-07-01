@@ -114,7 +114,7 @@ func registerRoutes(
 	routes.RegisterUserRoutes(v1, h, jwtAuth, settingService)
 	routes.RegisterXimoAppDownloadRoutes(v1, jwtAuth, settingService)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, settingService)
-	routes.RegisterGatewayRoutes(r, h, apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, platformService, cfg)
+	routes.RegisterGatewayRoutes(r, h, apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, cfg)
 	routes.RegisterPaymentRoutes(v1, h.Payment, h.PaymentWebhook, h.Admin.Payment, jwtAuth, adminAuth, settingService)
 
 	handler.RegisterPageRoutes(v1, cfg.Pricing.DataDir, gin.HandlerFunc(jwtAuth), gin.HandlerFunc(adminAuth), settingService)

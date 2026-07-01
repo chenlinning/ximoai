@@ -22,6 +22,7 @@ func setupSyncUpstreamModelsPreviewRouter(upstream service.HTTPUpstream, platfor
 		nil,
 		nil,
 		nil,
+		nil,
 		upstream,
 		&config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 		nil,

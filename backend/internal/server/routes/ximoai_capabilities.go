@@ -1,72 +1,40 @@
 package routes
 
 import (
-	"net/http"
-
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func isGroupOpenAICompatibleWithCapability(c *gin.Context, platformService *service.PlatformService, capability string) bool {
-	if !isGroupOpenAICompatible(c, platformService) {
-		return false
-	}
-	return groupPlatformSupportsCapability(c, platformService, capability)
-}
-
-func groupPlatformSupportsCapability(c *gin.Context, platformService *service.PlatformService, capability string) bool {
-	if capability == "" {
+func isGroupXimoAIAudioPlatform(c *gin.Context) bool {
+	switch service.NormalizePlatformSlug(getGroupPlatform(c)) {
+	case service.PlatformOpenAIAudio, service.PlatformKlingAudio:
 		return true
-	}
-	platform := service.NormalizePlatformSlug(getGroupPlatform(c))
-	if platform == "" {
+	default:
 		return false
 	}
-	if platformService == nil {
-		return service.NewPlatformService(nil).SupportsCapability(c.Request.Context(), platform, capability)
-	}
-	return platformService.SupportsCapability(c.Request.Context(), platform, capability)
 }
 
-func openAICompatibleCapabilityOnly(platformService *service.PlatformService, capability string, message string, next gin.HandlerFunc) gin.HandlerFunc {
+func isGroupXimoAIVideoPlatform(c *gin.Context) bool {
+	return service.NormalizePlatformSlug(getGroupPlatform(c)) == service.PlatformGrokVideo
+}
+
+func ximoAIAudioOnly(message string, next gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isGroupOpenAICompatibleWithCapability(c, platformService, capability) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": message,
-				},
-			})
+		if !isGroupXimoAIAudioPlatform(c) {
+			openAIEndpointUnsupported(c, message)
 			return
 		}
 		next(c)
 	}
 }
 
-func openAIVideosCapabilityOnly(platformService *service.PlatformService, message string, next gin.HandlerFunc) gin.HandlerFunc {
+func ximoAIVideoOnly(message string, next gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !(isGroupOpenAICompatible(c, platformService) || isGroupGeminiCompatible(c, platformService)) ||
-			!groupPlatformSupportsCapability(c, platformService, service.PlatformCapabilityVideos) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error": gin.H{
-					"type":    "not_found_error",
-					"message": message,
-				},
-			})
+		if !isGroupXimoAIVideoPlatform(c) {
+			openAIEndpointUnsupported(c, message)
 			return
 		}
 		next(c)
 	}
-}
-
-func rejectOpenAICompatibleMissingCapability(c *gin.Context, platformService *service.PlatformService, capability string, message string) bool {
-	if !isGroupOpenAICompatible(c, platformService) {
-		return false
-	}
-	if groupPlatformSupportsCapability(c, platformService, capability) {
-		return false
-	}
-	openAIEndpointUnsupported(c, message)
-	return true
 }
