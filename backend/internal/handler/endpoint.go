@@ -25,6 +25,8 @@ const (
 	EndpointAudioTranscribe   = "/v1/audio/transcriptions"
 	EndpointAudioTranslate    = "/v1/audio/translations"
 	EndpointRealtime          = "/v1/realtime"
+	EndpointVideosGenerations = "/v1/videos/generations"
+	EndpointVideos            = "/v1/videos"
 	EndpointGeminiModels      = "/v1beta/models"
 )
 
@@ -65,6 +67,10 @@ func NormalizeInboundEndpoint(path string) string {
 		return EndpointAudioTranslate
 	case strings.Contains(path, EndpointRealtime) || strings.Contains(path, "/realtime"):
 		return EndpointRealtime
+	case strings.Contains(path, EndpointVideosGenerations) || strings.Contains(path, "/videos/generations"):
+		return EndpointVideosGenerations
+	case strings.Contains(path, EndpointVideos) || strings.Contains(path, "/videos/"):
+		return EndpointVideos
 	case strings.Contains(path, EndpointResponses):
 		return EndpointResponses
 	case strings.Contains(path, EndpointGeminiModels):
@@ -89,20 +95,8 @@ func DeriveUpstreamEndpoint(inbound, rawRequestPath, platform string) string {
 	inbound = strings.TrimSpace(inbound)
 
 	switch platform {
-	case service.PlatformOpenAI:
-		if inbound == EndpointEmbeddings || inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits ||
-			inbound == EndpointAudioSpeech || inbound == EndpointAudioTranscribe || inbound == EndpointAudioTranslate ||
-			inbound == EndpointRealtime {
-			return inbound
-		}
-		// OpenAI forwards everything else to the Responses API.
-		if suffix := responsesSubpathSuffix(rawRequestPath); suffix != "" {
-			return EndpointResponses + suffix
-		}
-		return EndpointResponses
-
-	case service.PlatformGrok:
-		if inbound == EndpointEmbeddings || inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits {
+	case service.PlatformOpenAI, service.PlatformGrok:
+		if inbound == EndpointEmbeddings || inbound == EndpointImagesGenerations || inbound == EndpointImagesEdits || inbound == EndpointVideosGenerations || inbound == EndpointVideos {
 			return inbound
 		}
 		// OpenAI forwards everything to the Responses API.
