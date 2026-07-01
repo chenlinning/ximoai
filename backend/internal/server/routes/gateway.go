@@ -32,14 +32,20 @@ func RegisterGatewayRoutes(
 	requireGroupAnthropic := middleware.RequireGroupAssignment(settingService, middleware.AnthropicErrorWriter)
 	requireGroupGoogle := middleware.RequireGroupAssignment(settingService, middleware.GoogleErrorWriter)
 
-	rejectGrokUnsupportedEndpoint := func(c *gin.Context, endpoint string) {
-		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": endpoint + " is not supported for Grok groups",
-			},
-		})
+	isOpenAIGatewayPlatform := func(c *gin.Context) bool {
+		return service.NormalizePlatformSlug(getGroupPlatform(c)) == service.PlatformOpenAI
+	}
+	isOpenAIResponsesGatewayPlatform := func(c *gin.Context) bool {
+		return isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses)
+	}
+	isOpenAIChatCompletionsGatewayPlatform := func(c *gin.Context) bool {
+		return isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions)
+	}
+	isOpenAIResponsesWebSocketGatewayPlatform := func(c *gin.Context) bool {
+		if service.NormalizePlatformSlug(getGroupPlatform(c)) == service.PlatformGrok {
+			return true
+		}
+		return isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityRealtime)
 	}
 
 	// API网关（Claude API兼容）
@@ -56,18 +62,19 @@ func RegisterGatewayRoutes(
 			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
 				return
 			}
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Messages API")
-				return
-			}
-			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
+			if isOpenAIResponsesGatewayPlatform(c) {
 				h.OpenAIGateway.Messages(c)
 				return
 			}
 			h.Gateway.Messages(c)
 		})
-		// /v1/messages/count_tokens: OpenAI groups get 404
+		// /v1/messages/count_tokens: official OpenAI uses the Anthropic-compat bridge;
+		// other OpenAI-compatible platforms keep the unsupported response.
 		gateway.POST("/messages/count_tokens", func(c *gin.Context) {
+			if isOpenAIGatewayPlatform(c) {
+				h.OpenAIGateway.CountTokens(c)
+				return
+			}
 			if isGroupOpenAICompatible(c, platformService) || isGroupGeminiCompatible(c, platformService) {
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 				c.JSON(http.StatusNotFound, gin.H{
@@ -88,7 +95,7 @@ func RegisterGatewayRoutes(
 			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
 				return
 			}
-			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
+			if isOpenAIResponsesGatewayPlatform(c) {
 				h.OpenAIGateway.Responses(c)
 				return
 			}
@@ -102,7 +109,7 @@ func RegisterGatewayRoutes(
 			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
 				return
 			}
-			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
+			if isOpenAIResponsesGatewayPlatform(c) {
 				if isOpenAIResponsesPassthroughSubpath(c) {
 					h.OpenAIGateway.ResponsesPassthrough(c)
 					return
@@ -117,22 +124,18 @@ func RegisterGatewayRoutes(
 			h.Gateway.Responses(c)
 		})
 		gateway.GET("/responses", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Responses WebSocket API")
+			if isOpenAIResponsesWebSocketGatewayPlatform(c) {
+				h.OpenAIGateway.ResponsesWebSocket(c)
 				return
 			}
-			openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket)(c)
+			openAIEndpointUnsupported(c, "Realtime API is not supported for this platform")
 		})
 		// OpenAI Chat Completions API: auto-route based on group platform
 		gateway.POST("/chat/completions", func(c *gin.Context) {
 			if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityChatCompletions, "Chat Completions API is not supported for this platform") {
 				return
 			}
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Chat Completions API")
-				return
-			}
-			if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions) {
+			if isOpenAIChatCompletionsGatewayPlatform(c) {
 				h.OpenAIGateway.ChatCompletions(c)
 				return
 			}
@@ -208,7 +211,7 @@ func RegisterGatewayRoutes(
 		if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityResponses, "Responses API is not supported for this platform") {
 			return
 		}
-		if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityResponses) {
+		if isOpenAIResponsesGatewayPlatform(c) {
 			if isOpenAIResponsesPassthroughSubpath(c) {
 				h.OpenAIGateway.ResponsesPassthrough(c)
 				return
@@ -225,11 +228,11 @@ func RegisterGatewayRoutes(
 	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, responsesHandler)
 	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformGrok {
-			rejectGrokUnsupportedEndpoint(c, "Responses WebSocket API")
+		if isOpenAIResponsesWebSocketGatewayPlatform(c) {
+			h.OpenAIGateway.ResponsesWebSocket(c)
 			return
 		}
-		openAICompatibleCapabilityOnly(platformService, service.PlatformCapabilityRealtime, "Realtime API is not supported for this platform", h.OpenAIGateway.ResponsesWebSocket)(c)
+		openAIEndpointUnsupported(c, "Realtime API is not supported for this platform")
 	})
 	codexDirect := r.Group("/backend-api/codex")
 	codexDirect.Use(bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic)
@@ -237,8 +240,8 @@ func RegisterGatewayRoutes(
 		codexDirect.POST("/responses", responsesHandler)
 		codexDirect.POST("/responses/*subpath", responsesHandler)
 		codexDirect.GET("/responses", func(c *gin.Context) {
-			if getGroupPlatform(c) == service.PlatformGrok {
-				rejectGrokUnsupportedEndpoint(c, "Responses WebSocket API")
+			if !isOpenAIResponsesWebSocketGatewayPlatform(c) {
+				openAIEndpointUnsupported(c, "Realtime API is not supported for this platform")
 				return
 			}
 			h.OpenAIGateway.ResponsesWebSocket(c)
@@ -249,11 +252,7 @@ func RegisterGatewayRoutes(
 		if rejectOpenAICompatibleMissingCapability(c, platformService, service.PlatformCapabilityChatCompletions, "Chat Completions API is not supported for this platform") {
 			return
 		}
-		if getGroupPlatform(c) == service.PlatformGrok {
-			rejectGrokUnsupportedEndpoint(c, "Chat Completions API")
-			return
-		}
-		if isGroupOpenAICompatibleWithCapability(c, platformService, service.PlatformCapabilityChatCompletions) {
+		if isOpenAIChatCompletionsGatewayPlatform(c) {
 			h.OpenAIGateway.ChatCompletions(c)
 			return
 		}

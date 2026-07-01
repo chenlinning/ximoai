@@ -26,6 +26,7 @@ const fallbackPlatforms: Platform[] = [
   { slug: 'openai', display_name: 'OpenAI', protocol: 'openai', base_url: 'https://api.openai.com', auth_modes: [], capabilities: [], color: '#10A37F', enabled: true, builtin: true, created_at: '', updated_at: '' },
   { slug: 'gemini', display_name: 'Gemini', protocol: 'native', base_url: '', auth_modes: [], capabilities: [], color: '#4285F4', enabled: true, builtin: true, created_at: '', updated_at: '' },
   { slug: 'antigravity', display_name: 'Antigravity', protocol: 'native', base_url: '', auth_modes: [], capabilities: [], color: '#7C3AED', enabled: true, builtin: true, created_at: '', updated_at: '' },
+  { slug: 'grok', display_name: 'Grok', protocol: 'openai', base_url: 'https://api.x.ai', auth_modes: [], capabilities: [], color: '#18181B', enabled: true, builtin: true, created_at: '', updated_at: '' },
 ]
 const platforms = ref<Platform[]>([...fallbackPlatforms])
 const updatePlatform = (value: string | number | boolean | null) => { emit('update:filters', { ...props.filters, platform: value }) }

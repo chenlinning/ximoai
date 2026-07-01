@@ -23,11 +23,8 @@ func groupPlatformSupportsCapability(c *gin.Context, platformService *service.Pl
 	if platform == "" {
 		return false
 	}
-	if platform == service.PlatformOpenAI || platform == service.PlatformGemini {
-		return service.NewPlatformService(nil).SupportsCapability(c.Request.Context(), platform, capability)
-	}
 	if platformService == nil {
-		return false
+		return service.NewPlatformService(nil).SupportsCapability(c.Request.Context(), platform, capability)
 	}
 	return platformService.SupportsCapability(c.Request.Context(), platform, capability)
 }

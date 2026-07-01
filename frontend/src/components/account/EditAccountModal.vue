@@ -2680,7 +2680,6 @@ const openAIEndpointCapabilities = ref<OpenAIEndpointCapability[]>(['chat_comple
 const openaiOAuthResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OFF)
 const codexCLIOnlyEnabled = ref(false)
-const codexCLIOnlyAllowClaudeCodeEnabled = ref(false)
 const codexCLIOnlyAppServerEnabled = ref(false)
 type CodexImageGenerationBridgeMode = 'inherit' | 'enabled' | 'disabled'
 const codexImageGenerationBridgeMode = ref<CodexImageGenerationBridgeMode>('inherit')
@@ -3074,7 +3073,6 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   autoPause5hDisabled.value = extra?.auto_pause_5h_disabled === true
   autoPause7dDisabled.value = extra?.auto_pause_7d_disabled === true
   openAIEndpointCapabilities.value = ['chat_completions', 'embeddings']
-  codexCLIOnlyAllowClaudeCodeEnabled.value = false
 
   // Load OpenAI passthrough toggle (OpenAI OAuth/API Key)
   openaiPassthroughEnabled.value = false
@@ -3117,8 +3115,6 @@ const syncFormFromAccount = (newAccount: Account | null) => {
     })
     if (newAccount.type === 'oauth') {
       codexCLIOnlyEnabled.value = extra?.codex_cli_only === true
-      codexCLIOnlyAllowClaudeCodeEnabled.value =
-        readOpenAIAllowedClients(extra?.codex_cli_only_allowed_clients).includes('claude_code')
       codexCLIOnlyAppServerEnabled.value =
         extra?.codex_cli_only_allow_app_server === true
     }
@@ -4254,18 +4250,12 @@ const handleSubmit = async () => {
         if (codexCLIOnlyEnabled.value) {
           newExtra.codex_cli_only = true
         } else if (hadCodexCLIOnlyEnabled) {
-          newExtra.codex_cli_only = false
-          // 关闭时显式写 false，避免 extra 为空被后端忽略导致旧值无法清除
+          // Keep an explicit false so the backend clears a previous true value.
           newExtra.codex_cli_only = false
         } else {
           delete newExtra.codex_cli_only
         }
-        if (codexCLIOnlyEnabled.value && codexCLIOnlyAllowClaudeCodeEnabled.value) {
-          newExtra.codex_cli_only_allowed_clients = ['claude_code']
-        } else {
-          delete newExtra.codex_cli_only_allowed_clients
-        }
-        // Claude Code 插件放行已迁移到全局 codex_cli_only_whitelist，编辑时清理废弃账号级快捷字段。
+        // Account-level client allowlist was migrated to the global whitelist.
         delete newExtra.codex_cli_only_allowed_clients
         if (codexCLIOnlyEnabled.value && codexCLIOnlyAppServerEnabled.value) {
           newExtra.codex_cli_only_allow_app_server = true

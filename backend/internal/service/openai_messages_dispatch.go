@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"strings"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
 )
 
 const (
@@ -64,6 +66,13 @@ func (g *Group) ResolveMessagesDispatchModel(requestedModel string) string {
 	}
 	requestedModel = strings.TrimSpace(requestedModel)
 	if requestedModel == "" {
+		return ""
+	}
+
+	if g.Platform == PlatformGrok {
+		if claudeMessagesDispatchFamily(requestedModel) != "" {
+			return xai.DefaultModelMapping()["grok"]
+		}
 		return ""
 	}
 
