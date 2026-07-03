@@ -221,6 +221,9 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		HideCcsImportButton:                    settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:            settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:                settings.PurchaseSubscriptionURL,
+		WorkbenchSSOEnabled:                    settings.WorkbenchSSOEnabled,
+		WorkbenchBaseURL:                       settings.WorkbenchBaseURL,
+		WorkbenchTicketTTLSeconds:              settings.WorkbenchTicketTTLSeconds,
 		TableDefaultPageSize:                   settings.TableDefaultPageSize,
 		TablePageSizeOptions:                   settings.TablePageSizeOptions,
 		CustomMenuItems:                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
@@ -513,6 +516,9 @@ type UpdateSettingsRequest struct {
 	HideCcsImportButton         bool                  `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled *bool                 `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL     *string               `json:"purchase_subscription_url"`
+	WorkbenchSSOEnabled         *bool                 `json:"workbench_sso_enabled"`
+	WorkbenchBaseURL            *string               `json:"workbench_base_url"`
+	WorkbenchTicketTTLSeconds   *int                  `json:"workbench_ticket_ttl_seconds"`
 	TableDefaultPageSize        int                   `json:"table_default_page_size"`
 	TablePageSizeOptions        []int                 `json:"table_page_size_options"`
 	CustomMenuItems             *[]dto.CustomMenuItem `json:"custom_menu_items"`
@@ -1283,6 +1289,38 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 
 	// Frontend URL 验证
+	workbenchSSOEnabled := previousSettings.WorkbenchSSOEnabled
+	if req.WorkbenchSSOEnabled != nil {
+		workbenchSSOEnabled = *req.WorkbenchSSOEnabled
+	}
+	workbenchBaseURL := previousSettings.WorkbenchBaseURL
+	if req.WorkbenchBaseURL != nil {
+		workbenchBaseURL = strings.TrimRight(strings.TrimSpace(*req.WorkbenchBaseURL), "/")
+	}
+	if workbenchSSOEnabled {
+		if workbenchBaseURL == "" {
+			response.BadRequest(c, "Workbench base URL is required when Workbench SSO is enabled")
+			return
+		}
+		if err := config.ValidateAbsoluteHTTPURL(workbenchBaseURL); err != nil {
+			response.BadRequest(c, "Workbench base URL must be an absolute http(s) URL")
+			return
+		}
+	} else if workbenchBaseURL != "" {
+		if err := config.ValidateAbsoluteHTTPURL(workbenchBaseURL); err != nil {
+			response.BadRequest(c, "Workbench base URL must be an absolute http(s) URL")
+			return
+		}
+	}
+	workbenchTicketTTLSeconds := previousSettings.WorkbenchTicketTTLSeconds
+	if req.WorkbenchTicketTTLSeconds != nil {
+		workbenchTicketTTLSeconds = *req.WorkbenchTicketTTLSeconds
+	}
+	if workbenchTicketTTLSeconds <= 0 {
+		response.BadRequest(c, "Workbench ticket TTL seconds must be positive")
+		return
+	}
+
 	req.FrontendURL = strings.TrimSpace(req.FrontendURL)
 	if req.FrontendURL != "" {
 		if err := config.ValidateAbsoluteHTTPURL(req.FrontendURL); err != nil {
@@ -1632,6 +1670,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		HideCcsImportButton:                    req.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:            purchaseEnabled,
 		PurchaseSubscriptionURL:                purchaseURL,
+		WorkbenchSSOEnabled:                    workbenchSSOEnabled,
+		WorkbenchBaseURL:                       workbenchBaseURL,
+		WorkbenchTicketTTLSeconds:              workbenchTicketTTLSeconds,
 		TableDefaultPageSize:                   req.TableDefaultPageSize,
 		TablePageSizeOptions:                   req.TablePageSizeOptions,
 		CustomMenuItems:                        customMenuJSON,
@@ -2116,6 +2157,9 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		HideCcsImportButton:                    updatedSettings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:            updatedSettings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:                updatedSettings.PurchaseSubscriptionURL,
+		WorkbenchSSOEnabled:                    updatedSettings.WorkbenchSSOEnabled,
+		WorkbenchBaseURL:                       updatedSettings.WorkbenchBaseURL,
+		WorkbenchTicketTTLSeconds:              updatedSettings.WorkbenchTicketTTLSeconds,
 		TableDefaultPageSize:                   updatedSettings.TableDefaultPageSize,
 		TablePageSizeOptions:                   updatedSettings.TablePageSizeOptions,
 		CustomMenuItems:                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),

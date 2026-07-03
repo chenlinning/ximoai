@@ -673,6 +673,7 @@ var ProviderSet = wire.NewSet(
 	NewAccountUsageService,
 	NewAccountTestService,
 	ProvideSettingService,
+	NewWorkbenchSSOService,
 	NewDataManagementService,
 	ProvideBackupService,
 	ProvideOpsSystemLogSink,

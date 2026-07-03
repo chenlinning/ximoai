@@ -120,6 +120,7 @@ func ProvideHandlers(
 	paymentWebhookHandler *PaymentWebhookHandler,
 	availableChannelHandler *AvailableChannelHandler,
 	membershipHandler *MembershipHandler,
+	workbenchSSOHandler *WorkbenchSSOHandler,
 	platformHandler *admin.PlatformHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
@@ -143,6 +144,7 @@ func ProvideHandlers(
 		PaymentWebhook:   paymentWebhookHandler,
 		AvailableChannel: availableChannelHandler,
 		Membership:       membershipHandler,
+		WorkbenchSSO:     workbenchSSOHandler,
 		Platform:         platformHandler,
 	}
 }
@@ -166,6 +168,7 @@ var ProviderSet = wire.NewSet(
 	NewPaymentWebhookHandler,
 	NewAvailableChannelHandler,
 	NewMembershipHandler,
+	NewWorkbenchSSOHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

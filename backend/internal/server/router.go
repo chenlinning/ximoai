@@ -112,6 +112,7 @@ func registerRoutes(
 	// 注册各模块路由
 	routes.RegisterAuthRoutes(v1, h, jwtAuth, redisClient, settingService)
 	routes.RegisterUserRoutes(v1, h, jwtAuth, settingService)
+	routes.RegisterWorkbenchRoutes(v1, h, jwtAuth)
 	routes.RegisterXimoAppDownloadRoutes(v1, jwtAuth, settingService)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, settingService)
 	routes.RegisterGatewayRoutes(r, h, apiKeyAuth, apiKeyService, subscriptionService, opsService, settingService, cfg)

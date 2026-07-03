@@ -62,6 +62,7 @@ type Handlers struct {
 	AvailableChannel *AvailableChannelHandler
 	Platform         *admin.PlatformHandler
 	Membership       *MembershipHandler
+	WorkbenchSSO     *WorkbenchSSOHandler
 }
 
 // BuildInfo contains build-time information

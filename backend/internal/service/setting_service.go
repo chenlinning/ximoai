@@ -796,6 +796,9 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyHideCcsImportButton,
 		SettingKeyPurchaseSubscriptionEnabled,
 		SettingKeyPurchaseSubscriptionURL,
+		SettingKeyWorkbenchSSOEnabled,
+		SettingKeyWorkbenchBaseURL,
+		SettingKeyWorkbenchTicketTTLSeconds,
 		SettingKeyTableDefaultPageSize,
 		SettingKeyTablePageSizeOptions,
 		SettingKeyCustomMenuItems,
@@ -884,6 +887,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		settings[SettingKeyTableDefaultPageSize],
 		settings[SettingKeyTablePageSizeOptions],
 	)
+	workbenchSSOEnabled := s.workbenchSSOEnabled(settings)
+	workbenchBaseURL := s.workbenchBaseURL(settings)
 	loginAgreementDocuments := parseLoginAgreementDocuments(settings[SettingKeyLoginAgreementDocuments])
 	loginAgreementUpdatedAt := strings.TrimSpace(settings[SettingKeyLoginAgreementUpdatedAt])
 	if loginAgreementUpdatedAt == "" {
@@ -921,6 +926,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
+		WorkbenchSSOEnabled:              workbenchSSOEnabled,
+		WorkbenchBaseURL:                 workbenchBaseURL,
 		TableDefaultPageSize:             tableDefaultPageSize,
 		TablePageSizeOptions:             tablePageSizeOptions,
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
@@ -971,6 +978,47 @@ func parseChannelMonitorInterval(raw string) int {
 		return channelMonitorIntervalFallback
 	}
 	return clampChannelMonitorInterval(v)
+}
+
+func (s *SettingService) workbenchSSOEnabled(settings map[string]string) bool {
+	if raw, ok := settings[SettingKeyWorkbenchSSOEnabled]; ok && strings.TrimSpace(raw) != "" {
+		return raw == "true"
+	}
+	return s.cfg != nil && s.cfg.WorkbenchSSO.Enabled
+}
+
+func (s *SettingService) workbenchBaseURL(settings map[string]string) string {
+	if raw, ok := settings[SettingKeyWorkbenchBaseURL]; ok && strings.TrimSpace(raw) != "" {
+		return strings.TrimRight(strings.TrimSpace(raw), "/")
+	}
+	if s.cfg == nil {
+		return ""
+	}
+	return strings.TrimRight(strings.TrimSpace(s.cfg.WorkbenchSSO.BaseURL), "/")
+}
+
+func (s *SettingService) workbenchTicketTTLSeconds(settings map[string]string) int {
+	if raw, ok := settings[SettingKeyWorkbenchTicketTTLSeconds]; ok && strings.TrimSpace(raw) != "" {
+		if v, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil && v > 0 {
+			return v
+		}
+	}
+	if s.cfg != nil && s.cfg.WorkbenchSSO.TicketTTLSeconds > 0 {
+		return s.cfg.WorkbenchSSO.TicketTTLSeconds
+	}
+	return 60
+}
+
+func (s *SettingService) GetWorkbenchSSOSettings(ctx context.Context) (enabled bool, baseURL string, ttlSeconds int, err error) {
+	settings, err := s.settingRepo.GetMultiple(ctx, []string{
+		SettingKeyWorkbenchSSOEnabled,
+		SettingKeyWorkbenchBaseURL,
+		SettingKeyWorkbenchTicketTTLSeconds,
+	})
+	if err != nil {
+		return false, "", 0, fmt.Errorf("get workbench sso settings: %w", err)
+	}
+	return s.workbenchSSOEnabled(settings), s.workbenchBaseURL(settings), s.workbenchTicketTTLSeconds(settings), nil
 }
 
 // clampChannelMonitorInterval clamps v to the allowed range. 0 means "not provided".
@@ -1445,6 +1493,8 @@ type PublicSettingsInjectionPayload struct {
 	HideCcsImportButton              bool                     `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled      bool                     `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL          string                   `json:"purchase_subscription_url"`
+	WorkbenchSSOEnabled              bool                     `json:"workbench_sso_enabled"`
+	WorkbenchBaseURL                 string                   `json:"workbench_base_url"`
 	TableDefaultPageSize             int                      `json:"table_default_page_size"`
 	TablePageSizeOptions             []int                    `json:"table_page_size_options"`
 	CustomMenuItems                  json.RawMessage          `json:"custom_menu_items"`
@@ -1514,6 +1564,8 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		HideCcsImportButton:              settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:      settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:          settings.PurchaseSubscriptionURL,
+		WorkbenchSSOEnabled:              settings.WorkbenchSSOEnabled,
+		WorkbenchBaseURL:                 settings.WorkbenchBaseURL,
 		TableDefaultPageSize:             settings.TableDefaultPageSize,
 		TablePageSizeOptions:             settings.TablePageSizeOptions,
 		CustomMenuItems:                  filterUserVisibleMenuItems(settings.CustomMenuItems),
@@ -1771,6 +1823,13 @@ func (s *SettingService) GetFrameSrcOrigins(ctx context.Context) ([]string, erro
 	// purchase subscription URL
 	if settings.PurchaseSubscriptionEnabled {
 		addOrigin(settings.PurchaseSubscriptionURL)
+	}
+
+	if settings.WorkbenchSSOEnabled {
+		addOrigin(settings.WorkbenchBaseURL)
+		addOrigin("http://127.0.0.1:4173")
+		addOrigin("http://localhost:4173")
+		addOrigin("https://workbench.ximoai.cn")
 	}
 
 	// all custom menu items (including admin-only, since CSP must allow all iframes)
@@ -2109,6 +2168,12 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
 	updates[SettingKeyPurchaseSubscriptionEnabled] = strconv.FormatBool(settings.PurchaseSubscriptionEnabled)
 	updates[SettingKeyPurchaseSubscriptionURL] = strings.TrimSpace(settings.PurchaseSubscriptionURL)
+	updates[SettingKeyWorkbenchSSOEnabled] = strconv.FormatBool(settings.WorkbenchSSOEnabled)
+	updates[SettingKeyWorkbenchBaseURL] = strings.TrimRight(strings.TrimSpace(settings.WorkbenchBaseURL), "/")
+	if settings.WorkbenchTicketTTLSeconds <= 0 {
+		settings.WorkbenchTicketTTLSeconds = 60
+	}
+	updates[SettingKeyWorkbenchTicketTTLSeconds] = strconv.Itoa(settings.WorkbenchTicketTTLSeconds)
 	tableDefaultPageSize, tablePageSizeOptions := normalizeTablePreferences(
 		settings.TableDefaultPageSize,
 		settings.TablePageSizeOptions,
@@ -3171,7 +3236,10 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyChannelMonitorDefaultIntervalSeconds: "60",
 
 		// Available channels feature (default disabled; opt-in)
-		SettingKeyAvailableChannelsEnabled: "false",
+		SettingKeyAvailableChannelsEnabled:  "false",
+		SettingKeyWorkbenchSSOEnabled:       strconv.FormatBool(s.cfg != nil && s.cfg.WorkbenchSSO.Enabled),
+		SettingKeyWorkbenchBaseURL:          "",
+		SettingKeyWorkbenchTicketTTLSeconds: "60",
 
 		// Affiliate (邀请返利) feature (default disabled; opt-in)
 		SettingKeyAffiliateEnabled: "false",
@@ -3261,6 +3329,9 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		HideCcsImportButton:              settings[SettingKeyHideCcsImportButton] == "true",
 		PurchaseSubscriptionEnabled:      settings[SettingKeyPurchaseSubscriptionEnabled] == "true",
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
+		WorkbenchSSOEnabled:              s.workbenchSSOEnabled(settings),
+		WorkbenchBaseURL:                 s.workbenchBaseURL(settings),
+		WorkbenchTicketTTLSeconds:        s.workbenchTicketTTLSeconds(settings),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",

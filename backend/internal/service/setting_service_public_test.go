@@ -78,6 +78,37 @@ func TestSettingService_GetPublicSettings_ExposesTablePreferences(t *testing.T) 
 	require.Equal(t, []int{20, 50, 100}, settings.TablePageSizeOptions)
 }
 
+func TestSettingService_GetPublicSettings_ExposesWorkbenchSSOSettings(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyWorkbenchSSOEnabled: "true",
+			SettingKeyWorkbenchBaseURL:    "http://127.0.0.1:4173",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.WorkbenchSSOEnabled)
+	require.Equal(t, "http://127.0.0.1:4173", settings.WorkbenchBaseURL)
+}
+
+func TestSettingService_GetFrameSrcOriginsIncludesWorkbenchBaseURL(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyWorkbenchSSOEnabled: "true",
+			SettingKeyWorkbenchBaseURL:    "http://127.0.0.1:4173",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	origins, err := svc.GetFrameSrcOrigins(context.Background())
+	require.NoError(t, err)
+	require.Contains(t, origins, "http://127.0.0.1:4173")
+	require.Contains(t, origins, "http://localhost:4173")
+	require.Contains(t, origins, "https://workbench.ximoai.cn")
+}
+
 func TestSettingService_GetPublicSettings_ExposesForceEmailOnThirdPartySignup(t *testing.T) {
 	repo := &settingPublicRepoStub{
 		values: map[string]string{

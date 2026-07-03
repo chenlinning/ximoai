@@ -1,6 +1,27 @@
 <template>
+  <div
+    v-if="shouldUseWorkbenchHome"
+    class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-dark-950"
+  >
+    <div v-if="workbenchLoading" class="text-sm text-gray-600 dark:text-dark-300">
+      Loading Workbench...
+    </div>
+    <div v-else-if="workbenchError" class="flex flex-col items-center gap-4 px-6 text-center">
+      <p class="text-sm text-red-600 dark:text-red-400">{{ workbenchError }}</p>
+      <button class="btn btn-primary px-4 py-2 text-sm" type="button" @click="retryWorkbench">
+        Retry
+      </button>
+    </div>
+    <iframe
+      v-else-if="workbenchEntryUrl"
+      :src="workbenchEntryUrl"
+      class="h-screen w-full border-0"
+      allowfullscreen
+    ></iframe>
+  </div>
+
   <!-- Custom Home Content: Full Page Mode -->
-  <div v-if="homeContent" class="min-h-screen">
+  <div v-else-if="homeContent" class="min-h-screen">
     <!-- iframe mode -->
     <iframe
       v-if="isHomeContentUrl"
@@ -405,9 +426,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
+import { workbenchAPI } from '@/api'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
 
@@ -422,6 +444,13 @@ const siteLogo = computed(() => appStore.cachedPublicSettings?.site_logo || appS
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'AI API Gateway Platform')
 const docUrl = computed(() => appStore.cachedPublicSettings?.doc_url || appStore.docUrl || '')
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
+const workbenchSSOEnabled = computed(() => appStore.cachedPublicSettings?.workbench_sso_enabled === true)
+const workbenchBaseUrl = computed(() => appStore.cachedPublicSettings?.workbench_base_url || '')
+const shouldUseWorkbenchHome = computed(() => workbenchSSOEnabled.value && isAuthenticated.value)
+const workbenchEntryUrl = ref('')
+const workbenchLoading = ref(false)
+const workbenchError = ref('')
+let workbenchRequestSeq = 0
 
 // Check if homeContent is a URL (for iframe display)
 const isHomeContentUrl = computed(() => {
@@ -466,6 +495,59 @@ function initTheme() {
     document.documentElement.classList.add('dark')
   }
 }
+
+async function loadWorkbenchTicket() {
+  if (!shouldUseWorkbenchHome.value) {
+    workbenchEntryUrl.value = ''
+    workbenchError.value = ''
+    workbenchLoading.value = false
+    return
+  }
+
+  const audience = workbenchBaseUrl.value.trim()
+  if (!audience) {
+    workbenchEntryUrl.value = ''
+    workbenchError.value = 'Workbench is not configured'
+    workbenchLoading.value = false
+    return
+  }
+
+  const requestSeq = ++workbenchRequestSeq
+  workbenchLoading.value = true
+  workbenchError.value = ''
+  try {
+    const ticket = await workbenchAPI.createSSOTicket(audience)
+    if (requestSeq !== workbenchRequestSeq) return
+    workbenchEntryUrl.value = ticket.entry_url
+  } catch {
+    if (requestSeq !== workbenchRequestSeq) return
+    workbenchEntryUrl.value = ''
+    workbenchError.value = 'Workbench login failed'
+  } finally {
+    if (requestSeq === workbenchRequestSeq) {
+      workbenchLoading.value = false
+    }
+  }
+}
+
+function retryWorkbench() {
+  loadWorkbenchTicket()
+}
+
+watch(
+  [shouldUseWorkbenchHome, workbenchBaseUrl],
+  ([enabled]) => {
+    if (enabled) {
+      loadWorkbenchTicket()
+    } else {
+      workbenchRequestSeq++
+      workbenchEntryUrl.value = ''
+      workbenchError.value = ''
+      workbenchLoading.value = false
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   initTheme()
