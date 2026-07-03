@@ -9,7 +9,7 @@ on:
       image:
         description: 'Docker image name'
         required: true
-        default: 'ximoai/sub2api'
+        default: 'ilemon00/sub2api'
         type: string
       push_latest:
         description: 'Also push the latest tag'
@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEFAULT_IMAGE: ximoai/sub2api
+  DEFAULT_IMAGE: ilemon00/sub2api
 
 jobs:
   build:

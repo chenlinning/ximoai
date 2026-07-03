@@ -16,7 +16,7 @@ services:
   # Sub2API Application
   # ===========================================================================
   sub2api:
-    image: ${SUB2API_IMAGE:-ximoai/sub2api:latest}
+    image: ${SUB2API_IMAGE:-ilemon00/sub2api:latest}
     build:
       context: ..
       dockerfile: Dockerfile
