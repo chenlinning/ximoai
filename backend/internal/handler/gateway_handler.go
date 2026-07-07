@@ -1011,6 +1011,9 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	includeEntryProtocols := c.Query("include_entry_protocols") == "1" || strings.EqualFold(c.Query("include_entry_protocols"), "true")
 	pricedDetails := h.gatewayService.GetPricedModelDetails(c.Request.Context(), groupID, platform)
 	availableModels := modelNamesFromPricedDetails(pricedDetails)
+	if service.NormalizePlatformSlug(platform) == service.PlatformAnthropic {
+		availableModels = mergeModelIDs(availableModels, h.gatewayService.GetAvailableModels(c.Request.Context(), groupID, platform))
+	}
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 		if len(apiKey.Group.ModelsListConfig.Models) == 0 {
 			if includeEntryProtocols {
@@ -1020,7 +1023,8 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 			writeCustomModelsList(c, platform, nil)
 			return
 		}
-		availableModels = filterModelsByCustomList(availableModels, nil, apiKey.Group.ModelsListConfig.Models)
+		fallbackModels := customModelsListFallbackModels(platform)
+		availableModels = filterModelsByCustomList(customModelsListSource(platform, availableModels, fallbackModels), fallbackModels, apiKey.Group.ModelsListConfig.Models)
 		if includeEntryProtocols {
 			writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, h.platformService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
 			return
@@ -2266,6 +2270,23 @@ func writeOpenAIModelsList(c *gin.Context, modelIDs []string) {
 	})
 }
 
+func customModelsListSource(platform string, availableModels, fallbackModels []string) []string {
+	platform = service.NormalizePlatformSlug(platform)
+	if platform == service.PlatformAnthropic && len(availableModels) > 0 {
+		return mergeModelIDs(availableModels, fallbackModels)
+	}
+	return availableModels
+}
+
+func customModelsListFallbackModels(platform string) []string {
+	switch service.NormalizePlatformSlug(platform) {
+	case service.PlatformAnthropic, service.PlatformGemini, service.PlatformAntigravity, service.PlatformGrok:
+		return defaultModelIDsForPlatform(platform)
+	default:
+		return nil
+	}
+}
+
 func filterModelsByCustomList(availableModels, fallbackModels, selectedModels []string) []string {
 	if len(selectedModels) == 0 {
 		return availableModels
@@ -2318,7 +2339,7 @@ func customModelsListAllowsModel(availablePatterns []string, model string) bool 
 }
 
 func defaultModelIDsForPlatform(platform string) []string {
-	switch platform {
+	switch service.NormalizePlatformSlug(platform) {
 	case service.PlatformOpenAI:
 		return openai.DefaultModelIDs()
 	case service.PlatformGemini:
@@ -2334,6 +2355,15 @@ func defaultModelIDsForPlatform(platform string) []string {
 			ids = append(ids, model.ID)
 		}
 		return ids
+	case service.PlatformAnthropic:
+		ids := make([]string, 0, len(claude.DefaultModels)+len(antigravity.DefaultModels()))
+		for _, model := range claude.DefaultModels {
+			ids = append(ids, model.ID)
+		}
+		for _, model := range antigravity.DefaultModels() {
+			ids = append(ids, model.ID)
+		}
+		return mergeModelIDs(ids, nil)
 	case service.PlatformGrok:
 		return xai.DefaultModelIDs()
 	default:
@@ -2343,6 +2373,25 @@ func defaultModelIDsForPlatform(platform string) []string {
 		}
 		return ids
 	}
+}
+
+func mergeModelIDs(primary, secondary []string) []string {
+	seen := make(map[string]struct{}, len(primary)+len(secondary))
+	merged := make([]string, 0, len(primary)+len(secondary))
+	for _, models := range [][]string{primary, secondary} {
+		for _, model := range models {
+			model = strings.TrimSpace(model)
+			if model == "" {
+				continue
+			}
+			if _, ok := seen[model]; ok {
+				continue
+			}
+			seen[model] = struct{}{}
+			merged = append(merged, model)
+		}
+	}
+	return merged
 }
 
 // AntigravityModels 返回 Antigravity 支持的全部模型

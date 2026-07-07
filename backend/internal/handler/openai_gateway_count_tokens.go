@@ -111,6 +111,8 @@ func (h *OpenAIGatewayHandler) CountTokens(c *gin.Context) {
 		service.OpenAIUpstreamTransportAny,
 		service.OpenAIEndpointCapabilityChatCompletions,
 		false,
+		false,
+		openAICompatibleRequestPlatform(apiKey),
 	)
 	service.SetOpsLatencyMs(c, service.OpsAuthLatencyMsKey, time.Since(requestStart).Milliseconds())
 	if err != nil {
