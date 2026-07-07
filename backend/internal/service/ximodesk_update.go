@@ -730,7 +730,7 @@ func leadingInt(value string) int {
 		if ch < '0' || ch > '9' {
 			break
 		}
-		digits.WriteRune(ch)
+		_, _ = digits.WriteRune(ch)
 	}
 	if digits.Len() == 0 {
 		return 0

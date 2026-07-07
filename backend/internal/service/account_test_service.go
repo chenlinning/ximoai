@@ -1238,11 +1238,6 @@ func (s *AccountTestService) testAntigravityAccountConnection(c *gin.Context, ac
 	return nil
 }
 
-// buildGeminiAPIKeyRequest builds request for Gemini API Key accounts
-func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
-	return s.buildGeminiAPIKeyRequestWithStream(ctx, account, modelID, payload, true)
-}
-
 func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
 	apiKey := account.GetCredential("api_key")
 	if strings.TrimSpace(apiKey) == "" {
@@ -1275,11 +1270,6 @@ func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Cont
 	req.Header.Set("x-goog-api-key", apiKey)
 
 	return req, nil
-}
-
-// buildGeminiOAuthRequest builds request for Gemini OAuth accounts
-func (s *AccountTestService) buildGeminiOAuthRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
-	return s.buildGeminiOAuthRequestWithStream(ctx, account, modelID, payload, true)
 }
 
 func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
@@ -1323,10 +1313,6 @@ func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Conte
 
 	// Code Assist mode (with project_id)
 	return s.buildCodeAssistRequest(ctx, accessToken, projectID, modelID, payload)
-}
-
-func (s *AccountTestService) buildGeminiServiceAccountRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
-	return s.buildGeminiServiceAccountRequestWithStream(ctx, account, modelID, payload, true)
 }
 
 func (s *AccountTestService) buildGeminiServiceAccountRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
@@ -2040,8 +2026,6 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 	}
-	apiURL := buildOpenAIEndpointURL(normalizedBaseURL, openAIAudioSpeechEndpoint)
-
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
@@ -2070,7 +2054,7 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 	if err != nil {
 		return s.sendErrorAndEnd(c, err.Error())
 	}
-	apiURL = buildOpenAIEndpointURL(normalizedBaseURL, providerReq.Endpoint)
+	apiURL := buildOpenAIEndpointURL(normalizedBaseURL, providerReq.Endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, providerReq.Method, apiURL, bytes.NewReader(providerReq.Body))
 	if err != nil {
@@ -2145,8 +2129,6 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	if err != nil {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 	}
-	apiURL := buildOpenAIVideosURL(normalizedBaseURL, openAIVideosEndpoint)
-
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
@@ -2197,7 +2179,7 @@ func (s *AccountTestService) testOpenAIVideoAPIKey(c *gin.Context, ctx context.C
 	if err != nil {
 		return s.sendErrorAndEnd(c, err.Error())
 	}
-	apiURL = buildOpenAIVideosURL(normalizedBaseURL, providerReq.Endpoint)
+	apiURL := buildOpenAIVideosURL(normalizedBaseURL, providerReq.Endpoint)
 
 	req, err := http.NewRequestWithContext(ctx, providerReq.Method, apiURL, bytes.NewReader(providerReq.Body))
 	if err != nil {
@@ -2352,7 +2334,7 @@ func (s *AccountTestService) pollOpenAIVideoTestResult(c *gin.Context, ctx conte
 func (s *AccountTestService) doOpenAIVideoTestGet(ctx context.Context, account *Account, baseURL, endpoint, accept string) (int, http.Header, []byte, error) {
 	authToken := account.GetOpenAIApiKey()
 	if authToken == "" {
-		return 0, nil, nil, fmt.Errorf("No API key available")
+		return 0, nil, nil, fmt.Errorf("no API key available")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, buildOpenAIVideosURL(baseURL, endpoint), nil)
 	if err != nil {

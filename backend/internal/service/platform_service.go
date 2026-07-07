@@ -294,7 +294,7 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 	if len(input.AuthModes) == 0 {
 		return nil, infraerrors.BadRequest("INVALID_PLATFORM_AUTH_MODES", "auth_modes is required")
 	}
-	if !updating && input.Enabled == false {
+	if !updating && !input.Enabled {
 		input.Enabled = true
 	}
 	if input.CreatedAt.IsZero() {

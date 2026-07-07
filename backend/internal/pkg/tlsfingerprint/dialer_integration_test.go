@@ -24,12 +24,20 @@ func skipIfExternalServiceUnavailable(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
 		// Check for common network/TLS errors that indicate external service issues
-		errStr := err.Error()
+		errStr := strings.ToLower(err.Error())
 		if strings.Contains(errStr, "certificate has expired") ||
 			strings.Contains(errStr, "certificate is not yet valid") ||
+			strings.Contains(errStr, "connectex") ||
+			strings.Contains(errStr, "connected party did not properly respond") ||
+			strings.Contains(errStr, "connection attempt failed") ||
 			strings.Contains(errStr, "connection refused") ||
+			strings.Contains(errStr, "connection reset by peer") ||
+			strings.Contains(errStr, "eof") ||
+			strings.Contains(errStr, "forcibly closed") ||
+			strings.Contains(errStr, "host has failed to respond") ||
 			strings.Contains(errStr, "no such host") ||
 			strings.Contains(errStr, "network is unreachable") ||
+			strings.Contains(errStr, "wsarecv") ||
 			strings.Contains(errStr, "timeout") ||
 			strings.Contains(errStr, "deadline exceeded") {
 			t.Skipf("skipping test: external service unavailable: %v", err)
@@ -74,9 +82,7 @@ func TestJA3Fingerprint(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("failed to read response: %v", err)
-	}
+	skipIfExternalServiceUnavailable(t, err)
 
 	var fpResp FingerprintResponse
 	if err := json.Unmarshal(body, &fpResp); err != nil {
@@ -207,10 +213,7 @@ func fetchFingerprint(t *testing.T, profile *Profile) *TLSInfo {
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("failed to read response: %v", err)
-		return nil
-	}
+	skipIfExternalServiceUnavailable(t, err)
 
 	var fpResp FingerprintResponse
 	if err := json.Unmarshal(body, &fpResp); err != nil {

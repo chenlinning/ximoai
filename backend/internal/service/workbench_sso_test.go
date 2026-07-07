@@ -5,12 +5,11 @@ package service
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
-	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,11 +37,79 @@ func (s workbenchAnnouncementListerStub) ListForUser(context.Context, int64, boo
 	return s.items, nil
 }
 
-func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*WorkbenchSSOService, *miniredis.Miniredis) {
+type workbenchTestTicketStore struct {
+	mu    sync.Mutex
+	now   time.Time
+	items map[string]workbenchTestTicketItem
+}
+
+type workbenchTestTicketItem struct {
+	value     string
+	expiresAt time.Time
+}
+
+func newWorkbenchTestTicketStore() *workbenchTestTicketStore {
+	return &workbenchTestTicketStore{
+		now:   time.Now(),
+		items: make(map[string]workbenchTestTicketItem),
+	}
+}
+
+func (s *workbenchTestTicketStore) StoreTicket(_ context.Context, key string, payload []byte, ttl time.Duration) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, exists := s.items[key]; exists {
+		return false, nil
+	}
+	s.items[key] = workbenchTestTicketItem{
+		value:     string(payload),
+		expiresAt: s.now.Add(ttl),
+	}
+	return true, nil
+}
+
+func (s *workbenchTestTicketStore) ConsumeTicket(_ context.Context, key string) (string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	item, exists := s.items[key]
+	if !exists || !s.now.Before(item.expiresAt) {
+		delete(s.items, key)
+		return "", false, nil
+	}
+	delete(s.items, key)
+	return item.value, true, nil
+}
+
+func (s *workbenchTestTicketStore) Ping(context.Context) error {
+	return nil
+}
+
+func (s *workbenchTestTicketStore) Keys() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	keys := make([]string, 0, len(s.items))
+	for key := range s.items {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func (s *workbenchTestTicketStore) Exists(key string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, exists := s.items[key]
+	return exists
+}
+
+func (s *workbenchTestTicketStore) FastForward(duration time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.now = s.now.Add(duration)
+}
+
+func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*WorkbenchSSOService, *workbenchTestTicketStore) {
 	t.Helper()
-	mr := miniredis.RunT(t)
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	ticketStore := newWorkbenchTestTicketStore()
 	settingSvc := NewSettingService(&settingPublicRepoStub{values: values}, &config.Config{
 		WorkbenchSSO: config.WorkbenchSSOConfig{
 			Enabled:          true,
@@ -54,7 +121,7 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 	svc := &WorkbenchSSOService{
 		cfg:            settingSvc.cfg,
 		settingService: settingSvc,
-		redisClient:    rdb,
+		ticketStore:    ticketStore,
 		userGetter: workbenchUserGetterStub{user: &User{
 			ID:        123,
 			Email:     "alice@example.com",
@@ -77,7 +144,7 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 			},
 		}},
 	}
-	return svc, mr
+	return svc, ticketStore
 }
 
 func TestWorkbenchSSOService_IssueTicketStoresOnlyHash(t *testing.T) {

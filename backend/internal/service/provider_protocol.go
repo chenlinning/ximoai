@@ -224,7 +224,7 @@ func buildKlingAudioTTSRequest(payload map[string]any) (providerProtocolRequest,
 	if voiceID == "" {
 		voice := providerString(payload, "voice")
 		if isOpenAIVoiceName(voice) {
-			return providerProtocolRequest{}, fmt.Errorf("Kling voice_id is required; %q is an OpenAI voice name and cannot be used as a Kling voice_id", voice)
+			return providerProtocolRequest{}, fmt.Errorf("kling voice_id is required; %q is an OpenAI voice name and cannot be used as a Kling voice_id", voice)
 		}
 		voiceID = voice
 	}

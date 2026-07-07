@@ -137,7 +137,7 @@ func TestAdaptOpenAIAudioProviderRequestRejectsOpenAIVoiceNamesForKling(t *testi
 	_, err := adaptOpenAIAudioProviderRequest(account, openAIAudioSpeechEndpoint, body, "application/json")
 
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Kling voice_id is required")
+	require.Contains(t, err.Error(), "kling voice_id is required")
 }
 
 func TestAdaptOpenAIAudioProviderRequestMapsKlingCustomVoiceCreateAndQuery(t *testing.T) {

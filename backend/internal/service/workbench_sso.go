@@ -16,19 +16,15 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
 	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/redis/go-redis/v9"
 )
 
 const workbenchSSOTicketKeyPrefix = "workbench:sso:ticket:"
 
-var consumeWorkbenchSSOTicketScript = redis.NewScript(`
-local value = redis.call("GET", KEYS[1])
-if not value then
-	return false
-end
-redis.call("DEL", KEYS[1])
-return value
-`)
+type WorkbenchSSOTicketStore interface {
+	StoreTicket(ctx context.Context, key string, payload []byte, ttl time.Duration) (bool, error)
+	ConsumeTicket(ctx context.Context, key string) (string, bool, error)
+	Ping(ctx context.Context) error
+}
 
 type workbenchUserGetter interface {
 	GetByID(ctx context.Context, id int64) (*User, error)
@@ -45,7 +41,7 @@ type workbenchAnnouncementLister interface {
 type WorkbenchSSOService struct {
 	cfg                *config.Config
 	settingService     *SettingService
-	redisClient        *redis.Client
+	ticketStore        WorkbenchSSOTicketStore
 	userGetter         workbenchUserGetter
 	membershipGetter   workbenchMembershipGetter
 	announcementLister workbenchAnnouncementLister
@@ -90,7 +86,7 @@ type workbenchTicketRecord struct {
 func NewWorkbenchSSOService(
 	cfg *config.Config,
 	settingService *SettingService,
-	redisClient *redis.Client,
+	ticketStore WorkbenchSSOTicketStore,
 	userService *UserService,
 	membershipService *MembershipService,
 	announcementService *AnnouncementService,
@@ -98,7 +94,7 @@ func NewWorkbenchSSOService(
 	return &WorkbenchSSOService{
 		cfg:                cfg,
 		settingService:     settingService,
-		redisClient:        redisClient,
+		ticketStore:        ticketStore,
 		userGetter:         userService,
 		membershipGetter:   membershipService,
 		announcementLister: announcementService,
@@ -137,7 +133,7 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 		if err != nil {
 			return nil, fmt.Errorf("marshal workbench sso ticket record: %w", err)
 		}
-		ok, err := s.redisClient.SetNX(ctx, workbenchSSOTicketKey(ticket), payload, ttl).Result()
+		ok, err := s.ticketStore.StoreTicket(ctx, workbenchSSOTicketKey(ticket), payload, ttl)
 		if err != nil {
 			return nil, infraerrors.InternalServer("WORKBENCH_SSO_REDIS_UNAVAILABLE", "workbench sso ticket store is unavailable").WithCause(err)
 		}
@@ -176,15 +172,15 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 		return nil, err
 	}
 
-	raw, err := consumeWorkbenchSSOTicketScript.Run(ctx, s.redisClient, []string{workbenchSSOTicketKey(ticket)}).Result()
-	if err != nil && err != redis.Nil {
+	raw, ok, err := s.ticketStore.ConsumeTicket(ctx, workbenchSSOTicketKey(ticket))
+	if err != nil {
 		return nil, infraerrors.InternalServer("WORKBENCH_SSO_REDIS_UNAVAILABLE", "workbench sso ticket store is unavailable").WithCause(err)
 	}
-	if raw == nil || raw == false {
+	if !ok {
 		return nil, infraerrors.Unauthorized("WORKBENCH_SSO_TICKET_INVALID", "ticket is invalid or expired")
 	}
 	var record workbenchTicketRecord
-	if err := json.Unmarshal([]byte(fmt.Sprint(raw)), &record); err != nil {
+	if err := json.Unmarshal([]byte(raw), &record); err != nil {
 		return nil, infraerrors.Unauthorized("WORKBENCH_SSO_TICKET_INVALID", "ticket is invalid or expired")
 	}
 	if record.ExpiresAt > 0 && time.Now().Unix() > record.ExpiresAt {
@@ -238,10 +234,10 @@ func (s *WorkbenchSSOService) validateAudience(audience, baseURL string) (string
 }
 
 func (s *WorkbenchSSOService) ensureRedis(ctx context.Context) error {
-	if s == nil || s.redisClient == nil {
+	if s == nil || s.ticketStore == nil {
 		return infraerrors.InternalServer("WORKBENCH_SSO_REDIS_UNAVAILABLE", "workbench sso requires redis")
 	}
-	if err := s.redisClient.Ping(ctx).Err(); err != nil {
+	if err := s.ticketStore.Ping(ctx); err != nil {
 		return infraerrors.InternalServer("WORKBENCH_SSO_REDIS_UNAVAILABLE", "workbench sso ticket store is unavailable").WithCause(err)
 	}
 	return nil

@@ -154,7 +154,6 @@ func (h *OpenAIGatewayHandler) ResponsesPassthrough(c *gin.Context) {
 				}
 				h.gatewayService.RecordOpenAIAccountSwitch()
 				failedAccountIDs[account.ID] = struct{}{}
-				lastFailoverErr = failoverErr
 				h.handleFailoverExhausted(c, failoverErr, streamStarted)
 				return
 			}

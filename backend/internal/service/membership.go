@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -659,18 +658,6 @@ func (s *MembershipService) expireToDefault(ctx context.Context, membership *Use
 		}
 	}
 	return s.AssignDefaultMembership(ctx, membership.UserID)
-}
-
-func sortMembershipGroups(level *MembershipLevel) {
-	if level == nil || len(level.Groups) <= 1 {
-		return
-	}
-	sort.SliceStable(level.Groups, func(i, j int) bool {
-		if level.Groups[i].SortOrder == level.Groups[j].SortOrder {
-			return level.Groups[i].ID < level.Groups[j].ID
-		}
-		return level.Groups[i].SortOrder < level.Groups[j].SortOrder
-	})
 }
 
 func normalizeMembershipLevelColor(color string) (string, error) {

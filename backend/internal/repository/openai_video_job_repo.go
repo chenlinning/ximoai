@@ -85,7 +85,7 @@ LIMIT ` + limitPlaceholder
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := []service.OpenAIVideoJob{}
 	for rows.Next() {

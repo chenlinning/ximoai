@@ -19,7 +19,6 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/claude"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ctxkey"
 	pkgerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
-	"github.com/Wei-Shaw/sub2api/internal/pkg/gemini"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/geminicli"
 	pkghttputil "github.com/Wei-Shaw/sub2api/internal/pkg/httputil"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
@@ -2415,17 +2414,6 @@ func cloneAPIKeyWithGroup(apiKey *service.APIKey, group *service.Group) *service
 	return &cloned
 }
 
-func (h *GatewayHandler) isOpenAIProtocolPlatform(ctx context.Context, platform string) bool {
-	platform = service.NormalizePlatformSlug(platform)
-	if platform == service.PlatformOpenAI {
-		return true
-	}
-	if platform == "" || h == nil || h.platformService == nil {
-		return false
-	}
-	return h.platformService.IsOpenAICompatible(ctx, platform)
-}
-
 func (h *GatewayHandler) isGeminiProtocolPlatform(ctx context.Context, platform string) bool {
 	platform = service.NormalizePlatformSlug(platform)
 	if platform == service.PlatformGemini {
@@ -2435,21 +2423,6 @@ func (h *GatewayHandler) isGeminiProtocolPlatform(ctx context.Context, platform 
 		return false
 	}
 	return h.platformService.IsGeminiCompatible(ctx, platform)
-}
-
-func geminiModelsAsClaudeModels() []claude.Model {
-	models := gemini.DefaultModels()
-	out := make([]claude.Model, 0, len(models))
-	for _, model := range models {
-		id := strings.TrimPrefix(model.Name, "models/")
-		out = append(out, claude.Model{
-			ID:          id,
-			Type:        "model",
-			DisplayName: id,
-			CreatedAt:   "2024-01-01T00:00:00Z",
-		})
-	}
-	return out
 }
 
 // Usage handles getting account balance and usage statistics for CC Switch integration

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -614,26 +613,4 @@ func scanManagedKey(rows interface {
 		key.APIKey = apiKey
 	}
 	return key, nil
-}
-
-func membershipRowsAffected(result sql.Result, notFound error) error {
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return notFound
-	}
-	return nil
-}
-
-func membershipUniqueViolation(err error, fallback error) error {
-	if err == nil {
-		return nil
-	}
-	var pqErr *pq.Error
-	if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-		return fallback
-	}
-	return fmt.Errorf("membership persistence: %w", err)
 }
