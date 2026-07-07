@@ -30,6 +30,14 @@ func (s workbenchMembershipGetterStub) GetUserMembership(context.Context, int64)
 	return s.summary, nil
 }
 
+type workbenchAnnouncementListerStub struct {
+	items []UserAnnouncement
+}
+
+func (s workbenchAnnouncementListerStub) ListForUser(context.Context, int64, bool) ([]UserAnnouncement, error) {
+	return s.items, nil
+}
+
 func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*WorkbenchSSOService, *miniredis.Miniredis) {
 	t.Helper()
 	mr := miniredis.RunT(t)
@@ -47,9 +55,26 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 		cfg:            settingSvc.cfg,
 		settingService: settingSvc,
 		redisClient:    rdb,
-		userGetter:     workbenchUserGetterStub{user: &User{ID: 123, Role: RoleUser}},
+		userGetter: workbenchUserGetterStub{user: &User{
+			ID:        123,
+			Email:     "alice@example.com",
+			Username:  "alice",
+			AvatarURL: "https://cdn.example.com/alice.png",
+			Balance:   12.34,
+			Role:      RoleUser,
+		}},
 		membershipGetter: workbenchMembershipGetterStub{summary: &MembershipSummary{
 			Level: &MembershipLevel{Code: "diamond"},
+		}},
+		announcementLister: workbenchAnnouncementListerStub{items: []UserAnnouncement{
+			{
+				Announcement: Announcement{
+					ID:        7,
+					Title:     "System notice",
+					Content:   "Hello Workbench",
+					CreatedAt: time.Unix(1700000000, 0),
+				},
+			},
 		}},
 	}
 	return svc, mr
@@ -88,6 +113,14 @@ func TestWorkbenchSSOService_ValidateTicketConsumesOnceAndReturnsContext(t *test
 	userContext, err := svc.ValidateTicket(context.Background(), ticket.Ticket, "http://127.0.0.1:4173")
 	require.NoError(t, err)
 	require.Equal(t, "123", userContext.UserID)
+	require.Equal(t, "alice@example.com", userContext.Email)
+	require.Equal(t, "alice", userContext.Username)
+	require.Equal(t, "alice", userContext.DisplayName)
+	require.Equal(t, "https://cdn.example.com/alice.png", userContext.AvatarURL)
+	require.Equal(t, 12.34, userContext.Balance)
+	require.Len(t, userContext.Announcements, 1)
+	require.Equal(t, int64(7), userContext.Announcements[0].ID)
+	require.Equal(t, "System notice", userContext.Announcements[0].Title)
 	require.Equal(t, RoleUser, userContext.Role)
 	require.Equal(t, "diamond", userContext.MembershipStatus)
 	require.NotNil(t, userContext.Quota)

@@ -267,7 +267,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	paymentWebhookHandler := handler.NewPaymentWebhookHandler(paymentService, registry)
 	availableChannelHandler := handler.NewAvailableChannelHandler(channelService, apiKeyService, settingService)
 	handlerMembershipHandler := handler.NewMembershipHandler(membershipService)
-	workbenchSSOService := service.NewWorkbenchSSOService(configConfig, settingService, redisClient, userService, membershipService)
+	workbenchSSOService := service.NewWorkbenchSSOService(configConfig, settingService, redisClient, userService, membershipService, announcementService)
 	workbenchSSOHandler := handler.NewWorkbenchSSOHandler(workbenchSSOService)
 	idempotencyCoordinator := service.ProvideIdempotencyCoordinator(idempotencyRepository, configConfig)
 	idempotencyCleanupService := service.ProvideIdempotencyCleanupService(idempotencyRepository, configConfig)

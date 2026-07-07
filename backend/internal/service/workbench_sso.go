@@ -38,12 +38,17 @@ type workbenchMembershipGetter interface {
 	GetUserMembership(ctx context.Context, userID int64) (*MembershipSummary, error)
 }
 
+type workbenchAnnouncementLister interface {
+	ListForUser(ctx context.Context, userID int64, unreadOnly bool) ([]UserAnnouncement, error)
+}
+
 type WorkbenchSSOService struct {
-	cfg              *config.Config
-	settingService   *SettingService
-	redisClient      *redis.Client
-	userGetter       workbenchUserGetter
-	membershipGetter workbenchMembershipGetter
+	cfg                *config.Config
+	settingService     *SettingService
+	redisClient        *redis.Client
+	userGetter         workbenchUserGetter
+	membershipGetter   workbenchMembershipGetter
+	announcementLister workbenchAnnouncementLister
 }
 
 type WorkbenchSSOTicket struct {
@@ -53,13 +58,27 @@ type WorkbenchSSOTicket struct {
 }
 
 type WorkbenchUserContext struct {
-	UserID           string         `json:"userId"`
-	Role             string         `json:"role"`
-	MembershipStatus string         `json:"membershipStatus"`
-	Quota            map[string]any `json:"quota"`
-	ModelConfig      map[string]any `json:"modelConfig"`
-	FeatureFlags     map[string]any `json:"featureFlags"`
-	Permissions      []string       `json:"permissions"`
+	UserID           string                         `json:"userId"`
+	Email            string                         `json:"email,omitempty"`
+	Username         string                         `json:"username,omitempty"`
+	DisplayName      string                         `json:"displayName,omitempty"`
+	AvatarURL        string                         `json:"avatarUrl,omitempty"`
+	Balance          float64                        `json:"balance"`
+	Announcements    []WorkbenchAnnouncementContext `json:"announcements"`
+	Role             string                         `json:"role"`
+	MembershipStatus string                         `json:"membershipStatus"`
+	Quota            map[string]any                 `json:"quota"`
+	ModelConfig      map[string]any                 `json:"modelConfig"`
+	FeatureFlags     map[string]any                 `json:"featureFlags"`
+	Permissions      []string                       `json:"permissions"`
+}
+
+type WorkbenchAnnouncementContext struct {
+	ID        int64      `json:"id"`
+	Title     string     `json:"title"`
+	Content   string     `json:"content"`
+	ReadAt    *time.Time `json:"read_at,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
 }
 
 type workbenchTicketRecord struct {
@@ -74,13 +93,15 @@ func NewWorkbenchSSOService(
 	redisClient *redis.Client,
 	userService *UserService,
 	membershipService *MembershipService,
+	announcementService *AnnouncementService,
 ) *WorkbenchSSOService {
 	return &WorkbenchSSOService{
-		cfg:              cfg,
-		settingService:   settingService,
-		redisClient:      redisClient,
-		userGetter:       userService,
-		membershipGetter: membershipService,
+		cfg:                cfg,
+		settingService:     settingService,
+		redisClient:        redisClient,
+		userGetter:         userService,
+		membershipGetter:   membershipService,
+		announcementLister: announcementService,
 	}
 }
 
@@ -243,8 +264,15 @@ func (s *WorkbenchSSOService) buildUserContext(ctx context.Context, userID int64
 	if membershipStatus == "" {
 		membershipStatus = "free"
 	}
+	announcements := s.userAnnouncements(ctx, userID)
 	return &WorkbenchUserContext{
 		UserID:           strconv.FormatInt(user.ID, 10),
+		Email:            strings.TrimSpace(user.Email),
+		Username:         strings.TrimSpace(user.Username),
+		DisplayName:      firstNonEmptyString(user.Username, user.Email, strconv.FormatInt(user.ID, 10)),
+		AvatarURL:        strings.TrimSpace(user.AvatarURL),
+		Balance:          user.Balance,
+		Announcements:    announcements,
 		Role:             user.Role,
 		MembershipStatus: membershipStatus,
 		Quota:            map[string]any{},
@@ -252,6 +280,30 @@ func (s *WorkbenchSSOService) buildUserContext(ctx context.Context, userID int64
 		FeatureFlags:     map[string]any{},
 		Permissions:      []string{},
 	}, nil
+}
+
+func (s *WorkbenchSSOService) userAnnouncements(ctx context.Context, userID int64) []WorkbenchAnnouncementContext {
+	if s.announcementLister == nil {
+		return []WorkbenchAnnouncementContext{}
+	}
+	items, err := s.announcementLister.ListForUser(ctx, userID, false)
+	if err != nil {
+		return []WorkbenchAnnouncementContext{}
+	}
+	if len(items) > 20 {
+		items = items[:20]
+	}
+	result := make([]WorkbenchAnnouncementContext, 0, len(items))
+	for _, item := range items {
+		result = append(result, WorkbenchAnnouncementContext{
+			ID:        item.Announcement.ID,
+			Title:     item.Announcement.Title,
+			Content:   item.Announcement.Content,
+			ReadAt:    item.ReadAt,
+			CreatedAt: item.Announcement.CreatedAt,
+		})
+	}
+	return result
 }
 
 func randomTicket() (string, error) {

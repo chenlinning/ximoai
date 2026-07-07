@@ -38,6 +38,7 @@ func TestWorkbenchSSOHandler_ValidateTicketRejectsInvalidInternalSecret(t *testi
 		nil,
 		nil,
 		nil,
+		nil,
 	))
 	router.POST("/api/v1/workbench/sso-ticket/validate", handler.ValidateTicket)
 
