@@ -122,6 +122,7 @@ func ProvideHandlers(
 	membershipHandler *MembershipHandler,
 	workbenchSSOHandler *WorkbenchSSOHandler,
 	platformHandler *admin.PlatformHandler,
+	batchImageHandler *BatchImageHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
 	_ *service.MembershipExpiryService,
@@ -146,6 +147,7 @@ func ProvideHandlers(
 		Membership:       membershipHandler,
 		WorkbenchSSO:     workbenchSSOHandler,
 		Platform:         platformHandler,
+		BatchImage:       batchImageHandler,
 	}
 }
 
@@ -169,6 +171,7 @@ var ProviderSet = wire.NewSet(
 	NewAvailableChannelHandler,
 	NewMembershipHandler,
 	NewWorkbenchSSOHandler,
+	NewBatchImageHandler,
 
 	// Admin handlers
 	admin.NewDashboardHandler,

@@ -14,11 +14,20 @@ const (
 	BillingModeToken      BillingMode = "token"       // 按 token 区间计费
 	BillingModePerRequest BillingMode = "per_request" // 按次计费（支持上下文窗口分层）
 	BillingModeImage      BillingMode = "image"       // 图片计费（当前按次，预留 token 计费）
-	BillingModeVideo      BillingMode = "video"       // 视频计费（按次 / 分层规格）
+	BillingModeVideo      BillingMode = "video"       // 视频生成计费（按视频生成次数）
 )
 
 // IsValid 检查 BillingMode 是否为合法值
 func (m BillingMode) IsValid() bool {
+	switch m {
+	case BillingModeToken, BillingModePerRequest, BillingModeImage, "":
+		return true
+	}
+	return false
+}
+
+// IsValidUsageFilter 检查 BillingMode 是否可用于使用记录筛选。
+func (m BillingMode) IsValidUsageFilter() bool {
 	switch m {
 	case BillingModeToken, BillingModePerRequest, BillingModeImage, BillingModeVideo, "":
 		return true
@@ -159,7 +168,7 @@ func (p *ChannelModelPricing) GetIntervalForContext(totalTokens int) *PricingInt
 	return FindMatchingInterval(p.Intervals, totalTokens)
 }
 
-// GetTierByLabel 根据标签查找层级（用于 per_request / image / video 模式）
+// GetTierByLabel 根据标签查找层级（用于 per_request / image 模式）
 func (p *ChannelModelPricing) GetTierByLabel(label string) *PricingInterval {
 	labelLower := strings.ToLower(label)
 	for i := range p.Intervals {
@@ -278,7 +287,7 @@ func deepCopyFeaturesConfig(src map[string]any) map[string]any {
 // mode 决定区间语义：
 //   - BillingModeToken（含空值）：区间是上下文 token 数分段 (min, max]，
 //     按 MinTokens 排序后无重叠，无界区间（MaxTokens=nil）必须是最后一个。
-//   - BillingModePerRequest / BillingModeImage / BillingModeVideo：区间是按 tier_label
+//   - BillingModePerRequest / BillingModeImage：区间是按 tier_label
 //     (1K/2K/4K 等) 分层，匹配走 label 不依赖 min/max，因此跳过区间重叠
 //     与 last-unlimited 校验，仅做单条字段自洽（min/max/价格非负）检查。
 //
@@ -301,7 +310,7 @@ func ValidateIntervals(intervals []PricingInterval, mode BillingMode) error {
 	}
 
 	// per_request / image 模式按 tier_label 匹配，不做 token 区间重叠校验
-	if mode == BillingModePerRequest || mode == BillingModeImage || mode == BillingModeVideo {
+	if mode == BillingModePerRequest || mode == BillingModeImage {
 		return nil
 	}
 	return validateIntervalOverlap(sorted)
@@ -509,7 +518,6 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	}
 	seen := make(map[dedupKey]struct{})
 	result := make([]SupportedModel, 0)
-	mappedTargets := make(map[dedupKey]struct{})
 
 	// lookup 在 platform pricing index 中按精确名查定价，命中时返回定价大小写。
 	lookup := func(pidx *platformPricingIndex, name string) (display string, pricing *ChannelModelPricing) {
@@ -534,26 +542,6 @@ func (c *Channel) SupportedModels() []SupportedModel {
 			Platform: platform,
 			Pricing:  pricing,
 		})
-	}
-
-	for platform, mapping := range c.ModelMapping {
-		for src, target := range mapping {
-			if _, srcWild := splitWildcardSuffix(src); srcWild {
-				continue
-			}
-			if target == "" {
-				continue
-			}
-			if _, targetWild := splitWildcardSuffix(target); targetWild {
-				continue
-			}
-			srcLower := strings.ToLower(strings.TrimSpace(src))
-			targetLower := strings.ToLower(strings.TrimSpace(target))
-			if srcLower == "" || targetLower == "" || srcLower == targetLower {
-				continue
-			}
-			mappedTargets[dedupKey{platform: platform, name: targetLower}] = struct{}{}
-		}
 	}
 
 	// Pass A：从 mapping 展开
@@ -595,9 +583,6 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	// Pass B：从 pricing 补齐 mapping 未覆盖的具体模型（修复"定价存在但没配映射 → 不显示"）
 	for platform, pidx := range idx {
 		for _, name := range pidx.names {
-			if _, hidden := mappedTargets[dedupKey{platform: platform, name: strings.ToLower(name)}]; hidden {
-				continue
-			}
 			display, pricing := lookup(pidx, name)
 			add(platform, display, pricing)
 		}

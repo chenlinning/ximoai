@@ -63,6 +63,7 @@ type Handlers struct {
 	Platform         *admin.PlatformHandler
 	Membership       *MembershipHandler
 	WorkbenchSSO     *WorkbenchSSOHandler
+	BatchImage       *BatchImageHandler
 }
 
 // BuildInfo contains build-time information
