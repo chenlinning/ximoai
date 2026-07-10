@@ -43,6 +43,11 @@ func positiveFloat64Ptr(v *float64) bool {
 }
 
 func validateBillableUsageCost(cost *CostBreakdown, imageCount, videoCount int) error {
+	if (imageCount > 0 || videoCount > 0) && (cost == nil || cost.ActualCost <= 0) {
+		mode := resolveUsageBillingMode(cost, imageCount, videoCount)
+		return fmt.Errorf("%w: billing_mode=%s", ErrBillablePricingRequired, mode)
+	}
+
 	mode := resolveUsageBillingMode(cost, imageCount, videoCount)
 	switch mode {
 	case BillingModePerRequest, BillingModeImage, BillingModeVideo:

@@ -173,7 +173,6 @@ type UsageLog struct {
 	ImageOutputSize    *string
 	ImageSizeSource    *string
 	ImageSizeBreakdown map[string]int
-	VideoCount         int
 	MediaType          *string
 
 	// 视频生成字段（Grok 视频按秒计费；video_count>0 的行不要求 image_size）

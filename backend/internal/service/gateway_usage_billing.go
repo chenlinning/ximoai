@@ -866,6 +866,9 @@ func (s *GatewayService) calculateImageCostFromCandidates(
 ) (*CostBreakdown, bool) {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
 	for _, candidate := range billingModels {
+		if gatewayUsageCandidateMatchesResult(candidate, result) && apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
+			continue
+		}
 		resolved := s.resolveChannelPricing(ctx, candidate, apiKey)
 		if resolved == nil {
 			continue
@@ -883,6 +886,13 @@ func (s *GatewayService) calculateImageCostFromCandidates(
 }
 
 // calculateTokenCost 计算 Token 计费：根据 opts 决定走普通/长上下文/渠道统一计费。
+func gatewayUsageCandidateMatchesResult(candidate string, result *ForwardResult) bool {
+	if result == nil {
+		return false
+	}
+	return usageBillingModelCandidateMatches(candidate, result.Model, result.UpstreamModel)
+}
+
 func (s *GatewayService) calculateTokenCost(
 	ctx context.Context,
 	result *ForwardResult,

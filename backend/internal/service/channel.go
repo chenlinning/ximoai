@@ -517,6 +517,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 		name     string
 	}
 	seen := make(map[dedupKey]struct{})
+	mappedTargets := make(map[dedupKey]struct{})
 	result := make([]SupportedModel, 0)
 
 	// lookup 在 platform pricing index 中按精确名查定价，命中时返回定价大小写。
@@ -573,6 +574,11 @@ func (c *Channel) SupportedModels() []SupportedModel {
 			if _, targetWild := splitWildcardSuffix(pricingKey); targetWild {
 				pricingKey = src
 			}
+			if strings.TrimSpace(target) != "" && !strings.EqualFold(strings.TrimSpace(src), strings.TrimSpace(target)) {
+				if _, targetWild := splitWildcardSuffix(target); !targetWild {
+					mappedTargets[dedupKey{platform: platform, name: strings.ToLower(strings.TrimSpace(target))}] = struct{}{}
+				}
+			}
 			_, pricing := lookup(pidx, pricingKey)
 			// 显示名优先用 src 在定价里的原始大小写（若 src 本身是个定价模型名）
 			displayName, _ := lookup(pidx, src)
@@ -583,6 +589,9 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	// Pass B：从 pricing 补齐 mapping 未覆盖的具体模型（修复"定价存在但没配映射 → 不显示"）
 	for platform, pidx := range idx {
 		for _, name := range pidx.names {
+			if _, hidden := mappedTargets[dedupKey{platform: platform, name: strings.ToLower(strings.TrimSpace(name))}]; hidden {
+				continue
+			}
 			display, pricing := lookup(pidx, name)
 			add(platform, display, pricing)
 		}

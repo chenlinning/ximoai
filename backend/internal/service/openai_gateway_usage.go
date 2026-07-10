@@ -115,7 +115,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	user := input.User
 	account := input.Account
 	subscription := input.Subscription
-	if !isGrokVideoUsageResult(result, nil) {
+	if !isOpenAIVideoUsageResult(result) {
 		ApplyOpenAIImageBillingResolution(result)
 	}
 
@@ -245,7 +245,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		ImageSizeSource:     optionalTrimmedStringPtr(result.ImageSizeSource),
 		ImageSizeBreakdown:  result.ImageSizeBreakdown,
 	}
-	isVideoUsage := isGrokVideoUsageResult(result, billingModels)
+	isVideoUsage := isOpenAIVideoUsageResult(result)
 	if isVideoUsage {
 		usageLog.VideoCount = result.VideoCount
 		usageLog.VideoResolution = optionalTrimmedStringPtr(NormalizeVideoBillingResolutionOrDefault(result.VideoResolution))
@@ -371,7 +371,7 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 ) (*CostBreakdown, error) {
 	billingModels = trimUsageBillingModelCandidates(billingModels)
 	billingModel := firstUsageBillingModel(billingModels)
-	if isGrokVideoUsageResult(result, billingModels) {
+	if isOpenAIVideoUsageResult(result) {
 		videoCount := result.VideoCount
 		if videoCount <= 0 {
 			videoCount = 1
@@ -413,18 +413,24 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	return nil, fmt.Errorf("calculate OpenAI usage cost failed for billing models %s: %w", strings.Join(billingModels, ","), lastErr)
 }
 
-func isGrokVideoBillingModel(model string) bool {
-	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "grok-imagine-video")
+func isOpenAIVideoUsageResult(result *OpenAIForwardResult) bool {
+	return result != nil && result.VideoCount > 0
 }
 
-func isGrokVideoUsageResult(result *OpenAIForwardResult, billingModels []string) bool {
-	if result == nil || result.VideoCount <= 0 {
+func openAIUsageCandidateMatchesResult(candidate string, result *OpenAIForwardResult) bool {
+	if result == nil {
 		return false
 	}
-	candidates := append([]string{}, billingModels...)
-	candidates = append(candidates, result.BillingModel, result.Model, result.UpstreamModel)
-	for _, candidate := range candidates {
-		if isGrokVideoBillingModel(candidate) {
+	return usageBillingModelCandidateMatches(candidate, result.BillingModel, result.Model, result.UpstreamModel)
+}
+
+func usageBillingModelCandidateMatches(candidate string, models ...string) bool {
+	candidate = strings.TrimSpace(candidate)
+	if candidate == "" {
+		return false
+	}
+	for _, model := range models {
+		if strings.EqualFold(candidate, strings.TrimSpace(model)) {
 			return true
 		}
 	}
@@ -547,7 +553,16 @@ func (s *OpenAIGatewayService) calculateOpenAIImageCostFromChannelCandidates(
 	serviceTier string,
 ) (*CostBreakdown, bool) {
 	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
+	refreshedAPIKey := s.apiKeyWithFreshGroupMediaPricing(ctx, apiKey)
 	for _, candidate := range billingModels {
+		if openAIUsageCandidateMatchesResult(candidate, result) && apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
+			continue
+		}
+		if refreshedAPIKey != apiKey &&
+			openAIUsageCandidateMatchesResult(candidate, result) &&
+			apiKeyHasConfiguredImagePrice(refreshedAPIKey, sizeTier) {
+			continue
+		}
 		resolved := s.resolveOpenAIChannelPricing(ctx, candidate, apiKey)
 		if resolved == nil {
 			continue
@@ -577,7 +592,16 @@ func (s *OpenAIGatewayService) calculateOpenAIUsageCostFromChannelCandidates(
 	requestCount int,
 	sizeTier string,
 ) (*CostBreakdown, bool) {
+	refreshedAPIKey := s.apiKeyWithFreshGroupMediaPricing(ctx, apiKey)
 	for _, candidate := range billingModels {
+		if openAIUsageCandidateMatchesResult(candidate, result) && apiKeyHasConfiguredVideoPrice(apiKey, sizeTier) {
+			continue
+		}
+		if refreshedAPIKey != apiKey &&
+			openAIUsageCandidateMatchesResult(candidate, result) &&
+			apiKeyHasConfiguredVideoPrice(refreshedAPIKey, sizeTier) {
+			continue
+		}
 		resolved := s.resolveOpenAIChannelPricing(ctx, candidate, apiKey)
 		if resolved == nil {
 			continue
