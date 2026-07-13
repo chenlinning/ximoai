@@ -79,6 +79,22 @@ func RegisterGatewayRoutes(
 			},
 		})
 	}
+	videoEditHandler := func(c *gin.Context) {
+		if getGroupPlatform(c) == service.PlatformGrok {
+			h.OpenAIGateway.GrokVideoEdit(c)
+			return
+		}
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Videos API is not supported for this platform"}})
+	}
+	videoExtensionHandler := func(c *gin.Context) {
+		if getGroupPlatform(c) == service.PlatformGrok {
+			h.OpenAIGateway.GrokVideoExtension(c)
+			return
+		}
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
+		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Videos API is not supported for this platform"}})
+	}
 	// API网关（Claude API兼容）
 	gateway := r.Group("/v1")
 	gateway.Use(bodyLimit)
@@ -180,9 +196,11 @@ func RegisterGatewayRoutes(
 		gateway.DELETE("/images/batches/:id", h.BatchImage.DeleteRecord)
 		gateway.DELETE("/images/batches/:id/outputs", h.BatchImage.DeleteOutputs)
 		registerXimoAIV1GatewayRoutes(gateway, ximoAIGatewayContext{
-			handlers:        h,
-			grokVideoCreate: videoGenerationHandler,
-			grokVideoStatus: videoStatusHandler,
+			handlers:           h,
+			grokVideoCreate:    videoGenerationHandler,
+			grokVideoEdit:      videoEditHandler,
+			grokVideoExtension: videoExtensionHandler,
+			grokVideoStatus:    videoStatusHandler,
 		})
 	}
 
@@ -250,15 +268,17 @@ func RegisterGatewayRoutes(
 	r.POST("/images/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, imagesHandler)
 	r.POST("/images/edits", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, imagesHandler)
 	registerXimoAIRootGatewayRoutes(r, ximoAIGatewayContext{
-		bodyLimit:       bodyLimit,
-		clientRequestID: clientRequestID,
-		opsErrorLogger:  opsErrorLogger,
-		endpointNorm:    endpointNorm,
-		apiKeyAuth:      apiKeyAuth,
-		requireGroup:    requireGroupAnthropic,
-		handlers:        h,
-		grokVideoCreate: videoGenerationHandler,
-		grokVideoStatus: videoStatusHandler,
+		bodyLimit:          bodyLimit,
+		clientRequestID:    clientRequestID,
+		opsErrorLogger:     opsErrorLogger,
+		endpointNorm:       endpointNorm,
+		apiKeyAuth:         apiKeyAuth,
+		requireGroup:       requireGroupAnthropic,
+		handlers:           h,
+		grokVideoCreate:    videoGenerationHandler,
+		grokVideoEdit:      videoEditHandler,
+		grokVideoExtension: videoExtensionHandler,
+		grokVideoStatus:    videoStatusHandler,
 	})
 
 	// Antigravity 模型列表

@@ -1130,7 +1130,7 @@ func (s *OpenAIGatewayService) selectAccountWithLoadAwareness(ctx context.Contex
 		})
 	}
 
-	if requireCompact && platform == PlatformOpenAI && baseCandidateCount > 0 {
+	if requireCompact && (platform == PlatformOpenAI || platform == PlatformGrok) && baseCandidateCount > 0 {
 		return nil, ErrNoAvailableCompactAccounts
 	}
 	return nil, ErrNoAvailableAccounts
