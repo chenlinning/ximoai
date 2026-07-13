@@ -207,7 +207,7 @@ func openAICompactSupportTier(account *Account) int {
 }
 
 func openAICompactRequiredForAccount(account *Account, requireCompact bool) bool {
-	return requireCompact && account != nil && account.IsOpenAI()
+	return requireCompact && account != nil && account.IsOpenAICompatible()
 }
 
 // isOpenAICompatibleAccountEligibleForRequest 判断 OpenAI 兼容账号是否满足本次请求的调度条件。
