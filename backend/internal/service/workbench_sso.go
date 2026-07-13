@@ -252,8 +252,10 @@ func (s *WorkbenchSSOService) buildUserContext(ctx context.Context, userID int64
 		return nil, err
 	}
 	membershipStatus := ""
+	var membershipSummary *MembershipSummary
 	if s.membershipGetter != nil {
 		if summary, err := s.membershipGetter.GetUserMembership(ctx, userID); err == nil && summary != nil && summary.Level != nil {
+			membershipSummary = summary
 			membershipStatus = strings.TrimSpace(summary.Level.Code)
 		}
 	}
@@ -272,10 +274,40 @@ func (s *WorkbenchSSOService) buildUserContext(ctx context.Context, userID int64
 		Role:             user.Role,
 		MembershipStatus: membershipStatus,
 		Quota:            map[string]any{},
-		ModelConfig:      map[string]any{},
+		ModelConfig:      s.workbenchModelConfig(membershipSummary),
 		FeatureFlags:     map[string]any{},
 		Permissions:      []string{},
 	}, nil
+}
+
+func (s *WorkbenchSSOService) workbenchModelConfig(summary *MembershipSummary) map[string]any {
+	if s == nil || s.cfg == nil || summary == nil {
+		return map[string]any{}
+	}
+	baseURL := strings.TrimRight(strings.TrimSpace(s.cfg.Server.FrontendURL), "/")
+	if baseURL == "" {
+		return map[string]any{}
+	}
+	gateways := make([]map[string]any, 0, len(summary.ManagedKeys))
+	for _, managed := range summary.ManagedKeys {
+		if managed.Status != ManagedKeyStatusActive || managed.APIKey == nil || managed.APIKey.Status != StatusAPIKeyActive {
+			continue
+		}
+		apiKey := strings.TrimSpace(managed.APIKey.Key)
+		if apiKey == "" {
+			continue
+		}
+		gateways = append(gateways, map[string]any{
+			"id":      fmt.Sprintf("membership-%d", managed.ID),
+			"baseUrl": baseURL,
+			"apiKey":  apiKey,
+			"groupId": managed.GroupID,
+		})
+	}
+	if len(gateways) == 0 {
+		return map[string]any{}
+	}
+	return map[string]any{"gateways": gateways}
 }
 
 func (s *WorkbenchSSOService) userAnnouncements(ctx context.Context, userID int64) []WorkbenchAnnouncementContext {

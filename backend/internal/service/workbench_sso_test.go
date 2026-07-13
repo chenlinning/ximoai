@@ -111,6 +111,9 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 	t.Helper()
 	ticketStore := newWorkbenchTestTicketStore()
 	settingSvc := NewSettingService(&settingPublicRepoStub{values: values}, &config.Config{
+		Server: config.ServerConfig{
+			FrontendURL: "https://ximoai.cn",
+		},
 		WorkbenchSSO: config.WorkbenchSSOConfig{
 			Enabled:          true,
 			BaseURL:          "http://127.0.0.1:4173",
@@ -132,6 +135,35 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 		}},
 		membershipGetter: workbenchMembershipGetterStub{summary: &MembershipSummary{
 			Level: &MembershipLevel{Code: "diamond"},
+			ManagedKeys: []MembershipManagedKey{
+				{
+					ID:      1,
+					GroupID: 8,
+					Status:  ManagedKeyStatusActive,
+					APIKey: &APIKey{
+						Key:    "sk-openai",
+						Status: StatusAPIKeyActive,
+					},
+				},
+				{
+					ID:      2,
+					GroupID: 14,
+					Status:  ManagedKeyStatusActive,
+					APIKey: &APIKey{
+						Key:    "sk-gemini",
+						Status: StatusAPIKeyActive,
+					},
+				},
+				{
+					ID:      3,
+					GroupID: 15,
+					Status:  ManagedKeyStatusDisabled,
+					APIKey: &APIKey{
+						Key:    "sk-disabled",
+						Status: StatusAPIKeyDisabled,
+					},
+				},
+			},
 		}},
 		announcementLister: workbenchAnnouncementListerStub{items: []UserAnnouncement{
 			{
@@ -192,6 +224,22 @@ func TestWorkbenchSSOService_ValidateTicketConsumesOnceAndReturnsContext(t *test
 	require.Equal(t, "diamond", userContext.MembershipStatus)
 	require.NotNil(t, userContext.Quota)
 	require.NotNil(t, userContext.ModelConfig)
+	gateways, ok := userContext.ModelConfig["gateways"].([]map[string]any)
+	require.True(t, ok)
+	require.Equal(t, []map[string]any{
+		{
+			"id":      "membership-1",
+			"baseUrl": "https://ximoai.cn",
+			"apiKey":  "sk-openai",
+			"groupId": int64(8),
+		},
+		{
+			"id":      "membership-2",
+			"baseUrl": "https://ximoai.cn",
+			"apiKey":  "sk-gemini",
+			"groupId": int64(14),
+		},
+	}, gateways)
 	require.NotNil(t, userContext.FeatureFlags)
 	require.NotNil(t, userContext.Permissions)
 
