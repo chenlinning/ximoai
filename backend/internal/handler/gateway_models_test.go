@@ -1333,6 +1333,7 @@ func TestPublicEntryMetadataForPricedModel_ReturnsProtocolSpecificContracts(t *t
 				aliases, ok := sizeContract["aliases"].(map[string]any)
 				require.True(t, ok)
 				require.Equal(t, "1536x1024", aliases["landscape"])
+				require.NotContains(t, aliases, "16:9")
 				require.Equal(t, "1024x1536", aliases["mobile_wallpaper"])
 				responseFormat, ok := fields["response_format"].(map[string]any)
 				require.True(t, ok)

@@ -1744,7 +1744,6 @@ func publicOpenAIImageRequestContract() map[string]any {
 			"square":           "1024x1024",
 			"1:1":              "1024x1024",
 			"landscape":        "1536x1024",
-			"16:9":             "1536x1024",
 			"wide":             "1536x1024",
 			"portrait":         "1024x1536",
 			"9:16":             "1024x1536",
