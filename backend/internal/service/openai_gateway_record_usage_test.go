@@ -2383,6 +2383,7 @@ func TestOpenAIGatewayServiceCalculateRecordUsageCost_ChannelVideoBillingUsesVid
 		0.5,
 		1.0,
 		0.5,
+		1.0,
 		UsageTokens{},
 		"",
 	)
@@ -2413,6 +2414,7 @@ func TestOpenAIGatewayServiceCalculateRecordUsageCost_ChannelImageBillingFallsBa
 		1.0,
 		1.0,
 		1.0,
+		1.0,
 		UsageTokens{},
 		"",
 	)
@@ -2436,6 +2438,7 @@ func TestOpenAIGatewayServiceCalculateRecordUsageCost_ChannelVideoBillingFallsBa
 		&OpenAIForwardResult{Model: "upstream-video-model", VideoCount: 2},
 		&APIKey{GroupID: i64p(groupID), Group: &Group{ID: groupID}},
 		[]string{"upstream-video-model", "grok-video-3"},
+		1.0,
 		1.0,
 		1.0,
 		1.0,

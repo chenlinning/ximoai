@@ -36,7 +36,7 @@
             class="input"
             :placeholder="apiKeyBaseUrlPlaceholder"
           />
-          <p class="input-hint">{{ baseUrlHint }}</p>
+          <p v-if="baseUrlHint" class="input-hint">{{ baseUrlHint }}</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.accounts.apiKey') }}</label>
@@ -46,8 +46,8 @@
             class="input font-mono"
             autocomplete="new-password"
             data-1p-ignore
-            data-lpignore="true"
-            data-bwignore="true"
+             data-lpignore="true"
+             data-bwignore="true"
             :placeholder="apiKeyPlaceholder"
           />
           <p class="input-hint">{{ t('admin.accounts.leaveEmptyToKeep') }}</p>
@@ -2645,6 +2645,7 @@ const apiKeyBaseUrlDefault = computed(() => {
   if (isOfficialOpenAI.value) return 'https://api.openai.com'
   if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (props.account?.platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
+  if (props.account?.platform === 'grok') return 'https://api.x.ai/v1'
   if (selectedProtocol.value === 'anthropic' || props.account?.platform === 'anthropic') return 'https://api.anthropic.com'
   return ''
 })
@@ -2659,6 +2660,7 @@ const apiKeyPlaceholder = computed(() => {
   if (isOfficialOpenAI.value) return 'sk-proj-...'
   if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'AIza...'
   if (props.account?.platform === 'antigravity') return 'sk-...'
+  if (props.account?.platform === 'grok') return 'xai-...'
   if (isOpenAICompatibleAPIKeyPlatform.value) return 'sk-...'
   return 'sk-ant-...'
 })
@@ -2671,6 +2673,7 @@ const isSparkShadow = computed(() => props.account?.parent_account_id != null)
 const baseUrlHint = computed(() => {
   if (!props.account) return t('admin.accounts.baseUrlHint')
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
+  if (props.account.platform === 'grok') return ''
   if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.baseUrlHint')
   if (selectedProtocol.value === 'gemini' || props.account.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
@@ -2680,7 +2683,8 @@ function defaultBaseUrlForPlatform(platform: string): string {
   const configured = platforms.value.find((item) => item.slug === platform)?.base_url
   if (configured) return configured
   if (platform === 'openai') return 'https://api.openai.com'
-  if (platform === 'openai-audio' || platform === 'grok' || platform === 'kling_audio') return ''
+  if (platform === 'grok') return 'https://api.x.ai/v1'
+  if (platform === 'openai-audio' || platform === 'kling_audio') return ''
   const protocol = platforms.value.find((item) => item.slug === platform)?.protocol
   if (platform === 'gemini' || protocol === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
@@ -3424,11 +3428,11 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   headerOverrideEnabled.value = false
   headerOverrideRows.value = []
 
-  // Initialize API Key fields for apikey type
-  if (newAccount.type === 'apikey' && newAccount.credentials) {
-    const credentials = newAccount.credentials as Record<string, unknown>
-    const platformDefaultUrl = defaultBaseUrlForPlatform(newAccount.platform)
-    editBaseUrl.value = (credentials.base_url as string) || platformDefaultUrl
+    // Initialize API Key fields for apikey type
+    if (newAccount.type === 'apikey' && newAccount.credentials) {
+      const credentials = newAccount.credentials as Record<string, unknown>
+      const platformDefaultUrl = defaultBaseUrlForPlatform(newAccount.platform)
+      editBaseUrl.value = (credentials.base_url as string) || platformDefaultUrl
 
     // Load model mappings and detect mode
     loadModelRestrictionFromMapping(credentials.model_mapping as Record<string, unknown> | undefined)
@@ -3497,9 +3501,9 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 
     // Load model mappings for service_account
     loadModelRestrictionFromMapping(credentials.model_mapping as Record<string, unknown> | undefined)
-  } else {
-    const platformDefaultUrl = defaultBaseUrlForPlatform(newAccount.platform)
-    editBaseUrl.value = platformDefaultUrl
+    } else {
+      const platformDefaultUrl = defaultBaseUrlForPlatform(newAccount.platform)
+      editBaseUrl.value = platformDefaultUrl
 
     // Load model mappings for OpenAI/Grok OAuth accounts
     if ((newAccount.platform === 'openai' || newAccount.platform === 'grok') && newAccount.credentials) {
