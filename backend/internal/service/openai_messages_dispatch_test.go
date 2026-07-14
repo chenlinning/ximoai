@@ -1,6 +1,9 @@
 package service
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 import "github.com/stretchr/testify/require"
 
@@ -36,4 +39,26 @@ func TestGroupResolveMessagesDispatchModel_GrokMapsClaudeFamilyToGrok(t *testing
 	require.Equal(t, "grok-4.5", group.ResolveMessagesDispatchModel("claude-haiku-4-5"))
 	require.Empty(t, group.ResolveMessagesDispatchModel("grok"))
 	require.Empty(t, group.ResolveMessagesDispatchModel("gpt-5.3-codex"))
+}
+
+func TestSanitizeGroupMessagesDispatchFields_ClearsNonOpenAIPlatform(t *testing.T) {
+	t.Parallel()
+
+	group := &Group{
+		Platform:              PlatformAnthropic,
+		AllowMessagesDispatch: true,
+		DefaultMappedModel:    "gpt-5.6-sol",
+		MessagesDispatchModelConfig: OpenAIMessagesDispatchModelConfig{
+			SonnetMappedModel: "gpt-5.3-codex",
+			ExactModelMappings: map[string]string{
+				"claude-fable-5": "gpt-5.6-sol",
+			},
+		},
+	}
+
+	sanitizeGroupMessagesDispatchFields(context.Background(), nil, group)
+
+	require.False(t, group.AllowMessagesDispatch)
+	require.Empty(t, group.DefaultMappedModel)
+	require.Equal(t, OpenAIMessagesDispatchModelConfig{}, group.MessagesDispatchModelConfig)
 }
