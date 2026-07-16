@@ -652,7 +652,7 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 
 	svc.pollOutbox()
 	require.Zero(t, cache.currentWatermark())
-	_, groupZeroPublished := cache.counts(schedulerCanonicalBuckets(0)[0])
+	_, groupZeroPublished := cache.counts(schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms())[0])
 	require.Equal(t, 1, groupZeroPublished, "ordinary tasks must still run when one strict Reopen task is busy")
 	require.Equal(t, 16, accounts.callCount())
 
@@ -668,7 +668,7 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 }
 
 func TestSchedulerFullRebuildOrdinaryLockBusyKeepsExistingSkipSemantics(t *testing.T) {
-	busyBucket := schedulerCanonicalBuckets(0)[0]
+	busyBucket := schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms())[0]
 	cache := newFullRebuildLifecycleCache()
 	cache.lockBusyOnce[busyBucket.String()] = true
 	groups := &fullRebuildLifecycleGroupRepo{fresh: make(map[int64]*Group), freshErr: make(map[int64]error)}
