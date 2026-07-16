@@ -142,6 +142,7 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 		}
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		setOpsSelectedAccount(c, account.ID, account.Platform)
+		scheduledModel := account.GetMappedModel(routingModel)
 
 		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, false, &streamStarted, reqLog)
 		if !acquired {
@@ -160,7 +161,7 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 		if err != nil {
 			var failoverErr *service.UpstreamFailoverError
 			if errors.As(err, &failoverErr) {
-				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, false, nil)
 				if failoverErr.RetryableOnSameAccount {
 					retryLimit := account.GetPoolModeRetryCount()
 					if sameAccountRetryCount[account.ID] < retryLimit {
@@ -183,13 +184,13 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 				switchCount++
 				continue
 			}
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, false, nil)
 			wroteFallback := h.ensureForwardErrorResponse(c, streamStarted)
 			reqLog.Warn("openai.audio.forward_failed", zap.Int64("account_id", account.ID), zap.Bool("fallback_error_response_written", wroteFallback), zap.Error(err))
 			return
 		}
 
-		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, nil)
+		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, true, nil)
 		h.recordAudioUsage(c, reqLog, apiKey, subject, subscription, account, result, body, parsed.Model, channelMapping)
 		reqLog.Debug("openai.audio.request_completed", zap.Int64("account_id", account.ID), zap.Int("switch_count", switchCount))
 		return

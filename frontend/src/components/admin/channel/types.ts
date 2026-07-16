@@ -21,6 +21,7 @@ export interface PricingFormEntry {
   output_price: number | string | null
   cache_write_price: number | string | null
   cache_read_price: number | string | null
+  image_input_price: number | string | null
   image_output_price: number | string | null
   per_request_price: number | string | null
   intervals: IntervalFormEntry[]
@@ -109,6 +110,7 @@ export function pricingFormEntryToAPI(
     output_price: tokenMode ? mTokToPerToken(entry.output_price) : null,
     cache_write_price: tokenMode ? mTokToPerToken(entry.cache_write_price) : null,
     cache_read_price: tokenMode ? mTokToPerToken(entry.cache_read_price) : null,
+    image_input_price: tokenMode ? mTokToPerToken(entry.image_input_price) : null,
     image_output_price: tokenMode ? mTokToPerToken(entry.image_output_price) : null,
     per_request_price: perRequestMode ? toNullableNumber(entry.per_request_price) : null,
     intervals: sanitizeIntervalsForMode(formIntervalsToAPI(entry.intervals || []), entry.billing_mode),

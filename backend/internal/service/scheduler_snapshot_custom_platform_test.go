@@ -17,8 +17,28 @@ func (c *schedulerSnapshotRecordingCache) GetSnapshot(context.Context, Scheduler
 	return nil, false, nil
 }
 
-func (c *schedulerSnapshotRecordingCache) SetSnapshot(_ context.Context, bucket SchedulerBucket, _ []Account) error {
+func (c *schedulerSnapshotRecordingCache) CaptureBucketWriteToken(_ context.Context, bucket SchedulerBucket) (SchedulerBucketWriteToken, error) {
+	return SchedulerBucketWriteToken{Bucket: bucket, Epoch: 1}, nil
+}
+
+func (c *schedulerSnapshotRecordingCache) SetSnapshot(_ context.Context, bucket SchedulerBucket, _ SchedulerBucketWriteToken, _ []Account) error {
 	c.buckets = append(c.buckets, bucket)
+	return nil
+}
+
+func (c *schedulerSnapshotRecordingCache) RetireBucket(context.Context, SchedulerBucket) error {
+	return nil
+}
+
+func (c *schedulerSnapshotRecordingCache) ReopenBucket(_ context.Context, bucket SchedulerBucket) (SchedulerBucketWriteToken, error) {
+	return SchedulerBucketWriteToken{Bucket: bucket, Epoch: 1}, nil
+}
+
+func (c *schedulerSnapshotRecordingCache) TryAcquireGroupLifecycleLease(_ context.Context, groupID int64, _ time.Duration) (SchedulerGroupLifecycleLease, bool, error) {
+	return SchedulerGroupLifecycleLease{GroupID: groupID, OwnerToken: "test"}, true, nil
+}
+
+func (c *schedulerSnapshotRecordingCache) ReleaseGroupLifecycleLease(context.Context, SchedulerGroupLifecycleLease) error {
 	return nil
 }
 

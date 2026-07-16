@@ -187,12 +187,12 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 		_, err := h.gatewayService.ForwardOpenAIVideoCharacterCreate(c.Request.Context(), c, fixedAccount, body, c.GetHeader("Content-Type"), meta)
 		h.setOpenAIResponseLatency(c, time.Since(forwardStart).Milliseconds())
 		if err != nil {
-			h.gatewayService.ReportOpenAIAccountScheduleResult(fixedAccount.ID, false, nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(fixedAccount.ID, "", false, nil)
 			wroteFallback := h.ensureForwardErrorResponse(c, streamStarted)
 			reqLog.Warn("openai.videos.character_fixed_account_forward_failed", zap.Int64("account_id", fixedAccount.ID), zap.Bool("fallback_error_response_written", wroteFallback), zap.Error(err))
 			return
 		}
-		h.gatewayService.ReportOpenAIAccountScheduleResult(fixedAccount.ID, true, nil)
+		h.gatewayService.ReportOpenAIAccountScheduleResult(fixedAccount.ID, "", true, nil)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 		if account.Type != service.AccountTypeAPIKey {
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", false, nil)
 			failedAccountIDs[account.ID] = struct{}{}
 			if switchCount >= maxAccountSwitches {
 				h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available compatible API Key accounts", streamStarted)
@@ -269,7 +269,7 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 		if err != nil {
 			var failoverErr *service.UpstreamFailoverError
 			if errors.As(err, &failoverErr) {
-				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", false, nil)
 				if failoverErr.RetryableOnSameAccount {
 					retryLimit := account.GetPoolModeRetryCount()
 					if sameAccountRetryCount[account.ID] < retryLimit {
@@ -292,13 +292,13 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 				switchCount++
 				continue
 			}
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", false, nil)
 			wroteFallback := h.ensureForwardErrorResponse(c, streamStarted)
 			reqLog.Warn("openai.videos.character_forward_failed", zap.Int64("account_id", account.ID), zap.Bool("fallback_error_response_written", wroteFallback), zap.Error(err))
 			return
 		}
 
-		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, nil)
+		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", true, nil)
 		reqLog.Debug("openai.videos.character_request_completed", zap.Int64("account_id", account.ID), zap.Int("switch_count", switchCount))
 		return
 	}
@@ -460,6 +460,7 @@ func (h *OpenAIGatewayHandler) handleVideoMutation(c *gin.Context, sourceVideoID
 		}
 		sessionHash = ensureOpenAIPoolModeSessionHash(sessionHash, account)
 		setOpsSelectedAccount(c, account.ID, account.Platform)
+		scheduledModel := account.GetMappedModel(openAIChannelRoutingModel(parsed.Model, channelMapping))
 
 		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, false, &streamStarted, reqLog)
 		if !acquired {
@@ -478,7 +479,7 @@ func (h *OpenAIGatewayHandler) handleVideoMutation(c *gin.Context, sourceVideoID
 		if err != nil {
 			var failoverErr *service.UpstreamFailoverError
 			if errors.As(err, &failoverErr) {
-				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, false, nil)
 				if failoverErr.RetryableOnSameAccount {
 					retryLimit := account.GetPoolModeRetryCount()
 					if sameAccountRetryCount[account.ID] < retryLimit {
@@ -501,13 +502,13 @@ func (h *OpenAIGatewayHandler) handleVideoMutation(c *gin.Context, sourceVideoID
 				switchCount++
 				continue
 			}
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, false, nil)
 			wroteFallback := h.ensureForwardErrorResponse(c, streamStarted)
 			reqLog.Warn("openai.videos.forward_failed", zap.Int64("account_id", account.ID), zap.Bool("fallback_error_response_written", wroteFallback), zap.Error(err))
 			return
 		}
 
-		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, nil)
+		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, true, nil)
 		h.recordVideoUsage(c, reqLog, apiKey, subject, subscription, account, result, body, parsed.Model, channelMapping)
 		reqLog.Debug("openai.videos.request_completed", zap.Int64("account_id", account.ID), zap.Int("switch_count", switchCount))
 		return
@@ -530,13 +531,14 @@ func (h *OpenAIGatewayHandler) forwardVideoMutationWithAccount(
 	switchCount int,
 	_ *service.OpenAIVideoJob,
 ) {
+	scheduledModel := account.GetMappedModel(openAIChannelRoutingModel(parsed.Model, channelMapping))
 	service.SetOpsLatencyMs(c, service.OpsRoutingLatencyMsKey, time.Since(routingStart).Milliseconds())
 	forwardStart := time.Now()
 	result, err := h.gatewayService.ForwardOpenAIVideoMutation(c.Request.Context(), c, account, body, parsed, channelMapping.MappedModel, meta)
 	forwardDurationMs := time.Since(forwardStart).Milliseconds()
 	h.setOpenAIResponseLatency(c, forwardDurationMs)
 	if err != nil {
-		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, false, nil)
 		wroteFallback := h.ensureForwardErrorResponse(c, *streamStarted)
 		reqLog.Warn("openai.videos.forward_fixed_account_failed",
 			zap.Int64("account_id", account.ID),
@@ -545,7 +547,7 @@ func (h *OpenAIGatewayHandler) forwardVideoMutationWithAccount(
 		)
 		return
 	}
-	h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, nil)
+	h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, scheduledModel, true, nil)
 	h.recordVideoUsage(c, reqLog, apiKey, subject, subscription, account, result, body, parsed.Model, channelMapping)
 	reqLog.Debug("openai.videos.request_completed", zap.Int64("account_id", account.ID), zap.Int("switch_count", switchCount))
 }

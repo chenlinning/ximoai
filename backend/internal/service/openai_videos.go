@@ -336,7 +336,7 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoMutation(
 		}
 		copiedResp := *resp
 		copiedResp.Body = io.NopCloser(bytes.NewReader(respBody))
-		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, forwardBody)
+		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, forwardBody, respBody)
 	}
 
 	responseBody, err := s.writeOpenAIVideoJSONResponse(resp, c)
@@ -434,7 +434,7 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoCharacterCreate(
 		}
 		copiedResp := *resp
 		copiedResp.Body = io.NopCloser(bytes.NewReader(respBody))
-		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, body)
+		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, body, respBody)
 	}
 
 	responseBody, err := s.writeOpenAIVideoJSONResponse(resp, c)
@@ -490,7 +490,8 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoJSON(
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
-		return nil, s.handleErrorResponsePassthrough(ctx, resp, c, account, nil)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+		return nil, s.handleErrorResponsePassthrough(ctx, resp, c, account, providerReq.Body, respBody)
 	}
 	body, err := s.writeOpenAIVideoJSONResponse(resp, c)
 	if err != nil {
@@ -550,7 +551,8 @@ func (s *OpenAIGatewayService) ForwardOpenAIVideoCharacterJSON(
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
-		return nil, s.handleErrorResponsePassthrough(ctx, resp, c, account, nil)
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+		return nil, s.handleErrorResponsePassthrough(ctx, resp, c, account, nil, respBody)
 	}
 	body, err := s.writeOpenAIVideoJSONResponse(resp, c)
 	if err != nil {

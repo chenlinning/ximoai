@@ -139,7 +139,7 @@ func (s *OpenAIGatewayService) ForwardOpenAIResponsesPassthrough(
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 		copiedResp := *resp
 		copiedResp.Body = io.NopCloser(bytes.NewReader(respBody))
-		return s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, body)
+		return s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, body, respBody)
 	}
 
 	bodyBytes, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)

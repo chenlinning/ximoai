@@ -208,7 +208,7 @@ func (s *OpenAIGatewayService) ForwardAudio(
 		}
 		copiedResp := *resp
 		copiedResp.Body = io.NopCloser(bytes.NewReader(respBody))
-		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, forwardBody)
+		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, forwardBody, respBody)
 	}
 
 	usage, responseID, responseModel, err := s.writeOpenAIAudioResponse(resp, c)

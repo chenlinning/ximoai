@@ -43,7 +43,9 @@ func ProvideAdminHandlers(
 	platformHandler *admin.PlatformHandler,
 	complianceHandler *admin.ComplianceHandler,
 	membershipHandler *admin.MembershipHandler,
+	upstreamBillingProbe *service.UpstreamBillingProbeService,
 ) *AdminHandlers {
+	accountHandler.SetUpstreamBillingProbeService(upstreamBillingProbe)
 	return &AdminHandlers{
 		Dashboard:              dashboardHandler,
 		User:                   userHandler,

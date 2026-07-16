@@ -53,6 +53,7 @@ func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t
 	cfg.Gateway.MaxBodySize = 1 << 20
 	gatewayHandler := handler.NewGatewayHandler(
 		nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+		nil,
 		platformService,
 		nil,
 		cfg,

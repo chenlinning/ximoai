@@ -139,7 +139,7 @@ func (h *OpenAIGatewayHandler) ResponsesPassthrough(c *gin.Context) {
 		if err != nil {
 			var failoverErr *service.UpstreamFailoverError
 			if errors.As(err, &failoverErr) {
-				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+				h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", false, nil)
 				if failoverErr.RetryableOnSameAccount {
 					retryLimit := account.GetPoolModeRetryCount()
 					if sameAccountRetryCount[account.ID] < retryLimit {
@@ -157,13 +157,13 @@ func (h *OpenAIGatewayHandler) ResponsesPassthrough(c *gin.Context) {
 				h.handleFailoverExhausted(c, failoverErr, streamStarted)
 				return
 			}
-			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, false, nil)
+			h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", false, nil)
 			wroteFallback := h.ensureForwardErrorResponse(c, streamStarted)
 			reqLog.Warn("openai.responses_passthrough.forward_failed", zap.Int64("account_id", account.ID), zap.Bool("fallback_error_response_written", wroteFallback), zap.Error(err))
 			return
 		}
 
-		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, true, nil)
+		h.gatewayService.ReportOpenAIAccountScheduleResult(account.ID, "", true, nil)
 		reqLog.Debug("openai.responses_passthrough.request_completed", zap.Int64("account_id", account.ID))
 		return
 	}

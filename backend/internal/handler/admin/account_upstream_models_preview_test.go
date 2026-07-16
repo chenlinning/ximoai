@@ -28,7 +28,7 @@ func setupSyncUpstreamModelsPreviewRouter(upstream service.HTTPUpstream, platfor
 		nil,
 		platformSvc,
 	)
-	handler := NewAccountHandler(newStubAdminService(), nil, nil, nil, nil, nil, nil, accountTestSvc, nil, nil, nil, nil, nil)
+	handler := NewAccountHandler(newStubAdminService(), nil, nil, nil, nil, nil, nil, nil, accountTestSvc, nil, nil, nil, nil, nil)
 	router.POST("/api/v1/admin/accounts/models/sync-upstream-preview", handler.SyncUpstreamModelsPreview)
 	return router
 }

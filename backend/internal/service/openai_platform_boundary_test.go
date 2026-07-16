@@ -52,6 +52,7 @@ func TestGrokCompactSchedulingPreservesBuiltinError(t *testing.T) {
 		nil,
 		true,
 		"",
+		true,
 	)
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrNoAvailableCompactAccounts), "err=%v", err)

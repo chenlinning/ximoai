@@ -891,6 +891,7 @@ function addPricingEntry(sectionIdx: number) {
     output_price: null,
     cache_write_price: null,
     cache_read_price: null,
+    image_input_price: null,
     image_output_price: null,
     per_request_price: null,
     intervals: []
@@ -923,6 +924,7 @@ async function syncLatestModels(sectionIdx: number) {
       output_price: null,
       cache_write_price: null,
       cache_read_price: null,
+      image_input_price: null,
       image_output_price: null,
       per_request_price: null,
       intervals: []
@@ -987,6 +989,7 @@ function addRulePricingEntry(sectionIdx: number, ruleIndex: number) {
     output_price: null,
     cache_write_price: null,
     cache_read_price: null,
+    image_input_price: null,
     image_output_price: null,
     per_request_price: null,
     intervals: []
@@ -1223,6 +1226,7 @@ function apiToForm(channel: Channel): PlatformSection[] {
         output_price: perTokenToMTok(p.output_price),
         cache_write_price: perTokenToMTok(p.cache_write_price),
         cache_read_price: perTokenToMTok(p.cache_read_price),
+        image_input_price: perTokenToMTok(p.image_input_price),
         image_output_price: perTokenToMTok(p.image_output_price),
         per_request_price: p.per_request_price,
         intervals: apiIntervalsToForm(p.intervals || [])
@@ -1411,6 +1415,7 @@ function distributeRulesToPlatforms(apiRules: AccountStatsPricingRule[]) {
         output_price: perTokenToMTok(p.output_price),
         cache_write_price: perTokenToMTok(p.cache_write_price),
         cache_read_price: perTokenToMTok(p.cache_read_price),
+        image_input_price: perTokenToMTok(p.image_input_price),
         image_output_price: perTokenToMTok(p.image_output_price),
         per_request_price: p.per_request_price,
         intervals: apiIntervalsToForm(p.intervals || [])
