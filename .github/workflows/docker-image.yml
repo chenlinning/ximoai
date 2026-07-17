@@ -95,5 +95,6 @@ jobs:
             VERSION=${{ steps.version.outputs.version }}
             COMMIT=${{ github.sha }}
             DATE=${{ steps.version.outputs.build_date }}
+            NODE_OPTIONS=--max-old-space-size=4096
           cache-from: type=gha
           cache-to: type=gha,mode=max
