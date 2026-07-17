@@ -1329,10 +1329,7 @@ func defaultEntryProtocolForPricedModel(detail service.GatewayPricedModelDetail,
 	case service.PlatformKlingAudio:
 		return "openai", "/v1/audio/speech"
 	case service.PlatformGrok:
-		if mode == service.BillingModeVideo {
-			return "openai", "/v1/videos"
-		}
-		return "openai", "/v1/videos"
+		return openAIEntryForPricedModel(detail, mode)
 	default:
 		if platformInfo != nil {
 			switch {

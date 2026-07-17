@@ -1112,6 +1112,43 @@ func TestPublicEntryMetadataForPricedModel_DetectsPublicCapabilities(t *testing.
 			wantSupportsPolling: true,
 		},
 		{
+			name: "grok image model exposes openai images entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "grok-imagine-image",
+				Platform: service.PlatformGrok,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode:     service.BillingModeImage,
+					PerRequestPrice: testPrice(0.1),
+				},
+			},
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/images/generations",
+			wantModelType:       "image",
+			wantOperationType:   "image_generation",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  false,
+			wantSupportsPolling: false,
+		},
+		{
+			name: "grok text model exposes openai responses entry",
+			detail: service.GatewayPricedModelDetail{
+				Name:     "grok-4.5",
+				Platform: service.PlatformGrok,
+				Pricing: &service.ChannelModelPricing{
+					BillingMode: service.BillingModeToken,
+					InputPrice:  testPrice(0.000001),
+					OutputPrice: testPrice(0.000002),
+				},
+			},
+			wantProtocol:        "openai",
+			wantEndpoint:        "/v1/responses",
+			wantModelType:       "chat",
+			wantOperationType:   "chat",
+			wantExecutionMode:   "sync",
+			wantSupportsStream:  true,
+			wantSupportsPolling: false,
+		},
+		{
 			name: "grok custom adapter exposes openai videos entry",
 			detail: service.GatewayPricedModelDetail{
 				Name:     "grok-video-3",
