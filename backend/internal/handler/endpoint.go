@@ -27,6 +27,7 @@ const (
 	EndpointAudioTranscribe   = "/v1/audio/transcriptions"
 	EndpointAudioTranslate    = "/v1/audio/translations"
 	EndpointRealtime          = "/v1/realtime"
+	EndpointImageTasks        = "/v1/images/tasks"
 	EndpointVideosGenerations = "/v1/videos/generations"
 	EndpointVideosEdits       = "/v1/videos/edits"
 	EndpointVideosExtensions  = "/v1/videos/extensions"
@@ -100,6 +101,8 @@ func NormalizeInboundEndpoint(path string) string {
 		return EndpointAudioTranslate
 	case strings.Contains(path, EndpointRealtime) || strings.Contains(path, "/realtime"):
 		return EndpointRealtime
+	case strings.Contains(path, EndpointImageTasks) || strings.Contains(path, "/images/tasks/"):
+		return EndpointImageTasks
 	case strings.Contains(path, EndpointVideosGenerations) || strings.Contains(path, "/videos/generations"):
 		return EndpointVideosGenerations
 	case strings.Contains(path, EndpointVideosEdits) || strings.Contains(path, "/videos/edits"):

@@ -29,17 +29,13 @@ func registerXimoAIUserRoutes(authenticated *gin.RouterGroup, h *handler.Handler
 }
 
 type ximoAIGatewayContext struct {
-	bodyLimit          gin.HandlerFunc
-	clientRequestID    gin.HandlerFunc
-	opsErrorLogger     gin.HandlerFunc
-	endpointNorm       gin.HandlerFunc
-	apiKeyAuth         middleware.APIKeyAuthMiddleware
-	requireGroup       gin.HandlerFunc
-	handlers           *handler.Handlers
-	grokVideoCreate    gin.HandlerFunc
-	grokVideoEdit      gin.HandlerFunc
-	grokVideoExtension gin.HandlerFunc
-	grokVideoStatus    gin.HandlerFunc
+	bodyLimit       gin.HandlerFunc
+	clientRequestID gin.HandlerFunc
+	opsErrorLogger  gin.HandlerFunc
+	endpointNorm    gin.HandlerFunc
+	apiKeyAuth      middleware.APIKeyAuthMiddleware
+	requireGroup    gin.HandlerFunc
+	handlers        *handler.Handlers
 }
 
 func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayContext) {
@@ -49,10 +45,6 @@ func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayCo
 	gateway.POST("/audio/translations", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/videos", func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })
 	gateway.GET("/videos", func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })
-	gateway.POST("/videos/generations", ctx.grokVideoCreate)
-	gateway.POST("/videos/edits", ctx.grokVideoEdit)
-	gateway.POST("/videos/extensions", ctx.grokVideoExtension)
-	gateway.GET("/videos/:request_id", ctx.grokVideoStatus)
 }
 
 func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
@@ -70,10 +62,6 @@ func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
 	r.POST("/audio/translations", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.POST("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
 	r.GET("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
-	r.POST("/videos/generations", withXimoAICommon(common, ctx.grokVideoCreate)...)
-	r.POST("/videos/edits", withXimoAICommon(common, ctx.grokVideoEdit)...)
-	r.POST("/videos/extensions", withXimoAICommon(common, ctx.grokVideoExtension)...)
-	r.GET("/videos/:request_id", withXimoAICommon(common, ctx.grokVideoStatus)...)
 }
 
 func withXimoAICommon(common []gin.HandlerFunc, last gin.HandlerFunc) []gin.HandlerFunc {

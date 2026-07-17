@@ -36,6 +36,7 @@ import platformsAPI from './platforms'
 import adminComplianceAPI from './compliance'
 import membershipsAPI from './memberships'
 import ximodeskUpdateAPI from './ximodeskUpdate'
+import auditAPI from './audit'
 
 /**
  * Unified admin API object for convenient access
@@ -73,7 +74,8 @@ export const adminAPI = {
   platforms: platformsAPI,
   compliance: adminComplianceAPI,
   memberships: membershipsAPI,
-  ximodeskUpdate: ximodeskUpdateAPI
+  ximodeskUpdate: ximodeskUpdateAPI,
+  audit: auditAPI
 }
 
 export {
@@ -109,12 +111,14 @@ export {
   platformsAPI,
   adminComplianceAPI,
   membershipsAPI,
-  ximodeskUpdateAPI
+  ximodeskUpdateAPI,
+  auditAPI
 }
 
 export default adminAPI
 
 // Re-export types used by components
+export type { AuditLog, AuditLogQuery, AuditLogListResponse } from './audit'
 export type { BalanceHistoryItem } from './users'
 export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from './errorPassthrough'
 export type { BackupAgentHealth, DataManagementConfig } from './dataManagement'

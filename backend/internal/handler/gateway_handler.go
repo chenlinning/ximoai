@@ -25,6 +25,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/timezone"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
+	"github.com/Wei-Shaw/sub2api/internal/securityaudit"
 	middleware2 "github.com/Wei-Shaw/sub2api/internal/server/middleware"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 
@@ -50,6 +51,7 @@ type GatewayHandler struct {
 	errorPassthroughService   *service.ErrorPassthroughService
 	contentModerationService  *service.ContentModerationService
 	platformService           *service.PlatformService
+	securityAuditCoordinator  *securityaudit.Coordinator
 	concurrencyHelper         *ConcurrencyHelper
 	userMsgQueueHelper        *UserMsgQueueHelper
 	maxAccountSwitches        int
@@ -202,8 +204,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 		return
 	}
 
-	if decision := h.checkContentModeration(c, reqLog, apiKey, subject, service.ContentModerationProtocolAnthropicMessages, reqModel, body); decision != nil && decision.Blocked {
-		h.errorResponse(c, contentModerationStatus(decision), contentModerationErrorCode(decision), decision.Message)
+	if decision := h.checkSecurityAudit(c, reqLog, apiKey, subject, service.ContentModerationProtocolAnthropicMessages, reqModel, body); decision != nil && !decision.AllowNextStage {
+		h.anthropicSecurityAuditError(c, decision)
 		return
 	}
 
@@ -1038,18 +1040,24 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		writeCustomModelsList(c, platform, availableModels)
 		return
 	}
-
 	if includeEntryProtocols {
 		writeModelsListWithEntryProtocolMetadata(c, h.gatewayService, h.platformService, apiKey, filterPricedModelDetailsByIDs(pricedDetails, availableModels))
+		return
+	}
+	if len(availableModels) > 0 {
+		writeModelsList(c, platform, availableModels)
 		return
 	}
 	writeCustomModelsList(c, platform, availableModels)
 }
 
 type modelListEntryProtocolItem struct {
-	ID     string                       `json:"id"`
-	Object string                       `json:"object"`
-	XimoAI modelListEntryProtocolXimoAI `json:"ximoai"`
+	ID                      string                       `json:"id"`
+	Object                  string                       `json:"object"`
+	SupportsReasoningEffort bool                         `json:"supportsReasoningEffort,omitempty"`
+	ReasoningEffort         string                       `json:"reasoningEffort,omitempty"`
+	ReasoningEfforts        []grokReasoningEffortOption  `json:"reasoningEfforts,omitempty"`
+	XimoAI                  modelListEntryProtocolXimoAI `json:"ximoai"`
 }
 
 type modelListEntryProtocolXimoAI struct {
@@ -1108,7 +1116,7 @@ func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *servic
 	group := modelListEntryProtocolGroupFromAPIKey(c.Request.Context(), gatewaySvc, apiKey)
 	for _, detail := range details {
 		meta := publicEntryMetadataForPricedModel(detail, platformForEntryMetadata(c.Request.Context(), platformSvc, detail.Platform))
-		models = append(models, modelListEntryProtocolItem{
+		item := modelListEntryProtocolItem{
 			ID:     detail.Name,
 			Object: "model",
 			XimoAI: modelListEntryProtocolXimoAI{
@@ -1135,7 +1143,13 @@ func writeModelsListWithEntryProtocolMetadata(c *gin.Context, gatewaySvc *servic
 				Group:                group,
 				Pricing:              toUserPricing(scalePricingForModelList(detail.Pricing, group)),
 			},
-		})
+		}
+		if service.NormalizePlatformSlug(detail.Platform) == service.PlatformGrok && grokModelSupportsConfigurableReasoning(detail.Name) {
+			item.SupportsReasoningEffort = true
+			item.ReasoningEffort = "high"
+			item.ReasoningEfforts = defaultGrokReasoningEfforts()
+		}
+		models = append(models, item)
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
@@ -2226,7 +2240,11 @@ func filterPricedModelDetailsByIDs(details []service.GatewayPricedModelDetail, m
 	return out
 }
 
-func writeModelsList(c *gin.Context, modelIDs []string) {
+func writeModelsList(c *gin.Context, platform string, modelIDs []string) {
+	if platform == service.PlatformGrok {
+		writeGrokModelsList(c, modelIDs)
+		return
+	}
 	models := make([]claude.Model, 0, len(modelIDs))
 	for _, modelID := range modelIDs {
 		models = append(models, claude.Model{
@@ -2247,7 +2265,70 @@ func writeCustomModelsList(c *gin.Context, platform string, modelIDs []string) {
 		writeOpenAIModelsList(c, modelIDs)
 		return
 	}
-	writeModelsList(c, modelIDs)
+	writeModelsList(c, platform, modelIDs)
+}
+
+type grokReasoningEffortOption struct {
+	Value   string `json:"value"`
+	Label   string `json:"label"`
+	Default bool   `json:"default,omitempty"`
+}
+
+type grokModelListItem struct {
+	xai.Model
+	SupportsReasoningEffort bool                        `json:"supportsReasoningEffort,omitempty"`
+	ReasoningEffort         string                      `json:"reasoningEffort,omitempty"`
+	ReasoningEfforts        []grokReasoningEffortOption `json:"reasoningEfforts,omitempty"`
+}
+
+func defaultGrokReasoningEfforts() []grokReasoningEffortOption {
+	return []grokReasoningEffortOption{
+		{Value: "low", Label: "Low"},
+		{Value: "medium", Label: "Medium"},
+		{Value: "high", Label: "High", Default: true},
+	}
+}
+
+func writeGrokModelsList(c *gin.Context, modelIDs []string) {
+	defaults := xai.DefaultModels()
+	defaultsByID := make(map[string]xai.Model, len(defaults))
+	for _, model := range defaults {
+		defaultsByID[model.ID] = model
+	}
+
+	models := make([]grokModelListItem, 0, len(modelIDs))
+	for _, modelID := range modelIDs {
+		model, ok := defaultsByID[modelID]
+		if !ok {
+			model = xai.Model{
+				ID:          modelID,
+				Object:      "model",
+				OwnedBy:     "xai",
+				DisplayName: modelID,
+			}
+		}
+		item := grokModelListItem{Model: model}
+		if grokModelSupportsConfigurableReasoning(modelID) {
+			item.SupportsReasoningEffort = true
+			item.ReasoningEffort = "high"
+			item.ReasoningEfforts = defaultGrokReasoningEfforts()
+		}
+		models = append(models, item)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"object": "list",
+		"data":   models,
+	})
+}
+
+func grokModelSupportsConfigurableReasoning(modelID string) bool {
+	switch strings.ToLower(strings.TrimSpace(modelID)) {
+	case "grok-4.5", "grok-4.5-latest", "grok", "grok-latest", "grok-build", "grok-build-latest", "grok-build-0.1":
+		return true
+	default:
+		return false
+	}
 }
 
 func writeOpenAIModelsList(c *gin.Context, modelIDs []string) {
