@@ -127,12 +127,20 @@ func buildGrokVideoCreateRequest(payload map[string]any) (providerProtocolReques
 		"model":        model,
 		"prompt":       prompt,
 		"aspect_ratio": providerStringDefault(payload, defaultGrokVideoAspectRatio, "aspect_ratio"),
-		"size":         providerStringDefault(payload, defaultGrokVideoSize, "size"),
+		"size":         normalizeGrokVideoSize(providerStringDefault(payload, defaultGrokVideoSize, "size", "resolution")),
 	}
-	if images := providerStringSlice(payload, "images", "image_urls", "reference_images"); len(images) > 0 {
+	if images := providerImageURLs(payload, "image", "images", "image_urls", "reference_images"); len(images) > 0 {
 		body["images"] = images
 	}
 	return jsonProviderRequest(http.MethodPost, "/v1/video/create", body)
+}
+
+func normalizeGrokVideoSize(value string) string {
+	value = strings.TrimSpace(value)
+	if strings.HasSuffix(strings.ToLower(value), "p") {
+		return strings.ToUpper(value)
+	}
+	return value
 }
 
 func buildGrokVideoExtendRequest(payload map[string]any) (providerProtocolRequest, error) {
@@ -374,36 +382,45 @@ func providerString(payload map[string]any, path string) string {
 	}
 }
 
-func providerStringSlice(payload map[string]any, paths ...string) []string {
-	for _, path := range paths {
-		value, ok := providerValue(payload, path)
-		if !ok || value == nil {
-			continue
-		}
+func providerImageURLs(payload map[string]any, paths ...string) []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	var appendValue func(any)
+	appendValue = func(value any) {
 		switch typed := value.(type) {
-		case []any:
-			out := make([]string, 0, len(typed))
-			for _, item := range typed {
-				if value := strings.TrimSpace(fmt.Sprint(item)); value != "" {
-					out = append(out, value)
-				}
-			}
-			return out
-		case []string:
-			out := make([]string, 0, len(typed))
-			for _, item := range typed {
-				if value := strings.TrimSpace(item); value != "" {
-					out = append(out, value)
-				}
-			}
-			return out
 		case string:
-			if value := strings.TrimSpace(typed); value != "" {
-				return []string{value}
+			url := strings.TrimSpace(typed)
+			if url == "" {
+				return
+			}
+			if _, ok := seen[url]; ok {
+				return
+			}
+			seen[url] = struct{}{}
+			out = append(out, url)
+		case []any:
+			for _, item := range typed {
+				appendValue(item)
+			}
+		case []string:
+			for _, item := range typed {
+				appendValue(item)
+			}
+		case map[string]any:
+			for _, key := range []string{"url", "image_url"} {
+				if item, ok := typed[key]; ok {
+					appendValue(item)
+					return
+				}
 			}
 		}
 	}
-	return nil
+	for _, path := range paths {
+		if value, ok := providerValue(payload, path); ok {
+			appendValue(value)
+		}
+	}
+	return out
 }
 
 func providerObject(payload map[string]any, path string) map[string]any {

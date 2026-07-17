@@ -2,7 +2,6 @@ package routes
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/handler"
 	"github.com/Wei-Shaw/sub2api/internal/server/middleware"
@@ -48,11 +47,12 @@ func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayCo
 	gateway.POST("/audio/speech", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/transcriptions", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/translations", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
-	gateway.POST("/videos", ximoAIVideoOnly("Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))
-	gateway.GET("/videos", ximoAIVideoOnly("Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))
-	gateway.POST("/videos/*subpath", ximoAIVideoPostSubpath(ctx.grokVideoCreate, ctx.grokVideoEdit, ctx.grokVideoExtension, h.OpenAIGateway.VideosSubpath))
-	gateway.GET("/videos/*subpath", ximoAIVideoGetSubpath(ctx.grokVideoStatus, h.OpenAIGateway.VideosSubpath))
-	gateway.DELETE("/videos/*subpath", ximoAIVideoOnly("Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))
+	gateway.POST("/videos", func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })
+	gateway.GET("/videos", func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })
+	gateway.POST("/videos/generations", ctx.grokVideoCreate)
+	gateway.POST("/videos/edits", ctx.grokVideoEdit)
+	gateway.POST("/videos/extensions", ctx.grokVideoExtension)
+	gateway.GET("/videos/:request_id", ctx.grokVideoStatus)
 }
 
 func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
@@ -68,11 +68,12 @@ func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
 	r.POST("/audio/speech", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.POST("/audio/transcriptions", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.POST("/audio/translations", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
-	r.POST("/videos", withXimoAICommon(common, ximoAIVideoOnly("Videos API is not supported for this platform", h.OpenAIGateway.VideosCreate))...)
-	r.GET("/videos", withXimoAICommon(common, ximoAIVideoOnly("Videos API is not supported for this platform", h.OpenAIGateway.VideosRetrieve))...)
-	r.POST("/videos/*subpath", withXimoAICommon(common, ximoAIVideoPostSubpath(ctx.grokVideoCreate, ctx.grokVideoEdit, ctx.grokVideoExtension, h.OpenAIGateway.VideosSubpath))...)
-	r.GET("/videos/*subpath", withXimoAICommon(common, ximoAIVideoGetSubpath(ctx.grokVideoStatus, h.OpenAIGateway.VideosSubpath))...)
-	r.DELETE("/videos/*subpath", withXimoAICommon(common, ximoAIVideoOnly("Videos API is not supported for this platform", h.OpenAIGateway.VideosSubpath))...)
+	r.POST("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
+	r.GET("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
+	r.POST("/videos/generations", withXimoAICommon(common, ctx.grokVideoCreate)...)
+	r.POST("/videos/edits", withXimoAICommon(common, ctx.grokVideoEdit)...)
+	r.POST("/videos/extensions", withXimoAICommon(common, ctx.grokVideoExtension)...)
+	r.GET("/videos/:request_id", withXimoAICommon(common, ctx.grokVideoStatus)...)
 }
 
 func withXimoAICommon(common []gin.HandlerFunc, last gin.HandlerFunc) []gin.HandlerFunc {
@@ -88,46 +89,4 @@ func openAIEndpointUnsupported(c *gin.Context, message string) {
 			"message": message,
 		},
 	})
-}
-
-func ximoAIVideoPostSubpath(grokVideoCreate, grokVideoEdit, grokVideoExtension, ximoVideo gin.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		subpath := strings.Trim(strings.TrimSpace(c.Param("subpath")), "/")
-		if !isGroupXimoAIVideoPlatform(c) {
-			switch strings.ToLower(subpath) {
-			case "generations":
-				grokVideoCreate(c)
-			case "edits":
-				grokVideoEdit(c)
-			case "extensions":
-				grokVideoExtension(c)
-			default:
-				openAIEndpointUnsupported(c, "Videos API is not supported for this platform")
-			}
-			return
-		}
-		ximoVideo(c)
-	}
-}
-
-func ximoAIVideoGetSubpath(grokVideoStatus, ximoVideo gin.HandlerFunc) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		subpath := strings.Trim(strings.TrimSpace(c.Param("subpath")), "/")
-		if !isGroupXimoAIVideoPlatform(c) {
-			setGinParam(c, "request_id", strings.Trim(subpath, "/"))
-			grokVideoStatus(c)
-			return
-		}
-		ximoVideo(c)
-	}
-}
-
-func setGinParam(c *gin.Context, key, value string) {
-	for i := range c.Params {
-		if c.Params[i].Key == key {
-			c.Params[i].Value = value
-			return
-		}
-	}
-	c.Params = append(c.Params, gin.Param{Key: key, Value: value})
 }

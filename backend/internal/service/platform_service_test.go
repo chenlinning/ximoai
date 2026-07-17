@@ -205,6 +205,7 @@ func TestPlatformService_BuiltinGrokPlatformKeepsNativeOAuthBoundary(t *testing.
 	require.ElementsMatch(t, []string{
 		PlatformCapabilityResponses,
 		PlatformCapabilityChatCompletions,
+		PlatformCapabilityImages,
 		PlatformCapabilityVideos,
 	}, platform.Capabilities)
 	require.True(t, platform.Builtin)

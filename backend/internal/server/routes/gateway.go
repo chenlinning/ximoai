@@ -61,7 +61,7 @@ func RegisterGatewayRoutes(
 		}
 	}
 	videoGenerationHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformGrok {
+		if isGrokVideoGatewayPlatform(c) {
 			h.OpenAIGateway.GrokVideoGeneration(c)
 			return
 		}
@@ -74,7 +74,7 @@ func RegisterGatewayRoutes(
 		})
 	}
 	videoStatusHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformGrok {
+		if isGrokVideoGatewayPlatform(c) {
 			h.OpenAIGateway.GrokVideoStatus(c)
 			return
 		}
@@ -95,7 +95,7 @@ func RegisterGatewayRoutes(
 		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Videos API is not supported for this platform"}})
 	}
 	videoExtensionHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformGrok {
+		if isGrokVideoGatewayPlatform(c) {
 			h.OpenAIGateway.GrokVideoExtension(c)
 			return
 		}

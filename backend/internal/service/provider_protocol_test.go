@@ -14,11 +14,15 @@ func TestAdaptOpenAIVideoProviderRequestMapsGrokCreate(t *testing.T) {
 		"model":"grok-video-3-10s",
 		"prompt":"city at sunset",
 		"aspect_ratio":"16:9",
-		"size":"720P",
-		"images":["https://example.com/ref.png"]
+		"resolution":"720p",
+		"reference_images":[
+			{"url":"https://example.com/ref-1.png"},
+			{"image_url":"data:image/png;base64,aW1n"}
+		],
+		"duration":8
 	}`)
 
-	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, "/v1/videos", body, "application/json")
+	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, "/v1/videos/generations", body, "application/json")
 
 	require.NoError(t, err)
 	require.Equal(t, http.MethodPost, rewritten.Method)
@@ -30,7 +34,60 @@ func TestAdaptOpenAIVideoProviderRequestMapsGrokCreate(t *testing.T) {
 	require.Equal(t, "city at sunset", payload["prompt"])
 	require.Equal(t, "16:9", payload["aspect_ratio"])
 	require.Equal(t, "720P", payload["size"])
-	require.Equal(t, []any{"https://example.com/ref.png"}, payload["images"])
+	require.Equal(t, []any{
+		"https://example.com/ref-1.png",
+		"data:image/png;base64,aW1n",
+	}, payload["images"])
+	require.NotContains(t, payload, "duration")
+	require.NotContains(t, payload, "resolution")
+}
+
+func TestAdaptOpenAIVideoProviderRequestMapsGrokImageObject(t *testing.T) {
+	account := &Account{Platform: PlatformGrokVideo}
+	body := []byte(`{
+		"model":"grok-video-3-10s",
+		"prompt":"animate the image",
+		"image":{"image_url":"https://example.com/start.png"}
+	}`)
+
+	rewritten, err := adaptOpenAIVideoProviderRequest(account, http.MethodPost, "/v1/videos/generations", body, "application/json")
+
+	require.NoError(t, err)
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(rewritten.Body, &payload))
+	require.Equal(t, []any{"https://example.com/start.png"}, payload["images"])
+}
+
+func TestAdaptOpenAIVideoProviderResponseMapsGrokCreate(t *testing.T) {
+	account := &Account{Platform: PlatformGrokVideo}
+	body := []byte(`{"id":"task_123","status":"pending","model":"grok-video-3-10s"}`)
+
+	rewritten, err := adaptOpenAIVideoProviderResponse(account, "/v1/videos/generations", body)
+
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"id":"task_123",
+		"request_id":"task_123",
+		"status":"pending",
+		"model":"grok-video-3-10s"
+	}`, string(rewritten))
+}
+
+func TestAdaptOpenAIVideoProviderResponsePreservesSub2APIGrokStatus(t *testing.T) {
+	account := &Account{Platform: PlatformGrokVideo}
+	body := []byte(`{
+		"id":"task_123",
+		"status":"completed",
+		"progress":100,
+		"model":"grok-video-3-10s",
+		"video_url":"https://example.com/result.mp4",
+		"metadata":{"url":"https://example.com/result.mp4","duration":10}
+	}`)
+
+	rewritten, err := adaptOpenAIVideoProviderResponse(account, "/v1/videos/task_123", body)
+
+	require.NoError(t, err)
+	require.JSONEq(t, string(body), string(rewritten))
 }
 
 func TestAdaptOpenAIVideoProviderRequestMapsGrokQuery(t *testing.T) {

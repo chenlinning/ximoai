@@ -158,16 +158,12 @@ func TestGatewayRoutesXimoAIGrokVideoPathsStaySeparateFromBuiltinGrok(t *testing
 		path   string
 		body   string
 	}{
-		{http.MethodPost, "/v1/videos", `{"model":"grok-video-3","prompt":"waves"}`},
+		{http.MethodPost, "/v1/videos/generations", `{"model":"grok-video-3-10s","prompt":"waves"}`},
 		{http.MethodPost, "/v1/videos/extensions", `{"model":"grok-video-3","video":{"id":"video_123"}}`},
 		{http.MethodGet, "/v1/videos/video_123", ""},
-		{http.MethodGet, "/v1/videos/video_123/content", ""},
-		{http.MethodDelete, "/v1/videos/video_123", ""},
-		{http.MethodPost, "/videos", `{"model":"grok-video-3","prompt":"waves"}`},
+		{http.MethodPost, "/videos/generations", `{"model":"grok-video-3-10s","prompt":"waves"}`},
 		{http.MethodPost, "/videos/extensions", `{"model":"grok-video-3","video":{"id":"video_123"}}`},
 		{http.MethodGet, "/videos/video_123", ""},
-		{http.MethodGet, "/videos/video_123/content", ""},
-		{http.MethodDelete, "/videos/video_123", ""},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
 		req.Header.Set("Content-Type", "application/json")
@@ -176,6 +172,38 @@ func TestGatewayRoutesXimoAIGrokVideoPathsStaySeparateFromBuiltinGrok(t *testing
 		router.ServeHTTP(w, req)
 		require.NotEqual(t, http.StatusNotFound, w.Code, "method=%s path=%s should hit XimoAi video handler", tc.method, tc.path)
 		require.NotContains(t, w.Body.String(), "Videos API is not supported for this platform")
+	}
+}
+
+func TestGatewayRoutesXimoAIGrokVideoRejectsEndpointsOutsideBuiltinGrokProtocol(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformGrokVideo)
+
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/v1/videos/edits"},
+		{http.MethodGet, "/v1/videos/video_123/content"},
+		{http.MethodDelete, "/v1/videos/video_123"},
+	} {
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNotFound, w.Code, "method=%s path=%s", tc.method, tc.path)
+	}
+}
+
+func TestGatewayRoutesXimoAIGrokVideoOldCreatePathsAreRemoved(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformGrokVideo)
+
+	for _, path := range []string{"/v1/videos", "/videos"} {
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"grok-video-3-10s","prompt":"waves"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusNotFound, w.Code, "path=%s must not remain as a compatibility alias", path)
 	}
 }
 

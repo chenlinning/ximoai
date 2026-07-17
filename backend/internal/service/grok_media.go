@@ -280,6 +280,9 @@ func (s *OpenAIGatewayService) ForwardGrokMedia(
 	if account == nil {
 		return nil, fmt.Errorf("grok account is required")
 	}
+	if account.IsGrokVideo() {
+		return s.forwardXimoAIGrokVideoMedia(ctx, c, account, endpoint, requestID, body, contentType)
+	}
 	if account.Platform != PlatformGrok {
 		return nil, fmt.Errorf("account platform %s is not supported for grok media", account.Platform)
 	}

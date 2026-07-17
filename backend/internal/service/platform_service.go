@@ -472,7 +472,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Protocol:     PlatformProtocolOpenAICompatible,
 			BaseURL:      PlatformDefaultBaseURLGrok,
 			AuthModes:    []string{AccountTypeOAuth, AccountTypeAPIKey},
-			Capabilities: []string{PlatformCapabilityResponses, PlatformCapabilityChatCompletions, PlatformCapabilityVideos},
+			Capabilities: []string{PlatformCapabilityResponses, PlatformCapabilityChatCompletions, PlatformCapabilityImages, PlatformCapabilityVideos},
 			Color:        "#111827",
 			Enabled:      true,
 			Builtin:      true,
