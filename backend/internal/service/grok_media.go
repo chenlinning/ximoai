@@ -461,12 +461,27 @@ func sanitizeGrokMediaForwardBody(endpoint GrokMediaEndpoint, body []byte, conte
 	}
 	switch endpoint {
 	case GrokMediaEndpointImagesGenerations, GrokMediaEndpointImagesEdits:
-		if !gjson.GetBytes(body, "size").Exists() {
-			return body, contentType, nil
-		}
-		out, err := sjson.DeleteBytes(body, "size")
-		if err != nil {
-			return nil, "", fmt.Errorf("sanitize grok media size: %w", err)
+		out := body
+		for _, field := range []string{
+			"size",
+			"background",
+			"quality",
+			"style",
+			"output_format",
+			"output_compression",
+			"moderation",
+			"input_fidelity",
+			"stream",
+			"partial_images",
+		} {
+			if !gjson.GetBytes(out, field).Exists() {
+				continue
+			}
+			var err error
+			out, err = sjson.DeleteBytes(out, field)
+			if err != nil {
+				return nil, "", fmt.Errorf("sanitize grok media field %s: %w", field, err)
+			}
 		}
 		return out, contentType, nil
 	default:
