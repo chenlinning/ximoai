@@ -1017,10 +1017,14 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		platform = forcedPlatform
 	}
 
-	// Get available models from account configurations for the selected group platform.
-	availableModels := h.gatewayService.GetAvailableModels(c.Request.Context(), groupID, platform)
+	// Prefer channel-facing model aliases; fall back to the upstream account list.
+	availableModels := h.gatewayService.GetXimoAIAvailableModels(c.Request.Context(), groupID, platform)
+	modelsFallbackPlatform := platform
+	if len(availableModels) == 0 && h.platformService != nil {
+		modelsFallbackPlatform = h.platformService.XimoAIModelsFallbackPlatform(c.Request.Context(), platform)
+	}
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
-		fallbackModels := defaultModelIDsForPlatform(platform)
+		fallbackModels := defaultModelIDsForPlatform(modelsFallbackPlatform)
 		availableModels = filterModelsByCustomList(customModelsListSource(platform, availableModels, fallbackModels), fallbackModels, apiKey.Group.ModelsListConfig.Models)
 		writeCustomModelsList(c, platform, availableModels)
 		return
@@ -1032,7 +1036,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	}
 
 	// Fallback to default models
-	if platform == service.PlatformOpenAI {
+	if modelsFallbackPlatform == service.PlatformOpenAI {
 		c.JSON(http.StatusOK, gin.H{
 			"object": "list",
 			"data":   openai.DefaultModels,
@@ -1040,14 +1044,14 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		return
 	}
 
-	if platform == service.PlatformGemini {
+	if modelsFallbackPlatform == service.PlatformGemini {
 		c.JSON(http.StatusOK, gin.H{
 			"object": "list",
 			"data":   geminicli.DefaultModels,
 		})
 		return
 	}
-	if platform == service.PlatformGrok {
+	if modelsFallbackPlatform == service.PlatformGrok {
 		writeGrokModelsList(c, xai.DefaultModelIDs())
 		return
 	}
