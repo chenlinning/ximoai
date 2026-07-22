@@ -4,6 +4,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync"
 	"testing"
@@ -223,25 +224,12 @@ func TestWorkbenchSSOService_ValidateTicketConsumesOnceAndReturnsContext(t *test
 	require.Equal(t, RoleUser, userContext.Role)
 	require.Equal(t, "diamond", userContext.MembershipStatus)
 	require.NotNil(t, userContext.Quota)
-	require.NotNil(t, userContext.ModelConfig)
-	gateways, ok := userContext.ModelConfig["gateways"].([]map[string]any)
-	require.True(t, ok)
-	require.Equal(t, []map[string]any{
-		{
-			"id":      "membership-1",
-			"baseUrl": "https://ximoai.cn",
-			"apiKey":  "sk-openai",
-			"groupId": int64(8),
-		},
-		{
-			"id":      "membership-2",
-			"baseUrl": "https://ximoai.cn",
-			"apiKey":  "sk-gemini",
-			"groupId": int64(14),
-		},
-	}, gateways)
 	require.NotNil(t, userContext.FeatureFlags)
 	require.NotNil(t, userContext.Permissions)
+	payload, err := json.Marshal(userContext)
+	require.NoError(t, err)
+	require.NotContains(t, string(payload), "modelConfig")
+	require.NotContains(t, string(payload), "sk-openai")
 
 	_, err = svc.ValidateTicket(context.Background(), ticket.Ticket, "http://127.0.0.1:4173")
 	require.Error(t, err)
