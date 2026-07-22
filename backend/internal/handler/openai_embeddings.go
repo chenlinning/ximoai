@@ -114,7 +114,6 @@ func (h *OpenAIGatewayHandler) Embeddings(c *gin.Context) {
 	for {
 		selection, _, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"",
 			"",
@@ -125,6 +124,7 @@ func (h *OpenAIGatewayHandler) Embeddings(c *gin.Context) {
 			false,
 			false,
 			true,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil {
 			if failoverClientGone(c) {

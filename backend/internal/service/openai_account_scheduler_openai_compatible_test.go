@@ -46,7 +46,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledSelectsOpenAICom
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		"acme",
 		&groupID,
 		"resp_ignored_for_custom_platform",
 		"session_custom_platform",
@@ -54,6 +53,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledSelectsOpenAICom
 		nil,
 		OpenAIUpstreamTransportAny,
 		true,
+		"acme",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
@@ -113,7 +113,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledSelectsOpenAICom
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		"acme",
 		&groupID,
 		"",
 		"session_custom_platform_ws",
@@ -121,6 +120,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledSelectsOpenAICom
 		nil,
 		OpenAIUpstreamTransportResponsesWebsocketV2,
 		false,
+		"acme",
 	)
 	require.NoError(t, err)
 	require.NotNil(t, selection)

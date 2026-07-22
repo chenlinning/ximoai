@@ -198,7 +198,6 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 		}
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
 			requestCtx,
-			grokMediaPlatform,
 			apiKey.GroupID,
 			"",
 			sessionHash,

@@ -116,7 +116,6 @@ func (h *OpenAIGatewayHandler) AlphaSearch(c *gin.Context) {
 	for {
 		selection, _, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"",
 			sessionHash,

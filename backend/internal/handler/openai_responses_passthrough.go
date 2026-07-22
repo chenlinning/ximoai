@@ -83,7 +83,6 @@ func (h *OpenAIGatewayHandler) ResponsesPassthrough(c *gin.Context) {
 	for {
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			responseID,
 			"",
@@ -91,6 +90,7 @@ func (h *OpenAIGatewayHandler) ResponsesPassthrough(c *gin.Context) {
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportHTTPSSE,
 			false,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil {
 			reqLog.Warn("openai.responses_passthrough.account_select_failed", zap.Error(err), zap.Int("excluded_account_count", len(failedAccountIDs)))

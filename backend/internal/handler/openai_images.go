@@ -151,12 +151,12 @@ func (h *OpenAIGatewayHandler) Images(c *gin.Context) {
 		reqLog.Debug("openai.images.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithSchedulerForImages(
 			requestCtx,
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			sessionHash,
 			requestModel,
 			failedAccountIDs,
 			parsed.RequiredCapability,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil {
 			if failoverClientGone(c) {

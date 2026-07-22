@@ -429,7 +429,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabledUsesLega
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"resp_disabled_001",
 		"",
@@ -485,7 +484,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_Require
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -528,7 +526,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_Require
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -584,7 +581,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_Embeddi
 
 	selection, decision, err := svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		"openai",
 		&groupID,
 		"",
 		"",
@@ -637,7 +633,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_ResponsesCapabilityExcl
 	t.Run("生图意图仅选中支持 responses 的账号", func(t *testing.T) {
 		svc := newSvc([]Account{supported, unsupported})
 		selection, _, err := svc.SelectAccountWithSchedulerForCapability(
-			ctx, PlatformOpenAI, &groupID, "", "", "gpt-image-2", nil,
+			ctx, &groupID, "", "", "gpt-image-2", nil,
 			OpenAIUpstreamTransportAny, OpenAIEndpointCapabilityResponses,
 			false, false, false,
 		)
@@ -650,7 +646,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_ResponsesCapabilityExcl
 	t.Run("仅有不支持 responses 的账号时生图意图无可用账号", func(t *testing.T) {
 		svc := newSvc([]Account{unsupported})
 		selection, _, err := svc.SelectAccountWithSchedulerForCapability(
-			ctx, PlatformOpenAI, &groupID, "", "", "gpt-image-2", nil,
+			ctx, &groupID, "", "", "gpt-image-2", nil,
 			OpenAIUpstreamTransportAny, OpenAIEndpointCapabilityResponses,
 			false, false, false,
 		)
@@ -661,7 +657,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_ResponsesCapabilityExcl
 	t.Run("非生图路径仍可选中不支持 responses 的账号", func(t *testing.T) {
 		svc := newSvc([]Account{unsupported})
 		selection, _, err := svc.SelectAccountWithSchedulerForCapability(
-			ctx, PlatformOpenAI, &groupID, "", "", "gpt-5.1", nil,
+			ctx, &groupID, "", "", "gpt-5.1", nil,
 			OpenAIUpstreamTransportAny, OpenAIEndpointCapabilityChatCompletions,
 			false, false, true,
 		)
@@ -702,7 +698,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_AlphaSearchAllowsAPIKey
 
 	selection, _, err := svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -747,7 +742,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_DefaultDisabled_AllowsG
 
 	selection, decision, err := svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		PlatformGrok,
 		&groupID,
 		"",
 		"",
@@ -795,9 +789,9 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_GrokMediaCapabilityFilt
 
 	t.Run("media generation skips higher priority ineligible account", func(t *testing.T) {
 		selection, _, err := newService([]Account{ineligible, eligible}).SelectAccountWithSchedulerForCapability(
-			ctx, PlatformGrok, &groupID, "", "", "grok-imagine-video", nil,
+			ctx, &groupID, "", "", "grok-imagine-video", nil,
 			OpenAIUpstreamTransportHTTPSSE, OpenAIEndpointCapabilityGrokMediaGeneration,
-			false, false, false,
+			false, false, false, PlatformGrok,
 		)
 
 		require.NoError(t, err)
@@ -808,9 +802,9 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_GrokMediaCapabilityFilt
 
 	t.Run("media generation fails closed when all accounts are ineligible", func(t *testing.T) {
 		selection, _, err := newService([]Account{ineligible}).SelectAccountWithSchedulerForCapability(
-			ctx, PlatformGrok, &groupID, "", "", "grok-imagine-video", nil,
+			ctx, &groupID, "", "", "grok-imagine-video", nil,
 			OpenAIUpstreamTransportHTTPSSE, OpenAIEndpointCapabilityGrokMediaGeneration,
-			false, false, false,
+			false, false, false, PlatformGrok,
 		)
 
 		require.Error(t, err)
@@ -820,9 +814,9 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_GrokMediaCapabilityFilt
 
 	t.Run("chat remains routable on media-ineligible account", func(t *testing.T) {
 		selection, _, err := newService([]Account{ineligible}).SelectAccountWithSchedulerForCapability(
-			ctx, PlatformGrok, &groupID, "", "", "grok-4.3", nil,
+			ctx, &groupID, "", "", "grok-4.3", nil,
 			OpenAIUpstreamTransportHTTPSSE, OpenAIEndpointCapabilityChatCompletions,
-			false, false, false,
+			false, false, false, PlatformGrok,
 		)
 
 		require.NoError(t, err)
@@ -830,6 +824,161 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_GrokMediaCapabilityFilt
 		require.NotNil(t, selection.Account)
 		require.Equal(t, ineligible.ID, selection.Account.ID)
 	})
+}
+
+// Regression #4599: when the advanced scheduler's load-balance initial filter
+// drops every candidate, the resulting "no available OpenAI accounts" error must
+// carry per-reason exclusion counts. Previously all filter branches were silent
+// (debug logs at best), so a 503 with excluded_account_count=0 could not be
+// diagnosed from the error alone.
+func TestOpenAIGatewayService_SelectAccountWithScheduler_NoAvailableErrorReportsQuotaAutoPauseExclusion(t *testing.T) {
+	resetOpenAIAdvancedSchedulerSettingCacheForTest()
+
+	ctx := withOpenAIQuotaAutoPauseSettings(context.Background(), OpsOpenAIAccountQuotaAutoPauseSettings{DefaultThreshold7d: 0.9})
+	groupID := int64(101201)
+	accounts := []Account{
+		{
+			ID:          38101,
+			Platform:    PlatformOpenAI,
+			Type:        AccountTypeOAuth,
+			Status:      StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+			Extra: map[string]any{
+				"codex_7d_used_percent":  95.0,
+				"codex_7d_reset_at":      time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+				"codex_usage_updated_at": time.Now().Add(-time.Minute).Format(time.RFC3339),
+			},
+		},
+	}
+	cfg := &config.Config{}
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerTestOpenAIAccountRepo{accounts: accounts},
+		cache:              &schedulerTestGatewayCache{},
+		cfg:                cfg,
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+	}
+
+	selection, decision, err := svc.SelectAccountWithScheduler(
+		ctx, &groupID, "", "", "gpt-5.4-mini", nil, OpenAIUpstreamTransportAny, false,
+	)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.Nil(t, selection)
+	require.Equal(t, openAIAccountScheduleLayerLoadBalance, decision.Layer)
+	require.EqualError(t, err, "no available OpenAI accounts supporting model: gpt-5.4-mini (pool=1, filtered: quota_auto_pause_7d=1)")
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_NoAvailableErrorReportsModelNotSupported(t *testing.T) {
+	resetOpenAIAdvancedSchedulerSettingCacheForTest()
+
+	ctx := context.Background()
+	groupID := int64(101202)
+	// OAuth account with empty model_mapping: foreign-family models (grok-*)
+	// are not servable by Codex upstream (#3662) and are dropped by the filter.
+	accounts := []Account{
+		{
+			ID:          38111,
+			Platform:    PlatformOpenAI,
+			Type:        AccountTypeOAuth,
+			Status:      StatusActive,
+			Schedulable: true,
+			Concurrency: 1,
+		},
+	}
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerTestOpenAIAccountRepo{accounts: accounts},
+		cache:              &schedulerTestGatewayCache{},
+		cfg:                &config.Config{},
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+	}
+
+	selection, _, err := svc.SelectAccountWithScheduler(
+		ctx, &groupID, "", "", "grok-4.5", nil, OpenAIUpstreamTransportAny, false,
+	)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.Nil(t, selection)
+	require.EqualError(t, err, "no available OpenAI accounts supporting model: grok-4.5 (pool=1, filtered: model_not_supported=1)")
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_NoAvailableErrorAggregatesReasonsDeterministically(t *testing.T) {
+	resetOpenAIAdvancedSchedulerSettingCacheForTest()
+
+	ctx := withOpenAIQuotaAutoPauseSettings(context.Background(), OpsOpenAIAccountQuotaAutoPauseSettings{DefaultThreshold7d: 0.9})
+	groupID := int64(101203)
+	quotaPaused := Account{
+		ID:          38121,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeOAuth,
+		Status:      StatusActive,
+		Schedulable: true,
+		Concurrency: 1,
+		Extra: map[string]any{
+			"codex_7d_used_percent":  95.0,
+			"codex_7d_reset_at":      time.Now().Add(24 * time.Hour).Format(time.RFC3339),
+			"codex_usage_updated_at": time.Now().Add(-time.Minute).Format(time.RFC3339),
+		},
+	}
+	mappingMiss := Account{
+		ID:          38122,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Concurrency: 1,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{"gpt-4o": "gpt-4o"},
+		},
+	}
+	excluded := Account{
+		ID:          38123,
+		Platform:    PlatformOpenAI,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Concurrency: 1,
+	}
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerTestOpenAIAccountRepo{accounts: []Account{quotaPaused, mappingMiss, excluded}},
+		cache:              &schedulerTestGatewayCache{},
+		cfg:                &config.Config{},
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+	}
+
+	selection, _, err := svc.SelectAccountWithScheduler(
+		ctx, &groupID, "", "", "gpt-5.4-mini", map[int64]struct{}{38123: {}}, OpenAIUpstreamTransportAny, false,
+	)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.Nil(t, selection)
+	// Reasons are sorted lexicographically, so the message is deterministic.
+	require.EqualError(t, err, "no available OpenAI accounts supporting model: gpt-5.4-mini (pool=3, filtered: excluded=1 model_not_supported=1 quota_auto_pause_7d=1)")
+}
+
+func TestOpenAIGatewayService_SelectAccountWithScheduler_NoAvailableErrorReportsEmptyPool(t *testing.T) {
+	resetOpenAIAdvancedSchedulerSettingCacheForTest()
+
+	ctx := context.Background()
+	groupID := int64(101204)
+	svc := &OpenAIGatewayService{
+		accountRepo:        schedulerTestOpenAIAccountRepo{},
+		cache:              &schedulerTestGatewayCache{},
+		cfg:                &config.Config{},
+		rateLimitService:   newOpenAIAdvancedSchedulerRateLimitService("true"),
+		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+	}
+
+	selection, _, err := svc.SelectAccountWithScheduler(
+		ctx, &groupID, "", "", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false,
+	)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrNoAvailableAccounts)
+	require.Nil(t, selection)
+	require.EqualError(t, err, "no available OpenAI accounts supporting model: gpt-5.1 (pool=0)")
 }
 
 func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledUsesAdvancedPreviousResponseRouting(t *testing.T) {
@@ -881,7 +1030,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_EnabledUsesAdvancedPrev
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"resp_enabled_001",
 		"",
@@ -946,7 +1094,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_StickyWeightedSessionIn
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_weighted_topk",
@@ -1019,7 +1166,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_StickyWeightedPreviousR
 
 	selection, decision, err := svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"resp_weighted_unmovable",
 		"",
@@ -1043,7 +1189,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_StickyWeightedPreviousR
 
 	selection, decision, err = svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"resp_weighted_unmovable",
 		"",
@@ -1120,7 +1265,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_PreviousResponseCompact
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"resp_compact_unsupported",
 		"",
@@ -1187,7 +1331,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_Enabled_EmbeddingsSkips
 
 	selection, decision, err := svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		"openai",
 		&groupID,
 		"",
 		"",
@@ -1263,7 +1406,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_Enabled_EmbeddingsSkips
 
 	selection, decision, err := svc.SelectAccountWithSchedulerForCapability(
 		ctx,
-		"openai",
 		&groupID,
 		"resp_embeddings_chat_only",
 		"session_hash_embeddings",
@@ -1317,7 +1459,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyRateLimite
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_rate_limited", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_rate_limited", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -1696,7 +1838,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyDBRuntimeR
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_db_runtime_recheck", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_db_runtime_recheck", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -1861,7 +2003,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_PreviousResponseSticky(
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"resp_prev_001",
 		"session_hash_001",
@@ -1910,7 +2051,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionSticky(t *testin
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_abc",
@@ -1995,7 +2135,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyBusyKeepsS
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_sticky_busy",
@@ -2059,7 +2198,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyEscapeByTT
 	stableTTFT := 14999
 	svc.openaiAccountStats.report(21101, true, &stableTTFT)
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_sticky_ttft", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_sticky_ttft", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2075,7 +2214,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyEscapeByTT
 		svc.openaiAccountStats.report(21101, true, &slowTTFT)
 	}
 
-	selection, decision, err = svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_sticky_ttft", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err = svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_sticky_ttft", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2111,7 +2250,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyEscapeByEr
 	for i := 0; i < 3; i++ {
 		svc.openaiAccountStats.report(21201, false, nil)
 	}
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_sticky_error_rate", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_sticky_error_rate", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2125,7 +2264,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyEscapeByEr
 		svc.openaiAccountStats.report(21201, false, nil)
 	}
 
-	selection, decision, err = svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_sticky_error_rate", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err = svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_sticky_error_rate", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2168,7 +2307,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyBusyEscape
 		concurrencyService: NewConcurrencyService(concurrencyCache),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_sticky_busy_escape", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_sticky_busy_escape", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2213,7 +2352,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyEscapeDisa
 		svc.openaiAccountStats.report(21401, false, nil)
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_sticky_disabled", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_sticky_disabled", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2264,7 +2403,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SubscriptionPriorityCho
 		concurrencyService: NewConcurrencyService(concurrencyCache),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_subscription_first", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_subscription_first", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2317,7 +2456,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SubscriptionPriorityFal
 		concurrencyService: NewConcurrencyService(concurrencyCache),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_subscription_fallback", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_subscription_fallback", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2370,7 +2509,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SubscriptionPriorityDis
 		concurrencyService: NewConcurrencyService(concurrencyCache),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_subscription_disabled", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_subscription_disabled", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2423,7 +2562,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_UsesAccountPriorityWith
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, decision, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_group_priority", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, decision, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_group_priority", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	require.NotNil(t, selection.Account)
@@ -2529,7 +2668,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionSticky_ForceHTTP
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_force_http",
@@ -2602,7 +2740,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_RequiredWSV2_SkipsStick
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_ws_only",
@@ -2665,7 +2802,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_ClearsStickyAccountOuts
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_hash_removed_group",
@@ -2711,7 +2847,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_RequiredWSV2_NoAvailabl
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -2789,7 +2924,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceTopKFallback
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"",
@@ -2869,7 +3003,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceTopKExcludes
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		"openai",
 		&groupID,
 		"",
 		"",
@@ -2916,7 +3049,7 @@ func TestOpenAIGatewayService_OpenAIAccountSchedulerMetrics(t *testing.T) {
 		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
 	}
 
-	selection, _, err := svc.SelectAccountWithScheduler(ctx, PlatformOpenAI, &groupID, "", "session_hash_metrics", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
+	selection, _, err := svc.SelectAccountWithScheduler(ctx, &groupID, "", "session_hash_metrics", "gpt-5.1", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
 	svc.ReportOpenAIAccountScheduleResult(account.ID, "", true, intPtrForTest(120))
@@ -3114,7 +3247,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_LoadBalanceDistributesA
 		sessionHash := fmt.Sprintf("session_hash_lb_%d", i)
 		selection, decision, err := svc.SelectAccountWithScheduler(
 			ctx,
-			PlatformOpenAI,
 			&groupID,
 			"",
 			sessionHash,
@@ -3380,7 +3512,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_StickyWeightedFallbackS
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_weighted_out_of_group",
@@ -3447,7 +3578,6 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SubscriptionPriorityWai
 
 	selection, decision, err := svc.SelectAccountWithScheduler(
 		ctx,
-		PlatformOpenAI,
 		&groupID,
 		"",
 		"session_subscription_wait",

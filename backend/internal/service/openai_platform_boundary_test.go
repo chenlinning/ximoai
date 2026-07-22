@@ -2,10 +2,8 @@ package service
 
 import (
 	"context"
-	"errors"
 	"testing"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,39 +20,32 @@ func TestOpenAICompactRequiredForAccountPreservesBuiltinBoundary(t *testing.T) {
 	require.False(t, openAICompactRequiredForAccount(&Account{Platform: PlatformOpenAI}, false))
 }
 
-func TestGrokCompactSchedulingPreservesBuiltinError(t *testing.T) {
-	resetOpenAIAdvancedSchedulerSettingCacheForTest()
-
-	groupID := int64(92001)
-	accounts := []Account{{
-		ID:          72001,
-		Platform:    PlatformGrok,
+func TestWeightedStickyFallbackAllowsCustomOpenAICompatibleCompactRequest(t *testing.T) {
+	account := Account{
+		ID:          72002,
+		Platform:    "acme-openai",
 		Type:        AccountTypeAPIKey,
 		Status:      StatusActive,
 		Schedulable: true,
 		Concurrency: 1,
-	}}
-	cfg := &config.Config{}
-	cfg.Gateway.Scheduling.LoadBatchEnabled = true
-	svc := &OpenAIGatewayService{
-		accountRepo:        schedulerTestOpenAIAccountRepo{accounts: accounts},
-		cache:              &schedulerTestGatewayCache{},
-		cfg:                cfg,
-		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
+		Credentials: map[string]any{
+			"platform_protocol": PlatformProtocolOpenAICompatible,
+		},
 	}
+	service := &OpenAIGatewayService{
+		accountRepo: schedulerTestOpenAIAccountRepo{accounts: []Account{account}},
+	}
+	scheduler := &defaultOpenAIAccountScheduler{service: service}
 
-	selection, err := svc.selectAccountWithLoadAwareness(
-		context.Background(),
-		&groupID,
-		PlatformGrok,
-		"",
-		"",
-		nil,
-		true,
-		"",
-		true,
-	)
-	require.Error(t, err)
-	require.True(t, errors.Is(err, ErrNoAvailableCompactAccounts), "err=%v", err)
-	require.Nil(t, selection)
+	selection, err := scheduler.tryFallbackToWeightedSticky(context.Background(), OpenAIAccountScheduleRequest{
+		Platform:        account.Platform,
+		StickyWeighted:  true,
+		StickyAccountID: account.ID,
+		RequireCompact:  true,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, selection)
+	require.NotNil(t, selection.Account)
+	require.Equal(t, account.ID, selection.Account.ID)
 }

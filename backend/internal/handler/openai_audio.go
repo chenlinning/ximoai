@@ -103,7 +103,6 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 	for {
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"",
 			sessionHash,
@@ -111,6 +110,7 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportHTTPSSE,
 			false,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil {
 			reqLog.Warn("openai.audio.account_select_failed", zap.Error(err), zap.Int("excluded_account_count", len(failedAccountIDs)))

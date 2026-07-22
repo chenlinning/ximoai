@@ -137,7 +137,7 @@ func TestAdvancedCostSchedulerUsesTopKOverflowWhenPreferredAccountIsKnownFull(t 
 	}
 	groupID := int64(1)
 
-	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
+	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.Equal(t, expensive.ID, selection.Account.ID)
 	require.Empty(t, cache.limits(cheap.ID))
@@ -244,7 +244,7 @@ func TestAdvancedSchedulerSharesProbeBudgetWithFallbackDBRechecks(t *testing.T) 
 	require.NoError(t, err)
 	require.Nil(t, selection)
 	selection, _, _, _, err = scheduler.finishLoadBalanceSelectionFallback(
-		context.Background(), req, openAIAccountLoadSelectionAttempt{selectionOrder: selectionOrder}, budget,
+		context.Background(), req, openAIAccountLoadSelectionAttempt{selectionOrder: selectionOrder}, budget, openAISelectionFilterStats{},
 	)
 
 	require.Error(t, err)
@@ -284,7 +284,7 @@ func TestAdvancedCostSchedulerKeepsCompactSupportedOverflowAheadOfUnknown(t *tes
 	}
 	groupID := int64(1)
 
-	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, true)
+	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, true)
 	require.NoError(t, err)
 	require.Equal(t, overflow.ID, selection.Account.ID)
 	require.Empty(t, cache.limits(preferred.ID))
@@ -536,11 +536,11 @@ func TestOpenAIGatewayServiceLegacyLowRatePriorityUsesConfiguredOAuthReference(t
 	}
 	groupID := int64(1)
 
-	first, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
+	first, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.Equal(t, cheap.ID, first.Account.ID)
 
-	second, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", map[int64]struct{}{cheap.ID: {}}, OpenAIUpstreamTransportAny, false)
+	second, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", map[int64]struct{}{cheap.ID: {}}, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.Equal(t, oauth.ID, second.Account.ID)
 }
@@ -619,7 +619,7 @@ func TestOpenAIGatewayServiceLegacyLowRatePriorityIsIndependentFromAdvancedSched
 				}),
 			}
 
-			selection, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
+			selection, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
 			require.NoError(t, err)
 			require.Equal(t, tt.wantID, selection.Account.ID)
 			if selection.ReleaseFunc != nil {
@@ -653,7 +653,7 @@ func TestOpenAIGatewayServiceAdvancedSchedulerIgnoresLegacyLowRateSwitch(t *test
 	}
 	groupID := int64(1)
 
-	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
+	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.Equal(t, int64(2), selection.Account.ID)
 	if selection.ReleaseFunc != nil {
@@ -690,7 +690,7 @@ func TestOpenAIGatewayServiceLegacyLowRatePrioritySkipsCooledDownAccount(t *test
 	}
 	groupID := int64(1)
 
-	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), PlatformOpenAI, &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
+	selection, _, err := svc.SelectAccountWithScheduler(context.Background(), &groupID, "", "", "gpt-test", nil, OpenAIUpstreamTransportAny, false)
 	require.NoError(t, err)
 	require.Equal(t, int64(2), selection.Account.ID)
 	if selection.ReleaseFunc != nil {

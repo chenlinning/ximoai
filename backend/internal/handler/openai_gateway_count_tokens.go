@@ -145,7 +145,6 @@ func (h *OpenAIGatewayHandler) CountTokens(c *gin.Context) {
 	}
 	selection, _, err := h.gatewayService.SelectAccountWithSchedulerForCapability(
 		c.Request.Context(),
-		openAICompatibleRequestPlatform(apiKey),
 		apiKey.GroupID,
 		"",
 		sessionHash,

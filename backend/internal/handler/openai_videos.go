@@ -205,7 +205,6 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 	for {
 		selection, _, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"",
 			sessionHash,
@@ -213,6 +212,7 @@ func (h *OpenAIGatewayHandler) handleVideoCharacterCreate(c *gin.Context) {
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportHTTPSSE,
 			false,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil {
 			reqLog.Warn("openai.videos.character_account_select_failed", zap.Error(err), zap.Int("excluded_account_count", len(failedAccountIDs)))
@@ -423,7 +423,6 @@ func (h *OpenAIGatewayHandler) handleVideoMutation(c *gin.Context, sourceVideoID
 	for {
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"",
 			sessionHash,
@@ -431,6 +430,7 @@ func (h *OpenAIGatewayHandler) handleVideoMutation(c *gin.Context, sourceVideoID
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportHTTPSSE,
 			false,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil {
 			reqLog.Warn("openai.videos.account_select_failed", zap.Error(err), zap.Int("excluded_account_count", len(failedAccountIDs)))
@@ -611,7 +611,6 @@ func (h *OpenAIGatewayHandler) handleVideoRead(c *gin.Context, method string, co
 	if account == nil {
 		selection, _, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
-			openAIPlatformForAPIKey(apiKey),
 			apiKey.GroupID,
 			"",
 			"",
@@ -619,6 +618,7 @@ func (h *OpenAIGatewayHandler) handleVideoRead(c *gin.Context, method string, co
 			nil,
 			service.OpenAIUpstreamTransportHTTPSSE,
 			false,
+			openAIPlatformForAPIKey(apiKey),
 		)
 		if err != nil || selection == nil || selection.Account == nil || selection.Account.Type != service.AccountTypeAPIKey {
 			h.handleStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "No available compatible API Key accounts", streamStarted)
