@@ -45,6 +45,7 @@ type WorkbenchSSOService struct {
 	userGetter         workbenchUserGetter
 	membershipGetter   workbenchMembershipGetter
 	announcementLister workbenchAnnouncementLister
+	controlTokens      *WorkbenchControlTokenService
 }
 
 type WorkbenchSSOTicket struct {
@@ -68,6 +69,11 @@ type WorkbenchUserContext struct {
 	Permissions      []string                       `json:"permissions"`
 }
 
+type WorkbenchSSOValidation struct {
+	*WorkbenchUserContext
+	Authorization *WorkbenchControlAuthorization `json:"authorization"`
+}
+
 type WorkbenchAnnouncementContext struct {
 	ID        int64      `json:"id"`
 	Title     string     `json:"title"`
@@ -89,6 +95,7 @@ func NewWorkbenchSSOService(
 	userService *UserService,
 	membershipService *MembershipService,
 	announcementService *AnnouncementService,
+	controlTokens *WorkbenchControlTokenService,
 ) *WorkbenchSSOService {
 	return &WorkbenchSSOService{
 		cfg:                cfg,
@@ -97,6 +104,7 @@ func NewWorkbenchSSOService(
 		userGetter:         userService,
 		membershipGetter:   membershipService,
 		announcementLister: announcementService,
+		controlTokens:      controlTokens,
 	}
 }
 
@@ -152,7 +160,7 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 	return nil, infraerrors.InternalServer("WORKBENCH_SSO_TICKET_COLLISION", "failed to create workbench sso ticket")
 }
 
-func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audience string) (*WorkbenchUserContext, error) {
+func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audience string) (*WorkbenchSSOValidation, error) {
 	settings, err := s.currentSettings(ctx)
 	if err != nil {
 		return nil, err
@@ -188,7 +196,35 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 	if record.Audience != normalizedAudience {
 		return nil, infraerrors.Unauthorized("WORKBENCH_SSO_AUDIENCE_MISMATCH", "ticket audience mismatch")
 	}
-	return s.buildUserContext(ctx, record.UserID)
+	userContext, err := s.buildUserContext(ctx, record.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if s.controlTokens == nil {
+		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
+	}
+	authorization, err := s.controlTokens.Issue(ctx, record.UserID)
+	if err != nil {
+		return nil, err
+	}
+	return &WorkbenchSSOValidation{
+		WorkbenchUserContext: userContext,
+		Authorization:        authorization,
+	}, nil
+}
+
+func (s *WorkbenchSSOService) RefreshControlToken(ctx context.Context, refreshToken string) (*WorkbenchControlAuthorization, error) {
+	if s == nil || s.controlTokens == nil {
+		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
+	}
+	return s.controlTokens.Refresh(ctx, refreshToken)
+}
+
+func (s *WorkbenchSSOService) RevokeControlToken(ctx context.Context, refreshToken string) error {
+	if s == nil || s.controlTokens == nil {
+		return infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
+	}
+	return s.controlTokens.Revoke(ctx, refreshToken)
 }
 
 func (s *WorkbenchSSOService) InternalSecret() string {

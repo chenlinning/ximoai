@@ -29,6 +29,10 @@ type workbenchSSOValidateRequest struct {
 	Audience string `json:"audience" binding:"required"`
 }
 
+type workbenchControlTokenRequest struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}
+
 func NewWorkbenchSSOHandler(ssoService *service.WorkbenchSSOService) *WorkbenchSSOHandler {
 	return &WorkbenchSSOHandler{ssoService: ssoService}
 }
@@ -70,6 +74,39 @@ func (h *WorkbenchSSOHandler) ValidateTicket(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, userContext)
+}
+
+func (h *WorkbenchSSOHandler) RefreshControlToken(c *gin.Context) {
+	if !h.authorizeInternal(c) {
+		response.Unauthorized(c, "Invalid Workbench SSO internal secret")
+		return
+	}
+	var req workbenchControlTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request")
+		return
+	}
+	authorization, err := h.ssoService.RefreshControlToken(c.Request.Context(), req.RefreshToken)
+	if response.ErrorFrom(c, err) {
+		return
+	}
+	c.JSON(http.StatusOK, authorization)
+}
+
+func (h *WorkbenchSSOHandler) RevokeControlToken(c *gin.Context) {
+	if !h.authorizeInternal(c) {
+		response.Unauthorized(c, "Invalid Workbench SSO internal secret")
+		return
+	}
+	var req workbenchControlTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request")
+		return
+	}
+	if response.ErrorFrom(c, h.ssoService.RevokeControlToken(c.Request.Context(), req.RefreshToken)) {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (h *WorkbenchSSOHandler) authorizeInternal(c *gin.Context) bool {

@@ -53,10 +53,12 @@ const refreshTokenPrefix = "rt_"
 
 // JWTClaims JWT载荷数据
 type JWTClaims struct {
-	UserID       int64  `json:"user_id"`
-	Email        string `json:"email"`
-	Role         string `json:"role"`
-	TokenVersion int64  `json:"token_version"` // Used to invalidate tokens on password change
+	UserID       int64    `json:"user_id"`
+	Email        string   `json:"email"`
+	Role         string   `json:"role"`
+	TokenVersion int64    `json:"token_version"` // Used to invalidate tokens on password change
+	TokenUse     string   `json:"token_use,omitempty"`
+	Scopes       []string `json:"scopes,omitempty"`
 	// SessionID 会话 ID（与 refresh token family 对应），用于单会话撤销与 step-up 授权绑定。
 	SessionID string `json:"sid,omitempty"`
 	// BindingHash 会话指纹哈希（IP+UA），会话绑定开启时校验；空值表示旧 token（平滑升级）。
@@ -1273,6 +1275,9 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldTokenString string) (
 	claims, err := s.ValidateToken(oldTokenString)
 	if err != nil && !errors.Is(err, ErrTokenExpired) {
 		return "", err
+	}
+	if claims.TokenUse != "" {
+		return "", ErrInvalidToken
 	}
 
 	// 获取最新的用户信息

@@ -172,6 +172,10 @@ func validateJWTForAdmin(
 		AbortWithError(c, 401, "INVALID_TOKEN", "Invalid token")
 		return false
 	}
+	if claims.TokenUse != "" {
+		AbortWithError(c, 403, "INSUFFICIENT_SCOPE", "Token is not authorized for admin endpoints")
+		return false
+	}
 
 	// 从数据库获取用户
 	user, err := userService.GetByID(c.Request.Context(), claims.UserID)

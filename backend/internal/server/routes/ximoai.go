@@ -28,12 +28,6 @@ func registerXimoAIUserRoutes(authenticated *gin.RouterGroup, h *handler.Handler
 	}
 }
 
-func registerXimoAIWorkbenchCatalogRoutes(gateway *gin.RouterGroup, h *handler.Handlers) {
-	gateway.GET("/workbench/catalog/groups/available", h.APIKey.GetAvailableGroups)
-	gateway.GET("/workbench/catalog/platforms", h.Platform.ListPublic)
-	gateway.GET("/workbench/catalog/model-plaza", h.AvailableChannel.ModelPlaza)
-}
-
 type ximoAIGatewayContext struct {
 	bodyLimit       gin.HandlerFunc
 	clientRequestID gin.HandlerFunc

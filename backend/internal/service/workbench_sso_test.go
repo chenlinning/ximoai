@@ -122,18 +122,28 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 			InternalSecret:   "secret",
 		},
 	})
+	settingSvc.cfg.JWT.Secret = "test-jwt-secret-32bytes-long!!!"
+	user := &User{
+		ID:           123,
+		Email:        "alice@example.com",
+		Username:     "alice",
+		AvatarURL:    "https://cdn.example.com/alice.png",
+		Balance:      12.34,
+		Role:         RoleUser,
+		Status:       StatusActive,
+		TokenVersion: 3,
+	}
+	userGetter := workbenchUserGetterStub{user: user}
+	controlTokens := &WorkbenchControlTokenService{
+		authService: &AuthService{cfg: settingSvc.cfg},
+		userGetter:  userGetter,
+		grantStore:  newWorkbenchControlGrantStoreStub(),
+	}
 	svc := &WorkbenchSSOService{
 		cfg:            settingSvc.cfg,
 		settingService: settingSvc,
 		ticketStore:    ticketStore,
-		userGetter: workbenchUserGetterStub{user: &User{
-			ID:        123,
-			Email:     "alice@example.com",
-			Username:  "alice",
-			AvatarURL: "https://cdn.example.com/alice.png",
-			Balance:   12.34,
-			Role:      RoleUser,
-		}},
+		userGetter:     userGetter,
 		membershipGetter: workbenchMembershipGetterStub{summary: &MembershipSummary{
 			Level: &MembershipLevel{Code: "diamond"},
 			ManagedKeys: []MembershipManagedKey{
@@ -176,6 +186,7 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 				},
 			},
 		}},
+		controlTokens: controlTokens,
 	}
 	return svc, ticketStore
 }
@@ -226,6 +237,10 @@ func TestWorkbenchSSOService_ValidateTicketConsumesOnceAndReturnsContext(t *test
 	require.NotNil(t, userContext.Quota)
 	require.NotNil(t, userContext.FeatureFlags)
 	require.NotNil(t, userContext.Permissions)
+	require.NotNil(t, userContext.Authorization)
+	require.NotEmpty(t, userContext.Authorization.AccessToken)
+	require.NotEmpty(t, userContext.Authorization.RefreshToken)
+	require.Equal(t, WorkbenchControlAudience, userContext.Authorization.Audience)
 	payload, err := json.Marshal(userContext)
 	require.NoError(t, err)
 	require.NotContains(t, string(payload), "modelConfig")

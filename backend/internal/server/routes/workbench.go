@@ -14,7 +14,8 @@ func RegisterWorkbenchRoutes(
 	workbench := v1.Group("/workbench")
 	{
 		workbench.POST("/sso-ticket/validate", h.WorkbenchSSO.ValidateTicket)
-		workbench.POST("/model-access", h.WorkbenchModel.Get)
+		workbench.POST("/control-token/refresh", h.WorkbenchSSO.RefreshControlToken)
+		workbench.POST("/control-token/revoke", h.WorkbenchSSO.RevokeControlToken)
 	}
 
 	authenticated := v1.Group("/workbench")

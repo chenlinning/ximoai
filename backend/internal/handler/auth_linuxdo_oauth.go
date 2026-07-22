@@ -1206,6 +1206,9 @@ func (h *AuthHandler) resolveOAuthBindTargetUserID(c *gin.Context) (*int64, erro
 	if err != nil {
 		return nil, err
 	}
+	if claims.TokenUse != "" {
+		return nil, service.ErrInvalidToken
+	}
 	user, err := h.userService.GetByID(c.Request.Context(), claims.UserID)
 	if err != nil {
 		return nil, err

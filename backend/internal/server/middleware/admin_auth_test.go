@@ -13,6 +13,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,6 +121,37 @@ func TestAdminAuthJWTValidatesTokenVersion(t *testing.T) {
 		router.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("workbench_control_token_rejected", func(t *testing.T) {
+		now := time.Now()
+		claims := &service.JWTClaims{
+			UserID:       admin.ID,
+			Email:        admin.Email,
+			Role:         admin.Role,
+			TokenVersion: admin.TokenVersion,
+			SessionID:    "workbench-session",
+			TokenUse:     service.WorkbenchControlTokenUse,
+			Scopes:       []string{service.WorkbenchModelControlReadScope},
+			RegisteredClaims: jwt.RegisteredClaims{
+				Audience:  jwt.ClaimStrings{service.WorkbenchControlAudience},
+				Subject:   "1",
+				ID:        "workbench-token",
+				ExpiresAt: jwt.NewNumericDate(now.Add(time.Minute)),
+				IssuedAt:  jwt.NewNumericDate(now),
+				NotBefore: jwt.NewNumericDate(now),
+			},
+		}
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(cfg.JWT.Secret))
+		require.NoError(t, err)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/t", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+		require.Contains(t, w.Body.String(), "INSUFFICIENT_SCOPE")
 	})
 }
 

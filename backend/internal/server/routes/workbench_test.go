@@ -9,13 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRegisterWorkbenchRoutesKeepsModelAccessSeparateFromSSO(t *testing.T) {
+func TestRegisterWorkbenchRoutesUsesScopedControlTokenLifecycle(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	v1 := router.Group("/api/v1")
 	handlers := &handler.Handlers{
-		WorkbenchSSO:   handler.NewWorkbenchSSOHandler(nil),
-		WorkbenchModel: handler.NewWorkbenchModelAccessHandler(nil),
+		WorkbenchSSO: handler.NewWorkbenchSSOHandler(nil),
 	}
 	RegisterWorkbenchRoutes(v1, handlers, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }))
 
@@ -24,6 +23,7 @@ func TestRegisterWorkbenchRoutesKeepsModelAccessSeparateFromSSO(t *testing.T) {
 		routes[route.Path] = route.Method
 	}
 	require.Equal(t, "POST", routes["/api/v1/workbench/sso-ticket/validate"])
-	require.Equal(t, "POST", routes["/api/v1/workbench/model-access"])
-	require.NotContains(t, routes, "/api/v1/workbench/sso-ticket/validate/model-access")
+	require.Equal(t, "POST", routes["/api/v1/workbench/control-token/refresh"])
+	require.Equal(t, "POST", routes["/api/v1/workbench/control-token/revoke"])
+	require.NotContains(t, routes, "/api/v1/workbench/model-access")
 }

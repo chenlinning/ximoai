@@ -187,7 +187,6 @@ func ProvideHandlers(
 	availableChannelHandler *AvailableChannelHandler,
 	membershipHandler *MembershipHandler,
 	workbenchSSOHandler *WorkbenchSSOHandler,
-	workbenchModelHandler *WorkbenchModelAccessHandler,
 	platformHandler *admin.PlatformHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
@@ -214,7 +213,6 @@ func ProvideHandlers(
 		AvailableChannel: availableChannelHandler,
 		Membership:       membershipHandler,
 		WorkbenchSSO:     workbenchSSOHandler,
-		WorkbenchModel:   workbenchModelHandler,
 		Platform:         platformHandler,
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
@@ -241,7 +239,6 @@ var ProviderSet = wire.NewSet(
 	NewAvailableChannelHandler,
 	NewMembershipHandler,
 	NewWorkbenchSSOHandler,
-	NewWorkbenchModelAccessHandler,
 	NewAsyncImageHandler,
 	ProvideBatchImageHandler,
 

@@ -67,6 +67,10 @@ func jwtAuth(
 			AbortWithError(c, 401, "INVALID_TOKEN", "Invalid token")
 			return
 		}
+		if claims.TokenUse != "" && !isWorkbenchControlRequestAllowed(claims, c.Request.Method, c.Request.URL.Path) {
+			AbortWithError(c, 403, "INSUFFICIENT_SCOPE", "Token is not authorized for this endpoint")
+			return
+		}
 
 		// 从数据库获取最新的用户信息
 		user, err := userService.GetByID(c.Request.Context(), claims.UserID)
