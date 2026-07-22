@@ -128,7 +128,7 @@ func ProvideHTTPServer(cfg *config.Config, router *gin.Engine) *http.Server {
 		globalMaxSize = cfg.Gateway.MaxBodySize
 	}
 	if globalMaxSize > 0 {
-		httpHandler = http.MaxBytesHandler(httpHandler, globalMaxSize)
+		httpHandler = newXimoAIRequestBodyLimitHandler(httpHandler, globalMaxSize)
 		log.Printf("Global max request body size: %d bytes (%.2f MB)", globalMaxSize, float64(globalMaxSize)/(1<<20))
 	}
 

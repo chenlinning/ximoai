@@ -1,4 +1,5 @@
 import { apiClient } from '../client'
+import type { AxiosProgressEvent } from 'axios'
 
 export interface XimoDeskUpdateRelease {
   id?: string
@@ -54,10 +55,15 @@ export interface XimoDeskPackageUploadResponse {
   config: XimoDeskUpdateConfig
 }
 
-export async function uploadPackage(payload: FormData): Promise<XimoDeskPackageUploadResponse> {
+export interface XimoDeskPackageUploadOptions {
+  onProgress?: (event: AxiosProgressEvent) => void
+}
+
+export async function uploadPackage(payload: FormData, options: XimoDeskPackageUploadOptions = {}): Promise<XimoDeskPackageUploadResponse> {
   const { data } = await apiClient.post<XimoDeskPackageUploadResponse>('/admin/ximoapp/update/packages', payload, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000
+    timeout: 0,
+    onUploadProgress: options.onProgress
   })
   return data
 }

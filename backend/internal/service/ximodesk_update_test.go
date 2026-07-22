@@ -192,6 +192,40 @@ func TestXimoDeskPackageUploadStoresFileAndResolvesLocale(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
+func TestDeleteXimoAppUpdateAppRemovesDefaultAppAndPackages(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv(ximoAppPackageDirEnv, dir)
+	svc, _ := newXimoDeskTestSettingService()
+	ctx := context.Background()
+
+	release, _, err := svc.SaveXimoDeskPackageRelease(ctx, XimoDeskPackageUpload{
+		AppKey:       defaultXimoAppKeyXimoDesk,
+		Channel:      "stable",
+		OS:           "windows",
+		Arch:         "x86_64",
+		Locale:       "all",
+		Version:      "1.0.0",
+		OriginalName: "installer.msi",
+		Enabled:      true,
+		Reader:       strings.NewReader("package"),
+	})
+	require.NoError(t, err)
+	packagePath := filepath.Join(dir, release.FileName)
+	require.FileExists(t, packagePath)
+
+	cfg, err := svc.DeleteXimoAppUpdateApp(ctx, defaultXimoAppKeyXimoDesk)
+
+	require.NoError(t, err)
+	for _, app := range cfg.Apps {
+		require.NotEqual(t, defaultXimoAppKeyXimoDesk, app.Key)
+	}
+	for _, savedRelease := range cfg.Releases {
+		require.NotEqual(t, defaultXimoAppKeyXimoDesk, savedRelease.AppKey)
+	}
+	_, err = os.Stat(packagePath)
+	require.True(t, os.IsNotExist(err))
+}
+
 func TestXimoAppPackageUploadStoresMobileReleaseAndResolvesGenericEndpoint(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv(ximoAppPackageDirEnv, dir)

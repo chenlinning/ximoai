@@ -79,8 +79,15 @@ api.sub2api.com {
 	# =========================================================================
 	# 请求大小限制 (防止大文件攻击)
 	# =========================================================================
-	request_body {
+	@ximoapp_package_upload path /api/v1/admin/ximoapp/update/packages
+	@standard_request_body {
+		not path /api/v1/admin/ximoapp/update/packages
+	}
+	request_body @standard_request_body {
 		max_size 256MB
+	}
+	request_body @ximoapp_package_upload {
+		max_size 1GB
 	}
 
 	# =========================================================================

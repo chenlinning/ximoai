@@ -84,9 +84,6 @@
                     <input v-model="app.enabled" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
                     {{ t('ximoappUpdate.releaseEnabled', 'Enabled') }}
                   </label>
-                  <button type="button" class="btn btn-danger btn-sm" :disabled="deletingAppKey === normalizeAppKey(app.key)" @click="deleteApp(app)">
-                    {{ deletingAppKey === normalizeAppKey(app.key) ? t('common.deleting', 'Deleting') : t('common.delete', 'Delete') }}
-                  </button>
                 </div>
               </div>
             </header>
@@ -134,7 +131,16 @@
                 </div>
               </div>
 
-              <div class="mt-4 flex justify-end">
+              <div class="mt-4 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  class="btn btn-danger"
+                  data-testid="delete-app"
+                  :disabled="deletingAppKey === appDeleteKey(app)"
+                  @click="deleteApp(app)"
+                >
+                  {{ deletingAppKey === appDeleteKey(app) ? t('common.deleting', 'Deleting') : t('common.delete', 'Delete') }}
+                </button>
                 <button type="button" class="btn btn-primary" :disabled="saving" @click="saveConfig">
                   <Icon v-if="saving" name="refresh" size="sm" class="mr-2 animate-spin" />
                   {{ saving ? t('common.saving', 'Saving') : t('common.save', 'Save') }}
@@ -226,24 +232,49 @@
                 <textarea v-model.trim="uploadState(index, app).notes" class="input min-h-[82px] text-sm" placeholder="Fix connection stability and polish the interface" />
               </div>
 
-              <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <div>
-                  <label class="input-label">{{ t('ximoappUpdate.packageFile', 'Package File') }}</label>
+              <div class="mt-3">
+                <label class="input-label">{{ t('ximoappUpdate.packageFile', 'Package File') }}</label>
+                <div data-testid="package-upload-controls" class="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <input
                     type="file"
-                    class="input"
+                    class="input h-10 min-w-0"
                     accept=".msi,.zip,.exe,.dmg,.pkg,.apk,.aab,.ipa"
                     required
                     @change="onFileChange(index, app, $event)"
                   />
-                  <p class="input-hint">
-                    {{ uploadState(index, app).fileName || t('ximoappUpdate.packageFileHint', 'Supports .msi / .zip / .exe / .dmg / .pkg / .apk / .aab / .ipa.') }}
-                  </p>
+                  <button type="submit" class="btn btn-primary h-10 min-w-[132px]" :disabled="isUploading(index)">
+                    <Icon v-if="isUploading(index)" name="refresh" size="sm" class="animate-spin" />
+                    {{ uploadButtonLabel(index, app) }}
+                  </button>
                 </div>
-                <button type="submit" class="btn btn-primary min-w-[132px]" :disabled="isUploading(index)">
-                  <Icon v-if="isUploading(index)" name="refresh" size="sm" class="mr-2 animate-spin" />
-                  {{ isUploading(index) ? t('ximoappUpdate.uploading', 'Uploading') : t('ximoappUpdate.upload', 'Upload package') }}
-                </button>
+                <p class="input-hint">
+                  {{ uploadState(index, app).fileName || t('ximoappUpdate.packageFileHint', 'Supports .msi / .zip / .exe / .dmg / .pkg / .apk / .aab / .ipa.') }}
+                </p>
+                <div
+                  v-if="isUploading(index)"
+                  class="mt-3"
+                  role="progressbar"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  :aria-valuenow="uploadState(index, app).uploadProgress"
+                >
+                  <div class="mb-1.5 flex items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-300">
+                    <span>
+                      {{ uploadState(index, app).processing
+                        ? t('ximoappUpdate.processingPackage', 'Upload complete, processing package')
+                        : `${t('ximoappUpdate.uploading', 'Uploading')} ${uploadState(index, app).uploadProgress}%` }}
+                    </span>
+                    <span class="shrink-0 font-mono tabular-nums">
+                      {{ formatBytes(uploadState(index, app).uploadedBytes) }} / {{ formatBytes(uploadState(index, app).totalBytes) }}
+                    </span>
+                  </div>
+                  <div class="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700">
+                    <div
+                      class="h-full rounded-full bg-primary-500 transition-[width] duration-200"
+                      :style="{ width: `${uploadState(index, app).uploadProgress}%` }"
+                    />
+                  </div>
+                </div>
               </div>
             </form>
 
@@ -360,6 +391,10 @@ interface UploadState {
   enabled: boolean
   file: File | null
   fileName: string
+  uploadProgress: number
+  uploadedBytes: number
+  totalBytes: number
+  processing: boolean
 }
 
 const { t } = useI18n()
@@ -371,6 +406,7 @@ const uploadingKey = ref('')
 const deletingId = ref('')
 const deletingAppKey = ref('')
 const expandedReleaseKeys = ref(new Set<string>())
+const originalAppKeys = new WeakMap<XimoAppUpdateApp, string>()
 
 const form = reactive<XimoDeskUpdateConfig>({
   enabled: false,
@@ -440,7 +476,11 @@ function createUploadState(app?: XimoAppUpdateApp): UploadState {
     force: false,
     enabled: true,
     file: null,
-    fileName: ''
+    fileName: '',
+    uploadProgress: 0,
+    uploadedBytes: 0,
+    totalBytes: 0,
+    processing: false
   }
 }
 
@@ -454,6 +494,10 @@ function uploadState(index: number, app?: XimoAppUpdateApp): UploadState {
 
 function isUploading(index: number): boolean {
   return uploadingKey.value === appUploadKey(index)
+}
+
+function appDeleteKey(app: XimoAppUpdateApp): string {
+  return originalAppKeys.get(app) || normalizeAppKey(app.key)
 }
 
 function appReleases(appKey: string): XimoDeskUpdateRelease[] {
@@ -494,7 +538,11 @@ function applyConfig(config: XimoDeskUpdateConfig) {
   form.releases.splice(0, form.releases.length, ...((config.releases || []).map(normalizeRelease)))
   const keys = new Set(form.releases.map(releaseKey))
   expandedReleaseKeys.value = new Set([...expandedReleaseKeys.value].filter((key) => keys.has(key)))
+  for (const key of Object.keys(uploadForms)) {
+    delete uploadForms[key]
+  }
   form.apps.forEach((app, index) => {
+    originalAppKeys.set(app, normalizeAppKey(app.key))
     uploadState(index, app)
   })
 }
@@ -550,9 +598,23 @@ async function deleteApp(app: XimoAppUpdateApp) {
   if (!ok) {
     return
   }
-  deletingAppKey.value = appKey
+  const persistedKey = originalAppKeys.get(app)
+  if (!persistedKey) {
+    const apps = form.apps || (form.apps = [])
+    const index = apps.indexOf(app)
+    if (index >= 0) {
+      apps.splice(index, 1)
+    }
+    for (const key of Object.keys(uploadForms)) {
+      delete uploadForms[key]
+    }
+    apps.forEach((currentApp, index) => uploadState(index, currentApp))
+    appStore.showSuccess(t('ximoappUpdate.appDeleted', 'App deleted'))
+    return
+  }
+  deletingAppKey.value = persistedKey
   try {
-    const config = await adminAPI.ximodeskUpdate.deleteApp(appKey)
+    const config = await adminAPI.ximodeskUpdate.deleteApp(persistedKey)
     applyConfig(config)
     appStore.showSuccess(t('ximoappUpdate.appDeleted', 'App deleted'))
   } catch (error) {
@@ -606,6 +668,10 @@ async function uploadPackageForApp(app: XimoAppUpdateApp, index: number, event: 
     return
   }
   uploadingKey.value = appUploadKey(index)
+  state.uploadProgress = 0
+  state.uploadedBytes = 0
+  state.totalBytes = state.file.size
+  state.processing = false
   try {
     const payload = new FormData()
     payload.append('file', state.file)
@@ -622,13 +688,25 @@ async function uploadPackageForApp(app: XimoAppUpdateApp, index: number, event: 
     payload.append('force', String(state.force))
     payload.append('enabled', String(state.enabled))
 
-    const result = await adminAPI.ximodeskUpdate.uploadPackage(payload)
+    const result = await adminAPI.ximodeskUpdate.uploadPackage(payload, {
+      onProgress: (progressEvent) => {
+        const total = progressEvent.total || state.file?.size || 0
+        state.uploadedBytes = progressEvent.loaded
+        state.totalBytes = total
+        state.uploadProgress = total > 0 ? Math.min(100, Math.round((progressEvent.loaded / total) * 100)) : 0
+        state.processing = state.uploadProgress >= 100
+      }
+    })
     applyConfig(result.config)
     state.version = ''
     state.notes = ''
     state.force = false
     state.file = null
     state.fileName = ''
+    state.uploadProgress = 0
+    state.uploadedBytes = 0
+    state.totalBytes = 0
+    state.processing = false
     const input = (event.currentTarget as HTMLFormElement | null)?.querySelector<HTMLInputElement>('input[type="file"]')
     if (input) {
       input.value = ''
@@ -639,6 +717,17 @@ async function uploadPackageForApp(app: XimoAppUpdateApp, index: number, event: 
   } finally {
     uploadingKey.value = ''
   }
+}
+
+function uploadButtonLabel(index: number, app: XimoAppUpdateApp): string {
+  if (!isUploading(index)) {
+    return t('ximoappUpdate.upload', 'Upload package')
+  }
+  const state = uploadState(index, app)
+  if (state.processing) {
+    return t('ximoappUpdate.processing', 'Processing')
+  }
+  return `${t('ximoappUpdate.uploading', 'Uploading')} ${state.uploadProgress}%`
 }
 
 async function deleteRelease(release: XimoDeskUpdateRelease) {

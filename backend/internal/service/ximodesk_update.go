@@ -433,6 +433,9 @@ func normalizeXimoDeskUpdateConfig(cfg *XimoDeskUpdateConfig) {
 	if cfg == nil {
 		return
 	}
+	if cfg.Apps == nil {
+		cfg.Apps = defaultXimoAppUpdateApps()
+	}
 	cfg.Apps = normalizeXimoAppUpdateApps(cfg.Apps)
 	if cfg.Releases == nil {
 		cfg.Releases = []XimoDeskUpdateRelease{}
@@ -466,10 +469,6 @@ func normalizeXimoDeskUpdateConfig(cfg *XimoDeskUpdateConfig) {
 func normalizeXimoAppUpdateApps(apps []XimoAppUpdateApp) []XimoAppUpdateApp {
 	orderedKeys := []string{}
 	byKey := map[string]XimoAppUpdateApp{}
-	for _, app := range defaultXimoAppUpdateApps() {
-		orderedKeys = append(orderedKeys, app.Key)
-		byKey[app.Key] = app
-	}
 	for _, app := range apps {
 		app.Key = normalizeXimoAppKey(app.Key)
 		if app.Key == "" {

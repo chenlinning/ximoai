@@ -100,6 +100,7 @@ func newXimoDeskHandlerTestRouter(t *testing.T) *gin.Engine {
 	r.PUT("/api/v1/admin/ximoapp/update", h.AdminUpdate)
 	r.POST("/api/v1/admin/ximoapp/update/packages", h.AdminUploadPackage)
 	r.DELETE("/api/v1/admin/ximoapp/update/releases/:id", h.AdminDeleteRelease)
+	r.DELETE("/api/v1/admin/ximoapp/update/apps/:appKey", h.AdminDeleteApp)
 	r.GET("/api/v1/ximoapp/download-center", h.DownloadCenter)
 	return r
 }
@@ -209,6 +210,25 @@ func TestXimoDeskAdminUploadPackageAndDownload(t *testing.T) {
 	r.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "zip-payload", w.Body.String())
+}
+
+func TestXimoDeskAdminDeleteAppRemovesDefaultApp(t *testing.T) {
+	r := newXimoDeskHandlerTestRouter(t)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/ximoapp/update/apps/ximodesk", nil)
+
+	r.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp struct {
+		Code int                          `json:"code"`
+		Data service.XimoDeskUpdateConfig `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	for _, app := range resp.Data.Apps {
+		require.NotEqual(t, "ximodesk", app.Key)
+	}
 }
 
 func TestXimoAppLatestMobileReturnsStandardMetadata(t *testing.T) {

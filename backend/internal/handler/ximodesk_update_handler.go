@@ -14,6 +14,7 @@ import (
 
 const ximoDeskUpdateRequestBodyLimit = 16 << 10
 const ximoDeskPackageUploadBodyLimit = 1024 << 20
+const ximoDeskPackageUploadMemoryLimit = 32 << 20
 
 type XimoDeskUpdateHandler struct {
 	settingService *service.SettingService
@@ -85,14 +86,17 @@ func (h *XimoDeskUpdateHandler) AdminUploadPackage(c *gin.Context) {
 		return
 	}
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, ximoDeskPackageUploadBodyLimit)
-	if err := c.Request.ParseMultipartForm(ximoDeskPackageUploadBodyLimit); err != nil {
+	if err := c.Request.ParseMultipartForm(ximoDeskPackageUploadMemoryLimit); err != nil {
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
-			response.BadRequest(c, "Package file is too large")
+			response.Error(c, http.StatusRequestEntityTooLarge, "Package file is too large (max 1 GB)")
 			return
 		}
 		response.BadRequest(c, "Invalid multipart package upload: "+err.Error())
 		return
+	}
+	if c.Request.MultipartForm != nil {
+		defer func() { _ = c.Request.MultipartForm.RemoveAll() }()
 	}
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
