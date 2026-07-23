@@ -129,6 +129,9 @@ func wrapUsageRecordTaskContext(parent context.Context, task service.UsageRecord
 }
 
 func openAICompatibleRequestPlatform(apiKey *service.APIKey) string {
+	if platform := ximoAICustomOpenAIRequestPlatform(apiKey); platform != "" {
+		return platform
+	}
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.Platform == service.PlatformGrok {
 		return service.PlatformGrok
 	}
