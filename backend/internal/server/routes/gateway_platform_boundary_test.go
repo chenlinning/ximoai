@@ -77,7 +77,7 @@ func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t
 			c.Set(string(servermiddleware.ContextKeyUser), servermiddleware.AuthSubject{UserID: 1, Concurrency: 1})
 			c.Next()
 		}),
-		nil, nil, nil, nil,
+		nil, nil, nil, nil, nil,
 		cfg,
 	)
 

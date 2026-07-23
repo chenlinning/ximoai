@@ -26,6 +26,7 @@ const (
 	PlatformGrokVideo   = "grok-video"
 	PlatformOpenAIAudio = "openai-audio"
 	PlatformKlingAudio  = "kling_audio"
+	PlatformComposite   = "composite"
 )
 
 // Account type constants

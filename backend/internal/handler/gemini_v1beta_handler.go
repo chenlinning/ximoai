@@ -42,8 +42,8 @@ func (h *GatewayHandler) GeminiV1BetaListModels(c *gin.Context) {
 	// 检查平台：优先使用强制平台（/antigravity 路由），否则要求 gemini 分组
 	forcePlatform, hasForcePlatform := middleware.GetForcePlatformFromContext(c)
 	targetPlatform := forcePlatform
-	if !hasForcePlatform && apiKey.Group != nil {
-		targetPlatform = apiKey.Group.Platform
+	if !hasForcePlatform {
+		targetPlatform = effectiveAPIKeyPlatform(c, apiKey)
 	}
 	if !hasForcePlatform && !h.isGeminiProtocolPlatform(c.Request.Context(), targetPlatform) {
 		googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
@@ -96,8 +96,8 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 	// 检查平台：优先使用强制平台（/antigravity 路由），否则要求 gemini 分组
 	forcePlatform, hasForcePlatform := middleware.GetForcePlatformFromContext(c)
 	targetPlatform := forcePlatform
-	if !hasForcePlatform && apiKey.Group != nil {
-		targetPlatform = apiKey.Group.Platform
+	if !hasForcePlatform {
+		targetPlatform = effectiveAPIKeyPlatform(c, apiKey)
 	}
 	if !hasForcePlatform && !h.isGeminiProtocolPlatform(c.Request.Context(), targetPlatform) {
 		googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
@@ -108,6 +108,9 @@ func (h *GatewayHandler) GeminiV1BetaGetModel(c *gin.Context) {
 	if modelName == "" {
 		googleError(c, http.StatusBadRequest, "Missing model in URL")
 		return
+	}
+	if resolvedModel, ok := service.ResolvedUpstreamModelFromContext(c.Request.Context()); ok && strings.TrimSpace(resolvedModel) != "" {
+		modelName = strings.TrimSpace(resolvedModel)
 	}
 
 	// 强制 antigravity 模式：返回 antigravity 模型信息
@@ -169,10 +172,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 
 	// 检查平台：优先使用强制平台（/antigravity 路由，中间件已设置 request.Context），否则要求 gemini 分组
 	if !middleware.HasForcePlatform(c) {
-		groupPlatform := ""
-		if apiKey.Group != nil {
-			groupPlatform = apiKey.Group.Platform
-		}
+		groupPlatform := effectiveAPIKeyPlatform(c, apiKey)
 		if !h.isGeminiProtocolPlatform(c.Request.Context(), groupPlatform) {
 			googleError(c, http.StatusBadRequest, "API key group platform is not gemini-compatible")
 			return
@@ -183,6 +183,9 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 	if err != nil {
 		googleError(c, http.StatusNotFound, err.Error())
 		return
+	}
+	if resolvedModel, ok := service.ResolvedUpstreamModelFromContext(c.Request.Context()); ok && strings.TrimSpace(resolvedModel) != "" {
+		modelName = strings.TrimSpace(resolvedModel)
 	}
 
 	stream := action == "streamGenerateContent"
@@ -561,7 +564,7 @@ func (h *GatewayHandler) GeminiV1BetaModels(c *gin.Context) {
 				LongContextMultiplier: 2.0,    // 超出部分双倍计费
 				ForceCacheBilling:     forceCacheBilling,
 				APIKeyService:         h.apiKeyService,
-				ChannelUsageFields:    channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
+				ChannelUsageFields:    clientRequestedUsageFields(c, channelMapping, reqModel, result.UpstreamModel),
 			}); err != nil {
 				logger.L().With(
 					zap.String("component", "handler.gemini_v1beta.models"),

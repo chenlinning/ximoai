@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -26,7 +27,7 @@ func TestXimoAIOpenAICompatibleRequestPlatformPreservesCustomGroup(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, openAICompatibleRequestPlatform(tt.apiKey))
+			require.Equal(t, tt.expected, openAICompatibleRequestPlatform(context.Background(), tt.apiKey))
 		})
 	}
 }
