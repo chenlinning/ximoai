@@ -447,7 +447,9 @@ const docUrl = computed(() => sanitizeUrl(appStore.cachedPublicSettings?.doc_url
 const homeContent = computed(() => appStore.cachedPublicSettings?.home_content || '')
 const workbenchSSOEnabled = computed(() => appStore.cachedPublicSettings?.workbench_sso_enabled === true)
 const workbenchBaseUrl = computed(() => appStore.cachedPublicSettings?.workbench_base_url || '')
-const shouldUseWorkbenchHome = computed(() => workbenchSSOEnabled.value && isAuthenticated.value)
+const shouldUseWorkbenchHome = computed(() =>
+  !homeContent.value.trim() && workbenchSSOEnabled.value && isAuthenticated.value
+)
 const workbenchEntryUrl = ref('')
 const workbenchLoading = ref(false)
 const workbenchError = ref('')

@@ -153,6 +153,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useAppStore, useAuthStore } from '@/stores'
 import { apiClient } from '@/api/client'
 import { buildApiUrl } from '@/api/url'
+import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 import {
   exchangePendingOAuthCompletion,
   persistOAuthTokenContext,
@@ -180,7 +181,7 @@ const confirmPassword = ref('')
 const invitationCode = ref('')
 const registrationError = ref('')
 const pendingProvider = ref<'github' | 'google'>('github')
-const redirectTo = ref('/dashboard')
+const redirectTo = ref(DEFAULT_POST_AUTH_PATH)
 const invalidCallback = ref(false)
 const EMAIL_OAUTH_PENDING_PROVIDER_KEY = 'email_oauth_pending_provider'
 
@@ -240,11 +241,11 @@ function readTokenResponse(params: URLSearchParams): OAuthTokenResponse | null {
 }
 
 function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return '/dashboard'
-  if (!path.startsWith('/')) return '/dashboard'
-  if (path.startsWith('//')) return '/dashboard'
-  if (path.includes('://')) return '/dashboard'
-  if (path.includes('\n') || path.includes('\r')) return '/dashboard'
+  if (!path) return DEFAULT_POST_AUTH_PATH
+  if (!path.startsWith('/')) return DEFAULT_POST_AUTH_PATH
+  if (path.startsWith('//')) return DEFAULT_POST_AUTH_PATH
+  if (path.includes('://')) return DEFAULT_POST_AUTH_PATH
+  if (path.includes('\n') || path.includes('\r')) return DEFAULT_POST_AUTH_PATH
   return path
 }
 
@@ -290,7 +291,7 @@ async function resumePendingEmailOAuth() {
   isProcessing.value = true
   try {
     const completion = await exchangePendingOAuthCompletion() as EmailOAuthPendingCompletion
-    const completionRedirect = completion.redirect || '/dashboard'
+    const completionRedirect = completion.redirect || DEFAULT_POST_AUTH_PATH
     if (hasOAuthTokenResponse(completion)) {
       await finalizeTokenResponse(completion, completionRedirect)
       return
@@ -388,7 +389,7 @@ onMounted(async () => {
 
   isProcessing.value = true
   try {
-    await finalizeTokenResponse(tokenResponse, params.get('redirect') || '/dashboard')
+    await finalizeTokenResponse(tokenResponse, params.get('redirect') || DEFAULT_POST_AUTH_PATH)
   } catch (error: unknown) {
     const message = (error as { message?: string })?.message || t('auth.loginFailed')
     appStore.showError(message)

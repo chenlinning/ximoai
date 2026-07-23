@@ -453,6 +453,6 @@ describe('EmailVerifyView', () => {
       invitation_code: 'INVITE',
     })
     expect(apiClientPostMock).not.toHaveBeenCalled()
-    expect(pushMock).toHaveBeenCalledWith('/dashboard')
+    expect(pushMock).toHaveBeenCalledWith('/home')
   })
 })

@@ -704,6 +704,13 @@ func (s *SettingService) GetFrameSrcOrigins(ctx context.Context) ([]string, erro
 	for _, item := range parseCustomMenuItemURLs(settings.CustomMenuItems) {
 		addOrigin(item)
 	}
+	homeTabs, err := s.GetXimoAIHomeTabs(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, origin := range XimoAIHomeTabFrameOrigins(homeTabs) {
+		addOrigin(origin)
+	}
 
 	return origins, nil
 }

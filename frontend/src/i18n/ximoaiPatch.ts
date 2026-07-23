@@ -1,6 +1,30 @@
 type MessageTree = Record<string, any>
 
 const zhPatch: MessageTree = {
+  ximoaiHome: {
+    entry: '\u8fd4\u56de\u9996\u9875',
+    tabs: '\u9996\u9875\u5bfc\u822a',
+    console: '\u63a7\u5236\u53f0',
+    theme: '\u5207\u6362\u4e3b\u9898',
+    loadFailed: '\u9875\u9762\u52a0\u8f7d\u5931\u8d25',
+    settingsTitle: '\u9996\u9875\u6807\u7b7e',
+    settingsHint: '\u7ba1\u7406\u9996\u9875\u5165\u53e3\u5361\u7247\u3001\u9876\u90e8\u6807\u7b7e\u548c\u5d4c\u5165\u7f51\u5740\u3002',
+    addTab: '\u65b0\u589e\u6807\u7b7e',
+    emptyTabs: '\u6682\u65e0\u9996\u9875\u6807\u7b7e\u3002',
+    label: '\u6807\u7b7e\u540d\u79f0',
+    url: '\u9875\u9762\u7f51\u5740',
+    cover: '\u5165\u53e3\u5c01\u9762',
+    uploadCover: '\u4e0a\u4f20\u5c01\u9762',
+    removeCover: '\u5220\u9664\u5c01\u9762',
+    coverHint: '\u7528\u4e8e\u9996\u9875\u5165\u53e3\u5361\u7247\uff0c\u6700\u5927 400 KB\u3002',
+    moveUp: '\u4e0a\u79fb',
+    moveDown: '\u4e0b\u79fb',
+    retry: '\u91cd\u8bd5',
+    workbenchSSO: 'Workbench SSO',
+    loadSettingsFailed: '\u9996\u9875\u6807\u7b7e\u52a0\u8f7d\u5931\u8d25',
+    saveFailed: '\u9996\u9875\u6807\u7b7e\u4fdd\u5b58\u5931\u8d25',
+    saved: '\u9996\u9875\u6807\u7b7e\u5df2\u4fdd\u5b58'
+  },
   nav: {
     modelPlaza: '模型广场',
     membership: '会员中心',
@@ -369,6 +393,30 @@ const zhPatch: MessageTree = {
 }
 
 const enPatch: MessageTree = {
+  ximoaiHome: {
+    entry: 'Back to home',
+    tabs: 'Home navigation',
+    console: 'Console',
+    theme: 'Toggle theme',
+    loadFailed: 'Page failed to load',
+    settingsTitle: 'Home tabs',
+    settingsHint: 'Manage home entry cards, header tabs, and embedded page URLs.',
+    addTab: 'Add tab',
+    emptyTabs: 'No home tabs configured.',
+    label: 'Tab label',
+    url: 'Page URL',
+    cover: 'Entry cover',
+    uploadCover: 'Upload cover',
+    removeCover: 'Remove cover',
+    coverHint: 'Used by the home entry card. Maximum size: 400 KB.',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    retry: 'Retry',
+    workbenchSSO: 'Workbench SSO',
+    loadSettingsFailed: 'Failed to load home tabs',
+    saveFailed: 'Failed to save home tabs',
+    saved: 'Home tabs saved'
+  },
   nav: {
     modelPlaza: 'Model Plaza',
     membership: 'Membership',

@@ -25,6 +25,11 @@ export { platformsAPI } from './platforms'
 export { membershipAPI } from './membership'
 export { ximoAppAPI } from './ximoapp'
 export { workbenchAPI, type WorkbenchSSOTicketResponse } from './workbench'
+export {
+  ximoaiHomeAPI,
+  type XimoAIHomeTab,
+  type XimoAIHomeTabInput
+} from './ximoaiHome'
 
 // Admin APIs
 export { adminAPI } from './admin'

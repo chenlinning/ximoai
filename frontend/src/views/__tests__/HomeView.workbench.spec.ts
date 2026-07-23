@@ -35,7 +35,7 @@ vi.mock('@/api/auth', () => ({
   getPublicSettings: vi.fn()
 }))
 
-function seedPublicSettings(enabled = true) {
+function seedPublicSettings(enabled = true, homeContent = '') {
   const appStore = useAppStore()
   appStore.cachedPublicSettings = {
     registration_enabled: true,
@@ -53,7 +53,7 @@ function seedPublicSettings(enabled = true) {
     api_base_url: '',
     contact_info: '',
     doc_url: '',
-    home_content: 'https://custom.example',
+    home_content: homeContent,
     hide_ccs_import_button: false,
     workbench_sso_enabled: enabled,
     workbench_base_url: 'http://127.0.0.1:4173',
@@ -140,6 +140,18 @@ describe('HomeView Workbench SSO', () => {
     await flushPromises()
 
     expect(createSSOTicket).not.toHaveBeenCalled()
+  })
+
+  it('keeps configured home content ahead of Workbench SSO', async () => {
+    seedPublicSettings(true, 'https://custom.example')
+    localStorage.setItem('auth_token', 'main-site-token')
+    localStorage.setItem('auth_user', JSON.stringify({ id: 1, email: 'user@example.com', role: 'user' }))
+
+    const wrapper = mountHome()
+    await flushPromises()
+
+    expect(createSSOTicket).not.toHaveBeenCalled()
+    expect(wrapper.get('iframe').attributes('src')).toBe('https://custom.example')
   })
 
   it('shows retry state when ticket request fails', async () => {

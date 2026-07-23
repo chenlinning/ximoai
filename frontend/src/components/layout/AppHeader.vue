@@ -1,8 +1,11 @@
 <template>
-  <header class="glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50">
-    <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
+  <header :class="headerClass">
+    <div
+      class="flex h-16 items-center gap-2 px-2 sm:px-4 md:px-6"
+      :class="props.variant === 'floating' ? 'justify-end' : 'justify-between'"
+    >
       <!-- Left: Mobile Menu Toggle + Page Title -->
-      <div class="flex shrink-0 items-center gap-2 sm:gap-4">
+      <div v-if="props.variant === 'default'" class="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
@@ -20,9 +23,15 @@
           </p>
         </div>
       </div>
+      <div v-else-if="props.variant === 'workspace'" class="flex min-w-0 flex-1 items-center">
+        <slot name="left" />
+      </div>
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
-      <div class="flex min-w-0 items-center gap-1 sm:gap-3">
+      <div
+        class="flex min-w-0 shrink-0 items-center gap-1 sm:gap-3"
+        :class="{ 'pointer-events-auto': props.variant === 'floating' }"
+      >
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
@@ -40,6 +49,17 @@
 
         <!-- Language Switcher -->
         <LocaleSwitcher />
+
+        <button
+          v-if="props.showThemeToggle"
+          type="button"
+          class="btn-ghost btn-icon"
+          :title="t('ximoaiHome.theme')"
+          :aria-label="t('ximoaiHome.theme')"
+          @click="toggleTheme"
+        >
+          <Icon :name="isDark ? 'sun' : 'moon'" size="sm" />
+        </button>
 
         <!-- Subscription Progress (for users with active subscriptions) -->
         <SubscriptionProgressMini v-if="user" />
@@ -273,6 +293,16 @@
             </div>
           </transition>
         </div>
+
+        <router-link
+          v-if="props.showConsoleButton"
+          :to="consolePath"
+          class="btn btn-primary btn-sm shrink-0"
+          :title="t('ximoaiHome.console')"
+        >
+          <Icon name="chart" size="sm" />
+          <span class="hidden xl:inline">{{ t('ximoaiHome.console') }}</span>
+        </router-link>
       </div>
     </div>
   </header>
@@ -302,6 +332,16 @@ import {
 } from '@/utils/membershipStyle'
 import { sanitizeUrl } from '@/utils/url'
 
+const props = withDefaults(defineProps<{
+  variant?: 'default' | 'floating' | 'workspace'
+  showThemeToggle?: boolean
+  showConsoleButton?: boolean
+}>(), {
+  variant: 'default',
+  showThemeToggle: false,
+  showConsoleButton: false
+})
+
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
@@ -314,6 +354,8 @@ const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
 let stopMembershipUpdatedListener: (() => void) | null = null
+let themeObserver: MutationObserver | null = null
+const isDark = ref(document.documentElement.classList.contains('dark'))
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
@@ -335,6 +377,10 @@ const balanceAvailableText = computed(() => t('common.availableBalance') === 'co
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
 const balanceTotalText = computed(() => t('common.totalBalance') === 'common.totalBalance' ? '总余额' : t('common.totalBalance'))
 const balanceFrozenLabel = computed(() => `${balanceFrozenText.value} ${formatHeaderMoney(frozenBalance.value)}`)
+const consolePath = computed(() => authStore.isAdmin ? '/admin/dashboard' : '/dashboard')
+const headerClass = computed(() => props.variant === 'floating'
+  ? 'pointer-events-none fixed inset-x-0 top-0 z-40'
+  : 'glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50')
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -393,6 +439,13 @@ function toggleMobileSidebar() {
   appStore.toggleMobileSidebar()
 }
 
+function toggleTheme() {
+  const next = !document.documentElement.classList.contains('dark')
+  document.documentElement.classList.toggle('dark', next)
+  localStorage.setItem('theme', next ? 'dark' : 'light')
+  isDark.value = next
+}
+
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
 }
@@ -442,6 +495,12 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  if (props.showThemeToggle) {
+    themeObserver = new MutationObserver(() => {
+      isDark.value = document.documentElement.classList.contains('dark')
+    })
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  }
   stopMembershipUpdatedListener = onMembershipUpdated(loadMembershipSummary)
   loadMembershipSummary()
 })
@@ -452,6 +511,8 @@ watch(() => user.value?.id, () => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  themeObserver?.disconnect()
+  themeObserver = null
   stopMembershipUpdatedListener?.()
   stopMembershipUpdatedListener = null
 })

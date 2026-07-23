@@ -217,6 +217,7 @@ func RegisterAuthRoutes(
 	settings := v1.Group("/settings")
 	{
 		settings.GET("/public", h.Setting.GetPublicSettings)
+		settings.GET("/ximoai-home-tabs", h.Setting.GetXimoAIHomeTabs)
 		settings.GET("/email-unsubscribe", h.Setting.UnsubscribeNotificationEmail)
 	}
 

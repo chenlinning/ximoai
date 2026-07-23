@@ -37,6 +37,7 @@ import {
   type PendingOAuthExchangeResponse
 } from '@/api/auth'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
+import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 
 const route = useRoute()
 const router = useRouter()
@@ -51,11 +52,11 @@ const accountActionError = ref('')
 const initialEmail = (route.query.email as string | undefined) || ''
 
 function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return '/dashboard'
-  if (!path.startsWith('/')) return '/dashboard'
-  if (path.startsWith('//')) return '/dashboard'
-  if (path.includes('://')) return '/dashboard'
-  if (path.includes('\n') || path.includes('\r')) return '/dashboard'
+  if (!path) return DEFAULT_POST_AUTH_PATH
+  if (!path.startsWith('/')) return DEFAULT_POST_AUTH_PATH
+  if (path.startsWith('//')) return DEFAULT_POST_AUTH_PATH
+  if (path.includes('://')) return DEFAULT_POST_AUTH_PATH
+  if (path.includes('\n') || path.includes('\r')) return DEFAULT_POST_AUTH_PATH
   return path
 }
 
