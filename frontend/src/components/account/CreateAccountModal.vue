@@ -1086,7 +1086,7 @@
         </div>
 
         <div
-          v-if="form.platform === 'openai'"
+          v-if="hasOpenAIAPIKeySettings"
           class="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-dark-600"
         >
           <div>
@@ -1469,7 +1469,7 @@
 
         <!-- Header Override Section (anthropic/openai apikey only) -->
         <div
-          v-if="isHeaderOverrideCapable(form.platform, 'apikey')"
+          v-if="isHeaderOverrideCapable(form.platform, 'apikey', selectedProtocol, selectedPlatform?.builtin)"
           class="border-t border-gray-200 pt-4 dark:border-dark-600"
         >
           <div class="mb-3 flex items-center justify-between">
@@ -2702,7 +2702,7 @@
 
       <!-- OpenAI 自动透传开关（OAuth/API Key） -->
       <div
-        v-if="isOfficialOpenAI"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -2732,7 +2732,7 @@
 
       <!-- OpenAI WS Mode 三态（off/ctx_pool/passthrough） -->
       <div
-        v-if="isOfficialOpenAI && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -2821,7 +2821,7 @@
 
       <!-- OpenAI OAuth Codex 官方客户端限制开关 -->
       <div
-        v-if="isOfficialOpenAI && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -2909,7 +2909,7 @@
 
       <!-- OpenAI Compact 能力配置 -->
       <div
-        v-if="isOfficialOpenAI && (accountCategory === 'oauth-based' || accountCategory === 'apikey')"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="flex items-center justify-between">
@@ -2948,7 +2948,7 @@
 
       <!-- OpenAI APIKey Responses API support mode -->
       <div
-        v-if="isOfficialOpenAI && accountCategory === 'apikey'"
+        v-if="hasOpenAIAPIKeySettings"
         class="space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -3504,6 +3504,7 @@ import {
   validateHeaderOverrideRows,
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
+import { isCustomOpenAICompatiblePlatform } from '@/components/account/ximoaiOpenAIPlatform'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { VERTEX_LOCATION_OPTIONS } from '@/constants/account'
@@ -4046,13 +4047,13 @@ const openAIWSModeOptions = computed(() => [
 
 const openaiResponsesWebSocketV2Mode = computed({
   get: () => {
-    if (isOfficialOpenAI.value && accountCategory.value === 'apikey') {
+    if (hasOpenAIAPIKeySettings.value) {
       return openaiAPIKeyResponsesWebSocketV2Mode.value
     }
     return openaiOAuthResponsesWebSocketV2Mode.value
   },
   set: (mode: OpenAIWSMode) => {
-    if (isOfficialOpenAI.value && accountCategory.value === 'apikey') {
+    if (hasOpenAIAPIKeySettings.value) {
       openaiAPIKeyResponsesWebSocketV2Mode.value = mode
       return
     }
@@ -4065,7 +4066,7 @@ const openAIWSModeConcurrencyHintKey = computed(() =>
 )
 
 const isOpenAIModelRestrictionDisabled = computed(() =>
-  isOfficialOpenAI.value && openaiPassthroughEnabled.value
+  hasOpenAIProtocolSettings.value && openaiPassthroughEnabled.value
 )
 
 const mixedChannelWarningMessageText = computed(() => {
@@ -4145,6 +4146,18 @@ const isOfficialOpenAI = computed(() =>
   selectedPlatform.value
     ? selectedPlatform.value.slug === 'openai' && selectedPlatform.value.protocol === 'openai'
     : form.platform === 'openai'
+)
+
+const isCustomOpenAIAPIKeyPlatform = computed(() =>
+  isCustomOpenAICompatiblePlatform(selectedPlatform.value)
+)
+
+const hasOpenAIProtocolSettings = computed(() =>
+  isOfficialOpenAI.value || isCustomOpenAIAPIKeyPlatform.value
+)
+
+const hasOpenAIAPIKeySettings = computed(() =>
+  accountCategory.value === 'apikey' && hasOpenAIProtocolSettings.value
 )
 
 const selectedProtocol = computed(() =>
@@ -4334,14 +4347,6 @@ watch(
     // Reset base URL based on platform
     apiKeyBaseUrl.value = apiKeyBaseUrlDefault.value
     clearPreviewSyncedUpstreamModels()
-    apiKeyBaseUrl.value =
-      (newPlatform === 'openai')
-        ? 'https://api.openai.com'
-        : newPlatform === 'gemini'
-          ? 'https://generativelanguage.googleapis.com'
-          : newPlatform === 'grok'
-            ? 'https://api.x.ai/v1'
-            : 'https://api.anthropic.com'
     // Clear model-related settings
     allowedModels.value = []
     modelMappings.value = []
@@ -4394,7 +4399,7 @@ watch(
     if (newPlatform !== 'anthropic' && newPlatform !== 'antigravity') {
       interceptWarmupRequests.value = false
     }
-    if (!isOfficialOpenAI.value) {
+    if (!hasOpenAIProtocolSettings.value) {
       openaiPassthroughEnabled.value = false
       openAIEndpointCapabilities.value = ['chat_completions', 'embeddings']
       openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
@@ -4739,7 +4744,6 @@ const submitCreateAccount = async (payload: CreateAccountRequest) => {
   try {
     const account = await adminAPI.accounts.create(withAntigravityConfirmFlag(payload))
     if (
-      payload.platform === 'openai' &&
       payload.type === 'apikey' &&
       payload.upstream_billing_probe_enabled === true
     ) {
@@ -4885,7 +4889,7 @@ const handleClose = () => {
 }
 
 const buildOpenAIExtra = (base?: Record<string, unknown>): Record<string, unknown> | undefined => {
-  if (!isOfficialOpenAI.value) {
+  if (!hasOpenAIProtocolSettings.value) {
     return base
   }
 
@@ -5237,7 +5241,7 @@ const handleSubmit = async () => {
       credentials.model_mapping = modelMapping
     }
   }
-  if (isOfficialOpenAI.value) {
+  if (hasOpenAIAPIKeySettings.value) {
     applyOpenAIEndpointCapabilities(credentials)
     const compactModelMapping = buildOpenAICompactModelMapping()
     if (compactModelMapping) {
@@ -5262,7 +5266,7 @@ const handleSubmit = async () => {
   }
 
   // Add header override if enabled (anthropic/openai/grok apikey)
-  if (isHeaderOverrideCapable(form.platform, 'apikey')) {
+  if (isHeaderOverrideCapable(form.platform, 'apikey', selectedProtocol.value, selectedPlatform.value?.builtin)) {
     if (headerOverrideEnabled.value) {
       const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
       if (headerError) {
@@ -5286,7 +5290,7 @@ const handleSubmit = async () => {
     group_ids: form.group_ids,
     extra,
     upstream_billing_probe_enabled:
-      form.platform === 'openai' ? upstreamBillingAutoProbeEnabled.value : undefined,
+      hasOpenAIAPIKeySettings.value ? upstreamBillingAutoProbeEnabled.value : undefined,
     auto_pause_on_expired: autoPauseOnExpired.value
   })
 }

@@ -116,6 +116,12 @@ describe('isHeaderOverrideCapable', () => {
     expect(isHeaderOverrideCapable('antigravity', 'apikey')).toBe(false)
     expect(isHeaderOverrideCapable('', 'apikey')).toBe(false)
   })
+
+  it('supports custom OpenAI-compatible API key platforms without enabling built-in specialized platforms', () => {
+    expect(isHeaderOverrideCapable('acme-openai', 'apikey', 'openai_compatible', false)).toBe(true)
+    expect(isHeaderOverrideCapable('acme-openai', 'oauth', 'openai_compatible', false)).toBe(false)
+    expect(isHeaderOverrideCapable('grok-video', 'apikey', 'openai_compatible', true)).toBe(false)
+  })
 })
 
 describe('parseHeaderOverridesJson', () => {

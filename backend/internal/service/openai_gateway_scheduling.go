@@ -247,7 +247,7 @@ func openAICompactSupportTier(account *Account) int {
 	if account.IsGrok() {
 		return 2
 	}
-	if !account.IsOpenAI() {
+	if !account.IsOpenAI() && !account.UsesOpenAIAPIKeyProtocol() {
 		return 0
 	}
 	supported, known := account.OpenAICompactSupportKnown()
@@ -261,7 +261,7 @@ func openAICompactSupportTier(account *Account) int {
 }
 
 func openAICompactRequiredForAccount(account *Account, requireCompact bool) bool {
-	return requireCompact && account != nil && account.IsOpenAICompatible()
+	return requireCompact && account != nil && (account.IsOpenAICompatible() || account.UsesOpenAIAPIKeyProtocol())
 }
 
 // isOpenAICompatibleAccountEligibleForRequest 判断 OpenAI 兼容账号是否满足本次请求的调度条件。
@@ -274,7 +274,7 @@ func isOpenAICompatibleAccountEligibleForRequest(ctx context.Context, account *A
 	if account == nil || !accountMatchesPlatform(account, platform) || (!account.IsOpenAICompatible() && !account.IsOpenAICompatibleCustomAPIKey()) || !account.IsSchedulableForModelWithContext(ctx, requestedModel) {
 		return false
 	}
-	if account.IsOpenAI() {
+	if account.IsOpenAI() || account.UsesOpenAIAPIKeyProtocol() {
 		if paused, reason := shouldAutoPauseOpenAIAccountByQuota(ctx, account); paused {
 			// Debug level: this fires per-candidate on the scheduling hot path, so Info
 			// would amplify into log spam once several accounts cross the threshold.

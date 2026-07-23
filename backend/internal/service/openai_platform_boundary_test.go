@@ -10,7 +10,7 @@ import (
 func TestOpenAICompactRequiredForAccountPreservesBuiltinBoundary(t *testing.T) {
 	require.True(t, openAICompactRequiredForAccount(&Account{Platform: PlatformOpenAI}, true))
 	require.True(t, openAICompactRequiredForAccount(&Account{Platform: PlatformGrok}, true))
-	require.False(t, openAICompactRequiredForAccount(&Account{
+	require.True(t, openAICompactRequiredForAccount(&Account{
 		Platform: "acme-openai",
 		Type:     AccountTypeAPIKey,
 		Credentials: map[string]any{

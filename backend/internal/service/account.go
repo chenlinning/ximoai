@@ -833,7 +833,7 @@ func (a *Account) ResolveMappedModel(requestedModel string) (mappedModel string,
 // GetOpenAICompactMode returns the compact routing mode for an OpenAI account.
 // Missing or invalid values fall back to "auto".
 func (a *Account) GetOpenAICompactMode() string {
-	if a == nil || !a.IsOpenAI() || a.Extra == nil {
+	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) || a.Extra == nil {
 		return OpenAICompactModeAuto
 	}
 	mode, _ := a.Extra["openai_compact_mode"].(string)
@@ -843,7 +843,7 @@ func (a *Account) GetOpenAICompactMode() string {
 // OpenAICompactSupportKnown reports whether compact capability is known for this
 // account and, when known, whether it is supported.
 func (a *Account) OpenAICompactSupportKnown() (supported bool, known bool) {
-	if a == nil || !a.IsOpenAI() {
+	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) {
 		return false, false
 	}
 
@@ -868,7 +868,7 @@ func (a *Account) OpenAICompactSupportKnown() (supported bool, known bool) {
 // requests. Unknown capability remains allowed to avoid breaking older accounts
 // before an explicit probe has been run.
 func (a *Account) AllowsOpenAICompact() bool {
-	if a == nil || !a.IsOpenAI() {
+	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) {
 		return false
 	}
 	supported, known := a.OpenAICompactSupportKnown()
@@ -1224,7 +1224,7 @@ func (a *Account) IsOpenAI() bool {
 }
 
 func (a *Account) IsOpenAILongContextBillingEnabled() bool {
-	if a == nil || !a.IsOpenAI() || a.Extra == nil {
+	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra[openAILongContextBillingEnabledKey].(bool)
@@ -1501,7 +1501,7 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 			return false
 		}
 	case OpenAIEndpointCapabilityEmbeddings:
-		if !a.IsOpenAI() || a.Type != AccountTypeAPIKey {
+		if !a.UsesOpenAIAPIKeyProtocol() {
 			return false
 		}
 	default:
@@ -1694,7 +1694,7 @@ func (a *Account) IsOveragesEnabled() bool {
 // 兼容字段：accounts.extra.openai_oauth_passthrough（历史 OAuth 开关）。
 // 字段缺失或类型不正确时，按 false（关闭）处理。
 func (a *Account) IsOpenAIPassthroughEnabled() bool {
-	if a == nil || !a.IsOpenAI() || a.Extra == nil {
+	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) || a.Extra == nil {
 		return false
 	}
 	if enabled, ok := a.Extra["openai_passthrough"].(bool); ok {

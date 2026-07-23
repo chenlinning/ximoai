@@ -7,11 +7,13 @@ const {
   probeUpstreamBillingMock,
   importCodexSessionMock,
   createOpenAICodexPATMock,
+  listPlatformsMock,
 } = vi.hoisted(() => ({
   createAccountMock: vi.fn(),
   probeUpstreamBillingMock: vi.fn(),
   importCodexSessionMock: vi.fn(),
   createOpenAICodexPATMock: vi.fn(),
+  listPlatformsMock: vi.fn(),
 }))
 
 vi.mock('@/stores/app', () => ({
@@ -41,6 +43,9 @@ vi.mock('@/api/admin', () => ({
     },
     tlsFingerprintProfiles: {
       list: vi.fn().mockResolvedValue([]),
+    },
+    platforms: {
+      list: listPlatformsMock,
     },
   },
 }))
@@ -84,9 +89,9 @@ const OAuthAuthorizationFlowStub = defineComponent({
   `,
 })
 
-function mountModal() {
+function mountModal(show = true) {
   return mount(CreateAccountModal, {
-    props: { show: true, proxies: [], groups: [] },
+    props: { show, proxies: [], groups: [] },
     global: {
       stubs: {
         BaseDialog: BaseDialogStub,
@@ -158,6 +163,59 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
       warnings: [],
     })
     createOpenAICodexPATMock.mockReset().mockResolvedValue({})
+    listPlatformsMock.mockReset().mockResolvedValue([])
+  })
+
+  it('reuses the OpenAI API key profile for a custom OpenAI-compatible platform', async () => {
+    listPlatformsMock.mockResolvedValue([
+      {
+        slug: 'acme-openai',
+        display_name: 'Acme OpenAI',
+        protocol: 'openai_compatible',
+        base_url: 'https://api.acme.example/v1',
+        auth_modes: ['apikey'],
+        capabilities: ['responses', 'chat_completions'],
+        color: '#0f766e',
+        enabled: true,
+        builtin: false,
+        created_at: '',
+        updated_at: '',
+      },
+    ])
+    createAccountMock.mockResolvedValue({ id: 51, platform: 'acme-openai', type: 'apikey' })
+
+    const wrapper = mountModal(false)
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await selectButtonByText(wrapper, 'Acme OpenAI')
+
+    expect(wrapper.find('[data-testid="openai-long-context-billing-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="openai-responses-mode-select"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="upstream-billing-auto-probe"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('admin.accounts.openai.compactMode')
+    expect(wrapper.text()).not.toContain('admin.accounts.types.chatgptOauth')
+
+    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Acme account')
+    await wrapper.get('input[type="password"]').setValue('sk-acme')
+    await wrapper.get('[data-testid="openai-endpoint-capability-embeddings"]').trigger('change')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createAccountMock).toHaveBeenCalledTimes(1)
+    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
+      platform: 'acme-openai',
+      type: 'apikey',
+      upstream_billing_probe_enabled: true,
+      credentials: {
+        api_key: 'sk-acme',
+        base_url: 'https://api.acme.example/v1',
+        openai_capabilities: ['chat_completions'],
+      },
+      extra: {
+        openai_long_context_billing_enabled: false,
+      },
+    })
+    expect(probeUpstreamBillingMock).toHaveBeenCalledWith(51)
   })
 
   it('sends false explicitly for normal OpenAI account creation by default', async () => {

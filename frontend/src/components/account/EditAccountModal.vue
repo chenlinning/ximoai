@@ -1448,7 +1448,7 @@
 
       <!-- OpenAI 自动透传开关（OAuth/API Key） -->
       <div
-        v-if="hasOfficialOpenAISettings"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1478,7 +1478,7 @@
 
       <!-- OpenAI Codex hosted image_generation bridge policy -->
       <div
-        v-if="hasOfficialOpenAISettings"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="overflow-hidden rounded-lg border border-sky-100 bg-sky-50/60 shadow-sm dark:border-sky-900/50 dark:bg-sky-950/20">
@@ -1538,7 +1538,7 @@
 
       <!-- OpenAI WS Mode 三态（off/ctx_pool/passthrough） -->
       <div
-        v-if="hasOfficialOpenAISettings"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1559,7 +1559,7 @@
 
       <!-- OpenAI APIKey Responses API support mode -->
       <div
-        v-if="isOfficialOpenAI && account?.type === 'apikey'"
+        v-if="hasOpenAIAPIKeySettings"
         class="space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -1614,7 +1614,7 @@
       </div>
 
       <div
-        v-if="account?.platform === 'openai' && account?.type === 'apikey'"
+        v-if="hasOpenAIAPIKeySettings"
         class="flex items-center justify-between gap-4 border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div>
@@ -1803,7 +1803,7 @@
 
       <!-- OpenAI API 长上下文计费开关 -->
       <div
-        v-if="account?.platform === 'openai' && !isSparkShadow && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
+        v-if="hasOpenAIProtocolSettings && !isSparkShadow"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -1908,7 +1908,7 @@
       </div>
 
       <div
-        v-if="hasOfficialOpenAISettings"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="flex items-center justify-between">
@@ -1994,7 +1994,7 @@
       </div>
 
       <div
-        v-if="isOfficialOpenAI"
+        v-if="hasOpenAIProtocolSettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="space-y-2">
@@ -2623,6 +2623,7 @@ import {
   HEADER_OVERRIDES_CREDENTIAL_KEY,
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
+import { isCustomOpenAICompatibleAccount } from '@/components/account/ximoaiOpenAIPlatform'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { VERTEX_LOCATION_OPTIONS } from '@/constants/account'
@@ -2691,12 +2692,26 @@ const hasOfficialOpenAISettings = computed(() =>
   isOfficialOpenAI.value && isOpenAISettingsAccountType(props.account?.type)
 )
 
+const isCustomOpenAIAPIKeyAccount = computed(() =>
+  isCustomOpenAICompatibleAccount(props.account, selectedPlatform.value)
+)
+
+const hasOpenAIProtocolSettings = computed(() =>
+  hasOfficialOpenAISettings.value || isCustomOpenAIAPIKeyAccount.value
+)
+
+const hasOpenAIAPIKeySettings = computed(() =>
+  props.account?.type === 'apikey' && (isOfficialOpenAI.value || isCustomOpenAIAPIKeyAccount.value)
+)
+
 const hasOfficialOpenAIOAuthLikeSettings = computed(() =>
   isOfficialOpenAI.value && isOpenAIOAuthLikeAccountType(props.account?.type)
 )
 
 const selectedProtocol = computed(() =>
-  selectedPlatform.value?.protocol || ''
+  selectedPlatform.value?.protocol || String(
+    (props.account?.credentials as Record<string, unknown> | undefined)?.platform_protocol || ''
+  )
 )
 
 const isOpenAICompatibleAPIKeyPlatform = computed(() =>
@@ -2852,7 +2867,12 @@ const headerOverrideEnabled = ref(false)
 const headerOverrideRows = ref<HeaderOverrideRow[]>([])
 
 const headerOverrideCapable = computed(
-  () => !!props.account && isHeaderOverrideCapable(props.account.platform, props.account.type)
+  () => !!props.account && isHeaderOverrideCapable(
+    props.account.platform,
+    props.account.type,
+    selectedProtocol.value,
+    selectedPlatform.value?.builtin
+  )
 )
 
 // Grok OAuth 自定义上游地址（仅转发端点；OAuth 授权/令牌刷新不受影响）
@@ -3065,7 +3085,7 @@ const normalizeOpenAIResponsesMode = (mode: unknown): OpenAIResponsesMode => {
   return 'auto'
 }
 const isOpenAIModelRestrictionDisabled = computed(() =>
-  isOfficialOpenAI.value && openaiPassthroughEnabled.value
+  hasOpenAIProtocolSettings.value && openaiPassthroughEnabled.value
 )
 const openAIResponsesStatusKey = computed(() => {
   if (openAIResponsesMode.value === 'force_responses') {
@@ -3164,7 +3184,7 @@ const applyOpenAIEndpointCapabilities = (credentials: Record<string, unknown>) =
 }
 const openAICompactStatusKey = computed(() => {
   const extra = props.account?.extra as Record<string, unknown> | undefined
-  if (!props.account || !isOfficialOpenAI.value) return ''
+  if (!props.account || !hasOpenAIProtocolSettings.value) return ''
   const mode = typeof extra?.openai_compact_mode === 'string' ? extra.openai_compact_mode : 'auto'
   if (mode === 'force_on') return 'admin.accounts.openai.compactSupported'
   if (mode === 'force_off') return 'admin.accounts.openai.compactUnsupported'
@@ -3379,7 +3399,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   anthropicPassthroughEnabled.value = false
   anthropicAPIKeyAuthScheme.value = 'x_api_key'
   webSearchEmulationMode.value = 'default'
-  if (isOfficialOpenAI.value && isOpenAISettingsAccountType(newAccount.type)) {
+  if (hasOpenAIProtocolSettings.value) {
     openaiPassthroughEnabled.value = extra?.openai_passthrough === true || extra?.openai_oauth_passthrough === true
     const longContextBillingValue = extra?.openai_long_context_billing_enabled
     openAILongContextBillingEnabled.value = longContextBillingValue === true
@@ -3510,7 +3530,12 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   // Load header override state (anthropic/openai apikey + grok apikey/oauth)
   headerOverrideEnabled.value = false
   headerOverrideRows.value = []
-  if (newAccount.credentials && isHeaderOverrideCapable(newAccount.platform, newAccount.type)) {
+  if (newAccount.credentials && isHeaderOverrideCapable(
+    newAccount.platform,
+    newAccount.type,
+    selectedProtocol.value,
+    selectedPlatform.value?.builtin
+  )) {
     const overrideCreds = newAccount.credentials as Record<string, unknown>
     headerOverrideEnabled.value = overrideCreds[HEADER_OVERRIDE_ENABLED_CREDENTIAL_KEY] === true
     headerOverrideRows.value = splitHeaderOverridesObject(
@@ -4125,7 +4150,7 @@ const handleSubmit = async () => {
     if (props.account.type === 'apikey') {
       const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
       const newBaseUrl = editBaseUrl.value.trim() || defaultBaseUrl.value
-      const shouldApplyModelMapping = !(isOfficialOpenAI.value && openaiPassthroughEnabled.value)
+      const shouldApplyModelMapping = !(hasOpenAIProtocolSettings.value && openaiPassthroughEnabled.value)
 
       // Always update credentials for apikey type to handle model mapping changes
       const newCredentials: Record<string, unknown> = { ...currentCredentials }
@@ -4160,7 +4185,7 @@ const handleSubmit = async () => {
       } else if (currentCredentials.model_mapping) {
         newCredentials.model_mapping = currentCredentials.model_mapping
       }
-      if (isOfficialOpenAI.value) {
+      if (hasOpenAIAPIKeySettings.value) {
         applyOpenAIEndpointCapabilities(newCredentials)
         const compactModelMapping = buildModelMappingObject('mapping', [], openAICompactModelMappings.value)
         if (compactModelMapping) {
@@ -4196,7 +4221,12 @@ const handleSubmit = async () => {
       }
 
       // Add header override if enabled (anthropic/openai/grok apikey)
-      if (isHeaderOverrideCapable(props.account.platform, 'apikey')) {
+      if (isHeaderOverrideCapable(
+        props.account.platform,
+        'apikey',
+        selectedProtocol.value,
+        selectedPlatform.value?.builtin
+      )) {
         if (headerOverrideEnabled.value) {
           const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
           if (headerError) {
@@ -4579,7 +4609,7 @@ const handleSubmit = async () => {
     }
 
     // For OpenAI OAuth/SetupToken/API Key accounts, handle passthrough mode in extra
-    if (isOfficialOpenAI.value && isOpenAISettingsAccountType(props.account.type)) {
+    if (hasOpenAIProtocolSettings.value) {
       const currentExtra = (props.account.extra as Record<string, unknown>) || {}
       const newExtra: Record<string, unknown> = { ...currentExtra }
       const hadCodexCLIOnlyEnabled = currentExtra.codex_cli_only === true

@@ -841,7 +841,7 @@ func decodeUpstreamBillingProbeSnapshot(extra map[string]any) *UpstreamBillingPr
 }
 
 func isUpstreamBillingProbeAccount(account *Account) bool {
-	return account != nil && account.Platform == PlatformOpenAI && account.Type == AccountTypeAPIKey
+	return account != nil && account.UsesOpenAIAPIKeyProtocol()
 }
 
 func upstreamBillingProbeEnabled(account *Account) bool {

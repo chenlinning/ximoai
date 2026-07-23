@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 
-const { updateAccountMock, checkMixedChannelRiskMock, authIsSimpleMode } = vi.hoisted(() => ({
+const { updateAccountMock, checkMixedChannelRiskMock, authIsSimpleMode, listPlatformsMock } = vi.hoisted(() => ({
   updateAccountMock: vi.fn(),
   checkMixedChannelRiskMock: vi.fn(),
-  authIsSimpleMode: { value: true }
+  authIsSimpleMode: { value: true },
+  listPlatformsMock: vi.fn()
 }))
 
 vi.mock('@/stores/app', () => ({
@@ -36,6 +37,9 @@ vi.mock('@/api/admin', () => ({
     },
     tlsFingerprintProfiles: {
       list: vi.fn().mockResolvedValue([])
+    },
+    platforms: {
+      list: listPlatformsMock
     }
   }
 }))
@@ -163,6 +167,30 @@ function buildAccount() {
     group_ids: [],
     expires_at: null,
     auto_pause_on_expired: false
+  } as any
+}
+
+function buildCustomOpenAIAccount() {
+  return {
+    ...buildAccount(),
+    id: 9,
+    name: 'Acme OpenAI Key',
+    platform: 'acme-openai',
+    credentials: {
+      api_key: 'sk-acme',
+      base_url: 'https://api.acme.example/v1',
+      platform_protocol: 'openai_compatible',
+      openai_capabilities: ['chat_completions'],
+      compact_model_mapping: {
+        'gpt-5': 'gpt-5-compact'
+      }
+    },
+    extra: {
+      openai_long_context_billing_enabled: true,
+      openai_compact_mode: 'force_on',
+      openai_responses_mode: 'force_chat_completions',
+      upstream_billing_probe_enabled: true
+    }
   } as any
 }
 
@@ -314,6 +342,56 @@ function mountModal(account = buildAccount()) {
 describe('EditAccountModal', () => {
   beforeEach(() => {
     authIsSimpleMode.value = true
+    listPlatformsMock.mockReset().mockResolvedValue([])
+  })
+
+  it('loads and saves the OpenAI API key profile for a custom OpenAI-compatible account', async () => {
+    const account = buildCustomOpenAIAccount()
+    listPlatformsMock.mockResolvedValue([
+      {
+        slug: 'acme-openai',
+        display_name: 'Acme OpenAI',
+        protocol: 'openai_compatible',
+        base_url: 'https://api.acme.example/v1',
+        auth_modes: ['apikey'],
+        capabilities: ['responses', 'chat_completions'],
+        color: '#0f766e',
+        enabled: true,
+        builtin: false,
+        created_at: '',
+        updated_at: ''
+      }
+    ])
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+
+    const wrapper = mountModal(account)
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="openai-long-context-billing-toggle"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.find('[data-testid="openai-responses-mode-select"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="upstream-billing-auto-probe"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('admin.accounts.openai.compactMode')
+    expect(wrapper.text()).toContain('admin.accounts.openai.codexImageToolDesc')
+
+    await wrapper.get('[data-testid="openai-responses-mode-select"]').setValue('force_responses')
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).toMatchObject({
+      openai_long_context_billing_enabled: true,
+      openai_compact_mode: 'force_on',
+      openai_responses_mode: 'force_responses',
+      upstream_billing_probe_enabled: true
+    })
+    expect(updateAccountMock.mock.calls[0]?.[1]?.credentials).toMatchObject({
+      platform_protocol: 'openai_compatible',
+      openai_capabilities: ['chat_completions'],
+      compact_model_mapping: {
+        'gpt-5': 'gpt-5-compact'
+      }
+    })
   })
 
   it('reopening the same account rehydrates the OpenAI whitelist from props', async () => {
