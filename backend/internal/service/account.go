@@ -1884,7 +1884,7 @@ func (a *Account) IsOpenAIOAuthPassthroughEnabled() bool {
 // 字段：accounts.extra.anthropic_passthrough。
 // 字段缺失或类型不正确时，按 false（关闭）处理。
 func (a *Account) IsAnthropicAPIKeyPassthroughEnabled() bool {
-	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey || a.Extra == nil {
+	if a == nil || !a.UsesAnthropicAPIKeyProtocol() || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra["anthropic_passthrough"].(bool)

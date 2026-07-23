@@ -1632,7 +1632,7 @@
 
       <!-- Anthropic API Key 自动透传开关 -->
       <div
-        v-if="account?.platform === 'anthropic' && account?.type === 'apikey'"
+        v-if="hasAnthropicAPIKeySettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1644,6 +1644,9 @@
           </div>
           <button
             type="button"
+            role="switch"
+            data-testid="anthropic-passthrough-toggle"
+            :aria-checked="anthropicPassthroughEnabled"
             @click="anthropicPassthroughEnabled = !anthropicPassthroughEnabled"
             :class="[
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -1661,7 +1664,7 @@
       </div>
 
       <div
-        v-if="account?.platform === 'anthropic' && account?.type === 'apikey'"
+        v-if="hasAnthropicAPIKeySettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -1680,7 +1683,7 @@
 
       <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
       <div
-        v-if="account?.platform === 'anthropic' && account?.type === 'apikey' && webSearchGlobalEnabled"
+        v-if="hasAnthropicAPIKeySettings && webSearchGlobalEnabled"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1700,7 +1703,7 @@
 
       <!-- 配额控制 (Anthropic apikey/bedrock: 配额限制 + 亲和) -->
       <div
-        v-if="account?.platform === 'anthropic' && (account?.type === 'apikey' || account?.type === 'bedrock')"
+        v-if="(hasAnthropicAPIKeySettings || account?.platform === 'anthropic') && (account?.type === 'apikey' || account?.type === 'bedrock')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="mb-3">
@@ -2623,7 +2626,10 @@ import {
   HEADER_OVERRIDES_CREDENTIAL_KEY,
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
-import { isCustomOpenAICompatibleAccount } from '@/components/account/ximoaiOpenAIPlatform'
+import {
+  isCustomAnthropicAccount,
+  isCustomOpenAICompatibleAccount
+} from '@/components/account/ximoaiAPIKeyPlatform'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { VERTEX_LOCATION_OPTIONS } from '@/constants/account'
@@ -2696,12 +2702,21 @@ const isCustomOpenAIAPIKeyAccount = computed(() =>
   isCustomOpenAICompatibleAccount(props.account, selectedPlatform.value)
 )
 
+const isCustomAnthropicAPIKeyAccount = computed(() =>
+  isCustomAnthropicAccount(props.account, selectedPlatform.value)
+)
+
 const hasOpenAIProtocolSettings = computed(() =>
   hasOfficialOpenAISettings.value || isCustomOpenAIAPIKeyAccount.value
 )
 
 const hasOpenAIAPIKeySettings = computed(() =>
   props.account?.type === 'apikey' && (isOfficialOpenAI.value || isCustomOpenAIAPIKeyAccount.value)
+)
+
+const hasAnthropicAPIKeySettings = computed(() =>
+  props.account?.type === 'apikey' &&
+  (props.account.platform === 'anthropic' || isCustomAnthropicAPIKeyAccount.value)
 )
 
 const hasOfficialOpenAIOAuthLikeSettings = computed(() =>
@@ -3444,7 +3459,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
       openAICompactModelMappings.value = Object.entries(compactMappings).map(([from, to]) => ({ from, to }))
     }
   }
-  if (newAccount.platform === 'anthropic' && newAccount.type === 'apikey') {
+  if (hasAnthropicAPIKeySettings.value) {
     anthropicPassthroughEnabled.value = extra?.anthropic_passthrough === true
     anthropicAPIKeyAuthScheme.value = extra?.anthropic_apikey_auth_scheme === 'authorization_bearer'
       ? 'authorization_bearer'
@@ -4587,7 +4602,7 @@ const handleSubmit = async () => {
     }
 
     // For Anthropic API Key accounts, handle passthrough mode + web search emulation in extra
-    if (props.account.platform === 'anthropic' && props.account.type === 'apikey') {
+    if (hasAnthropicAPIKeySettings.value) {
       const currentExtra = (updatePayload.extra as Record<string, unknown>) || (props.account.extra as Record<string, unknown>) || {}
       const newExtra: Record<string, unknown> = { ...currentExtra }
       if (anthropicPassthroughEnabled.value) {

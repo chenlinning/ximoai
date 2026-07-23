@@ -194,6 +194,24 @@ function buildCustomOpenAIAccount() {
   } as any
 }
 
+function buildCustomAnthropicAccount() {
+  return {
+    ...buildAccount(),
+    id: 10,
+    name: 'Acme Anthropic Key',
+    platform: 'acme-anthropic',
+    credentials: {
+      api_key: 'sk-ant-acme',
+      base_url: 'https://anthropic.acme.example',
+      platform_protocol: 'anthropic'
+    },
+    extra: {
+      anthropic_passthrough: true,
+      anthropic_apikey_auth_scheme: 'authorization_bearer'
+    }
+  } as any
+}
+
 function buildOpenAISparkShadowAccount() {
   const account = buildAccount()
   return {
@@ -391,6 +409,43 @@ describe('EditAccountModal', () => {
       compact_model_mapping: {
         'gpt-5': 'gpt-5-compact'
       }
+    })
+  })
+
+  it('loads and saves the Anthropic API key profile for a custom Anthropic account', async () => {
+    const account = buildCustomAnthropicAccount()
+    listPlatformsMock.mockResolvedValue([{
+      slug: 'acme-anthropic',
+      display_name: 'Acme Anthropic',
+      protocol: 'anthropic',
+      base_url: 'https://anthropic.acme.example',
+      auth_modes: ['apikey'],
+      capabilities: ['messages'],
+      color: '#0f766e',
+      enabled: true,
+      builtin: false,
+      created_at: '',
+      updated_at: ''
+    }])
+    updateAccountMock.mockReset().mockResolvedValue(account)
+    checkMixedChannelRiskMock.mockReset().mockResolvedValue({ has_risk: false })
+
+    const wrapper = mountModal(account)
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="anthropic-passthrough-toggle"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.text()).toContain('admin.accounts.anthropic.apiKeyAuthScheme')
+
+    await wrapper.get('form#edit-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(updateAccountMock).toHaveBeenCalledTimes(1)
+    expect(updateAccountMock.mock.calls[0]?.[1]?.extra).toMatchObject({
+      anthropic_passthrough: true,
+      anthropic_apikey_auth_scheme: 'authorization_bearer'
+    })
+    expect(updateAccountMock.mock.calls[0]?.[1]?.credentials).toMatchObject({
+      platform_protocol: 'anthropic'
     })
   })
 

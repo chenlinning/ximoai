@@ -218,6 +218,88 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     expect(probeUpstreamBillingMock).toHaveBeenCalledWith(51)
   })
 
+  it('reuses Anthropic API key settings for a custom Anthropic platform', async () => {
+    listPlatformsMock.mockResolvedValue([{
+      slug: 'acme-anthropic',
+      display_name: 'Acme Anthropic',
+      protocol: 'anthropic',
+      base_url: 'https://anthropic.acme.example',
+      auth_modes: ['apikey'],
+      capabilities: ['messages'],
+      color: '#0f766e',
+      enabled: true,
+      builtin: false,
+      created_at: '',
+      updated_at: '',
+    }])
+    createAccountMock.mockResolvedValue({ id: 52, platform: 'acme-anthropic', type: 'apikey' })
+
+    const wrapper = mountModal(false)
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await selectButtonByText(wrapper, 'Acme Anthropic')
+
+    expect(wrapper.text()).toContain('admin.accounts.anthropic.apiKeyPassthrough')
+    expect(wrapper.text()).toContain('admin.accounts.anthropic.apiKeyAuthScheme')
+
+    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Acme Anthropic account')
+    await wrapper.get('input[type="password"]').setValue('sk-ant-acme')
+    await wrapper.get('[data-testid="anthropic-passthrough-toggle"]').trigger('click')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
+      platform: 'acme-anthropic',
+      type: 'apikey',
+      credentials: {
+        api_key: 'sk-ant-acme',
+        base_url: 'https://anthropic.acme.example',
+      },
+      extra: {
+        anthropic_passthrough: true,
+      },
+    })
+  })
+
+  it('reuses Gemini API key settings for a custom Gemini platform', async () => {
+    listPlatformsMock.mockResolvedValue([{
+      slug: 'acme-gemini',
+      display_name: 'Acme Gemini',
+      protocol: 'gemini',
+      base_url: 'https://gemini.acme.example',
+      auth_modes: ['apikey'],
+      capabilities: ['native_gemini'],
+      color: '#0f766e',
+      enabled: true,
+      builtin: false,
+      created_at: '',
+      updated_at: '',
+    }])
+    createAccountMock.mockResolvedValue({ id: 53, platform: 'acme-gemini', type: 'apikey' })
+
+    const wrapper = mountModal(false)
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await selectButtonByText(wrapper, 'Acme Gemini')
+
+    expect(wrapper.text()).toContain('admin.accounts.gemini.tier.label')
+
+    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Acme Gemini account')
+    await wrapper.get('input[type="password"]').setValue('AIza-acme')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
+      platform: 'acme-gemini',
+      type: 'apikey',
+      credentials: {
+        api_key: 'AIza-acme',
+        base_url: 'https://gemini.acme.example',
+        tier_id: 'aistudio_free',
+      },
+    })
+  })
+
   it('sends false explicitly for normal OpenAI account creation by default', async () => {
     await submitApiKeyAccount('openai')
 

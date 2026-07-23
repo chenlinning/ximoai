@@ -1,4 +1,7 @@
-import { isCustomOpenAICompatibleDescriptor } from './ximoaiOpenAIPlatform'
+import {
+  isCustomAnthropicDescriptor,
+  isCustomOpenAICompatibleDescriptor
+} from './ximoaiAPIKeyPlatform'
 
 export function applyInterceptWarmup(
   credentials: Record<string, unknown>,
@@ -50,7 +53,10 @@ export function isHeaderOverrideCapable(
   if (platform === 'grok') {
     return type === 'apikey' || type === 'oauth'
   }
-  return type === 'apikey' && isCustomOpenAICompatibleDescriptor(platform, protocol, builtin)
+  return type === 'apikey' && (
+    isCustomOpenAICompatibleDescriptor(platform, protocol, builtin) ||
+    isCustomAnthropicDescriptor(platform, protocol, builtin)
+  )
 }
 
 /** 禁止覆写的请求头（与后端 headerOverrideBlockedNames 保持一致） */

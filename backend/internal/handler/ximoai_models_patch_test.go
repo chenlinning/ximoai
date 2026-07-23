@@ -50,6 +50,13 @@ func TestGatewayModels_XimoAICustomPlatformFallbackFollowsProtocol(t *testing.T)
 			wantModel: "gemini-2.5-flash",
 			notModel:  "claude-sonnet-4-6",
 		},
+		{
+			name:      "anthropic",
+			slug:      "acme-anthropic",
+			protocol:  service.PlatformProtocolAnthropic,
+			wantModel: "claude-sonnet-4-6",
+			notModel:  "gemini-2.5-flash",
+		},
 	}
 
 	for i, tt := range tests {

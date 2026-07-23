@@ -122,6 +122,12 @@ describe('isHeaderOverrideCapable', () => {
     expect(isHeaderOverrideCapable('acme-openai', 'oauth', 'openai_compatible', false)).toBe(false)
     expect(isHeaderOverrideCapable('grok-video', 'apikey', 'openai_compatible', true)).toBe(false)
   })
+
+  it('supports custom Anthropic API key platforms but not custom Gemini platforms', () => {
+    expect(isHeaderOverrideCapable('acme-anthropic', 'apikey', 'anthropic', false)).toBe(true)
+    expect(isHeaderOverrideCapable('acme-anthropic', 'oauth', 'anthropic', false)).toBe(false)
+    expect(isHeaderOverrideCapable('acme-gemini', 'apikey', 'gemini', false)).toBe(false)
+  })
 })
 
 describe('parseHeaderOverridesJson', () => {

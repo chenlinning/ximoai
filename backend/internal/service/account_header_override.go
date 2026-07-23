@@ -82,7 +82,7 @@ func (a *Account) IsHeaderOverrideEligible() bool {
 	case PlatformGrok:
 		return a.Type == AccountTypeAPIKey || a.Type == AccountTypeOAuth
 	default:
-		return a.UsesOpenAIAPIKeyProtocol()
+		return a.UsesOpenAIAPIKeyProtocol() || a.UsesAnthropicAPIKeyProtocol()
 	}
 }
 

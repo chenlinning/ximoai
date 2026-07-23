@@ -1103,7 +1103,7 @@
         </div>
 
         <!-- Gemini API Key tier selection -->
-        <div v-if="form.platform === 'gemini'">
+        <div v-if="isSelectedGeminiProtocol">
           <label class="input-label">{{ t('admin.accounts.gemini.tier.label') }}</label>
           <select v-model="geminiTierAIStudio" class="input">
             <option value="aistudio_free">{{ t('admin.accounts.gemini.tier.aiStudio.free') }}</option>
@@ -1773,7 +1773,7 @@
 
       <!-- 配额控制 (Anthropic apikey/bedrock: 配额限制 + 亲和) -->
       <div
-        v-if="form.platform === 'anthropic' && (form.type === 'apikey' || form.type === 'bedrock')"
+        v-if="hasAnthropicProtocolSettings && (form.type === 'apikey' || form.type === 'bedrock')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="mb-3">
@@ -2246,7 +2246,7 @@
 
       <!-- Intercept Warmup Requests (Anthropic/Antigravity) -->
       <div
-        v-if="form.platform === 'anthropic' || form.platform === 'antigravity'"
+        v-if="hasAnthropicProtocolSettings || form.platform === 'antigravity'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -2753,7 +2753,7 @@
 
       <!-- Anthropic API Key 自动透传开关 -->
       <div
-        v-if="form.platform === 'anthropic' && accountCategory === 'apikey'"
+        v-if="hasAnthropicAPIKeySettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -2765,6 +2765,9 @@
           </div>
           <button
             type="button"
+            role="switch"
+            data-testid="anthropic-passthrough-toggle"
+            :aria-checked="anthropicPassthroughEnabled"
             @click="anthropicPassthroughEnabled = !anthropicPassthroughEnabled"
             :class="[
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -2782,7 +2785,7 @@
       </div>
 
       <div
-        v-if="form.platform === 'anthropic' && accountCategory === 'apikey'"
+        v-if="hasAnthropicAPIKeySettings"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -2801,7 +2804,7 @@
 
       <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
       <div
-        v-if="form.platform === 'anthropic' && accountCategory === 'apikey' && webSearchGlobalEnabled"
+        v-if="hasAnthropicAPIKeySettings && webSearchGlobalEnabled"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -3504,7 +3507,11 @@ import {
   validateHeaderOverrideRows,
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
-import { isCustomOpenAICompatiblePlatform } from '@/components/account/ximoaiOpenAIPlatform'
+import {
+  isCustomAnthropicPlatform,
+  isCustomGeminiPlatform,
+  isCustomOpenAICompatiblePlatform
+} from '@/components/account/ximoaiAPIKeyPlatform'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { VERTEX_LOCATION_OPTIONS } from '@/constants/account'
@@ -3760,6 +3767,7 @@ const syncPreviewCredentials = computed(() => {
   return {
     platform: form.platform,
     type: form.type,
+    protocol: selectedProtocol.value,
     base_url: apiKeyBaseUrl.value || apiKeyBaseUrlDefault.value || undefined,
     api_key: apiKeyValue.value
   }
@@ -4152,12 +4160,28 @@ const isCustomOpenAIAPIKeyPlatform = computed(() =>
   isCustomOpenAICompatiblePlatform(selectedPlatform.value)
 )
 
+const isCustomAnthropicAPIKeyPlatform = computed(() =>
+  isCustomAnthropicPlatform(selectedPlatform.value)
+)
+
+const isCustomGeminiAPIKeyPlatform = computed(() =>
+  isCustomGeminiPlatform(selectedPlatform.value)
+)
+
+const hasAnthropicProtocolSettings = computed(() =>
+  form.platform === 'anthropic' || isCustomAnthropicAPIKeyPlatform.value
+)
+
 const hasOpenAIProtocolSettings = computed(() =>
   isOfficialOpenAI.value || isCustomOpenAIAPIKeyPlatform.value
 )
 
 const hasOpenAIAPIKeySettings = computed(() =>
   accountCategory.value === 'apikey' && hasOpenAIProtocolSettings.value
+)
+
+const hasAnthropicAPIKeySettings = computed(() =>
+  accountCategory.value === 'apikey' && hasAnthropicProtocolSettings.value
 )
 
 const selectedProtocol = computed(() =>
@@ -4178,7 +4202,7 @@ const isCustomAPIKeyOnlyPlatform = computed(() =>
 )
 
 const isSelectedGeminiProtocol = computed(() =>
-  selectedProtocol.value === 'gemini' || form.platform === 'gemini'
+  form.platform === 'gemini' || isCustomGeminiAPIKeyPlatform.value
 )
 
 const apiKeyBaseUrlDefault = computed(() => {
@@ -4218,7 +4242,8 @@ const {
   platformEnabled: computed(() => Boolean(selectedPlatform.value?.enabled)),
   apiKey: apiKeyValue,
   baseUrl: apiKeyBaseUrl,
-  baseUrlFallback: apiKeyBaseUrlDefault
+  baseUrlFallback: apiKeyBaseUrlDefault,
+  anthropicAPIKeyAuthScheme
 })
 
 const platformIconName = (slug: string) => {
@@ -4958,7 +4983,7 @@ const buildOpenAICodexImportExtra = (): Record<string, unknown> | undefined => {
 }
 
 const buildAnthropicExtra = (base?: Record<string, unknown>): Record<string, unknown> | undefined => {
-  if (form.platform !== 'anthropic' || accountCategory.value !== 'apikey') {
+  if (!hasAnthropicAPIKeySettings.value) {
     return base
   }
 

@@ -38,11 +38,13 @@ func setupAvailableModelsRouter(adminSvc service.AdminService) *gin.Engine {
 }
 
 type syncUpstreamHTTPUpstream struct {
-	resp *http.Response
-	err  error
+	resp    *http.Response
+	err     error
+	lastReq *http.Request
 }
 
 func (u *syncUpstreamHTTPUpstream) Do(req *http.Request, proxyURL string, accountID int64, accountConcurrency int) (*http.Response, error) {
+	u.lastReq = req
 	if u.err != nil {
 		return nil, u.err
 	}

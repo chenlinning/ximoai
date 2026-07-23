@@ -13,7 +13,9 @@ import (
 type SyncUpstreamModelsPreviewRequest struct {
 	Platform    string         `json:"platform" binding:"required"`
 	Type        string         `json:"type" binding:"required,oneof=apikey upstream"`
+	Protocol    string         `json:"protocol"`
 	Credentials map[string]any `json:"credentials"`
+	Extra       map[string]any `json:"extra"`
 	BaseURL     string         `json:"base_url"`
 	APIKey      string         `json:"api_key"`
 }
@@ -42,13 +44,13 @@ func (h *AccountHandler) SyncUpstreamModelsPreview(c *gin.Context) {
 	if req.BaseURL != "" {
 		credentials["base_url"] = req.BaseURL
 	}
-
 	account := &service.Account{
 		ID:          0,
 		Name:        "preview",
 		Platform:    service.NormalizePlatformSlug(req.Platform),
 		Type:        req.Type,
 		Credentials: credentials,
+		Extra:       req.Extra,
 		Status:      service.StatusActive,
 	}
 	models, err := h.accountTestService.FetchUpstreamSupportedModels(c.Request.Context(), account)

@@ -152,6 +152,7 @@ const props = defineProps<{
   syncCredentials?: {
     platform: string
     type: string
+    protocol?: string
     base_url?: string
     api_key?: string
   }
@@ -187,6 +188,7 @@ const normalizedPlatforms = computed(() => {
 })
 
 const upstreamSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity', 'grok'])
+const upstreamSyncProtocols = new Set(['anthropic', 'openai', 'openai_compatible', 'gemini'])
 const canSyncUpstream = computed(() => {
   if (props.syncUpstreamModels) return props.canSyncUpstream !== false
   if (props.canSyncUpstream === true) return true
@@ -195,7 +197,8 @@ const canSyncUpstream = computed(() => {
     return normalizedPlatforms.value.some(platform => upstreamSyncPlatforms.has(platform.toLowerCase()))
   }
   if (props.syncCredentials) {
-    return upstreamSyncPlatforms.has(props.syncCredentials.platform.toLowerCase())
+    return upstreamSyncPlatforms.has(props.syncCredentials.platform.toLowerCase()) ||
+      upstreamSyncProtocols.has(props.syncCredentials.protocol?.toLowerCase() || '')
   }
   return false
 })

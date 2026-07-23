@@ -160,6 +160,7 @@ func (s *AccountTestService) buildCustomPlatformUpstreamModelsRequest(ctx contex
 			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), err,
 		)
 	}
+	account = ximoAICustomPlatformPreviewAccount(account, platform)
 
 	switch {
 	case platform.IsOpenAICompatible():
