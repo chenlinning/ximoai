@@ -938,6 +938,17 @@ func (s *adminServiceImpl) normalizeAccountCredentialsForPlatform(ctx context.Co
 	if err != nil {
 		return nil, err
 	}
+	if accountType == AccountTypeAPIKey && platform.RuntimeKind() != "" {
+		credentials[PlatformKindCredentialKey] = platform.RuntimeKind()
+	}
+	if accountType == AccountTypeAPIKey && platform.RequiresAPIKeyBaseURL() {
+		if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
+			credentials["base_url"] = platform.BaseURL
+		}
+		if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
+			return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_BASE_URL_REQUIRED", "base_url is required for this platform")
+		}
+	}
 	if platform.Builtin || accountType != AccountTypeAPIKey {
 		return credentials, nil
 	}

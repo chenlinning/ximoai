@@ -125,7 +125,9 @@ func (s *PlatformService) Update(ctx context.Context, slug string, input Platfor
 			input.BaseURL = current.BaseURL
 		}
 	}
+	input.Kind = current.Kind
 	input.Slug = NormalizePlatformSlug(input.Slug)
+	input.Kind = strings.ToLower(strings.TrimSpace(input.Kind))
 	if input.Slug == "" || input.Slug == current.Slug {
 		input.Slug = current.Slug
 	} else if !platformSlugPattern.MatchString(input.Slug) {
@@ -354,9 +356,6 @@ func defaultCustomPlatformCapabilities(protocol string) []string {
 			PlatformCapabilityResponses,
 			PlatformCapabilityChatCompletions,
 			PlatformCapabilityImages,
-			PlatformCapabilityVideos,
-			PlatformCapabilityAudio,
-			PlatformCapabilityRealtime,
 		}
 	}
 }
@@ -481,6 +480,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 		},
 		{
 			Slug:         PlatformGrokVideo,
+			Kind:         PlatformKindGrokVideo,
 			DisplayName:  "Grok-video",
 			Protocol:     PlatformProtocolOpenAICompatible,
 			BaseURL:      "",
@@ -494,6 +494,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 		},
 		{
 			Slug:         PlatformOpenAIAudio,
+			Kind:         PlatformKindOpenAIAudio,
 			DisplayName:  "OpenAI Audio",
 			Protocol:     PlatformProtocolOpenAICompatible,
 			BaseURL:      "",
@@ -507,6 +508,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 		},
 		{
 			Slug:         PlatformKlingAudio,
+			Kind:         PlatformKindKlingAudio,
 			DisplayName:  "可灵 Audio",
 			Protocol:     PlatformProtocolOpenAICompatible,
 			BaseURL:      "",

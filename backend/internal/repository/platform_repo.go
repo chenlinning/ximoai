@@ -20,7 +20,7 @@ func NewPlatformRepository(db *sql.DB) service.PlatformRepository {
 
 func (r *platformRepository) List(ctx context.Context, includeDisabled bool) ([]service.Platform, error) {
 	query := `
-SELECT slug, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin, created_at, updated_at
+SELECT slug, kind, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin, created_at, updated_at
 FROM platforms`
 	args := []any{}
 	if !includeDisabled {
@@ -50,7 +50,7 @@ FROM platforms`
 
 func (r *platformRepository) GetBySlug(ctx context.Context, slug string) (*service.Platform, error) {
 	rows, err := r.db.QueryContext(ctx, `
-SELECT slug, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin, created_at, updated_at
+SELECT slug, kind, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin, created_at, updated_at
 FROM platforms
 WHERE slug = $1`, slug)
 	if err != nil {
@@ -83,9 +83,9 @@ func (r *platformRepository) Create(ctx context.Context, platform *service.Platf
 		return err
 	}
 	_, err = r.db.ExecContext(ctx, `
-INSERT INTO platforms (slug, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin)
-VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, FALSE)`,
-		platform.Slug, platform.DisplayName, platform.Protocol, platform.BaseURL,
+INSERT INTO platforms (slug, kind, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin)
+VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, FALSE)`,
+		platform.Slug, platform.Kind, platform.DisplayName, platform.Protocol, platform.BaseURL,
 		string(authModes), string(capabilities), platform.Color, platform.Enabled)
 	return err
 }
@@ -240,6 +240,7 @@ func scanPlatform(scanner platformScanner) (*service.Platform, error) {
 	var authModesRaw, capabilitiesRaw []byte
 	if err := scanner.Scan(
 		&p.Slug,
+		&p.Kind,
 		&p.DisplayName,
 		&p.Protocol,
 		&p.BaseURL,

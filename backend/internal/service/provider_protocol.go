@@ -90,7 +90,7 @@ func adaptOpenAIVideoGeminiProviderRequest(method string, endpoint string, body 
 
 func adaptOpenAIAudioProviderRequest(account *Account, endpoint string, body []byte, contentType string) (providerProtocolRequest, error) {
 	out := providerProtocolRequest{Method: http.MethodPost, Endpoint: endpoint, Body: body, ContentType: contentType}
-	if account == nil || NormalizePlatformSlug(account.Platform) != PlatformKlingAudio {
+	if account == nil || !account.IsKlingAudio() {
 		return out, nil
 	}
 	if endpoint != openAIAudioSpeechEndpoint {

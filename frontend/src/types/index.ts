@@ -498,6 +498,7 @@ export type GroupPlatform = string
 
 export interface Platform {
   slug: string
+  kind?: string
   display_name: string
   protocol: string
   base_url: string

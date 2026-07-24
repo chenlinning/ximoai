@@ -33,6 +33,7 @@
           <input
             v-model="editBaseUrl"
             type="text"
+            :required="requiresAPIKeyBaseURL"
             class="input"
             :placeholder="apiKeyBaseUrlPlaceholder"
           />
@@ -2636,7 +2637,9 @@ import {
 } from '@/components/account/credentialsBuilder'
 import {
   isCustomAnthropicAccount,
-  isCustomOpenAICompatibleAccount
+  isCustomOpenAICompatibleAccount,
+  requiresXimoAIAPIKeyBaseURL,
+  resolveXimoAIPlatformKind
 } from '@/components/account/ximoaiAPIKeyPlatform'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
@@ -2737,11 +2740,18 @@ const selectedProtocol = computed(() =>
   )
 )
 
+const selectedXimoAIPlatformKind = computed(() =>
+  resolveXimoAIPlatformKind(selectedPlatform.value, props.account)
+)
+
+const requiresAPIKeyBaseURL = computed(() =>
+  requiresXimoAIAPIKeyBaseURL(selectedPlatform.value, props.account)
+)
+
 const isOpenAICompatibleAPIKeyPlatform = computed(() =>
   selectedProtocol.value === 'openai_compatible'
-  || props.account?.platform === 'openai-audio'
+  || selectedXimoAIPlatformKind.value !== ''
   || props.account?.platform === 'grok'
-  || props.account?.platform === 'kling_audio'
 )
 
 const upstreamModelSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
@@ -2756,6 +2766,7 @@ const canSyncUpstreamModels = computed(() => {
 
 const apiKeyBaseUrlDefault = computed(() => {
   if (selectedPlatform.value?.base_url) return selectedPlatform.value.base_url
+  if (selectedXimoAIPlatformKind.value) return ''
   if (isOfficialOpenAI.value) return 'https://api.openai.com'
   if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (props.account?.platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
@@ -2798,12 +2809,13 @@ const baseUrlHint = computed(() => {
 })
 
 function defaultBaseUrlForPlatform(platform: string): string {
-  const configured = platforms.value.find((item) => item.slug === platform)?.base_url
+  const definition = platforms.value.find((item) => item.slug === platform)
+  const configured = definition?.base_url
   if (configured) return configured
+  if (resolveXimoAIPlatformKind(definition, props.account)) return ''
   if (platform === 'openai') return 'https://api.openai.com'
   if (platform === 'grok') return 'https://api.x.ai/v1'
-  if (platform === 'openai-audio' || platform === 'kling_audio') return ''
-  const protocol = platforms.value.find((item) => item.slug === platform)?.protocol
+  const protocol = definition?.protocol
   if (platform === 'gemini' || protocol === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
   if (protocol === 'openai_compatible') return ''
@@ -4177,6 +4189,10 @@ const handleSubmit = async () => {
     if (props.account.type === 'apikey') {
       const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
       const newBaseUrl = editBaseUrl.value.trim() || defaultBaseUrl.value
+      if (requiresAPIKeyBaseURL.value && !newBaseUrl) {
+        appStore.showError(t('admin.accounts.upstream.pleaseEnterBaseUrl'))
+        return
+      }
       const shouldApplyModelMapping = !(hasOpenAIProtocolSettings.value && openaiPassthroughEnabled.value)
 
       // Always update credentials for apikey type to handle model mapping changes

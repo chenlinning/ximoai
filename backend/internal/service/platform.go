@@ -30,6 +30,7 @@ const (
 
 type Platform struct {
 	Slug         string
+	Kind         string
 	DisplayName  string
 	Protocol     string
 	BaseURL      string

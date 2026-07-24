@@ -41,14 +41,9 @@ func (*gatewayPlatformBoundaryRepo) Usage(context.Context, string) (service.Plat
 	return service.PlatformUsage{}, nil
 }
 
-func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t *testing.T) {
+func newGatewayPlatformBoundaryRouter(platform service.Platform) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	const platformSlug = "acme-openai"
-	platformService := service.NewPlatformService(&gatewayPlatformBoundaryRepo{platform: service.Platform{
-		Slug:     platformSlug,
-		Protocol: service.PlatformProtocolOpenAICompatible,
-		Enabled:  true,
-	}})
+	platformService := service.NewPlatformService(&gatewayPlatformBoundaryRepo{platform: platform})
 	cfg := &config.Config{}
 	cfg.Gateway.MaxBodySize = 1 << 20
 	gatewayHandler := handler.NewGatewayHandler(
@@ -72,7 +67,7 @@ func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t
 			groupID := int64(1)
 			c.Set(string(servermiddleware.ContextKeyAPIKey), &service.APIKey{
 				GroupID: &groupID,
-				Group:   &service.Group{ID: groupID, Platform: platformSlug},
+				Group:   &service.Group{ID: groupID, Platform: platform.Slug, AllowMessagesDispatch: true},
 			})
 			c.Set(string(servermiddleware.ContextKeyUser), servermiddleware.AuthSubject{UserID: 1, Concurrency: 1})
 			c.Next()
@@ -80,6 +75,17 @@ func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t
 		nil, nil, nil, nil, nil,
 		cfg,
 	)
+	return router
+}
+
+func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t *testing.T) {
+	router := newGatewayPlatformBoundaryRouter(service.Platform{
+		Slug:      "acme-openai",
+		Protocol:  service.PlatformProtocolOpenAICompatible,
+		AuthModes: []string{service.AccountTypeAPIKey},
+		Enabled:   true,
+		Builtin:   false,
+	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(`{"model":"custom-model","input":"hello"}`))
 	req.Header.Set("Content-Type", "application/json")
@@ -88,4 +94,37 @@ func TestGatewayRoutesCustomOpenAICompatiblePlatformUsesOpenAIResponsesHandler(t
 
 	require.Equal(t, http.StatusServiceUnavailable, w.Code)
 	require.Contains(t, w.Body.String(), "Service temporarily unavailable")
+}
+
+func TestGatewayRoutesCustomOpenAICompatiblePlatformReusesOpenAIAPIKeyEntrypoints(t *testing.T) {
+	router := newGatewayPlatformBoundaryRouter(service.Platform{
+		Slug:      "acme-openai",
+		Protocol:  service.PlatformProtocolOpenAICompatible,
+		AuthModes: []string{service.AccountTypeAPIKey},
+		Enabled:   true,
+		Builtin:   false,
+	})
+
+	tests := []struct {
+		name string
+		path string
+		body string
+	}{
+		{name: "embeddings", path: "/v1/embeddings", body: `{"model":"text-embedding-test","input":"hello"}`},
+		{name: "images", path: "/v1/images/generations", body: `{"model":"image-test","prompt":"hello"}`},
+		{name: "count tokens", path: "/v1/messages/count_tokens", body: `{"model":"custom-model","messages":[{"role":"user","content":"hello"}]}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tt.path, strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			require.Equal(t, http.StatusServiceUnavailable, w.Code, w.Body.String())
+			require.Contains(t, w.Body.String(), "Service temporarily unavailable")
+			require.NotContains(t, w.Body.String(), "not supported for this platform")
+		})
+	}
 }

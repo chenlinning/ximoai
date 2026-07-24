@@ -12,6 +12,44 @@ const reservedPlatformSlugs = new Set([
 ])
 
 type CustomAPIKeyProtocol = 'openai_compatible' | 'anthropic' | 'gemini'
+type XimoAIPlatformKind = 'grok_video' | 'openai_audio' | 'kling_audio'
+
+const legacyXimoAIPlatformKinds: Record<string, XimoAIPlatformKind> = {
+  'grok-video': 'grok_video',
+  'openai-audio': 'openai_audio',
+  kling_audio: 'kling_audio'
+}
+
+function normalizedXimoAIPlatformKind(value: unknown): XimoAIPlatformKind | '' {
+  const kind = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  if (kind === 'grok_video' || kind === 'openai_audio' || kind === 'kling_audio') {
+    return kind
+  }
+  return ''
+}
+
+export function resolveXimoAIPlatformKind(
+  platform?: Platform | null,
+  account?: Account | null
+): XimoAIPlatformKind | '' {
+  const platformKind = normalizedXimoAIPlatformKind(platform?.kind)
+  if (platformKind) return platformKind
+
+  const credentials = account?.credentials as Record<string, unknown> | undefined
+  const accountKind = normalizedXimoAIPlatformKind(credentials?.platform_kind)
+  if (accountKind) return accountKind
+
+  const slug = (platform?.slug || account?.platform || '').trim().toLowerCase()
+  return legacyXimoAIPlatformKinds[slug] || ''
+}
+
+export function requiresXimoAIAPIKeyBaseURL(
+  platform?: Platform | null,
+  account?: Account | null
+): boolean {
+  const kind = resolveXimoAIPlatformKind(platform, account)
+  return kind === 'grok_video' || kind === 'kling_audio'
+}
 
 function isCustomAPIKeyProtocolPlatform(
   platform: Platform | null | undefined,

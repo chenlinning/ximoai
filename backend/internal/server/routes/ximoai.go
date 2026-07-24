@@ -40,9 +40,9 @@ type ximoAIGatewayContext struct {
 
 func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayContext) {
 	h := ctx.handlers
-	gateway.POST("/audio/speech", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
-	gateway.POST("/audio/transcriptions", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
-	gateway.POST("/audio/translations", ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))
+	gateway.POST("/audio/speech", ximoAIAudioOnly(h.Gateway, true, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
+	gateway.POST("/audio/transcriptions", ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
+	gateway.POST("/audio/translations", ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/videos", func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })
 	gateway.GET("/videos", func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })
 }
@@ -57,9 +57,9 @@ func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
 		gin.HandlerFunc(ctx.apiKeyAuth),
 		ctx.requireGroup,
 	}
-	r.POST("/audio/speech", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
-	r.POST("/audio/transcriptions", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
-	r.POST("/audio/translations", withXimoAICommon(common, ximoAIAudioOnly("Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
+	r.POST("/audio/speech", withXimoAICommon(common, ximoAIAudioOnly(h.Gateway, true, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
+	r.POST("/audio/transcriptions", withXimoAICommon(common, ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
+	r.POST("/audio/translations", withXimoAICommon(common, ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.POST("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
 	r.GET("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
 }

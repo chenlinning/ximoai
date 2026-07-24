@@ -1,10 +1,18 @@
 package handler
 
-import "github.com/Wei-Shaw/sub2api/internal/service"
+import (
+	"context"
 
-func grokMediaPlatformForAPIKey(apiKey *service.APIKey) string {
-	if openAIPlatformForAPIKey(apiKey) == service.PlatformGrokVideo {
-		return service.PlatformGrokVideo
+	"github.com/Wei-Shaw/sub2api/internal/service"
+)
+
+func grokMediaPlatformForAPIKey(ctx context.Context, apiKey *service.APIKey) string {
+	if platform, ok := service.ResolvedTargetPlatformFromContext(ctx); ok && platform != "" {
+		return platform
 	}
-	return service.PlatformGrok
+	platform := openAIPlatformForAPIKey(apiKey)
+	if platform == "" {
+		return service.PlatformGrok
+	}
+	return platform
 }

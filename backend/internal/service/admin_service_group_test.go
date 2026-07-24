@@ -1043,6 +1043,65 @@ func TestAdminService_CreateGroup_PreservesMessagesDispatchForOpenAICompatiblePl
 	require.Equal(t, OpenAIMessagesDispatchModelConfig{SonnetMappedModel: "gpt-5.4"}, repo.created.MessagesDispatchModelConfig)
 }
 
+func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
+	platformService := NewPlatformService(&platformRepoStubForAdmin{platforms: map[string]Platform{
+		"renamed-video": {
+			Slug:      "renamed-video",
+			Kind:      PlatformKindGrokVideo,
+			BaseURL:   "",
+			AuthModes: []string{AccountTypeAPIKey},
+			Enabled:   true,
+			Builtin:   true,
+		},
+		"renamed-kling": {
+			Slug:      "renamed-kling",
+			Kind:      PlatformKindKlingAudio,
+			BaseURL:   "https://kling.example/v1",
+			AuthModes: []string{AccountTypeAPIKey},
+			Enabled:   true,
+			Builtin:   true,
+		},
+		"renamed-openai-audio": {
+			Slug:      "renamed-openai-audio",
+			Kind:      PlatformKindOpenAIAudio,
+			BaseURL:   "",
+			AuthModes: []string{AccountTypeAPIKey},
+			Enabled:   true,
+			Builtin:   true,
+		},
+	}})
+	svc := &adminServiceImpl{platformService: platformService}
+
+	videoCredentials, err := svc.normalizeAccountCredentialsForPlatform(
+		context.Background(), "renamed-video", AccountTypeAPIKey,
+		map[string]any{"api_key": "sk-video", "base_url": "https://video.example/v1"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, PlatformKindGrokVideo, videoCredentials[PlatformKindCredentialKey])
+
+	_, err = svc.normalizeAccountCredentialsForPlatform(
+		context.Background(), "renamed-video", AccountTypeAPIKey,
+		map[string]any{"api_key": "sk-video"},
+	)
+	require.Error(t, err)
+
+	klingCredentials, err := svc.normalizeAccountCredentialsForPlatform(
+		context.Background(), "renamed-kling", AccountTypeAPIKey,
+		map[string]any{"api_key": "sk-kling"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, PlatformKindKlingAudio, klingCredentials[PlatformKindCredentialKey])
+	require.Equal(t, "https://kling.example/v1", klingCredentials["base_url"])
+
+	openAIAudioCredentials, err := svc.normalizeAccountCredentialsForPlatform(
+		context.Background(), "renamed-openai-audio", AccountTypeAPIKey,
+		map[string]any{"api_key": "sk-audio"},
+	)
+	require.NoError(t, err)
+	require.Equal(t, PlatformKindOpenAIAudio, openAIAudioCredentials[PlatformKindCredentialKey])
+	require.NotContains(t, openAIAudioCredentials, "base_url")
+}
+
 func TestAdminService_UpdateGroup_ClearsMessagesDispatchFieldsWhenPlatformChangesAwayFromOpenAI(t *testing.T) {
 	existingGroup := &Group{
 		ID:                    1,

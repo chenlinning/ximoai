@@ -257,15 +257,7 @@ func (a *Account) IsGrokOAuth() bool {
 }
 
 func (a *Account) IsGrokVideo() bool {
-	if a == nil {
-		return false
-	}
-	switch NormalizePlatformSlug(a.Platform) {
-	case PlatformGrokVideo:
-		return true
-	default:
-		return false
-	}
+	return a != nil && a.PlatformRuntimeKind() == PlatformKindGrokVideo
 }
 
 func (a *Account) IsOpenAICompatible() bool {
@@ -1464,6 +1456,9 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	if !a.IsOpenAICompatible() && !a.IsOpenAICompatibleCustomAPIKey() {
 		return false
 	}
+	if a.IsGrokVideo() {
+		return capability == OpenAIEndpointCapabilityGrokMediaGeneration
+	}
 	if a.IsGrok() {
 		switch capability {
 		case OpenAIEndpointCapabilityChatCompletions:
@@ -1523,6 +1518,9 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 // observations provide positive paid-entitlement evidence. An explicit
 // operator override takes precedence over probe data.
 func (a *Account) GrokMediaGenerationEligibility() (bool, string) {
+	if a != nil && a.IsGrokVideo() && a.Type == AccountTypeAPIKey {
+		return true, "grok_video_api_key"
+	}
 	if a == nil || !a.IsGrok() {
 		return false, "not_grok"
 	}

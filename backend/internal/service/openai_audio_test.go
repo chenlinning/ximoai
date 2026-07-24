@@ -119,6 +119,54 @@ func TestOpenAIGatewayService_ForwardAudioMapsKlingInvalidVoiceToBadRequest(t *t
 	require.Contains(t, rec.Body.String(), "Voice id not found")
 }
 
+func TestOpenAIGatewayService_ForwardAudioConvertsKlingURLResponseToAudio(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	body := []byte(`{"model":"kling-audio","input":"hello","voice_id":"voice_1"}`)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/audio/speech", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+
+	upstream := &httpUpstreamRecorder{responses: []*http.Response{
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"data":{"audio_url":"https://cdn.kling.test/result.mp3"}}`)),
+		},
+		{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"audio/mpeg"}},
+			Body:       io.NopCloser(strings.NewReader("mp3-bytes")),
+		},
+	}}
+	svc := &OpenAIGatewayService{
+		cfg: &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{
+			Enabled: false,
+		}}},
+		httpUpstream: upstream,
+	}
+	account := &Account{
+		ID:          79,
+		Platform:    PlatformKlingAudio,
+		Type:        AccountTypeAPIKey,
+		Concurrency: 1,
+		Credentials: map[string]any{"api_key": "sk-kling", "base_url": "https://api.kling.test"},
+	}
+
+	result, err := svc.ForwardAudio(context.Background(), c, account, body, &OpenAIAudioRequest{
+		Endpoint: openAIAudioSpeechEndpoint, ContentType: "application/json", Model: "kling-audio", Body: body,
+	}, "")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, upstream.requests, 2)
+	require.Equal(t, "https://cdn.kling.test/result.mp3", upstream.requests[1].URL.String())
+	require.Empty(t, upstream.requests[1].Header.Get("Authorization"))
+	require.Equal(t, "audio/mpeg", rec.Header().Get("Content-Type"))
+	require.Equal(t, "mp3-bytes", rec.Body.String())
+}
+
 func TestOpenAIGatewayService_ParseOpenAIAudioRequestMultipartModel(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

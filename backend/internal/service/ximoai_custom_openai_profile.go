@@ -12,6 +12,9 @@ func (a *Account) UsesOpenAIAPIKeyProtocol() bool {
 	if a.IsOpenAIApiKey() {
 		return true
 	}
+	if a.IsGrokVideo() || a.IsOpenAIAudio() || a.IsKlingAudio() {
+		return false
+	}
 	switch NormalizePlatformSlug(a.Platform) {
 	case "", PlatformAnthropic, PlatformGemini, PlatformAntigravity, PlatformGrok,
 		PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:

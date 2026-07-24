@@ -149,9 +149,6 @@ func TestPlatformService_CreateNormalizesOpenAICompatiblePlatform(t *testing.T) 
 		PlatformCapabilityResponses,
 		PlatformCapabilityChatCompletions,
 		PlatformCapabilityImages,
-		PlatformCapabilityVideos,
-		PlatformCapabilityAudio,
-		PlatformCapabilityRealtime,
 	}, created.Capabilities)
 	require.True(t, created.Enabled)
 	require.False(t, created.Builtin)
@@ -237,6 +234,7 @@ func TestPlatformService_UpdateAllowsXimoAIBuiltinPlatformRename(t *testing.T) {
 		platforms: map[string]Platform{
 			PlatformGrokVideo: {
 				Slug:         PlatformGrokVideo,
+				Kind:         PlatformKindGrokVideo,
 				DisplayName:  "Grok-video",
 				Protocol:     PlatformProtocolOpenAICompatible,
 				BaseURL:      "https://video.old.test",
@@ -263,6 +261,7 @@ func TestPlatformService_UpdateAllowsXimoAIBuiltinPlatformRename(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "grok-video->grok-video-x", repo.renamed)
 	require.Equal(t, "grok-video-x", updated.Slug)
+	require.Equal(t, PlatformKindGrokVideo, updated.Kind)
 	require.Equal(t, PlatformProtocolGemini, updated.Protocol)
 	require.Equal(t, "https://video.new.test", updated.BaseURL)
 }

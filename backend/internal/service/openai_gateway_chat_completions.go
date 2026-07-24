@@ -347,7 +347,7 @@ func shouldUseRawChatCompletionsForAccount(account *Account) bool {
 	if account == nil || account.Type != AccountTypeAPIKey {
 		return false
 	}
-	if NormalizePlatformSlug(account.Platform) == PlatformOpenAIAudio {
+	if account.IsOpenAIAudio() {
 		return true
 	}
 	return !openai_compat.ShouldUseResponsesAPI(account.Extra)

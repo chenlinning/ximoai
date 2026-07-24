@@ -218,6 +218,51 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     expect(probeUpstreamBillingMock).toHaveBeenCalledWith(51)
   })
 
+  it('requires a base URL for a renamed Grok-video platform regardless of its editable protocol', async () => {
+    listPlatformsMock.mockResolvedValue([{
+      slug: 'video-provider',
+      kind: 'grok_video',
+      display_name: 'Video Provider',
+      protocol: 'gemini',
+      base_url: '',
+      auth_modes: ['apikey'],
+      capabilities: ['videos'],
+      color: '#111827',
+      enabled: true,
+      builtin: true,
+      created_at: '',
+      updated_at: '',
+    }])
+    createAccountMock.mockResolvedValue({ id: 54, platform: 'video-provider', type: 'apikey' })
+
+    const wrapper = mountModal(false)
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await selectButtonByText(wrapper, 'Video Provider')
+
+    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Video account')
+    await wrapper.get('input[type="password"]').setValue('sk-video')
+    const baseURLInput = wrapper.get('input[placeholder="https://api.example.com/v1"]')
+    expect(baseURLInput.attributes('required')).toBeDefined()
+
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+    expect(createAccountMock).not.toHaveBeenCalled()
+
+    await baseURLInput.setValue('https://video.example/v1')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createAccountMock).toHaveBeenCalledWith(expect.objectContaining({
+      platform: 'video-provider',
+      type: 'apikey',
+      credentials: expect.objectContaining({
+        api_key: 'sk-video',
+        base_url: 'https://video.example/v1',
+      }),
+    }))
+  })
+
   it('reuses Anthropic API key settings for a custom Anthropic platform', async () => {
     listPlatformsMock.mockResolvedValue([{
       slug: 'acme-anthropic',

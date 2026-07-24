@@ -30,6 +30,7 @@ type platformRequest struct {
 
 type platformResponse struct {
 	Slug         string   `json:"slug"`
+	Kind         string   `json:"kind,omitempty"`
 	DisplayName  string   `json:"display_name"`
 	Protocol     string   `json:"protocol"`
 	BaseURL      string   `json:"base_url"`
@@ -140,6 +141,7 @@ func requestToPlatform(req platformRequest) service.Platform {
 func platformToResponse(p service.Platform) platformResponse {
 	return platformResponse{
 		Slug:         p.Slug,
+		Kind:         p.Kind,
 		DisplayName:  p.DisplayName,
 		Protocol:     p.Protocol,
 		BaseURL:      p.BaseURL,

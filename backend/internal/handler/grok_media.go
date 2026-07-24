@@ -61,7 +61,7 @@ func (h *OpenAIGatewayHandler) handleGrokMedia(c *gin.Context, endpoint service.
 		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
 		return
 	}
-	grokMediaPlatform := grokMediaPlatformForAPIKey(apiKey)
+	grokMediaPlatform := grokMediaPlatformForAPIKey(c.Request.Context(), apiKey)
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
 		h.errorResponse(c, http.StatusInternalServerError, "api_error", "User context not found")

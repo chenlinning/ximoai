@@ -1063,6 +1063,7 @@
           <input
             v-model="apiKeyBaseUrl"
             type="text"
+            :required="requiresAPIKeyBaseURL"
             class="input"
             :placeholder="apiKeyBaseUrlPlaceholder"
           />
@@ -3510,7 +3511,9 @@ import {
 import {
   isCustomAnthropicPlatform,
   isCustomGeminiPlatform,
-  isCustomOpenAICompatiblePlatform
+  isCustomOpenAICompatiblePlatform,
+  requiresXimoAIAPIKeyBaseURL,
+  resolveXimoAIPlatformKind
 } from '@/components/account/ximoaiAPIKeyPlatform'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
@@ -3656,7 +3659,22 @@ const fallbackPlatforms: Platform[] = [
     updated_at: ''
   },
   {
+    slug: 'grok-video',
+    kind: 'grok_video',
+    display_name: 'Grok-video',
+    protocol: 'openai_compatible',
+    base_url: '',
+    auth_modes: ['apikey'],
+    capabilities: ['videos'],
+    color: '#111827',
+    enabled: true,
+    builtin: true,
+    created_at: '',
+    updated_at: ''
+  },
+  {
     slug: 'openai-audio',
+    kind: 'openai_audio',
     display_name: 'OpenAI Audio',
     protocol: 'openai_compatible',
     base_url: '',
@@ -3670,6 +3688,7 @@ const fallbackPlatforms: Platform[] = [
   },
   {
     slug: 'kling_audio',
+    kind: 'kling_audio',
     display_name: '可灵 Audio',
     protocol: 'openai_compatible',
     base_url: '',
@@ -4188,11 +4207,18 @@ const selectedProtocol = computed(() =>
   selectedPlatform.value?.protocol || ''
 )
 
+const selectedXimoAIPlatformKind = computed(() =>
+  resolveXimoAIPlatformKind(selectedPlatform.value)
+)
+
+const requiresAPIKeyBaseURL = computed(() =>
+  requiresXimoAIAPIKeyBaseURL(selectedPlatform.value)
+)
+
 const isOpenAICompatibleAPIKeyPlatform = computed(() =>
   selectedProtocol.value === 'openai_compatible'
-  || form.platform === 'openai-audio'
+  || selectedXimoAIPlatformKind.value !== ''
   || form.platform === 'grok'
-  || form.platform === 'kling_audio'
 )
 
 const isCustomAPIKeyOnlyPlatform = computed(() =>
@@ -4207,6 +4233,7 @@ const isSelectedGeminiProtocol = computed(() =>
 
 const apiKeyBaseUrlDefault = computed(() => {
   if (selectedPlatform.value?.base_url) return selectedPlatform.value.base_url
+  if (selectedXimoAIPlatformKind.value) return ''
   if (isOfficialOpenAI.value) return 'https://api.openai.com'
   if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
   if (form.platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
@@ -5247,6 +5274,10 @@ const handleSubmit = async () => {
   // Determine default base URL based on platform
   const defaultBaseUrl = apiKeyBaseUrlDefault.value
   const baseUrl = apiKeyBaseUrl.value.trim() || defaultBaseUrl
+  if (requiresAPIKeyBaseURL.value && !baseUrl) {
+    appStore.showError(t('admin.accounts.upstream.pleaseEnterBaseUrl'))
+    return
+  }
 
   // Build credentials with optional model mapping
   const credentials: Record<string, unknown> = {

@@ -211,7 +211,7 @@ func (s *OpenAIGatewayService) ForwardAudio(
 		return nil, s.handleErrorResponsePassthrough(ctx, &copiedResp, c, account, forwardBody, respBody)
 	}
 
-	usage, responseID, responseModel, err := s.writeOpenAIAudioResponse(resp, c)
+	usage, responseID, responseModel, err := s.writeOpenAIAudioResponse(ctx, resp, c, account)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func (s *OpenAIGatewayService) ForwardAudio(
 }
 
 func isKlingAudioInvalidVoiceResponse(account *Account, upstreamMsg string, respBody []byte) bool {
-	if account == nil || NormalizePlatformSlug(account.Platform) != PlatformKlingAudio {
+	if account == nil || !account.IsKlingAudio() {
 		return false
 	}
 	message := strings.ToLower(strings.TrimSpace(upstreamMsg))
@@ -322,10 +322,23 @@ func (s *OpenAIGatewayService) doOpenAIAudioUpstream(ctx context.Context, c *gin
 	return resp, nil
 }
 
-func (s *OpenAIGatewayService) writeOpenAIAudioResponse(resp *http.Response, c *gin.Context) (OpenAIUsage, string, string, error) {
+func (s *OpenAIGatewayService) writeOpenAIAudioResponse(ctx context.Context, resp *http.Response, c *gin.Context, account *Account) (OpenAIUsage, string, string, error) {
 	body, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
 	if err != nil {
 		return OpenAIUsage{}, "", "", err
+	}
+	if account.IsKlingAudio() && gjson.ValidBytes(body) {
+		audioURL := extractOpenAIAudioURL(body)
+		if audioURL == "" {
+			return OpenAIUsage{}, "", "", fmt.Errorf("kling audio response does not contain an audio URL")
+		}
+		usage, _ := extractOpenAIUsageFromJSONBytes(body)
+		responseID := strings.TrimSpace(gjson.GetBytes(body, "id").String())
+		responseModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
+		if err := s.proxyKlingAudioContent(ctx, c, account, audioURL); err != nil {
+			return OpenAIUsage{}, "", "", err
+		}
+		return usage, responseID, responseModel, nil
 	}
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 	contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
@@ -339,6 +352,45 @@ func (s *OpenAIGatewayService) writeOpenAIAudioResponse(resp *http.Response, c *
 		return usage, strings.TrimSpace(gjson.GetBytes(body, "id").String()), strings.TrimSpace(gjson.GetBytes(body, "model").String()), nil
 	}
 	return OpenAIUsage{}, "", "", nil
+}
+
+func (s *OpenAIGatewayService) proxyKlingAudioContent(ctx context.Context, c *gin.Context, account *Account, audioURL string) error {
+	validatedURL, err := s.validateUpstreamBaseURL(audioURL)
+	if err != nil {
+		return fmt.Errorf("invalid kling audio URL: %w", err)
+	}
+	req, err := http.NewRequestWithContext(WithHTTPUpstreamRedirectsDisabled(ctx), http.MethodGet, validatedURL, nil)
+	if err != nil {
+		return fmt.Errorf("build kling audio download request: %w", err)
+	}
+	req.Header.Set("Accept", "audio/*,application/octet-stream")
+
+	proxyURL := ""
+	if account.ProxyID != nil && account.Proxy != nil {
+		proxyURL = account.Proxy.URL()
+	}
+	resp, err := s.httpUpstream.Do(req, proxyURL, account.ID, account.Concurrency)
+	if err != nil {
+		return fmt.Errorf("download kling audio: %s", sanitizeUpstreamErrorMessage(err.Error()))
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("download kling audio: unexpected status %d", resp.StatusCode)
+	}
+	body, err := ReadUpstreamResponseBody(resp.Body, s.cfg, c, openAITooLargeError)
+	if err != nil {
+		return err
+	}
+	contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])
+	if contentType == "" || contentType == "application/octet-stream" {
+		contentType = strings.TrimSpace(strings.Split(http.DetectContentType(body), ";")[0])
+	}
+	if !strings.HasPrefix(contentType, "audio/") && contentType != "application/octet-stream" {
+		return fmt.Errorf("download kling audio: unexpected content type %s", contentType)
+	}
+	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+	c.Data(http.StatusOK, contentType, body)
+	return nil
 }
 
 func rewriteOpenAIAudioModel(body []byte, contentType string, model string) ([]byte, string, error) {

@@ -2139,7 +2139,7 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 		"input": audioInput,
 		"voice": "alloy",
 	}
-	if NormalizePlatformSlug(account.Platform) == PlatformKlingAudio {
+	if account.IsKlingAudio() {
 		payload["voice"] = "genshin_vindi2"
 		payload["voice_language"] = "zh"
 		payload["voice_speed"] = 1.0
@@ -2182,7 +2182,7 @@ func (s *AccountTestService) testOpenAIAudioAPIKey(c *gin.Context, ctx context.C
 	if len(body) > accountTestMediaPreviewLimitBytes {
 		return s.sendErrorAndEnd(c, "Audio response is too large to preview")
 	}
-	if NormalizePlatformSlug(account.Platform) == PlatformKlingAudio && gjson.ValidBytes(body) {
+	if account.IsKlingAudio() && gjson.ValidBytes(body) {
 		if audioURL := extractOpenAIAudioURL(body); audioURL != "" {
 			s.sendEvent(c, TestEvent{
 				Type:     "audio",
