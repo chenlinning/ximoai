@@ -26,14 +26,14 @@ FROM ${ALPINE_IMAGE}
 ARG YTDLP_VERSION
 RUN apk add --no-cache ca-certificates ffmpeg python3 py3-pip tzdata && \
     pip3 install --break-system-packages --no-cache-dir "yt-dlp==${YTDLP_VERSION}" && \
-    addgroup -g 1000 video && \
-    adduser -u 1000 -G video -s /sbin/nologin -D video && \
+    addgroup -S collector && \
+    adduser -S -D -H -G collector -s /sbin/nologin collector && \
     mkdir -p /tmp/video-collector && \
-    chown video:video /tmp/video-collector
+    chown collector:collector /tmp/video-collector
 
-COPY --from=builder --chown=video:video /out/video-collector /app/video-collector
+COPY --from=builder --chown=collector:collector /out/video-collector /app/video-collector
 
-USER video
+USER collector
 EXPOSE 8090
 ENV VIDEO_COLLECTOR_LISTEN=0.0.0.0:8090 \
     VIDEO_COLLECTOR_TEMP_ROOT=/tmp/video-collector \
