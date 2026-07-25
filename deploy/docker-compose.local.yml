@@ -61,8 +61,6 @@ services:
       - RUN_MODE=${RUN_MODE:-standard}
       - WORKBENCH_SSO_INTERNAL_SECRET=${WORKBENCH_SSO_INTERNAL_SECRET:-}
       - UPDATE_GITHUB_TOKEN=${UPDATE_GITHUB_TOKEN:-}
-      - VIDEO_COLLECTOR_INTERNAL_URL=http://video-collector:8090
-      - VIDEO_COLLECTOR_INTERNAL_TOKEN=${VIDEO_COLLECTOR_INTERNAL_TOKEN:?VIDEO_COLLECTOR_INTERNAL_TOKEN is required}
 
       # =======================================================================
       # Database Configuration (PostgreSQL)
@@ -190,8 +188,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      video-collector:
-        condition: service_healthy
     networks:
       - sub2api-network
     healthcheck:
@@ -200,34 +196,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  # ===========================================================================
-  # XimoAI Video Collector (internal only, no persistent media volume)
-  # ===========================================================================
-  video-collector:
-    image: ${VIDEO_COLLECTOR_IMAGE:-ilemon00/sub2api-video-collector:latest}
-    build:
-      context: ..
-      dockerfile: Dockerfile.video-collector
-    container_name: ximoai-video-collector
-    restart: unless-stopped
-    pids_limit: 128
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    environment:
-      - VIDEO_COLLECTOR_INTERNAL_TOKEN=${VIDEO_COLLECTOR_INTERNAL_TOKEN:?VIDEO_COLLECTOR_INTERNAL_TOKEN is required}
-      - VIDEO_COLLECTOR_MAX_CONCURRENT=${VIDEO_COLLECTOR_MAX_CONCURRENT:-1}
-      - TZ=${TZ:-Asia/Shanghai}
-    networks:
-      - sub2api-network
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-T", "3", "-O", "/dev/null", "http://localhost:8090/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
   # ===========================================================================
   # PostgreSQL Database

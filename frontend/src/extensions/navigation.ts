@@ -7,20 +7,13 @@ export interface XimoAINavItem {
 }
 
 export function ximoAIUserNavItems(
-  icons: { modelPlaza: unknown; videoCollector: unknown; downloadCenter: unknown },
-  videoCollectorAccess: () => boolean | undefined
+  icons: { modelPlaza: unknown; downloadCenter: unknown }
 ): XimoAINavItem[] {
   return [
     {
       path: '/model-plaza',
       labelKey: 'nav.modelPlaza',
       icon: icons.modelPlaza,
-    },
-    {
-      path: '/video-collector',
-      labelKey: 'nav.videoCollector',
-      icon: icons.videoCollector,
-      featureFlag: videoCollectorAccess,
     },
     {
       path: '/download-center',

@@ -209,8 +209,6 @@ import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { ximoAIAdminNavItems, ximoAIUserNavItems } from '@/extensions/navigation'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
-import { useVideoCollectorAccess } from '@/extensions/video-collector/access'
-import { VideoCollectorIcon } from '@/extensions/video-collector/icon'
 
 interface NavItem {
   path: string
@@ -254,7 +252,6 @@ const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const adminSettingsStore = useAdminSettingsStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
-const { canUseVideoCollector, refreshVideoCollectorAccess } = useVideoCollectorAccess()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
@@ -780,8 +777,7 @@ const flagBatchImageAccess = () => canUseBatchImage.value
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
   items.push(...ximoAIUserNavItems(
-    { modelPlaza: ModelPlazaIcon, videoCollector: VideoCollectorIcon, downloadCenter: OrderListIcon },
-    () => canUseVideoCollector.value === true
+    { modelPlaza: ModelPlazaIcon, downloadCenter: OrderListIcon }
   ).map(toNavItem))
   if (withDashboard) {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
@@ -1036,7 +1032,6 @@ watch(
 
 onMounted(() => {
   void refreshBatchImageAccess()
-  void refreshVideoCollectorAccess()
   if (isAdmin.value) {
     adminSettingsStore.fetch()
   }
