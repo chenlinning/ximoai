@@ -445,8 +445,6 @@ export interface SystemSettings {
   doc_url: string;
   home_content: string;
   hide_ccs_import_button: boolean;
-  workbench_sso_enabled?: boolean;
-  workbench_base_url?: string;
   workbench_ticket_ttl_seconds?: number;
   table_default_page_size: number;
   table_page_size_options: number[];
@@ -754,8 +752,6 @@ export interface UpdateSettingsRequest {
   doc_url?: string;
   home_content?: string;
   hide_ccs_import_button?: boolean;
-  workbench_sso_enabled?: boolean;
-  workbench_base_url?: string;
   workbench_ticket_ttl_seconds?: number;
   table_default_page_size?: number;
   table_page_size_options?: number[];

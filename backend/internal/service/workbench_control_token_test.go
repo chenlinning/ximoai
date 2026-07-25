@@ -32,22 +32,34 @@ func (s *workbenchControlGrantStoreStub) StoreGrant(_ context.Context, key strin
 	return true, nil
 }
 
-func (s *workbenchControlGrantStoreStub) ConsumeGrant(_ context.Context, key string) (string, bool, error) {
+func (s *workbenchControlGrantStoreStub) ConsumeGrant(_ context.Context, key, ssoAudience string) (string, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.items[key]
 	if !ok {
 		return "", false, nil
 	}
+	var record workbenchControlRefreshRecord
+	if json.Unmarshal([]byte(value), &record) != nil || record.SSOAudience != ssoAudience {
+		return "", false, nil
+	}
 	delete(s.items, key)
 	return value, true, nil
 }
 
-func (s *workbenchControlGrantStoreStub) DeleteGrant(_ context.Context, key string) error {
+func (s *workbenchControlGrantStoreStub) RevokeGrant(_ context.Context, key, ssoAudience string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	value, ok := s.items[key]
+	if !ok {
+		return false, nil
+	}
+	var record workbenchControlRefreshRecord
+	if json.Unmarshal([]byte(value), &record) != nil || record.SSOAudience != ssoAudience {
+		return false, nil
+	}
 	delete(s.items, key)
-	return nil
+	return true, nil
 }
 
 func (s *workbenchControlGrantStoreStub) Ping(context.Context) error { return nil }
@@ -75,7 +87,7 @@ func newWorkbenchControlTokenTestService() (*WorkbenchControlTokenService, *Auth
 func TestWorkbenchControlTokenIssueUsesScopedShortLivedJWTAndHashedRefreshGrant(t *testing.T) {
 	control, authService, store := newWorkbenchControlTokenTestService()
 
-	grant, err := control.Issue(context.Background(), 123)
+	grant, err := control.Issue(context.Background(), 123, "https://workbench.ximoai.cn")
 	require.NoError(t, err)
 	require.NotEmpty(t, grant.AccessToken)
 	require.NotEmpty(t, grant.RefreshToken)
@@ -98,19 +110,20 @@ func TestWorkbenchControlTokenIssueUsesScopedShortLivedJWTAndHashedRefreshGrant(
 		var record workbenchControlRefreshRecord
 		require.NoError(t, json.Unmarshal([]byte(raw), &record))
 		require.Equal(t, int64(123), record.UserID)
+		require.Equal(t, "https://workbench.ximoai.cn", record.SSOAudience)
 	}
 	store.mu.Unlock()
 }
 
 func TestWorkbenchControlTokenRefreshAtomicallyRotatesOnce(t *testing.T) {
 	control, _, _ := newWorkbenchControlTokenTestService()
-	grant, err := control.Issue(context.Background(), 123)
+	grant, err := control.Issue(context.Background(), 123, "https://workbench.ximoai.cn")
 	require.NoError(t, err)
 
 	results := make(chan error, 2)
 	for i := 0; i < 2; i++ {
 		go func() {
-			_, refreshErr := control.Refresh(context.Background(), grant.RefreshToken)
+			_, refreshErr := control.Refresh(context.Background(), grant.RefreshToken, "https://workbench.ximoai.cn")
 			results <- refreshErr
 		}()
 	}
@@ -129,7 +142,7 @@ func TestWorkbenchControlTokenRefreshAtomicallyRotatesOnce(t *testing.T) {
 
 func TestWorkbenchControlAccessTokenCannotUpgradeToRegularAccessToken(t *testing.T) {
 	control, authService, _ := newWorkbenchControlTokenTestService()
-	grant, err := control.Issue(context.Background(), 123)
+	grant, err := control.Issue(context.Background(), 123, "https://workbench.ximoai.cn")
 	require.NoError(t, err)
 
 	_, err = authService.RefreshToken(context.Background(), grant.AccessToken)
@@ -138,7 +151,7 @@ func TestWorkbenchControlAccessTokenCannotUpgradeToRegularAccessToken(t *testing
 
 func TestWorkbenchControlTokenRejectsExpiredRefreshGrant(t *testing.T) {
 	control, _, store := newWorkbenchControlTokenTestService()
-	grant, err := control.Issue(context.Background(), 123)
+	grant, err := control.Issue(context.Background(), 123, "https://workbench.ximoai.cn")
 	require.NoError(t, err)
 
 	store.mu.Lock()
@@ -152,16 +165,29 @@ func TestWorkbenchControlTokenRejectsExpiredRefreshGrant(t *testing.T) {
 	}
 	store.mu.Unlock()
 
-	_, err = control.Refresh(context.Background(), grant.RefreshToken)
+	_, err = control.Refresh(context.Background(), grant.RefreshToken, "https://workbench.ximoai.cn")
 	require.Error(t, err)
 }
 
 func TestWorkbenchControlTokenRevokePreventsRefresh(t *testing.T) {
 	control, _, _ := newWorkbenchControlTokenTestService()
-	grant, err := control.Issue(context.Background(), 123)
+	grant, err := control.Issue(context.Background(), 123, "https://workbench.ximoai.cn")
 	require.NoError(t, err)
-	require.NoError(t, control.Revoke(context.Background(), grant.RefreshToken))
+	require.NoError(t, control.Revoke(context.Background(), grant.RefreshToken, "https://workbench.ximoai.cn"))
 
-	_, err = control.Refresh(context.Background(), grant.RefreshToken)
+	_, err = control.Refresh(context.Background(), grant.RefreshToken, "https://workbench.ximoai.cn")
 	require.Error(t, err)
+}
+
+func TestWorkbenchControlTokenWrongAudienceCannotConsumeOrRevokeGrant(t *testing.T) {
+	control, _, _ := newWorkbenchControlTokenTestService()
+	grant, err := control.Issue(context.Background(), 123, "https://workbench.ximoai.cn")
+	require.NoError(t, err)
+
+	_, err = control.Refresh(context.Background(), grant.RefreshToken, "https://novel.ximoai.cn")
+	require.Error(t, err)
+	require.Error(t, control.Revoke(context.Background(), grant.RefreshToken, "https://novel.ximoai.cn"))
+
+	_, err = control.Refresh(context.Background(), grant.RefreshToken, "https://workbench.ximoai.cn")
+	require.NoError(t, err)
 }

@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1.7
+
+ARG GOLANG_IMAGE=golang:1.26.5-alpine
+ARG ALPINE_IMAGE=alpine:3.21
+ARG GOPROXY=https://proxy.golang.org,direct
+ARG GOSUMDB=sum.golang.org
+ARG YTDLP_VERSION=2026.7.4
+
+FROM ${GOLANG_IMAGE} AS builder
+ARG GOPROXY
+ARG GOSUMDB
+ARG TARGETOS
+ARG TARGETARCH
+ENV GOPROXY=${GOPROXY}
+ENV GOSUMDB=${GOSUMDB}
+WORKDIR /src/backend
+COPY backend/go.mod backend/go.sum ./
+RUN --mount=type=cache,id=video-collector-gomod,target=/go/pkg/mod go mod download
+COPY backend/ ./
+RUN --mount=type=cache,id=video-collector-gomod,target=/go/pkg/mod \
+    --mount=type=cache,id=video-collector-gobuild,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
+    go build -trimpath -ldflags="-s -w" -o /out/video-collector ./cmd/video-collector
+
+FROM ${ALPINE_IMAGE}
+ARG YTDLP_VERSION
+RUN apk add --no-cache ca-certificates ffmpeg python3 py3-pip tzdata && \
+    pip3 install --break-system-packages --no-cache-dir "yt-dlp==${YTDLP_VERSION}" && \
+    addgroup -g 1000 video && \
+    adduser -u 1000 -G video -s /sbin/nologin -D video && \
+    mkdir -p /tmp/video-collector && \
+    chown video:video /tmp/video-collector
+
+COPY --from=builder --chown=video:video /out/video-collector /app/video-collector
+
+USER video
+EXPOSE 8090
+ENV VIDEO_COLLECTOR_LISTEN=0.0.0.0:8090 \
+    VIDEO_COLLECTOR_TEMP_ROOT=/tmp/video-collector \
+    YTDLP_PATH=/usr/bin/yt-dlp \
+    FFMPEG_PATH=/usr/bin/ffmpeg
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -T 3 -O /dev/null http://localhost:8090/health || exit 1
+
+ENTRYPOINT ["/app/video-collector"]

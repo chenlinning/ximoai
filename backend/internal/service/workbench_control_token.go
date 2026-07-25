@@ -32,8 +32,8 @@ const (
 
 type WorkbenchControlGrantStore interface {
 	StoreGrant(ctx context.Context, key string, payload []byte, ttl time.Duration) (bool, error)
-	ConsumeGrant(ctx context.Context, key string) (string, bool, error)
-	DeleteGrant(ctx context.Context, key string) error
+	ConsumeGrant(ctx context.Context, key, ssoAudience string) (string, bool, error)
+	RevokeGrant(ctx context.Context, key, ssoAudience string) (bool, error)
 	Ping(ctx context.Context) error
 }
 
@@ -58,6 +58,7 @@ type workbenchControlRefreshRecord struct {
 	TokenVersion int64    `json:"token_version"`
 	SessionID    string   `json:"session_id"`
 	Audience     string   `json:"audience"`
+	SSOAudience  string   `json:"sso_audience"`
 	Scopes       []string `json:"scopes"`
 	ExpiresAt    int64    `json:"expires_at"`
 }
@@ -74,7 +75,7 @@ func NewWorkbenchControlTokenService(
 	}
 }
 
-func (s *WorkbenchControlTokenService) Issue(ctx context.Context, userID int64) (*WorkbenchControlAuthorization, error) {
+func (s *WorkbenchControlTokenService) Issue(ctx context.Context, userID int64, ssoAudience string) (*WorkbenchControlAuthorization, error) {
 	if err := s.ensureAvailable(ctx); err != nil {
 		return nil, err
 	}
@@ -86,10 +87,10 @@ func (s *WorkbenchControlTokenService) Issue(ctx context.Context, userID int64) 
 	if err != nil {
 		return nil, fmt.Errorf("generate workbench control session id: %w", err)
 	}
-	return s.issueForUser(ctx, user, sessionID, time.Now().Add(workbenchControlSessionTTL))
+	return s.issueForUser(ctx, user, sessionID, ssoAudience, time.Now().Add(workbenchControlSessionTTL))
 }
 
-func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken string) (*WorkbenchControlAuthorization, error) {
+func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken, ssoAudience string) (*WorkbenchControlAuthorization, error) {
 	if err := s.ensureAvailable(ctx); err != nil {
 		return nil, err
 	}
@@ -97,7 +98,7 @@ func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken
 	if err != nil {
 		return nil, err
 	}
-	raw, ok, err := s.grantStore.ConsumeGrant(ctx, key)
+	raw, ok, err := s.grantStore.ConsumeGrant(ctx, key, ssoAudience)
 	if err != nil {
 		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_REDIS_UNAVAILABLE", "workbench control token store is unavailable").WithCause(err)
 	}
@@ -120,10 +121,10 @@ func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken
 	if resolvedTokenVersion(user) != record.TokenVersion {
 		return nil, ErrTokenRevoked
 	}
-	return s.issueForUser(ctx, user, record.SessionID, sessionExpiresAt)
+	return s.issueForUser(ctx, user, record.SessionID, record.SSOAudience, sessionExpiresAt)
 }
 
-func (s *WorkbenchControlTokenService) Revoke(ctx context.Context, refreshToken string) error {
+func (s *WorkbenchControlTokenService) Revoke(ctx context.Context, refreshToken, ssoAudience string) error {
 	if s == nil || s.grantStore == nil {
 		return infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
 	}
@@ -131,8 +132,12 @@ func (s *WorkbenchControlTokenService) Revoke(ctx context.Context, refreshToken 
 	if err != nil {
 		return err
 	}
-	if err := s.grantStore.DeleteGrant(ctx, key); err != nil {
+	revoked, err := s.grantStore.RevokeGrant(ctx, key, ssoAudience)
+	if err != nil {
 		return infraerrors.InternalServer("WORKBENCH_CONTROL_REDIS_UNAVAILABLE", "workbench control token store is unavailable").WithCause(err)
+	}
+	if !revoked {
+		return infraerrors.Unauthorized("WORKBENCH_CONTROL_REFRESH_INVALID", "refresh token is invalid or expired")
 	}
 	return nil
 }
@@ -168,10 +173,11 @@ func (s *WorkbenchControlTokenService) issueForUser(
 	ctx context.Context,
 	user *User,
 	sessionID string,
+	ssoAudience string,
 	sessionExpiresAt time.Time,
 ) (*WorkbenchControlAuthorization, error) {
 	now := time.Now()
-	if sessionID == "" || !now.Before(sessionExpiresAt) {
+	if sessionID == "" || strings.TrimSpace(ssoAudience) == "" || !now.Before(sessionExpiresAt) {
 		return nil, infraerrors.Unauthorized("WORKBENCH_CONTROL_SESSION_EXPIRED", "workbench control session is expired")
 	}
 	accessExpiresAt := now.Add(workbenchControlAccessTTL)
@@ -188,6 +194,7 @@ func (s *WorkbenchControlTokenService) issueForUser(
 		TokenVersion: resolvedTokenVersion(user),
 		SessionID:    sessionID,
 		Audience:     WorkbenchControlAudience,
+		SSOAudience:  ssoAudience,
 		Scopes:       []string{WorkbenchModelControlReadScope},
 		ExpiresAt:    sessionExpiresAt.Unix(),
 	}
@@ -265,6 +272,7 @@ func validWorkbenchControlRefreshRecord(record workbenchControlRefreshRecord) bo
 	return record.UserID > 0 &&
 		record.SessionID != "" &&
 		record.Audience == WorkbenchControlAudience &&
+		record.SSOAudience != "" &&
 		len(record.Scopes) == 1 &&
 		record.Scopes[0] == WorkbenchModelControlReadScope &&
 		record.ExpiresAt > 0

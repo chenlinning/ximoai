@@ -56,6 +56,13 @@ jobs:
               echo "${IMAGE}:latest"
             fi
             echo 'EOF'
+            echo 'video_tags<<EOF'
+            echo "${IMAGE}-video-collector:${VERSION}"
+            echo "${IMAGE}-video-collector:sha-${SHORT_SHA}"
+            if [ "${INPUT_PUSH_LATEST:-true}" = "true" ]; then
+              echo "${IMAGE}-video-collector:latest"
+            fi
+            echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -98,3 +105,14 @@ jobs:
             NODE_OPTIONS=--max-old-space-size=4096
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build video collector image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.video-collector
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.version.outputs.video_tags }}
+          cache-from: type=gha,scope=video-collector
+          cache-to: type=gha,mode=max,scope=video-collector

@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const workbenchTestMasterSecret = "test-workbench-master-secret-32-bytes-long"
+
 type workbenchUserGetterStub struct {
 	user *User
 }
@@ -116,10 +118,8 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 			FrontendURL: "https://ximoai.cn",
 		},
 		WorkbenchSSO: config.WorkbenchSSOConfig{
-			Enabled:          true,
-			BaseURL:          "http://127.0.0.1:4173",
 			TicketTTLSeconds: 60,
-			InternalSecret:   "secret",
+			InternalSecret:   workbenchTestMasterSecret,
 		},
 	})
 	settingSvc.cfg.JWT.Secret = "test-jwt-secret-32bytes-long!!!"
@@ -193,9 +193,8 @@ func newWorkbenchSSOTestService(t *testing.T, values map[string]string) (*Workbe
 
 func TestWorkbenchSSOService_IssueTicketStoresOnlyHash(t *testing.T) {
 	svc, mr := newWorkbenchSSOTestService(t, map[string]string{
-		SettingKeyWorkbenchSSOEnabled:       "true",
-		SettingKeyWorkbenchBaseURL:          "http://127.0.0.1:4173",
 		SettingKeyWorkbenchTicketTTLSeconds: "60",
+		SettingKeyXimoAIHomeTabs:            `[{"id":"workbench","label":"Workbench","url":"http://127.0.0.1:4173/app","enabled":true,"workbench_sso":true}]`,
 	})
 
 	ticket, err := svc.IssueTicket(context.Background(), 123, "http://127.0.0.1:4173")
@@ -213,9 +212,8 @@ func TestWorkbenchSSOService_IssueTicketStoresOnlyHash(t *testing.T) {
 
 func TestWorkbenchSSOService_ValidateTicketConsumesOnceAndReturnsContext(t *testing.T) {
 	svc, _ := newWorkbenchSSOTestService(t, map[string]string{
-		SettingKeyWorkbenchSSOEnabled:       "true",
-		SettingKeyWorkbenchBaseURL:          "http://127.0.0.1:4173",
 		SettingKeyWorkbenchTicketTTLSeconds: "60",
+		SettingKeyXimoAIHomeTabs:            `[{"id":"workbench","label":"Workbench","url":"http://127.0.0.1:4173/app","enabled":true,"workbench_sso":true}]`,
 	})
 
 	ticket, err := svc.IssueTicket(context.Background(), 123, "http://127.0.0.1:4173")
@@ -252,9 +250,8 @@ func TestWorkbenchSSOService_ValidateTicketConsumesOnceAndReturnsContext(t *test
 
 func TestWorkbenchSSOService_ValidateTicketRejectsExpiredTicket(t *testing.T) {
 	svc, mr := newWorkbenchSSOTestService(t, map[string]string{
-		SettingKeyWorkbenchSSOEnabled:       "true",
-		SettingKeyWorkbenchBaseURL:          "http://127.0.0.1:4173",
 		SettingKeyWorkbenchTicketTTLSeconds: "1",
+		SettingKeyXimoAIHomeTabs:            `[{"id":"workbench","label":"Workbench","url":"http://127.0.0.1:4173/app","enabled":true,"workbench_sso":true}]`,
 	})
 
 	ticket, err := svc.IssueTicket(context.Background(), 123, "http://127.0.0.1:4173")
@@ -267,9 +264,8 @@ func TestWorkbenchSSOService_ValidateTicketRejectsExpiredTicket(t *testing.T) {
 
 func TestWorkbenchSSOService_RejectsAudienceMismatch(t *testing.T) {
 	svc, _ := newWorkbenchSSOTestService(t, map[string]string{
-		SettingKeyWorkbenchSSOEnabled:       "true",
-		SettingKeyWorkbenchBaseURL:          "http://127.0.0.1:4173",
 		SettingKeyWorkbenchTicketTTLSeconds: "60",
+		SettingKeyXimoAIHomeTabs:            `[{"id":"workbench","label":"Workbench","url":"http://127.0.0.1:4173/app","enabled":true,"workbench_sso":true}]`,
 	})
 
 	ticket, err := svc.IssueTicket(context.Background(), 123, "http://127.0.0.1:4173")
@@ -277,4 +273,52 @@ func TestWorkbenchSSOService_RejectsAudienceMismatch(t *testing.T) {
 
 	_, err = svc.ValidateTicket(context.Background(), ticket.Ticket, "https://evil.example")
 	require.Error(t, err)
+}
+
+func TestWorkbenchSSOService_IssueTicketUsesSelectedHomeTabOrigin(t *testing.T) {
+	svc, _ := newWorkbenchSSOTestService(t, map[string]string{
+		SettingKeyWorkbenchTicketTTLSeconds: "60",
+		SettingKeyXimoAIHomeTabs: `[
+			{"id":"workbench","label":"Workbench","url":"https://workbench.ximoai.cn/app","enabled":true,"workbench_sso":true},
+			{"id":"novel","label":"Novel","url":"https://novel.ximoai.cn/workspace","enabled":true,"workbench_sso":true},
+			{"id":"plain","label":"Plain","url":"https://plain.ximoai.cn/","enabled":true},
+			{"id":"disabled","label":"Disabled","url":"https://disabled.ximoai.cn/","enabled":false,"workbench_sso":true}
+		]`,
+	})
+
+	novelTicket, err := svc.IssueTicket(context.Background(), 123, "https://novel.ximoai.cn/workspace")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(novelTicket.EntryURL, "https://novel.ximoai.cn/sso/entry?ticket="))
+	novelContext, err := svc.ValidateTicket(context.Background(), novelTicket.Ticket, "https://novel.ximoai.cn")
+	require.NoError(t, err)
+	require.Equal(t, "123", novelContext.UserID)
+
+	workbenchTicket, err := svc.IssueTicket(context.Background(), 123, "https://workbench.ximoai.cn/app")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(workbenchTicket.EntryURL, "https://workbench.ximoai.cn/sso/entry?ticket="))
+
+	_, err = svc.IssueTicket(context.Background(), 123, "https://plain.ximoai.cn/")
+	require.Error(t, err)
+	_, err = svc.IssueTicket(context.Background(), 123, "https://disabled.ximoai.cn/")
+	require.Error(t, err)
+	_, err = svc.IssueTicket(context.Background(), 123, "http://127.0.0.1:4173")
+	require.Error(t, err)
+}
+
+func TestWorkbenchSSOService_AudienceCredentialsAreIsolated(t *testing.T) {
+	svc, _ := newWorkbenchSSOTestService(t, map[string]string{
+		SettingKeyXimoAIHomeTabs: `[
+			{"id":"workbench","label":"Workbench","url":"https://workbench.ximoai.cn","enabled":true,"workbench_sso":true},
+			{"id":"novel","label":"Novel","url":"https://novel.ximoai.cn","enabled":true,"workbench_sso":true}
+		]`,
+	})
+
+	workbenchSecret, err := DeriveWorkbenchAudienceSecret(workbenchTestMasterSecret, "https://workbench.ximoai.cn")
+	require.NoError(t, err)
+	novelSecret, err := DeriveWorkbenchAudienceSecret(workbenchTestMasterSecret, "https://novel.ximoai.cn")
+	require.NoError(t, err)
+	require.NotEqual(t, workbenchSecret, novelSecret)
+	require.True(t, svc.AuthorizeAudience(context.Background(), "https://workbench.ximoai.cn", workbenchSecret))
+	require.False(t, svc.AuthorizeAudience(context.Background(), "https://workbench.ximoai.cn", novelSecret))
+	require.False(t, svc.AuthorizeAudience(context.Background(), "https://disabled.ximoai.cn", workbenchSecret))
 }

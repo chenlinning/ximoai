@@ -35,15 +35,15 @@
 
         <div class="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 lg:w-auto lg:justify-end lg:pb-0">
           <button
-            v-for="platform in platformList"
-            :key="platform"
+            v-for="brand in brandList"
+            :key="brand"
             type="button"
+            :data-model-brand="brand"
             class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
-            :class="platformButtonClass(platform)"
-            :style="platformButtonInlineStyle(platform)"
-            @click="selectPlatform(platform)"
+            :class="brandButtonClass(brand)"
+            @click="selectBrand(brand)"
           >
-            {{ platform === allPlatformsKey ? t('modelPlaza.allPlatforms') : platformName(platform) }}
+            {{ brand === allBrandsKey ? t('modelPlaza.allBrands') : brand }}
           </button>
         </div>
       </div>
@@ -116,13 +116,19 @@
                 {{ model.name }}
               </h2>
               <div class="mt-2 flex flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium"
-                  :class="platformBadgeClass(model.platform)"
-                  :style="platformBadgeStyle(platformColor(model.platform))"
-                >
-                  {{ platformName(model.platform) }}
+                <span class="inline-flex items-center rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
+                  {{ model.brand }}
                 </span>
+                <button
+                  v-if="model.brandEditor"
+                  type="button"
+                  :data-model-brand-edit="model.key"
+                  class="btn btn-ghost btn-icon btn-sm"
+                  :title="t('modelPlaza.brandEditor.edit')"
+                  @click.stop="selectedBrandModel = model"
+                >
+                  <Icon name="edit" size="xs" />
+                </button>
                 <span class="text-xs text-gray-500 dark:text-dark-400">
                   {{ t('modelPlaza.groupCount', { count: model.groups.length }) }}
                 </span>
@@ -261,6 +267,17 @@
         @updated="updateModelDocumentation"
         @close="selectedDocsModel = null"
       />
+
+      <ModelBrandDialog
+        v-if="selectedBrandModel && selectedBrandModel.brandEditor"
+        :show="Boolean(selectedBrandModel)"
+        :platform="selectedBrandModel.platform"
+        :model-name="selectedBrandModel.name"
+        :brand="selectedBrandModel.brand"
+        :editor="selectedBrandModel.brandEditor"
+        @updated="updateModelBrand"
+        @close="selectedBrandModel = null"
+      />
     </div>
   </AppLayout>
 </template>
@@ -271,12 +288,14 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelApiDocsDialog from './ModelApiDocsDialog.vue'
+import ModelBrandDialog from './ModelBrandDialog.vue'
 import userChannelsAPI, {
   type UserAvailableChannel,
   type UserPricingInterval,
   type UserSupportedModelPricing
 } from '@/api/channels'
 import type { ModelAPIDocsCategory, ModelAPIDocsResponse } from '@/api/modelApiDocs'
+import type { ModelBrandEditor, ModelBrandState } from '@/api/modelBrand'
 import {
   BILLING_MODE_IMAGE,
   BILLING_MODE_PER_REQUEST,
@@ -287,11 +306,7 @@ import {
 import { formatScaled } from '@/utils/pricing'
 import {
   platformAccentBarClass,
-  platformBadgeClass,
-  platformBadgeStyle,
-  platformButtonStyle,
-  platformDisplayColor,
-  platformDisplayName,
+  platformDisplayColor
 } from '@/utils/platformColors'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { useAppStore } from '@/stores/app'
@@ -331,6 +346,8 @@ interface ModelEntry {
   key: string
   name: string
   platform: string
+  brand: string
+  brandEditor: ModelBrandEditor | null
   categories: ModelAPIDocsCategory[]
   capabilities: string[]
   protocols: string[]
@@ -348,7 +365,7 @@ interface DisplayInterval {
 const { t } = useI18n()
 const appStore = useAppStore()
 const perMillionScale = 1_000_000
-const allPlatformsKey = 'all'
+const allBrandsKey = 'all'
 const allCategoriesKey = 'all'
 const categoryOrder: ModelAPIDocsCategory[] = ['conversation', 'image', 'video', 'tts', 'asr']
 
@@ -357,19 +374,20 @@ const error = ref('')
 const models = ref<ModelEntry[]>([])
 const platforms = ref<Platform[]>([])
 const searchQuery = ref('')
-const activePlatform = ref(allPlatformsKey)
+const activeBrand = ref(allBrandsKey)
 const activeCategory = ref(allCategoriesKey)
 const selectedDocsModel = ref<ModelEntry | null>(null)
+const selectedBrandModel = ref<ModelEntry | null>(null)
 
-const platformList = computed(() => {
-  const platforms = Array.from(new Set(models.value.map((model) => model.platform))).sort()
-  return [allPlatformsKey, ...platforms]
+const brandList = computed(() => {
+  const brands = Array.from(new Set(models.value.map((model) => model.brand))).sort()
+  return [allBrandsKey, ...brands]
 })
 
 const categoryList = computed(() => {
   const available = new Set<ModelAPIDocsCategory>()
   for (const model of models.value) {
-    if (activePlatform.value !== allPlatformsKey && model.platform !== activePlatform.value) continue
+    if (activeBrand.value !== allBrandsKey && model.brand !== activeBrand.value) continue
     for (const category of model.categories) available.add(category)
   }
   return [allCategoriesKey, ...categoryOrder.filter((category) => available.has(category))]
@@ -378,7 +396,7 @@ const categoryList = computed(() => {
 const filteredModels = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return models.value.filter((model) => {
-    if (activePlatform.value !== allPlatformsKey && model.platform !== activePlatform.value) {
+    if (activeBrand.value !== allBrandsKey && model.brand !== activeBrand.value) {
       return false
     }
     if (activeCategory.value !== allCategoriesKey && !model.categories.includes(activeCategory.value as ModelAPIDocsCategory)) {
@@ -387,6 +405,7 @@ const filteredModels = computed(() => {
     if (!q) return true
     return (
       model.name.toLowerCase().includes(q) ||
+      model.brand.toLowerCase().includes(q) ||
       model.platform.toLowerCase().includes(q) ||
       model.groups.some(
         (group) =>
@@ -397,15 +416,15 @@ const filteredModels = computed(() => {
   })
 })
 
-function selectPlatform(platform: string) {
-  activePlatform.value = platform
+function selectBrand(brand: string) {
+  activeBrand.value = brand
   if (!categoryList.value.includes(activeCategory.value)) {
     activeCategory.value = allCategoriesKey
   }
 }
 
-function platformButtonClass(platform: string): string {
-  if (platform === activePlatform.value) {
+function brandButtonClass(brand: string): string {
+  if (brand === activeBrand.value) {
     return 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600'
   }
   return 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400'
@@ -422,10 +441,6 @@ function platformColor(platform: string): string {
   return platformDisplayColor(platforms.value, platform)
 }
 
-function platformName(platform: string): string {
-  return platformDisplayName(platforms.value, platform)
-}
-
 function openModelDocs(model: ModelEntry) {
   selectedDocsModel.value = model
 }
@@ -439,9 +454,15 @@ function updateModelDocumentation(documentation: ModelAPIDocsResponse) {
   }
 }
 
-function platformButtonInlineStyle(platform: string) {
-  if (platform === allPlatformsKey || platform !== activePlatform.value) return undefined
-  return platformButtonStyle(platformColor(platform))
+function updateModelBrand(state: ModelBrandState) {
+  if (!selectedBrandModel.value) return
+  selectedBrandModel.value.brand = state.brand
+  selectedBrandModel.value.brandEditor = state.editor || null
+  activeBrand.value = state.brand
+  selectedBrandModel.value = null
+  if (!categoryList.value.includes(activeCategory.value)) {
+    activeCategory.value = allCategoriesKey
+  }
 }
 
 function platformAccentStyle(platform: string) {
@@ -544,6 +565,8 @@ function buildModels(channels: UserAvailableChannel[]): ModelEntry[] {
             key,
             name: supportedModel.name,
             platform,
+            brand: supportedModel.brand || 'Other',
+            brandEditor: supportedModel.brand_editor || null,
             categories: supportedModel.types || [],
             capabilities: supportedModel.capabilities || [],
             protocols: supportedModel.protocols || [],
@@ -614,8 +637,8 @@ async function loadData() {
     const channels = await userChannelsAPI.getModelPlaza()
     platforms.value = buildPlatforms(channels)
     models.value = buildModels(channels)
-    if (activePlatform.value !== allPlatformsKey && !platformList.value.includes(activePlatform.value)) {
-      activePlatform.value = allPlatformsKey
+    if (activeBrand.value !== allBrandsKey && !brandList.value.includes(activeBrand.value)) {
+      activeBrand.value = allBrandsKey
     }
     if (!categoryList.value.includes(activeCategory.value)) {
       activeCategory.value = allCategoriesKey

@@ -65,6 +65,7 @@ type Handlers struct {
 	AvailableChannel *AvailableChannelHandler
 	Platform         *admin.PlatformHandler
 	Membership       *MembershipHandler
+	VideoCollector   *VideoCollectorHandler
 	WorkbenchSSO     *WorkbenchSSOHandler
 	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler

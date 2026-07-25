@@ -209,6 +209,8 @@ import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, makeSidebarFlag } from '@/utils/featureFlags'
 import { ximoAIAdminNavItems, ximoAIUserNavItems } from '@/extensions/navigation'
 import { useBatchImageAccess } from '@/composables/useBatchImageAccess'
+import { useVideoCollectorAccess } from '@/extensions/video-collector/access'
+import { VideoCollectorIcon } from '@/extensions/video-collector/icon'
 
 interface NavItem {
   path: string
@@ -252,6 +254,7 @@ const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
 const adminSettingsStore = useAdminSettingsStore()
 const { canUseBatchImage, refreshBatchImageAccess } = useBatchImageAccess()
+const { canUseVideoCollector, refreshVideoCollectorAccess } = useVideoCollectorAccess()
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
@@ -776,7 +779,10 @@ const flagBatchImageAccess = () => canUseBatchImage.value
 // Builds the user's own navigation items for regular users and admin personal links.
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
-  items.push(...ximoAIUserNavItems({ modelPlaza: ModelPlazaIcon, downloadCenter: OrderListIcon }).map(toNavItem))
+  items.push(...ximoAIUserNavItems(
+    { modelPlaza: ModelPlazaIcon, videoCollector: VideoCollectorIcon, downloadCenter: OrderListIcon },
+    () => canUseVideoCollector.value === true
+  ).map(toNavItem))
   if (withDashboard) {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })
   }
@@ -819,12 +825,13 @@ const personalNavItems = computed((): NavItem[] => {
   return applyFeatureFlags(buildSelfNavItems(false))
 })
 
-function toNavItem(item: { path: string; labelKey: string; icon: unknown; hideInSimpleMode?: boolean }): NavItem {
+function toNavItem(item: { path: string; labelKey: string; icon: unknown; hideInSimpleMode?: boolean; featureFlag?: () => boolean | undefined }): NavItem {
   return {
     path: item.path,
     label: t(item.labelKey),
     icon: item.icon,
     hideInSimpleMode: item.hideInSimpleMode,
+    featureFlag: item.featureFlag,
   }
 }
 
@@ -1029,6 +1036,7 @@ watch(
 
 onMounted(() => {
   void refreshBatchImageAccess()
+  void refreshVideoCollectorAccess()
   if (isAdmin.value) {
     adminSettingsStore.fetch()
   }

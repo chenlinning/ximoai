@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -19,6 +20,7 @@ import (
 )
 
 const workbenchSSOTicketKeyPrefix = "workbench:sso:ticket:"
+const workbenchSSOSecretContext = "ximoai-workbench-sso-audience:"
 
 type WorkbenchSSOTicketStore interface {
 	StoreTicket(ctx context.Context, key string, payload []byte, ttl time.Duration) (bool, error)
@@ -113,10 +115,7 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 	if err != nil {
 		return nil, err
 	}
-	if !settings.enabled {
-		return nil, infraerrors.Forbidden("WORKBENCH_SSO_DISABLED", "workbench sso is disabled")
-	}
-	normalizedAudience, err := s.validateAudience(audience, settings.baseURL)
+	normalizedAudience, err := s.validateAudience(ctx, audience)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +146,7 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 		if !ok {
 			continue
 		}
-		entryURL, err := buildWorkbenchEntryURL(settings.baseURL, ticket)
+		entryURL, err := buildWorkbenchEntryURL(normalizedAudience, ticket)
 		if err != nil {
 			return nil, err
 		}
@@ -161,14 +160,7 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 }
 
 func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audience string) (*WorkbenchSSOValidation, error) {
-	settings, err := s.currentSettings(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !settings.enabled {
-		return nil, infraerrors.Forbidden("WORKBENCH_SSO_DISABLED", "workbench sso is disabled")
-	}
-	normalizedAudience, err := s.validateAudience(audience, settings.baseURL)
+	normalizedAudience, err := s.validateAudience(ctx, audience)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +195,7 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 	if s.controlTokens == nil {
 		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
 	}
-	authorization, err := s.controlTokens.Issue(ctx, record.UserID)
+	authorization, err := s.controlTokens.Issue(ctx, record.UserID, normalizedAudience)
 	if err != nil {
 		return nil, err
 	}
@@ -213,30 +205,63 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 	}, nil
 }
 
-func (s *WorkbenchSSOService) RefreshControlToken(ctx context.Context, refreshToken string) (*WorkbenchControlAuthorization, error) {
+func (s *WorkbenchSSOService) RefreshControlToken(ctx context.Context, refreshToken, audience string) (*WorkbenchControlAuthorization, error) {
 	if s == nil || s.controlTokens == nil {
 		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
 	}
-	return s.controlTokens.Refresh(ctx, refreshToken)
+	normalizedAudience, err := s.validateAudience(ctx, audience)
+	if err != nil {
+		return nil, err
+	}
+	return s.controlTokens.Refresh(ctx, refreshToken, normalizedAudience)
 }
 
-func (s *WorkbenchSSOService) RevokeControlToken(ctx context.Context, refreshToken string) error {
+func (s *WorkbenchSSOService) RevokeControlToken(ctx context.Context, refreshToken, audience string) error {
 	if s == nil || s.controlTokens == nil {
 		return infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
 	}
-	return s.controlTokens.Revoke(ctx, refreshToken)
+	normalizedAudience, err := s.validateAudience(ctx, audience)
+	if err != nil {
+		return err
+	}
+	return s.controlTokens.Revoke(ctx, refreshToken, normalizedAudience)
 }
 
-func (s *WorkbenchSSOService) InternalSecret() string {
-	if s == nil || s.cfg == nil {
-		return ""
+func (s *WorkbenchSSOService) AuthorizeAudience(ctx context.Context, audience, actualSecret string) bool {
+	normalizedAudience := normalizeWorkbenchAudience(audience)
+	resolvedAudience, ok := s.ResolveAudienceCredential(ctx, actualSecret)
+	return ok && normalizedAudience != "" && resolvedAudience == normalizedAudience
+}
+
+func (s *WorkbenchSSOService) ResolveAudienceCredential(ctx context.Context, actualSecret string) (string, bool) {
+	if s == nil || s.cfg == nil || s.settingService == nil {
+		return "", false
 	}
-	return strings.TrimSpace(s.cfg.WorkbenchSSO.InternalSecret)
+	tabs, err := s.settingService.GetXimoAIHomeTabs(ctx)
+	if err != nil {
+		return "", false
+	}
+	for _, audience := range XimoAIHomeTabSSOOrigins(tabs) {
+		expectedSecret, deriveErr := DeriveWorkbenchAudienceSecret(s.cfg.WorkbenchSSO.InternalSecret, audience)
+		if deriveErr == nil && ConstantTimeBearerEqual(actualSecret, expectedSecret) {
+			return audience, true
+		}
+	}
+	return "", false
+}
+
+func DeriveWorkbenchAudienceSecret(masterSecret, audience string) (string, error) {
+	masterSecret = strings.TrimSpace(masterSecret)
+	normalizedAudience := normalizeWorkbenchAudience(audience)
+	if len([]byte(masterSecret)) < 32 || normalizedAudience == "" {
+		return "", fmt.Errorf("workbench audience secret requires a 32-byte master secret and valid audience")
+	}
+	mac := hmac.New(sha256.New, []byte(masterSecret))
+	_, _ = mac.Write([]byte(workbenchSSOSecretContext + normalizedAudience))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
 }
 
 type workbenchSSOSettings struct {
-	enabled    bool
-	baseURL    string
 	ttlSeconds int
 }
 
@@ -244,23 +269,29 @@ func (s *WorkbenchSSOService) currentSettings(ctx context.Context) (workbenchSSO
 	if s == nil || s.settingService == nil {
 		return workbenchSSOSettings{}, infraerrors.InternalServer("WORKBENCH_SSO_NOT_CONFIGURED", "workbench sso is not configured")
 	}
-	enabled, baseURL, ttlSeconds, err := s.settingService.GetWorkbenchSSOSettings(ctx)
+	if s.cfg == nil || len([]byte(strings.TrimSpace(s.cfg.WorkbenchSSO.InternalSecret))) < 32 {
+		return workbenchSSOSettings{}, infraerrors.InternalServer("WORKBENCH_SSO_SECRET_MISSING", "workbench sso master secret is not configured")
+	}
+	ttlSeconds, err := s.settingService.GetWorkbenchTicketTTLSeconds(ctx)
 	if err != nil {
 		return workbenchSSOSettings{}, err
 	}
-	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
-	if enabled && baseURL == "" {
-		return workbenchSSOSettings{}, infraerrors.InternalServer("WORKBENCH_SSO_BASE_URL_MISSING", "workbench base url is not configured")
-	}
-	return workbenchSSOSettings{enabled: enabled, baseURL: baseURL, ttlSeconds: ttlSeconds}, nil
+	return workbenchSSOSettings{ttlSeconds: ttlSeconds}, nil
 }
 
-func (s *WorkbenchSSOService) validateAudience(audience, baseURL string) (string, error) {
+func (s *WorkbenchSSOService) validateAudience(ctx context.Context, audience string) (string, error) {
+	if s == nil || s.settingService == nil {
+		return "", infraerrors.InternalServer("WORKBENCH_SSO_NOT_CONFIGURED", "workbench sso is not configured")
+	}
 	normalizedAudience := normalizeWorkbenchAudience(audience)
 	if normalizedAudience == "" {
 		return "", infraerrors.BadRequest("WORKBENCH_SSO_AUDIENCE_INVALID", "audience must be an absolute http(s) URL")
 	}
-	for _, allowed := range allowedWorkbenchAudiences(baseURL) {
+	tabs, err := s.settingService.GetXimoAIHomeTabs(ctx)
+	if err != nil {
+		return "", err
+	}
+	for _, allowed := range XimoAIHomeTabSSOOrigins(tabs) {
 		if normalizedAudience == allowed {
 			return normalizedAudience, nil
 		}
@@ -360,28 +391,10 @@ func normalizeWorkbenchAudience(raw string) string {
 	return u.Scheme + "://" + u.Host
 }
 
-func allowedWorkbenchAudiences(baseURL string) []string {
-	seen := map[string]struct{}{}
-	var audiences []string
-	add := func(raw string) {
-		if normalized := normalizeWorkbenchAudience(raw); normalized != "" {
-			if _, ok := seen[normalized]; !ok {
-				seen[normalized] = struct{}{}
-				audiences = append(audiences, normalized)
-			}
-		}
-	}
-	add(baseURL)
-	add("http://127.0.0.1:4173")
-	add("http://localhost:4173")
-	add("https://workbench.ximoai.cn")
-	return audiences
-}
-
-func buildWorkbenchEntryURL(baseURL, ticket string) (string, error) {
-	u, err := url.Parse(strings.TrimRight(strings.TrimSpace(baseURL), "/") + "/sso/entry")
+func buildWorkbenchEntryURL(audience, ticket string) (string, error) {
+	u, err := url.Parse(strings.TrimRight(strings.TrimSpace(audience), "/") + "/sso/entry")
 	if err != nil || u.Host == "" {
-		return "", infraerrors.InternalServer("WORKBENCH_SSO_BASE_URL_INVALID", "workbench base url is invalid")
+		return "", infraerrors.InternalServer("WORKBENCH_SSO_AUDIENCE_INVALID", "workbench audience is invalid")
 	}
 	q := u.Query()
 	q.Set("ticket", ticket)

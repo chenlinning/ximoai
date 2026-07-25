@@ -974,8 +974,6 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_redirect_url": "",
 					"wechat_connect_frontend_redirect_url": "/auth/wechat/callback",
 					"wechat_connect_scopes": "snsapi_login",
-					"workbench_sso_enabled": false,
-					"workbench_base_url": "",
 					"workbench_ticket_ttl_seconds": 60,
 					"allow_user_view_error_requests": false
 				}
@@ -1257,8 +1255,6 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_redirect_url": "",
 					"wechat_connect_frontend_redirect_url": "/auth/wechat/callback",
 					"wechat_connect_scopes": "snsapi_login",
-					"workbench_sso_enabled": false,
-					"workbench_base_url": "",
 					"workbench_ticket_ttl_seconds": 60,
 					"auth_source_default_email_balance": 0,
 					"auth_source_default_email_concurrency": 5,

@@ -231,8 +231,6 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		HideCcsImportButton:                                    settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:                            settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:                                settings.PurchaseSubscriptionURL,
-		WorkbenchSSOEnabled:                                    settings.WorkbenchSSOEnabled,
-		WorkbenchBaseURL:                                       settings.WorkbenchBaseURL,
 		WorkbenchTicketTTLSeconds:                              settings.WorkbenchTicketTTLSeconds,
 		TableDefaultPageSize:                                   settings.TableDefaultPageSize,
 		TablePageSizeOptions:                                   settings.TablePageSizeOptions,

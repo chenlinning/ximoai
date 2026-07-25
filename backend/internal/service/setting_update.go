@@ -275,8 +275,6 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyHideCcsImportButton] = strconv.FormatBool(settings.HideCcsImportButton)
 	updates[SettingKeyPurchaseSubscriptionEnabled] = strconv.FormatBool(settings.PurchaseSubscriptionEnabled)
 	updates[SettingKeyPurchaseSubscriptionURL] = strings.TrimSpace(settings.PurchaseSubscriptionURL)
-	updates[SettingKeyWorkbenchSSOEnabled] = strconv.FormatBool(settings.WorkbenchSSOEnabled)
-	updates[SettingKeyWorkbenchBaseURL] = strings.TrimRight(strings.TrimSpace(settings.WorkbenchBaseURL), "/")
 	if settings.WorkbenchTicketTTLSeconds <= 0 {
 		settings.WorkbenchTicketTTLSeconds = 60
 	}

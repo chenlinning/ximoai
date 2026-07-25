@@ -97,6 +97,8 @@ type userPricingIntervalDTO struct {
 type userSupportedModel struct {
 	Name             string                     `json:"name"`
 	Platform         string                     `json:"platform"`
+	Brand            string                     `json:"brand,omitempty"`
+	BrandEditor      *modelBrandEditorResponse  `json:"brand_editor,omitempty"`
 	Pricing          *userSupportedModelPricing `json:"pricing"`
 	Types            []string                   `json:"types"`
 	Capabilities     []string                   `json:"capabilities"`

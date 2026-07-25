@@ -107,7 +107,7 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 		model.InvocationModes = details.InvocationModes
 		model.APIDocumentation = &details.APIDocumentation
 	}
-	return nil
+	return h.enrichXimoAIModelBrands(ctx, channels, isAdmin)
 }
 
 func buildModelPlazaModelDetails(

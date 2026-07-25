@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { refreshVideoCollectorAccess } from '@/extensions/video-collector/access'
 
 export const ximoAIRoutes: RouteRecordRaw[] = [
   {
@@ -23,6 +24,19 @@ export const ximoAIRoutes: RouteRecordRaw[] = [
       title: 'Platform Management',
       titleKey: 'admin.platforms.title',
       descriptionKey: 'admin.platforms.description'
+    }
+  },
+  {
+    path: '/video-collector',
+    name: 'VideoCollector',
+    component: () => import('@/extensions/video-collector/VideoCollectorPage.vue'),
+    beforeEnter: async () => await refreshVideoCollectorAccess(true) ? true : '/membership',
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Video Collector',
+      titleKey: 'videoCollector.title',
+      descriptionKey: 'videoCollector.description'
     }
   },
   {

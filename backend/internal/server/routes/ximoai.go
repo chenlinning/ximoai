@@ -12,6 +12,8 @@ import (
 func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	admin.PUT("/model-plaza/docs", h.AvailableChannel.SaveModelPlazaDocs)
 	admin.DELETE("/model-plaza/docs", h.AvailableChannel.DeleteModelPlazaDocs)
+	admin.PUT("/model-plaza/brand", h.AvailableChannel.SaveModelPlazaBrand)
+	admin.DELETE("/model-plaza/brand", h.AvailableChannel.DeleteModelPlazaBrand)
 
 	platforms := admin.Group("/platforms")
 	{
@@ -24,6 +26,15 @@ func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 
 func registerXimoAIUserRoutes(authenticated *gin.RouterGroup, h *handler.Handlers) {
 	authenticated.GET("/channels/model-plaza", h.AvailableChannel.ModelPlaza)
+
+	videoCollector := authenticated.Group("/video-collector")
+	{
+		videoCollector.POST("/parse", h.VideoCollector.Parse)
+		videoCollector.POST("/tasks", h.VideoCollector.Start)
+		videoCollector.GET("/tasks/:id", h.VideoCollector.GetTask)
+		videoCollector.DELETE("/tasks/:id", h.VideoCollector.Cancel)
+		videoCollector.GET("/tasks/:id/download", h.VideoCollector.Download)
+	}
 
 	platforms := authenticated.Group("/platforms")
 	{

@@ -188,3 +188,13 @@ func XimoAIHomeTabFrameOrigins(tabs []XimoAIHomeTab) []string {
 	}
 	return origins
 }
+
+func XimoAIHomeTabSSOOrigins(tabs []XimoAIHomeTab) []string {
+	filtered := make([]XimoAIHomeTab, 0, len(tabs))
+	for _, tab := range tabs {
+		if tab.WorkbenchSSO {
+			filtered = append(filtered, tab)
+		}
+	}
+	return XimoAIHomeTabFrameOrigins(filtered)
+}

@@ -6,6 +6,7 @@
 import { apiClient } from './client'
 import type { BillingMode } from '@/constants/channel'
 import type { ModelAPIDocsCategory, ModelAPIDocsResponse } from './modelApiDocs'
+import type { ModelBrandEditor } from './modelBrand'
 
 export interface UserAvailableGroup {
   id: number
@@ -49,6 +50,8 @@ export interface UserSupportedModelPricing {
 export interface UserSupportedModel {
   name: string
   platform: string
+  brand?: string
+  brand_editor?: ModelBrandEditor | null
   pricing: UserSupportedModelPricing | null
   types: ModelAPIDocsCategory[]
   capabilities: string[]

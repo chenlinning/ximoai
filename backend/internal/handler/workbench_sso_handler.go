@@ -60,13 +60,13 @@ func (h *WorkbenchSSOHandler) CreateTicket(c *gin.Context) {
 }
 
 func (h *WorkbenchSSOHandler) ValidateTicket(c *gin.Context) {
-	if !h.authorizeInternal(c) {
-		response.Unauthorized(c, "Invalid Workbench SSO internal secret")
-		return
-	}
 	var req workbenchSSOValidateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+	if !h.authorizeAudience(c, req.Audience) {
+		response.Unauthorized(c, "Invalid Workbench SSO audience credentials")
 		return
 	}
 	userContext, err := h.ssoService.ValidateTicket(c.Request.Context(), req.Ticket, req.Audience)
@@ -77,16 +77,17 @@ func (h *WorkbenchSSOHandler) ValidateTicket(c *gin.Context) {
 }
 
 func (h *WorkbenchSSOHandler) RefreshControlToken(c *gin.Context) {
-	if !h.authorizeInternal(c) {
-		response.Unauthorized(c, "Invalid Workbench SSO internal secret")
-		return
-	}
 	var req workbenchControlTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request")
 		return
 	}
-	authorization, err := h.ssoService.RefreshControlToken(c.Request.Context(), req.RefreshToken)
+	audience, ok := h.resolveAudience(c)
+	if !ok {
+		response.Unauthorized(c, "Invalid Workbench SSO audience credentials")
+		return
+	}
+	authorization, err := h.ssoService.RefreshControlToken(c.Request.Context(), req.RefreshToken, audience)
 	if response.ErrorFrom(c, err) {
 		return
 	}
@@ -94,29 +95,44 @@ func (h *WorkbenchSSOHandler) RefreshControlToken(c *gin.Context) {
 }
 
 func (h *WorkbenchSSOHandler) RevokeControlToken(c *gin.Context) {
-	if !h.authorizeInternal(c) {
-		response.Unauthorized(c, "Invalid Workbench SSO internal secret")
-		return
-	}
 	var req workbenchControlTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Invalid request")
 		return
 	}
-	if response.ErrorFrom(c, h.ssoService.RevokeControlToken(c.Request.Context(), req.RefreshToken)) {
+	audience, ok := h.resolveAudience(c)
+	if !ok {
+		response.Unauthorized(c, "Invalid Workbench SSO audience credentials")
+		return
+	}
+	if response.ErrorFrom(c, h.ssoService.RevokeControlToken(c.Request.Context(), req.RefreshToken, audience)) {
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func (h *WorkbenchSSOHandler) authorizeInternal(c *gin.Context) bool {
+func (h *WorkbenchSSOHandler) authorizeAudience(c *gin.Context, audience string) bool {
+	credential, ok := workbenchBearerCredential(c)
+	return ok && h != nil && h.ssoService != nil && h.ssoService.AuthorizeAudience(c.Request.Context(), audience, credential)
+}
+
+func (h *WorkbenchSSOHandler) resolveAudience(c *gin.Context) (string, bool) {
 	if h == nil || h.ssoService == nil {
-		return false
+		return "", false
 	}
+	credential, ok := workbenchBearerCredential(c)
+	if !ok {
+		return "", false
+	}
+	return h.ssoService.ResolveAudienceCredential(c.Request.Context(), credential)
+}
+
+func workbenchBearerCredential(c *gin.Context) (string, bool) {
 	header := strings.TrimSpace(c.GetHeader("Authorization"))
 	const prefix = "Bearer "
 	if !strings.HasPrefix(header, prefix) {
-		return false
+		return "", false
 	}
-	return service.ConstantTimeBearerEqual(strings.TrimSpace(strings.TrimPrefix(header, prefix)), h.ssoService.InternalSecret())
+	credential := strings.TrimSpace(strings.TrimPrefix(header, prefix))
+	return credential, credential != ""
 }

@@ -3,14 +3,24 @@ export interface XimoAINavItem {
   labelKey: string
   icon: unknown
   hideInSimpleMode?: boolean
+  featureFlag?: () => boolean | undefined
 }
 
-export function ximoAIUserNavItems(icons: { modelPlaza: unknown; downloadCenter: unknown }): XimoAINavItem[] {
+export function ximoAIUserNavItems(
+  icons: { modelPlaza: unknown; videoCollector: unknown; downloadCenter: unknown },
+  videoCollectorAccess: () => boolean | undefined
+): XimoAINavItem[] {
   return [
     {
       path: '/model-plaza',
       labelKey: 'nav.modelPlaza',
       icon: icons.modelPlaza,
+    },
+    {
+      path: '/video-collector',
+      labelKey: 'nav.videoCollector',
+      icon: icons.videoCollector,
+      featureFlag: videoCollectorAccess,
     },
     {
       path: '/download-center',

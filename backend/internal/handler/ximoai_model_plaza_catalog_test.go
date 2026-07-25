@@ -33,7 +33,7 @@ func TestModelPlazaModelJSONContainsOnlyPublicCatalogFields(t *testing.T) {
 		Capabilities: []string{service.PlatformCapabilityResponses}, BillingModes: []string{string(service.BillingModeToken)},
 	}, nil, false)
 	model := userSupportedModel{
-		Name: "custom-model", Platform: "custom-openai", Pricing: &userSupportedModelPricing{BillingMode: string(service.BillingModeToken)},
+		Name: "custom-model", Platform: "custom-openai", Brand: "Other", Pricing: &userSupportedModelPricing{BillingMode: string(service.BillingModeToken)},
 		Types: details.Types, Capabilities: details.Capabilities, Protocols: details.Protocols,
 		InvocationModes: details.InvocationModes, APIDocumentation: &details.APIDocumentation,
 	}
@@ -41,14 +41,22 @@ func TestModelPlazaModelJSONContainsOnlyPublicCatalogFields(t *testing.T) {
 	require.NoError(t, err)
 	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(raw, &decoded))
-	for _, key := range []string{"name", "platform", "pricing", "types", "capabilities", "protocols", "invocation_modes", "api_documentation"} {
+	for _, key := range []string{"name", "platform", "brand", "pricing", "types", "capabilities", "protocols", "invocation_modes", "api_documentation"} {
 		_, exists := decoded[key]
 		require.Truef(t, exists, "model catalog must expose %q", key)
 	}
+	require.NotContains(t, decoded, "brand_editor")
 	serialized := strings.ToLower(string(raw))
 	for _, forbidden := range []string{"api_key", "base_url", "upstream_url", "mapped_model", "account_id"} {
 		require.NotContains(t, serialized, forbidden)
 	}
+}
+
+func TestAvailableChannelModelJSONOmitsUnsetModelPlazaBrand(t *testing.T) {
+	raw, err := json.Marshal(userSupportedModel{Name: "custom-model", Platform: "custom-openai"})
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), `"brand"`)
+	require.NotContains(t, string(raw), `"brand_editor"`)
 }
 
 func TestBuildModelPlazaModelDetailsUsesAdministratorBindingAndEditor(t *testing.T) {

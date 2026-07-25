@@ -23,8 +23,6 @@ const (
 )
 
 const (
-	SettingKeyWorkbenchSSOEnabled       = "workbench_sso_enabled"
-	SettingKeyWorkbenchBaseURL          = "workbench_base_url"
 	SettingKeyWorkbenchTicketTTLSeconds = "workbench_ticket_ttl_seconds"
 )
 

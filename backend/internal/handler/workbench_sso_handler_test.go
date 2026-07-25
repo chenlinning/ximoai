@@ -29,11 +29,11 @@ func TestWorkbenchSSOHandler_CreateTicketRequiresLogin(t *testing.T) {
 	require.Equal(t, http.StatusUnauthorized, rec.Code)
 }
 
-func TestWorkbenchSSOHandler_ValidateTicketRejectsInvalidInternalSecret(t *testing.T) {
+func TestWorkbenchSSOHandler_ValidateTicketRejectsInvalidAudienceCredential(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	handler := NewWorkbenchSSOHandler(service.NewWorkbenchSSOService(
-		&config.Config{WorkbenchSSO: config.WorkbenchSSOConfig{InternalSecret: "expected-secret"}},
+		&config.Config{WorkbenchSSO: config.WorkbenchSSOConfig{InternalSecret: "test-workbench-master-secret-32-bytes-long"}},
 		nil,
 		nil,
 		nil,

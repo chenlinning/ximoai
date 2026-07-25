@@ -24,8 +24,8 @@ routes are retained.
   exact read-only scope, five-minute TTL.
 - Refresh token: 32 random bytes, only its SHA-256 digest is stored in Redis,
   24-hour fixed session lifetime, atomically consumed and rotated.
-- Renewal and revocation require the existing Workbench server secret and are
-  server-to-server only.
+- Ticket validation, renewal, and revocation require an audience-specific
+  server credential and are server-to-server only.
 - Password/security token-version changes or an inactive user immediately
   reject access and refresh tokens. Explicit revocation removes the refresh
   grant; an already issued access token expires within five minutes.
@@ -36,8 +36,17 @@ or error responses.
 
 ## Server-to-Server Contract
 
-`POST /api/v1/workbench/sso-ticket/validate` keeps the existing flat identity
-fields and adds only this top-level field:
+Each enabled home tab with `workbench_sso=true` is an independent SSO audience.
+The audience is the tab URL origin (`scheme://host[:port]`), and its credential
+is Base64URL-without-padding encoded
+`HMAC-SHA256(WORKBENCH_SSO_INTERNAL_SECRET, "ximoai-workbench-sso-audience:" + audience)`.
+The master secret remains on the main site. Each child site receives only its
+derived credential, so it cannot authenticate as another audience.
+
+`POST /api/v1/workbench/sso-ticket/validate` sends that derived credential as
+the Bearer token. Its request body contains the one-time ticket and the exact
+audience origin. The response keeps the existing flat identity fields and adds
+only this top-level field:
 
 ```json
 {
@@ -53,12 +62,20 @@ fields and adds only this top-level field:
 }
 ```
 
-The Workbench server sends `accessToken` as the Bearer token to the five native
-GET endpoints. It rotates the refresh token with
+The child server sends `accessToken` as the Bearer token to the five native GET
+endpoints. It rotates the refresh token with
 `POST /api/v1/workbench/control-token/refresh` and revokes it with
 `POST /api/v1/workbench/control-token/revoke`. Both lifecycle endpoints require
-the existing Workbench internal Bearer secret and a JSON body containing only
-`{"refreshToken":"..."}`. A successful revoke returns HTTP 204.
+the same audience-specific Bearer credential and this JSON body:
+
+```json
+{
+  "refreshToken": "..."
+}
+```
+
+Refresh grants are bound to that audience in Redis. A different child cannot
+refresh or revoke the grant. A successful revoke returns HTTP 204.
 
 ## Model Calls
 

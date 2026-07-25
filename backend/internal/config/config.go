@@ -182,8 +182,6 @@ type IdempotencyConfig struct {
 }
 
 type WorkbenchSSOConfig struct {
-	Enabled          bool   `mapstructure:"enabled"`
-	BaseURL          string `mapstructure:"base_url"`
 	TicketTTLSeconds int    `mapstructure:"ticket_ttl_seconds"`
 	InternalSecret   string `mapstructure:"internal_secret"`
 }
@@ -1746,7 +1744,6 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	cfg.Security.ResponseHeaders.AdditionalAllowed = normalizeStringSlice(cfg.Security.ResponseHeaders.AdditionalAllowed)
 	cfg.Security.ResponseHeaders.ForceRemove = normalizeStringSlice(cfg.Security.ResponseHeaders.ForceRemove)
 	cfg.Security.CSP.Policy = strings.TrimSpace(cfg.Security.CSP.Policy)
-	cfg.WorkbenchSSO.BaseURL = strings.TrimRight(strings.TrimSpace(cfg.WorkbenchSSO.BaseURL), "/")
 	cfg.WorkbenchSSO.InternalSecret = strings.TrimSpace(cfg.WorkbenchSSO.InternalSecret)
 	forwardedClientIPHeaders, err := NormalizeForwardedClientIPHeaders(cfg.Security.ForwardedClientIPHeaders)
 	if err != nil {
@@ -2184,8 +2181,6 @@ func setDefaults() {
 	viper.SetDefault("idempotency.cleanup_batch_size", 500)
 
 	// Workbench SSO
-	viper.SetDefault("workbench_sso.enabled", false)
-	viper.SetDefault("workbench_sso.base_url", "")
 	viper.SetDefault("workbench_sso.ticket_ttl_seconds", 60)
 	viper.SetDefault("workbench_sso.internal_secret", "")
 
@@ -3441,11 +3436,6 @@ func (c *Config) Validate() error {
 	}
 	if c.WorkbenchSSO.TicketTTLSeconds <= 0 {
 		return fmt.Errorf("workbench_sso.ticket_ttl_seconds must be positive")
-	}
-	if strings.TrimSpace(c.WorkbenchSSO.BaseURL) != "" {
-		if err := ValidateAbsoluteHTTPURL(c.WorkbenchSSO.BaseURL); err != nil {
-			return fmt.Errorf("workbench_sso.base_url must be absolute http(s) URL: %w", err)
-		}
 	}
 	if err := ValidateDingTalkConfig(c.DingTalk); err != nil {
 		return fmt.Errorf("dingtalk_connect: %w", err)
