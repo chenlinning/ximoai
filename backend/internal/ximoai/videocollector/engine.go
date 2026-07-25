@@ -15,9 +15,14 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
-const maxMetadataBytes = 16 * 1024 * 1024
+const (
+	maxMetadataBytes      = 16 * 1024 * 1024
+	maxExtractorAttempts  = 3
+	extractorRetryBackoff = 500 * time.Millisecond
+)
 
 var (
 	formatIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
@@ -42,13 +47,15 @@ func (e *YTDLPEngine) Parse(ctx context.Context, sourceURL string) (*MediaInfo, 
 	if err != nil {
 		return nil, err
 	}
-	stdout, stderr, err := runCaptured(ctx, e.ytDLPPath, []string{
-		"--no-playlist",
-		"--skip-download",
-		"--dump-single-json",
-		"--no-warnings",
-		"--ffmpeg-location", e.ffmpegPath,
-		"--", parsed.String(),
+	stdout, stderr, err := retryExtractor(ctx, maxExtractorAttempts, extractorRetryBackoff, func() ([]byte, string, error) {
+		return runCaptured(ctx, e.ytDLPPath, []string{
+			"--no-playlist",
+			"--skip-download",
+			"--dump-single-json",
+			"--no-warnings",
+			"--ffmpeg-location", e.ffmpegPath,
+			"--", parsed.String(),
+		})
 	})
 	if err != nil {
 		return nil, extractorError(stderr, err)
@@ -64,6 +71,17 @@ func (e *YTDLPEngine) Download(ctx context.Context, request DownloadRequest, out
 	if !formatIDPattern.MatchString(request.FormatID) {
 		return nil, ErrInvalidDownload
 	}
+	request.SourceURL = parsed.String()
+	result, stderr, err := retryExtractor(ctx, maxExtractorAttempts, extractorRetryBackoff, func() (*DownloadResult, string, error) {
+		return e.downloadOnce(ctx, request, outputDir, progress)
+	})
+	if err != nil {
+		return nil, extractorError(stderr, err)
+	}
+	return result, nil
+}
+
+func (e *YTDLPEngine) downloadOnce(ctx context.Context, request DownloadRequest, outputDir string, progress func(ProgressUpdate)) (*DownloadResult, string, error) {
 	formatExpression := request.FormatID
 	if !request.HasAudio {
 		formatExpression += "+bestaudio/best"
@@ -84,20 +102,20 @@ func (e *YTDLPEngine) Download(ctx context.Context, request DownloadRequest, out
 		"--print", "post_process:__VC_PROCESSING__:processing",
 		"--print", "after_move:__VC_DONE__:%(filepath)s",
 		"-o", outputTemplate,
-		"--", parsed.String(),
+		"--", request.SourceURL,
 	}
 	cmd := exec.CommandContext(ctx, e.ytDLPPath, args...)
 	configureCommandCancellation(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var outputPath string
@@ -128,7 +146,7 @@ func (e *YTDLPEngine) Download(ctx context.Context, request DownloadRequest, out
 	waitErr := cmd.Wait()
 	readers.Wait()
 	if waitErr != nil {
-		return nil, extractorError(errorTail.String(), waitErr)
+		return nil, errorTail.String(), waitErr
 	}
 	outputMu.Lock()
 	resolvedPath := outputPath
@@ -137,9 +155,61 @@ func (e *YTDLPEngine) Download(ctx context.Context, request DownloadRequest, out
 		resolvedPath = findOutputFile(outputDir)
 	}
 	if resolvedPath == "" {
-		return nil, errors.New("download completed without an output file")
+		return nil, errorTail.String(), errors.New("download completed without an output file")
 	}
-	return &DownloadResult{Path: resolvedPath, Extension: strings.TrimPrefix(filepath.Ext(resolvedPath), ".")}, nil
+	return &DownloadResult{Path: resolvedPath, Extension: strings.TrimPrefix(filepath.Ext(resolvedPath), ".")}, errorTail.String(), nil
+}
+
+func retryExtractor[T any](ctx context.Context, attempts int, backoff time.Duration, run func() (T, string, error)) (T, string, error) {
+	if attempts < 1 {
+		attempts = 1
+	}
+	for attempt := 1; ; attempt++ {
+		value, stderr, err := run()
+		if err == nil || attempt >= attempts || !isTransientExtractorFailure(stderr, err) {
+			return value, stderr, err
+		}
+		delay := time.Duration(attempt) * backoff
+		if delay <= 0 {
+			continue
+		}
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			var zero T
+			return zero, stderr, ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
+func isTransientExtractorFailure(stderr string, err error) bool {
+	message := strings.ToLower(stderr)
+	if err != nil {
+		message += "\n" + strings.ToLower(err.Error())
+	}
+	for _, marker := range []string{
+		"unexpected response from webpage request",
+		"unable to extract challenge data",
+		"unable to extract universal data for rehydration",
+		"http error 403",
+		"http error 408",
+		"http error 429",
+		"http error 500",
+		"http error 502",
+		"http error 503",
+		"http error 504",
+		"connection reset",
+		"remote end closed connection",
+		"temporary failure in name resolution",
+		"timed out",
+	} {
+		if strings.Contains(message, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func findOutputFile(outputDir string) string {

@@ -25,7 +25,8 @@ RUN --mount=type=cache,id=video-collector-gomod,target=/go/pkg/mod \
 FROM ${ALPINE_IMAGE}
 ARG YTDLP_VERSION
 RUN apk add --no-cache ca-certificates ffmpeg python3 py3-pip tzdata && \
-    pip3 install --break-system-packages --no-cache-dir "yt-dlp==${YTDLP_VERSION}" && \
+    pip3 install --break-system-packages --no-cache-dir "yt-dlp[default,curl-cffi]==${YTDLP_VERSION}" && \
+    yt-dlp --list-impersonate-targets | grep -q curl_cffi && \
     addgroup -S collector && \
     adduser -S -D -H -G collector -s /sbin/nologin collector && \
     mkdir -p /tmp/video-collector && \
