@@ -1657,7 +1657,7 @@ func (s *SchedulerSnapshotService) defaultBuckets(ctx context.Context) ([]Schedu
 }
 
 func builtinSchedulerPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio, PlatformVolcengineAgentPlan}
+	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio}
 }
 
 func (s *SchedulerSnapshotService) defaultSchedulerPlatforms(ctx context.Context) []string {

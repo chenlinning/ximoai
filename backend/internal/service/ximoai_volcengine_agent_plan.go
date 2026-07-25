@@ -124,9 +124,9 @@ type VolcengineAgentPlanUpstreamError struct {
 
 func (e *VolcengineAgentPlanUpstreamError) Error() string {
 	if e == nil {
-		return "Volcengine Agent Plan upstream error"
+		return "volcengine agent plan upstream error"
 	}
-	return fmt.Sprintf("Volcengine Agent Plan upstream returned HTTP %d", e.StatusCode)
+	return fmt.Sprintf("volcengine agent plan upstream returned HTTP %d", e.StatusCode)
 }
 
 func (e *VolcengineAgentPlanUpstreamError) Retryable() bool {
@@ -149,13 +149,13 @@ func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
 	upstreamModel string,
 ) (*ForwardResult, error) {
 	if s == nil || s.httpUpstream == nil {
-		return nil, fmt.Errorf("HTTP upstream is not configured")
+		return nil, fmt.Errorf("http upstream is not configured")
 	}
 	if account == nil || account.Type != AccountTypeAPIKey {
-		return nil, fmt.Errorf("Volcengine Agent Plan requires an API Key account")
+		return nil, fmt.Errorf("volcengine agent plan requires an API Key account")
 	}
 	if endpoint.IsWebSocket() {
-		return nil, fmt.Errorf("WebSocket endpoint cannot be forwarded over HTTP")
+		return nil, fmt.Errorf("websocket endpoint cannot be forwarded over HTTP")
 	}
 	targetURL, err := VolcengineAgentPlanUpstreamURL(endpoint)
 	if err != nil {
@@ -222,10 +222,10 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 	start time.Time,
 ) (*ForwardResult, error) {
 	if requestErr != nil {
-		return nil, fmt.Errorf("Volcengine Agent Plan upstream request failed: %w", requestErr)
+		return nil, fmt.Errorf("volcengine agent plan upstream request failed: %w", requestErr)
 	}
 	if resp == nil {
-		return nil, fmt.Errorf("Volcengine Agent Plan upstream returned no response")
+		return nil, fmt.Errorf("volcengine agent plan upstream returned no response")
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := readVolcengineAgentPlanResponseBody(resp.Body)
@@ -279,7 +279,7 @@ func readVolcengineAgentPlanResponseBody(body io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("read Volcengine Agent Plan response: %w", err)
 	}
 	if len(data) > volcengineAgentPlanMaxHTTPResponseBytes {
-		return nil, fmt.Errorf("Volcengine Agent Plan response exceeds %d bytes", volcengineAgentPlanMaxHTTPResponseBytes)
+		return nil, fmt.Errorf("volcengine agent plan response exceeds %d bytes", volcengineAgentPlanMaxHTTPResponseBytes)
 	}
 	return data, nil
 }
@@ -291,13 +291,13 @@ func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
 	endpoint VolcengineAgentPlanEndpoint,
 ) (*ForwardResult, error) {
 	if account == nil || account.Type != AccountTypeAPIKey {
-		return nil, fmt.Errorf("Volcengine Agent Plan requires an API Key account")
+		return nil, fmt.Errorf("volcengine agent plan requires an API Key account")
 	}
 	if c == nil || c.Request == nil {
 		return nil, fmt.Errorf("missing WebSocket request context")
 	}
 	if !endpoint.IsWebSocket() {
-		return nil, fmt.Errorf("HTTP endpoint cannot be forwarded over WebSocket")
+		return nil, fmt.Errorf("http endpoint cannot be forwarded over websocket")
 	}
 	targetURL, err := VolcengineAgentPlanUpstreamURL(endpoint)
 	if err != nil {
@@ -362,7 +362,7 @@ func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
 
 	requestCount := tracker.RequestCount()
 	if requestCount == 0 {
-		return nil, fmt.Errorf("Volcengine Agent Plan WebSocket closed before a successful result: %w", firstErr)
+		return nil, fmt.Errorf("volcengine agent plan websocket closed before a successful result: %w", firstErr)
 	}
 	return &ForwardResult{
 		RequestID:     newVolcengineAgentPlanRequestID(),

@@ -921,6 +921,9 @@ func (s *adminServiceImpl) validatePlatformForGroup(ctx context.Context, platfor
 	if platform == "" {
 		return ErrPlatformInvalid
 	}
+	if platform == PlatformComposite {
+		return nil
+	}
 	return s.platformRegistry().ValidatePlatformSlug(ctx, platform)
 }
 

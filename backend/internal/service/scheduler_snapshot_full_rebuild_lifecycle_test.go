@@ -322,7 +322,7 @@ func TestSchedulerFullRebuildActiveTombstoneDoesNotBlockFollowingGroupEvent(t *t
 	for _, held := range reopenHeld {
 		require.True(t, held)
 	}
-	require.Equal(t, 24, accounts.callCount())
+	require.Equal(t, 3*builtinSchedulerAccountQueryCount(), accounts.callCount())
 }
 
 func TestSchedulerFullRebuildGlobalReadErrorsFailBeforeMutationOrDB(t *testing.T) {
@@ -400,8 +400,8 @@ func TestSchedulerFullRebuildFreshActivePreparesEveryTokenBeforeFirstDB(t *testi
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 	require.Equal(t, capturesAtFirstDB, cache.captureAttemptCount())
-	require.Equal(t, 17, accounts.callCount())
-	require.Equal(t, 9, accounts.groupCallCount(groupID))
+	require.Equal(t, 2*builtinSchedulerAccountQueryCount()+1, accounts.callCount())
+	require.Equal(t, builtinSchedulerAccountQueryCount()+1, accounts.groupCallCount(groupID))
 	_, historicalPublished := cache.counts(historical)
 	require.Equal(t, 1, historicalPublished)
 	activeCalls, fallbackCalls, freshCalls := groups.stats()
@@ -442,8 +442,8 @@ func TestSchedulerFullRebuildPreservesGroupZeroActiveHistoricalAndInvalidRegistr
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, config.RunModeStandard)
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
-	require.Equal(t, 31, cache.captureAttemptCount())
-	require.Equal(t, 19, accounts.callCount())
+	require.Equal(t, 4*builtinSchedulerAccountQueryCount()-1, cache.captureAttemptCount())
+	require.Equal(t, 2*builtinSchedulerAccountQueryCount()+3, accounts.callCount())
 	groups.mu.Lock()
 	require.Equal(t, 1, groups.listCalls)
 	groups.mu.Unlock()
@@ -482,7 +482,7 @@ func TestSchedulerFullRebuildActiveTombstoneFreshInactiveOrMissingFiltersAllGrou
 
 			require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 			require.Zero(t, accounts.groupCallCount(groupID))
-			require.Equal(t, 8, accounts.groupCallCount(0))
+			require.Equal(t, builtinSchedulerAccountQueryCount(), accounts.groupCallCount(0))
 			require.Empty(t, cache.tokens())
 			require.Equal(t, bucketStrings(append(canonical, historical)), bucketStrings(cache.retiredBuckets()))
 			for _, bucket := range append(canonical, historical) {
@@ -554,7 +554,7 @@ func TestSchedulerFullRebuildPartialLifecycleFailureReturnsBeforeDBAndRetries(t 
 	require.Equal(t, []int64{1, 2}, freshCalls)
 	require.Zero(t, accounts.callCount())
 	require.Zero(t, cache.totalSetAttempts())
-	require.Equal(t, 15, len(cache.retiredBuckets()))
+	require.Equal(t, 2*builtinSchedulerAccountQueryCount()-1, len(cache.retiredBuckets()))
 
 	groups.mu.Lock()
 	delete(groups.freshErr, 2)
@@ -563,8 +563,8 @@ func TestSchedulerFullRebuildPartialLifecycleFailureReturnsBeforeDBAndRetries(t 
 	require.NoError(t, svc.triggerFullRebuild("retry"))
 	_, _, freshCalls = groups.stats()
 	require.Equal(t, []int64{1, 2, 2, 3}, freshCalls)
-	require.Equal(t, 45, len(cache.retiredBuckets()))
-	require.Equal(t, 8, accounts.callCount())
+	require.Equal(t, 3*(2*builtinSchedulerAccountQueryCount()-1), len(cache.retiredBuckets()))
+	require.Equal(t, builtinSchedulerAccountQueryCount(), accounts.callCount())
 	require.Empty(t, cache.tokens())
 }
 
@@ -588,13 +588,13 @@ func TestSchedulerFullRebuildActiveTombstoneLazyRecoveryDiscardsPartialCaptureTa
 		held, reopenCount := cache.leaseHeldAndTokenCount()
 		require.False(t, held)
 		require.Equal(t, len(canonical), reopenCount)
-		require.Equal(t, 21, capturesAtFirstDB)
+		require.Equal(t, 2*builtinSchedulerAccountQueryCount()+5, capturesAtFirstDB)
 	}
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, config.RunModeStandard)
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
 	require.Equal(t, capturesAtFirstDB, cache.captureAttemptCount())
-	require.Equal(t, 17, accounts.callCount())
+	require.Equal(t, 2*builtinSchedulerAccountQueryCount()+1, accounts.callCount())
 	for _, bucket := range canonical {
 		attempts, published := cache.counts(bucket)
 		require.Equal(t, 1, attempts, "discarded pre-recovery tokens must never publish: %s", bucket.String())
@@ -626,9 +626,9 @@ func TestSchedulerFullRebuildSimpleModePreservesRegistryWithoutLifecycleAuthorit
 	require.Zero(t, activeCalls)
 	require.Zero(t, fallbackCalls)
 	require.Empty(t, freshCalls)
-	require.Equal(t, 17, cache.captureAttemptCount())
-	require.Equal(t, 11, accounts.callCount())
-	require.Equal(t, 11, accounts.groupCallCount(0))
+	require.Equal(t, 2*builtinSchedulerAccountQueryCount()+1, cache.captureAttemptCount())
+	require.Equal(t, builtinSchedulerAccountQueryCount()+3, accounts.callCount())
+	require.Equal(t, builtinSchedulerAccountQueryCount()+3, accounts.groupCallCount(0))
 	require.Empty(t, cache.retiredBuckets())
 	require.Empty(t, cache.tokens())
 	for _, bucket := range registered {
@@ -658,11 +658,11 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 	require.Zero(t, cache.currentWatermark())
 	_, groupZeroPublished := cache.counts(schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms())[0])
 	require.Equal(t, 1, groupZeroPublished, "ordinary tasks must still run when one strict Reopen task is busy")
-	require.Equal(t, 16, accounts.callCount())
+	require.Equal(t, 2*builtinSchedulerAccountQueryCount(), accounts.callCount())
 
 	svc.pollOutbox()
 	require.Equal(t, int64(1), cache.currentWatermark())
-	require.Equal(t, 32, accounts.callCount())
+	require.Equal(t, 4*builtinSchedulerAccountQueryCount(), accounts.callCount())
 	_, busyBucketPublished := cache.counts(canonical[0])
 	require.Equal(t, 1, busyBucketPublished)
 	activeCalls, fallbackCalls, freshCalls := groups.stats()
@@ -680,7 +680,7 @@ func TestSchedulerFullRebuildOrdinaryLockBusyKeepsExistingSkipSemantics(t *testi
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, config.RunModeStandard)
 
 	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
-	require.Equal(t, 8, accounts.callCount())
+	require.Equal(t, builtinSchedulerAccountQueryCount(), accounts.callCount())
 	attempts, published := cache.counts(busyBucket)
 	require.Zero(t, attempts)
 	require.Zero(t, published)

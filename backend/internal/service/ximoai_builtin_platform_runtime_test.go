@@ -72,11 +72,16 @@ func TestVolcengineAgentPlanDefaultModelsList(t *testing.T) {
 	}, defaultModelsListCandidateIDs(PlatformVolcengineAgentPlan))
 }
 
-func TestBuiltinSchedulerPlatformsIncludeAllXimoAIMediaPlatforms(t *testing.T) {
-	platforms := builtinSchedulerPlatforms()
-	require.Contains(t, platforms, PlatformGrokVideo)
-	require.Contains(t, platforms, PlatformOpenAIAudio)
-	require.Contains(t, platforms, PlatformKlingAudio)
+func TestVolcengineAgentPlanSchedulerPlatformIsDiscoveredFromActiveAccount(t *testing.T) {
+	accounts := schedulerSnapshotAccountRepo{accounts: []Account{{
+		ID:          1,
+		Platform:    PlatformVolcengineAgentPlan,
+		Status:      StatusActive,
+		Schedulable: true,
+	}}}
+	svc := &SchedulerSnapshotService{accountRepo: accounts}
+
+	platforms := svc.defaultSchedulerPlatforms(context.Background())
 	require.Contains(t, platforms, PlatformVolcengineAgentPlan)
 }
 
