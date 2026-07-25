@@ -29,6 +29,8 @@ const (
 	PlatformComposite   = "composite"
 )
 
+const PlatformVolcengineAgentPlan = "volcengine-agent-plan"
+
 // Account type constants
 const (
 	AccountTypeOAuth          = "oauth"           // OAuth类型账号（full scope: profile + inference）

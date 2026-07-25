@@ -33,7 +33,7 @@
           />
         </div>
 
-        <div class="flex gap-2 overflow-x-auto pb-1 lg:justify-end lg:pb-0">
+        <div class="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 lg:w-auto lg:justify-end lg:pb-0">
           <button
             v-for="platform in platformList"
             :key="platform"
@@ -41,9 +41,28 @@
             class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
             :class="platformButtonClass(platform)"
             :style="platformButtonInlineStyle(platform)"
-            @click="activePlatform = platform"
+            @click="selectPlatform(platform)"
           >
             {{ platform === allPlatformsKey ? t('modelPlaza.allPlatforms') : platformName(platform) }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex w-full min-w-0 items-center gap-3">
+        <span class="flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
+          {{ t('modelPlaza.modelType') }}
+        </span>
+        <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
+          <button
+            v-for="category in categoryList"
+            :key="category"
+            type="button"
+            :data-model-category="category"
+            class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
+            :class="categoryButtonClass(category)"
+            @click="activeCategory = category"
+          >
+            {{ category === allCategoriesKey ? t('modelPlaza.allTypes') : t(`modelPlaza.apiDocs.categories.${category}`) }}
           </button>
         </div>
       </div>
@@ -76,7 +95,14 @@
         <article
           v-for="model in filteredModels"
           :key="model.key"
-          class="card card-hover group relative overflow-hidden p-5"
+          role="button"
+          tabindex="0"
+          :aria-label="t('modelPlaza.apiDocs.open', { model: model.name })"
+          :data-model-key="model.key"
+          class="card card-hover group relative cursor-pointer overflow-hidden p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-dark-900"
+          @click="openModelDocs(model)"
+          @keydown.enter.prevent="openModelDocs(model)"
+          @keydown.space.prevent="openModelDocs(model)"
         >
           <div
             class="absolute inset-x-0 top-0 h-1"
@@ -107,7 +133,7 @@
               type="button"
               class="btn btn-ghost btn-icon flex-shrink-0"
               :title="t('modelPlaza.copyModelName')"
-              @click="copyName(model.name)"
+              @click.stop="copyName(model.name)"
             >
               <Icon name="copy" size="sm" />
             </button>
@@ -226,6 +252,15 @@
           </div>
         </article>
       </div>
+
+      <ModelApiDocsDialog
+        v-if="selectedDocsModel"
+        :show="Boolean(selectedDocsModel)"
+        :model-name="selectedDocsModel.name"
+        :documentation="selectedDocsModel.documentation"
+        @updated="updateModelDocumentation"
+        @close="selectedDocsModel = null"
+      />
     </div>
   </AppLayout>
 </template>
@@ -235,13 +270,13 @@ import { computed, h, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ModelApiDocsDialog from './ModelApiDocsDialog.vue'
 import userChannelsAPI, {
-  type UserAvailableGroup,
+  type UserAvailableChannel,
   type UserPricingInterval,
   type UserSupportedModelPricing
 } from '@/api/channels'
-import userGroupsAPI from '@/api/groups'
-import platformsAPI from '@/api/platforms'
+import type { ModelAPIDocsCategory, ModelAPIDocsResponse } from '@/api/modelApiDocs'
 import {
   BILLING_MODE_IMAGE,
   BILLING_MODE_PER_REQUEST,
@@ -296,6 +331,11 @@ interface ModelEntry {
   key: string
   name: string
   platform: string
+  categories: ModelAPIDocsCategory[]
+  capabilities: string[]
+  protocols: string[]
+  invocationModes: string[]
+  documentation: ModelAPIDocsResponse
   groups: ModelGroup[]
 }
 
@@ -309,6 +349,8 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const perMillionScale = 1_000_000
 const allPlatformsKey = 'all'
+const allCategoriesKey = 'all'
+const categoryOrder: ModelAPIDocsCategory[] = ['conversation', 'image', 'video', 'tts', 'asr']
 
 const loading = ref(false)
 const error = ref('')
@@ -316,16 +358,30 @@ const models = ref<ModelEntry[]>([])
 const platforms = ref<Platform[]>([])
 const searchQuery = ref('')
 const activePlatform = ref(allPlatformsKey)
+const activeCategory = ref(allCategoriesKey)
+const selectedDocsModel = ref<ModelEntry | null>(null)
 
 const platformList = computed(() => {
   const platforms = Array.from(new Set(models.value.map((model) => model.platform))).sort()
   return [allPlatformsKey, ...platforms]
 })
 
+const categoryList = computed(() => {
+  const available = new Set<ModelAPIDocsCategory>()
+  for (const model of models.value) {
+    if (activePlatform.value !== allPlatformsKey && model.platform !== activePlatform.value) continue
+    for (const category of model.categories) available.add(category)
+  }
+  return [allCategoriesKey, ...categoryOrder.filter((category) => available.has(category))]
+})
+
 const filteredModels = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   return models.value.filter((model) => {
     if (activePlatform.value !== allPlatformsKey && model.platform !== activePlatform.value) {
+      return false
+    }
+    if (activeCategory.value !== allCategoriesKey && !model.categories.includes(activeCategory.value as ModelAPIDocsCategory)) {
       return false
     }
     if (!q) return true
@@ -341,8 +397,22 @@ const filteredModels = computed(() => {
   })
 })
 
+function selectPlatform(platform: string) {
+  activePlatform.value = platform
+  if (!categoryList.value.includes(activeCategory.value)) {
+    activeCategory.value = allCategoriesKey
+  }
+}
+
 function platformButtonClass(platform: string): string {
   if (platform === activePlatform.value) {
+    return 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600'
+  }
+  return 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400'
+}
+
+function categoryButtonClass(category: string): string {
+  if (category === activeCategory.value) {
     return 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600'
   }
   return 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400'
@@ -354,6 +424,19 @@ function platformColor(platform: string): string {
 
 function platformName(platform: string): string {
   return platformDisplayName(platforms.value, platform)
+}
+
+function openModelDocs(model: ModelEntry) {
+  selectedDocsModel.value = model
+}
+
+function updateModelDocumentation(documentation: ModelAPIDocsResponse) {
+  if (!selectedDocsModel.value) return
+  selectedDocsModel.value.documentation = documentation
+  selectedDocsModel.value.categories = documentation.binding.categories.map((category) => category.category)
+  if (!categoryList.value.includes(activeCategory.value)) {
+    activeCategory.value = allCategoriesKey
+  }
 }
 
 function platformButtonInlineStyle(platform: string) {
@@ -443,11 +526,7 @@ function displayIntervals(pricing: UserSupportedModelPricing, rate: number): Dis
     .filter((interval): interval is DisplayInterval => interval != null)
 }
 
-function groupRate(group: UserAvailableGroup, userRates: Record<number, number>): number {
-  return userRates[group.id] ?? group.rate_multiplier ?? 1
-}
-
-function buildModels(channels: Awaited<ReturnType<typeof userChannelsAPI.getModelPlaza>>, userRates: Record<number, number>): ModelEntry[] {
+function buildModels(channels: UserAvailableChannel[]): ModelEntry[] {
   const modelMap = new Map<string, ModelEntry>()
   const groupKeySet = new Set<string>()
 
@@ -465,6 +544,11 @@ function buildModels(channels: Awaited<ReturnType<typeof userChannelsAPI.getMode
             key,
             name: supportedModel.name,
             platform,
+            categories: supportedModel.types || [],
+            capabilities: supportedModel.capabilities || [],
+            protocols: supportedModel.protocols || [],
+            invocationModes: supportedModel.invocation_modes || [],
+            documentation: supportedModel.api_documentation,
             groups: []
           })
         }
@@ -479,7 +563,7 @@ function buildModels(channels: Awaited<ReturnType<typeof userChannelsAPI.getMode
             id: group.id,
             name: group.name,
             channelName: channel.name,
-            rate: groupRate(group, userRates),
+            rate: group.rate_multiplier ?? 1,
             pricing: supportedModel.pricing
           })
         }
@@ -495,6 +579,29 @@ function buildModels(channels: Awaited<ReturnType<typeof userChannelsAPI.getMode
     .sort((a, b) => a.name.localeCompare(b.name) || a.platform.localeCompare(b.platform))
 }
 
+function buildPlatforms(channels: UserAvailableChannel[]): Platform[] {
+  const items = new Map<string, Platform>()
+  for (const channel of channels) {
+    for (const section of channel.platforms || []) {
+      if (items.has(section.platform)) continue
+      items.set(section.platform, {
+        slug: section.platform,
+        display_name: section.display_name || section.platform,
+        protocol: section.protocol,
+        base_url: '',
+        auth_modes: [],
+        capabilities: [],
+        color: section.color || '',
+        enabled: true,
+        builtin: false,
+        created_at: '',
+        updated_at: ''
+      })
+    }
+  }
+  return Array.from(items.values())
+}
+
 async function copyName(name: string) {
   await navigator.clipboard.writeText(name)
   appStore.showSuccess(t('modelPlaza.copied'))
@@ -504,21 +611,14 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const [channels, rates, platformItems] = await Promise.all([
-      userChannelsAPI.getModelPlaza(),
-      userGroupsAPI.getUserGroupRates().catch((err: unknown) => {
-        console.error('Failed to load user group rates:', err)
-        return {} as Record<number, number>
-      }),
-      platformsAPI.list(false).catch((err: unknown) => {
-        console.error('Failed to load platforms:', err)
-        return [] as Platform[]
-      }),
-    ])
-    platforms.value = platformItems
-    models.value = buildModels(channels, rates)
+    const channels = await userChannelsAPI.getModelPlaza()
+    platforms.value = buildPlatforms(channels)
+    models.value = buildModels(channels)
     if (activePlatform.value !== allPlatformsKey && !platformList.value.includes(activePlatform.value)) {
       activePlatform.value = allPlatformsKey
+    }
+    if (!categoryList.value.includes(activeCategory.value)) {
+      activeCategory.value = allCategoriesKey
     }
   } catch (err: unknown) {
     error.value = extractApiErrorMessage(err, t('modelPlaza.loadError'))

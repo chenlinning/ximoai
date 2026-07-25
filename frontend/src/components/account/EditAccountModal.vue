@@ -28,7 +28,7 @@
 
       <!-- API Key fields (only for apikey type) -->
       <div v-if="account.type === 'apikey'" class="space-y-4">
-        <div>
+        <div v-if="showAPIKeyBaseURL">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
             v-model="editBaseUrl"
@@ -2748,9 +2748,13 @@ const requiresAPIKeyBaseURL = computed(() =>
   requiresXimoAIAPIKeyBaseURL(selectedPlatform.value, props.account)
 )
 
+const showAPIKeyBaseURL = computed(() =>
+  selectedXimoAIPlatformKind.value !== 'volcengine_agent_plan'
+)
+
 const isOpenAICompatibleAPIKeyPlatform = computed(() =>
   selectedProtocol.value === 'openai_compatible'
-  || selectedXimoAIPlatformKind.value !== ''
+  || (selectedXimoAIPlatformKind.value !== '' && selectedXimoAIPlatformKind.value !== 'volcengine_agent_plan')
   || props.account?.platform === 'grok'
 )
 
@@ -4197,7 +4201,7 @@ const handleSubmit = async () => {
 
       // Always update credentials for apikey type to handle model mapping changes
       const newCredentials: Record<string, unknown> = { ...currentCredentials }
-      if (newBaseUrl) {
+      if (showAPIKeyBaseURL.value && newBaseUrl) {
         newCredentials.base_url = newBaseUrl
       } else {
         delete newCredentials.base_url

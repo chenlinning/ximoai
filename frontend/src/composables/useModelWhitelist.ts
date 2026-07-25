@@ -191,6 +191,12 @@ const doubaoModels = [
   'doubao-1.5-pro-vision-32k', 'doubao-1.5-thinking-pro'
 ]
 
+const volcengineAgentPlanModels = [
+  'doubao-seedream-5.0-lite',
+  'seed-tts-2.0',
+  'volc.seedasr.sauc.duration'
+]
+
 // MiniMax
 const minimaxModels = [
   'abab6.5-chat', 'abab6.5s-chat', 'abab6.5s-chat-pro',
@@ -243,6 +249,7 @@ const allModelsList: string[] = [
   ...yiModels,
   ...moonshotModels,
   ...doubaoModels,
+  ...volcengineAgentPlanModels,
   ...minimaxModels,
   ...baiduModels,
   ...sparkModels,
@@ -424,6 +431,7 @@ export function getModelsByPlatform(platform: string): string[] {
     case 'yi': return yiModels
     case 'moonshot': return moonshotModels
     case 'doubao': return doubaoModels
+    case 'volcengine-agent-plan': return volcengineAgentPlanModels
     case 'minimax': return minimaxModels
     case 'baidu': return baiduModels
     case 'spark': return sparkModels

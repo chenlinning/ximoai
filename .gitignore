@@ -141,6 +141,7 @@ docs/*
 !docs/EXTERNAL_API.md
 !docs/ASYNC_IMAGE_TASKS.md
 !docs/workbench-control-plane-auth.md
+!docs/MODEL_PLAZA_API_DOCUMENTATION_TASK.md
 !docs/legal/
 !docs/legal/*.md
 .serena/

@@ -183,7 +183,52 @@ const zhPatch: MessageTree = {
     copied: '已复制模型名称',
     retry: '重试',
     refresh: '刷新',
-    loadError: '加载模型广场失败'
+    loadError: '加载模型广场失败',
+    modelType: '模型类型',
+    allTypes: '全部类型',
+    apiDocs: {
+      title: '{model} API 文档',
+      open: '打开 {model} API 文档',
+      edit: '编辑文档',
+      platformUnavailable: '平台信息不可用',
+      sourceAutomatic: '自动生成',
+      sourceAdministrator: '管理员配置',
+      selectedEndpoints: '已选 {count} 个端点',
+      moveUp: '上移',
+      moveDown: '下移',
+      empty: '暂无可用 API 文档',
+      mode: '调用模式',
+      transport: '传输方式',
+      delivery: '返回格式',
+      baseURL: '基础地址',
+      modelName: '模型名称',
+      authorization: '身份验证',
+      requestExample: '请求示例',
+      responseExample: '响应示例',
+      copy: '复制',
+      copied: '已复制',
+      reset: '恢复自动文档',
+      cancel: '取消',
+      save: '保存',
+      saved: 'API 文档配置已保存',
+      loadError: 'API 文档加载失败',
+      saveError: 'API 文档保存失败',
+      resetDone: '已恢复自动文档',
+      resetError: '恢复自动文档失败',
+      categories: {
+        conversation: '对话',
+        image: '图像',
+        video: '视频',
+        tts: '语音合成',
+        asr: '语音识别'
+      },
+      modes: {
+        sync: '同步',
+        stream: '流式',
+        async: '异步',
+        bidirectional: '双向流'
+      }
+    }
   },
   membership: {
     levels: {
@@ -575,7 +620,52 @@ const enPatch: MessageTree = {
     copied: 'Model name copied',
     retry: 'Retry',
     refresh: 'Refresh',
-    loadError: 'Failed to load model plaza'
+    loadError: 'Failed to load model plaza',
+    modelType: 'Model type',
+    allTypes: 'All types',
+    apiDocs: {
+      title: '{model} API Documentation',
+      open: 'Open API documentation for {model}',
+      edit: 'Edit documentation',
+      platformUnavailable: 'Platform information is unavailable',
+      sourceAutomatic: 'Automatically generated',
+      sourceAdministrator: 'Administrator configured',
+      selectedEndpoints: '{count} endpoints selected',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      empty: 'No API documentation is available',
+      mode: 'Invocation mode',
+      transport: 'Transport',
+      delivery: 'Delivery',
+      baseURL: 'Base URL',
+      modelName: 'Model name',
+      authorization: 'Authorization',
+      requestExample: 'Request example',
+      responseExample: 'Response example',
+      copy: 'Copy',
+      copied: 'Copied',
+      reset: 'Restore automatic documentation',
+      cancel: 'Cancel',
+      save: 'Save',
+      saved: 'API documentation configuration saved',
+      loadError: 'Failed to load API documentation',
+      saveError: 'Failed to save API documentation',
+      resetDone: 'Automatic documentation restored',
+      resetError: 'Failed to restore automatic documentation',
+      categories: {
+        conversation: 'Conversation',
+        image: 'Image',
+        video: 'Video',
+        tts: 'Text to Speech',
+        asr: 'Speech Recognition'
+      },
+      modes: {
+        sync: 'Synchronous',
+        stream: 'Streaming',
+        async: 'Asynchronous',
+        bidirectional: 'Bidirectional'
+      }
+    }
   },
   membership: {
     levels: {

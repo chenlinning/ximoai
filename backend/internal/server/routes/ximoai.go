@@ -10,6 +10,9 @@ import (
 )
 
 func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	admin.PUT("/model-plaza/docs", h.AvailableChannel.SaveModelPlazaDocs)
+	admin.DELETE("/model-plaza/docs", h.AvailableChannel.DeleteModelPlazaDocs)
+
 	platforms := admin.Group("/platforms")
 	{
 		platforms.GET("", h.Admin.Platform.List)
@@ -40,6 +43,12 @@ type ximoAIGatewayContext struct {
 
 func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayContext) {
 	h := ctx.handlers
+	gateway.POST("/volcengine/images/generations", h.Gateway.VolcengineAgentPlanImages)
+	gateway.POST("/volcengine/audio/tts/unidirectional", h.Gateway.VolcengineAgentPlanTTSUnidirectional)
+	gateway.GET("/volcengine/audio/tts/unidirectional/stream", h.Gateway.VolcengineAgentPlanTTSUnidirectionalStream)
+	gateway.GET("/volcengine/audio/tts/bidirection", h.Gateway.VolcengineAgentPlanTTSBidirection)
+	gateway.GET("/volcengine/audio/asr/bigmodel_async", h.Gateway.VolcengineAgentPlanASRBigmodelAsync)
+	gateway.GET("/volcengine/audio/asr/bigmodel_nostream", h.Gateway.VolcengineAgentPlanASRBigmodelNostream)
 	gateway.POST("/audio/speech", ximoAIAudioOnly(h.Gateway, true, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/transcriptions", ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/translations", ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))

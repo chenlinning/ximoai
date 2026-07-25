@@ -1058,7 +1058,7 @@
 
       <!-- API Key input (only for apikey type, excluding Antigravity which has its own fields) -->
       <div v-if="form.type === 'apikey' && form.platform !== 'antigravity'" class="space-y-4">
-        <div>
+        <div v-if="showAPIKeyBaseURL">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
             v-model="apiKeyBaseUrl"
@@ -3699,6 +3699,20 @@ const fallbackPlatforms: Platform[] = [
     builtin: true,
     created_at: '',
     updated_at: ''
+  },
+  {
+    slug: 'volcengine-agent-plan',
+    kind: 'volcengine_agent_plan',
+    display_name: 'Volcengine Agent Plan',
+    protocol: 'native',
+    base_url: 'https://ark.cn-beijing.volces.com/api/plan/v3',
+    auth_modes: ['apikey'],
+    capabilities: ['images', 'audio'],
+    color: '#E5484D',
+    enabled: true,
+    builtin: true,
+    created_at: '',
+    updated_at: ''
   }
 ]
 
@@ -4215,9 +4229,13 @@ const requiresAPIKeyBaseURL = computed(() =>
   requiresXimoAIAPIKeyBaseURL(selectedPlatform.value)
 )
 
+const showAPIKeyBaseURL = computed(() =>
+  selectedXimoAIPlatformKind.value !== 'volcengine_agent_plan'
+)
+
 const isOpenAICompatibleAPIKeyPlatform = computed(() =>
   selectedProtocol.value === 'openai_compatible'
-  || selectedXimoAIPlatformKind.value !== ''
+  || (selectedXimoAIPlatformKind.value !== '' && selectedXimoAIPlatformKind.value !== 'volcengine_agent_plan')
   || form.platform === 'grok'
 )
 
@@ -5283,7 +5301,7 @@ const handleSubmit = async () => {
   const credentials: Record<string, unknown> = {
     api_key: apiKeyValue.value.trim()
   }
-  if (baseUrl) {
+  if (showAPIKeyBaseURL.value && baseUrl) {
     credentials.base_url = baseUrl
   }
   if (isSelectedGeminiProtocol.value) {

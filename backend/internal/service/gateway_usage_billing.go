@@ -1011,7 +1011,11 @@ func (s *GatewayService) calculateTokenCostWithResolved(
 	opts *recordUsageOpts,
 	resolved *ResolvedPricing,
 ) *CostBreakdown {
-	return s.calculateUsageCostWithResolved(ctx, result, apiKey, billingModel, multiplier, opts, resolved, 1, "")
+	requestCount := result.RequestCount
+	if requestCount <= 0 {
+		requestCount = 1
+	}
+	return s.calculateUsageCostWithResolved(ctx, result, apiKey, billingModel, multiplier, opts, resolved, requestCount, "")
 }
 
 func (s *GatewayService) calculateUsageCostWithResolved(

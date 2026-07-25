@@ -28,6 +28,8 @@ const (
 	PlatformDefaultBaseURLGrok        = "https://api.x.ai/v1"
 )
 
+const PlatformDefaultBaseURLVolcengineAgentPlan = "https://ark.cn-beijing.volces.com/api/plan/v3"
+
 type Platform struct {
 	Slug         string
 	Kind         string

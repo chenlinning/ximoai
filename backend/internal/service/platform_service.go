@@ -520,6 +520,20 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			CreatedAt:    now,
 			UpdatedAt:    now,
 		},
+		{
+			Slug:         PlatformVolcengineAgentPlan,
+			Kind:         PlatformKindVolcengineAgentPlan,
+			DisplayName:  "Volcengine Agent Plan",
+			Protocol:     PlatformProtocolNative,
+			BaseURL:      PlatformDefaultBaseURLVolcengineAgentPlan,
+			AuthModes:    []string{AccountTypeAPIKey},
+			Capabilities: []string{PlatformCapabilityImages, PlatformCapabilityAudio},
+			Color:        "#E5484D",
+			Enabled:      true,
+			Builtin:      true,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		},
 	}
 	if includeDisabled {
 		return platforms

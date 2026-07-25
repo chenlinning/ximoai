@@ -263,6 +263,42 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
     }))
   })
 
+  it('creates a Volcengine Agent Plan account with API key only', async () => {
+    listPlatformsMock.mockResolvedValue([{
+      slug: 'volcengine-agent-plan',
+      kind: 'volcengine_agent_plan',
+      display_name: 'Volcengine Agent Plan',
+      protocol: 'native',
+      base_url: 'https://ark.cn-beijing.volces.com/api/plan/v3',
+      auth_modes: ['apikey'],
+      capabilities: ['images', 'audio'],
+      color: '#E5484D',
+      enabled: true,
+      builtin: true,
+      created_at: '',
+      updated_at: '',
+    }])
+    createAccountMock.mockResolvedValue({ id: 55, platform: 'volcengine-agent-plan', type: 'apikey' })
+
+    const wrapper = mountModal(false)
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+    await selectButtonByText(wrapper, 'Volcengine Agent Plan')
+
+    expect(wrapper.text()).not.toContain('admin.accounts.baseUrl')
+    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Agent Plan account')
+    await wrapper.get('input[type="password"]').setValue('volc-agent-key')
+    await wrapper.get('form#create-account-form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createAccountMock).toHaveBeenCalledWith(expect.objectContaining({
+      platform: 'volcengine-agent-plan',
+      type: 'apikey',
+      credentials: expect.objectContaining({ api_key: 'volc-agent-key' }),
+    }))
+    expect(createAccountMock.mock.calls[0]?.[0]?.credentials).not.toHaveProperty('base_url')
+  })
+
   it('reuses Anthropic API key settings for a custom Anthropic platform', async () => {
     listPlatformsMock.mockResolvedValue([{
       slug: 'acme-anthropic',

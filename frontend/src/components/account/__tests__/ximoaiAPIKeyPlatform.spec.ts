@@ -48,5 +48,16 @@ describe('XimoAI built-in platform runtime kind', () => {
     expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'grok_video' }))).toBe(true)
     expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'kling_audio' }))).toBe(true)
     expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'openai_audio' }))).toBe(false)
+    expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'volcengine_agent_plan' }))).toBe(false)
+  })
+
+  it('recognizes the Volcengine Agent Plan runtime kind', () => {
+    const definition = platform({
+      slug: 'volcengine-agent-plan',
+      kind: 'volcengine_agent_plan',
+      protocol: 'native'
+    })
+
+    expect(resolveXimoAIPlatformKind(definition)).toBe('volcengine_agent_plan')
   })
 })

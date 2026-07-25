@@ -1088,10 +1088,9 @@ onBeforeUnmount(() => {
 }
 
 .sidebar-home-button {
-  @apply ml-auto inline-flex h-9 flex-shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 px-3 text-sm font-medium;
-  @apply border-primary-500/30 bg-primary-500/10 text-primary-700 shadow-sm shadow-primary-500/10 transition-colors;
-  @apply hover:border-primary-500/50 hover:bg-primary-500/15 hover:text-primary-800;
-  @apply dark:border-primary-400/30 dark:bg-primary-500/15 dark:text-primary-200 dark:hover:bg-primary-500/25 dark:hover:text-primary-100;
+  @apply ml-auto inline-flex h-9 flex-shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium;
+  @apply bg-primary-500 text-white shadow-sm transition-colors;
+  @apply hover:bg-primary-600 hover:text-white hover:shadow-md;
 }
 
 .sidebar-link-collapsed {

@@ -9,6 +9,8 @@ const (
 	PlatformKindKlingAudio    = "kling_audio"
 )
 
+const PlatformKindVolcengineAgentPlan = "volcengine_agent_plan"
+
 func XimoAIPlatformKindFromLegacySlug(slug string) string {
 	switch NormalizePlatformSlug(slug) {
 	case PlatformGrokVideo:
@@ -17,6 +19,8 @@ func XimoAIPlatformKindFromLegacySlug(slug string) string {
 		return PlatformKindOpenAIAudio
 	case PlatformKlingAudio:
 		return PlatformKindKlingAudio
+	case PlatformVolcengineAgentPlan:
+		return PlatformKindVolcengineAgentPlan
 	default:
 		return ""
 	}
@@ -24,7 +28,7 @@ func XimoAIPlatformKindFromLegacySlug(slug string) string {
 
 func IsXimoAIMediaPlatformKind(kind string) bool {
 	switch strings.ToLower(strings.TrimSpace(kind)) {
-	case PlatformKindGrokVideo, PlatformKindOpenAIAudio, PlatformKindKlingAudio:
+	case PlatformKindGrokVideo, PlatformKindOpenAIAudio, PlatformKindKlingAudio, PlatformKindVolcengineAgentPlan:
 		return true
 	default:
 		return false

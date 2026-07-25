@@ -289,6 +289,10 @@ func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, ac
 		return s.routeAntigravityTest(c, account, modelID, opts.Prompt)
 	}
 
+	if account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan {
+		return s.testVolcengineAgentPlanConnection(c, account, modelID, opts.Prompt)
+	}
+
 	if s.isOpenAIProtocolAccount(ctx, account) {
 		return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, opts)
 	}

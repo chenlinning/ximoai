@@ -21,9 +21,10 @@ import (
 //  4. 字段白名单：仅返回用户需要的字段（省略 BillingModelSource / RestrictModels
 //     / 内部 ID / Status 等管理字段）。
 type AvailableChannelHandler struct {
-	channelService *service.ChannelService
-	apiKeyService  *service.APIKeyService
-	settingService *service.SettingService
+	channelService  *service.ChannelService
+	apiKeyService   *service.APIKeyService
+	settingService  *service.SettingService
+	platformService *service.PlatformService
 }
 
 // NewAvailableChannelHandler 创建用户侧可用渠道 handler。
@@ -31,11 +32,13 @@ func NewAvailableChannelHandler(
 	channelService *service.ChannelService,
 	apiKeyService *service.APIKeyService,
 	settingService *service.SettingService,
+	platformService *service.PlatformService,
 ) *AvailableChannelHandler {
 	return &AvailableChannelHandler{
-		channelService: channelService,
-		apiKeyService:  apiKeyService,
-		settingService: settingService,
+		channelService:  channelService,
+		apiKeyService:   apiKeyService,
+		settingService:  settingService,
+		platformService: platformService,
 	}
 }
 
@@ -92,9 +95,14 @@ type userPricingIntervalDTO struct {
 
 // userSupportedModel 用户可见的支持模型条目。
 type userSupportedModel struct {
-	Name     string                     `json:"name"`
-	Platform string                     `json:"platform"`
-	Pricing  *userSupportedModelPricing `json:"pricing"`
+	Name             string                     `json:"name"`
+	Platform         string                     `json:"platform"`
+	Pricing          *userSupportedModelPricing `json:"pricing"`
+	Types            []string                   `json:"types"`
+	Capabilities     []string                   `json:"capabilities"`
+	Protocols        []string                   `json:"protocols"`
+	InvocationModes  []string                   `json:"invocation_modes"`
+	APIDocumentation *modelAPIDocsResponse      `json:"api_documentation"`
 }
 
 // userChannelPlatformSection 单渠道内某个平台的子视图：用户可见的分组 + 该平台
@@ -102,6 +110,9 @@ type userSupportedModel struct {
 // 后面的平台行按 sections 顺序铺开。
 type userChannelPlatformSection struct {
 	Platform        string               `json:"platform"`
+	DisplayName     string               `json:"display_name"`
+	Color           string               `json:"color"`
+	Protocol        string               `json:"protocol"`
 	Groups          []userAvailableGroup `json:"groups"`
 	SupportedModels []userSupportedModel `json:"supported_models"`
 }
@@ -153,6 +164,11 @@ func (h *AvailableChannelHandler) ModelPlaza(c *gin.Context) {
 
 	out, err := h.listVisibleChannels(c, subject.UserID, false)
 	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	role, _ := middleware.GetUserRoleFromContext(c)
+	if err := h.enrichModelPlazaCatalog(c.Request.Context(), subject.UserID, out, role == service.RoleAdmin); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}

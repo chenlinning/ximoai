@@ -289,7 +289,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	totpHandler := handler.NewTotpHandler(totpService)
 	handlerPaymentHandler := handler.NewPaymentHandler(paymentService, paymentConfigService)
 	paymentWebhookHandler := handler.NewPaymentWebhookHandler(paymentService, registry)
-	availableChannelHandler := handler.NewAvailableChannelHandler(channelService, apiKeyService, settingService)
+	availableChannelHandler := handler.NewAvailableChannelHandler(channelService, apiKeyService, settingService, platformService)
 	handlerMembershipHandler := handler.NewMembershipHandler(membershipService)
 	workbenchSSOTicketStore := repository.NewWorkbenchSSOTicketStore(redisClient)
 	workbenchControlGrantStore := repository.NewWorkbenchControlTokenStore(redisClient)

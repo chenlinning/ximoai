@@ -5,6 +5,7 @@
 
 import { apiClient } from './client'
 import type { BillingMode } from '@/constants/channel'
+import type { ModelAPIDocsCategory, ModelAPIDocsResponse } from './modelApiDocs'
 
 export interface UserAvailableGroup {
   id: number
@@ -49,6 +50,11 @@ export interface UserSupportedModel {
   name: string
   platform: string
   pricing: UserSupportedModelPricing | null
+  types: ModelAPIDocsCategory[]
+  capabilities: string[]
+  protocols: string[]
+  invocation_modes: string[]
+  api_documentation: ModelAPIDocsResponse
 }
 
 /**
@@ -58,6 +64,9 @@ export interface UserSupportedModel {
  */
 export interface UserChannelPlatformSection {
   platform: string
+  display_name: string
+  color: string
+  protocol: string
   groups: UserAvailableGroup[]
   supported_models: UserSupportedModel[]
 }

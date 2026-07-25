@@ -8,21 +8,23 @@ const reservedPlatformSlugs = new Set([
   'grok',
   'grok-video',
   'openai-audio',
-  'kling_audio'
+  'kling_audio',
+  'volcengine-agent-plan'
 ])
 
 type CustomAPIKeyProtocol = 'openai_compatible' | 'anthropic' | 'gemini'
-type XimoAIPlatformKind = 'grok_video' | 'openai_audio' | 'kling_audio'
+type XimoAIPlatformKind = 'grok_video' | 'openai_audio' | 'kling_audio' | 'volcengine_agent_plan'
 
 const legacyXimoAIPlatformKinds: Record<string, XimoAIPlatformKind> = {
   'grok-video': 'grok_video',
   'openai-audio': 'openai_audio',
-  kling_audio: 'kling_audio'
+  kling_audio: 'kling_audio',
+  'volcengine-agent-plan': 'volcengine_agent_plan'
 }
 
 function normalizedXimoAIPlatformKind(value: unknown): XimoAIPlatformKind | '' {
   const kind = typeof value === 'string' ? value.trim().toLowerCase() : ''
-  if (kind === 'grok_video' || kind === 'openai_audio' || kind === 'kling_audio') {
+  if (kind === 'grok_video' || kind === 'openai_audio' || kind === 'kling_audio' || kind === 'volcengine_agent_plan') {
     return kind
   }
   return ''

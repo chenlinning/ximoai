@@ -143,6 +143,25 @@ func TestGatewayRoutesAsyncImagesPathsAreRegistered(t *testing.T) {
 	}
 }
 
+func TestGatewayRoutesVolcengineAgentPlanNativePathsAreRegistered(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformVolcengineAgentPlan)
+	registered := make(map[string]bool)
+	for _, route := range router.Routes() {
+		registered[route.Method+" "+route.Path] = true
+	}
+
+	for _, route := range []string{
+		"POST /v1/volcengine/images/generations",
+		"POST /v1/volcengine/audio/tts/unidirectional",
+		"GET /v1/volcengine/audio/tts/unidirectional/stream",
+		"GET /v1/volcengine/audio/tts/bidirection",
+		"GET /v1/volcengine/audio/asr/bigmodel_async",
+		"GET /v1/volcengine/audio/asr/bigmodel_nostream",
+	} {
+		require.True(t, registered[route], "%s should be registered", route)
+	}
+}
+
 func TestGatewayRoutesGrokImagesAndVideosPathsAreRegistered(t *testing.T) {
 	router := newGatewayRoutesTestRouter(service.PlatformGrok)
 

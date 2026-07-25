@@ -247,6 +247,12 @@ func defaultModelsListCandidateIDs(platform string) []string {
 		return ids
 	case PlatformGrok:
 		return xai.DefaultModelIDs()
+	case PlatformVolcengineAgentPlan:
+		return []string{
+			VolcengineAgentPlanSeedreamModel,
+			VolcengineAgentPlanTTSModel,
+			VolcengineAgentPlanASRModel,
+		}
 	case PlatformComposite:
 		return compositeDefaultModelsListCandidateIDs()
 	default:

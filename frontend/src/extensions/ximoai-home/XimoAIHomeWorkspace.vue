@@ -71,7 +71,7 @@
                 type="button"
                 class="shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors"
                 :class="activeTabID === tab.id
-                  ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                  ? 'bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'"
                 @click="activateTab(tab.id)"
               >

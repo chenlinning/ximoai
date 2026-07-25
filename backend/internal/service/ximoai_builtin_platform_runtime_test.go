@@ -51,6 +51,25 @@ func TestXimoAIBuiltinPlatformsRequireExpectedBaseURLs(t *testing.T) {
 	require.True(t, (Platform{Kind: PlatformKindGrokVideo}).RequiresAPIKeyBaseURL())
 	require.True(t, (Platform{Kind: PlatformKindKlingAudio}).RequiresAPIKeyBaseURL())
 	require.False(t, (Platform{Kind: PlatformKindOpenAIAudio}).RequiresAPIKeyBaseURL())
+	require.False(t, (Platform{Kind: PlatformKindVolcengineAgentPlan}).RequiresAPIKeyBaseURL())
+}
+
+func TestXimoAIVolcengineAgentPlanRuntimeKind(t *testing.T) {
+	account := &Account{
+		Platform: PlatformVolcengineAgentPlan,
+		Type:     AccountTypeAPIKey,
+	}
+
+	require.Equal(t, PlatformKindVolcengineAgentPlan, account.PlatformRuntimeKind())
+	require.True(t, IsXimoAIMediaPlatformKind(account.PlatformRuntimeKind()))
+}
+
+func TestVolcengineAgentPlanDefaultModelsList(t *testing.T) {
+	require.Equal(t, []string{
+		VolcengineAgentPlanSeedreamModel,
+		VolcengineAgentPlanTTSModel,
+		VolcengineAgentPlanASRModel,
+	}, defaultModelsListCandidateIDs(PlatformVolcengineAgentPlan))
 }
 
 func TestBuiltinSchedulerPlatformsIncludeAllXimoAIMediaPlatforms(t *testing.T) {
@@ -58,6 +77,7 @@ func TestBuiltinSchedulerPlatformsIncludeAllXimoAIMediaPlatforms(t *testing.T) {
 	require.Contains(t, platforms, PlatformGrokVideo)
 	require.Contains(t, platforms, PlatformOpenAIAudio)
 	require.Contains(t, platforms, PlatformKlingAudio)
+	require.Contains(t, platforms, PlatformVolcengineAgentPlan)
 }
 
 func TestXimoAIGrokVideoRuntimeKindIsSelectedBySchedulerAfterRename(t *testing.T) {
