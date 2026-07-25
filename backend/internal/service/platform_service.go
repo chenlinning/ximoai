@@ -256,6 +256,7 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 	input.Color = strings.TrimSpace(input.Color)
 	input.AuthModes = normalizeStringSet(input.AuthModes)
 	input.Capabilities = normalizeStringSet(input.Capabilities)
+	input.Capabilities = ensureRequiredPlatformCapabilities(input.Kind, input.Capabilities)
 
 	if !platformSlugPattern.MatchString(input.Slug) {
 		return nil, infraerrors.BadRequest("INVALID_PLATFORM_SLUG", "platform slug must be 3-64 chars using lowercase letters, digits, hyphen or underscore")
@@ -360,6 +361,26 @@ func defaultCustomPlatformCapabilities(protocol string) []string {
 	}
 }
 
+func ensureRequiredPlatformCapabilities(kind string, capabilities []string) []string {
+	required := []string{}
+	switch strings.ToLower(strings.TrimSpace(kind)) {
+	case PlatformKindGrokVideo:
+		required = []string{PlatformCapabilityVideos}
+	case PlatformKindOpenAIAudio:
+		required = []string{PlatformCapabilityChatCompletions, PlatformCapabilityAudio}
+	case PlatformKindKlingAudio:
+		required = []string{PlatformCapabilityAudio}
+	case PlatformKindVolcengineAgentPlan:
+		required = []string{PlatformCapabilityImages, PlatformCapabilityAudio}
+	}
+	for _, capability := range required {
+		if !containsString(capabilities, capability) {
+			capabilities = append(capabilities, capability)
+		}
+	}
+	return normalizeStringSet(capabilities)
+}
+
 func defaultCustomPlatformColor(slug string) string {
 	if len(customPlatformDefaultColors) == 0 {
 		return "#64748B"
@@ -427,6 +448,7 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 			Capabilities: []string{
 				PlatformCapabilityResponses,
 				PlatformCapabilityChatCompletions,
+				PlatformCapabilityEmbeddings,
 				PlatformCapabilityImages,
 				PlatformCapabilityVideos,
 				PlatformCapabilityAudio,

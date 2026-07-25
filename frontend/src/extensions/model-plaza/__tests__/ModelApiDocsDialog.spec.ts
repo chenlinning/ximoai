@@ -49,11 +49,16 @@ const response: ModelAPIDocsResponse = {
     variants: [
       {
         id: 'sync', label: 'Synchronous', mode: 'sync', transport: 'http', delivery: 'json',
-        steps: [{ id: 'request', title: 'Request', method: 'POST', path: '/v1/responses', content_type: 'application/json', request_example: '{"stream":false}', response_example: '{"status":"completed"}' }]
+        termination: 'The response completes with one JSON document.',
+        steps: [{ id: 'request', title: 'Request', method: 'POST', path: '/v1/responses', content_type: 'application/json', request_example: '{"stream":false}', response_example: '{"status":"completed"}', parameters: [
+          { name: 'Authorization', location: 'header', required: true, type: 'string', description: 'Bearer API key.' },
+          { name: 'model', location: 'body', required: true, type: 'string', description: 'Public model name.' }
+        ] }]
       },
       {
         id: 'stream', label: 'Streaming', mode: 'stream', transport: 'http', delivery: 'sse',
-        steps: [{ id: 'request', title: 'Request', method: 'POST', path: '/v1/responses', content_type: 'application/json', request_example: '{"stream":true}', response_example: 'event: response.completed' }]
+        termination: 'Stop after response.completed.',
+        steps: [{ id: 'request', title: 'Request', method: 'POST', path: '/v1/responses', content_type: 'application/json', request_example: '{"stream":true}', response_example: 'event: response.completed', parameters: [] }]
       }
     ]
   }],
@@ -92,6 +97,10 @@ describe('ModelApiDocsDialog', () => {
     expect(wrapper.text()).toContain('OpenAI Responses')
     expect(wrapper.text()).toContain('modelPlaza.apiDocs.modes.sync')
     expect(wrapper.text()).toContain('modelPlaza.apiDocs.modes.stream')
+    expect(wrapper.text()).toContain('modelPlaza.apiDocs.parameters')
+    expect(wrapper.text()).toContain('Authorization')
+    expect(wrapper.text()).toContain('modelPlaza.apiDocs.termination')
+    expect(wrapper.text()).toContain('The response completes with one JSON document.')
     expect(wrapper.find('[data-testid="model-api-docs-edit"]').exists()).toBe(false)
   })
 

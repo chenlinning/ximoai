@@ -212,6 +212,34 @@
                   </button>
                 </div>
 
+                <div v-if="step.parameters?.length" class="mb-4 min-w-0 overflow-x-auto">
+                  <p class="mb-2 text-xs font-medium text-gray-500 dark:text-dark-400">
+                    {{ t('modelPlaza.apiDocs.parameters') }}
+                  </p>
+                  <table class="w-full min-w-[38rem] text-left text-xs">
+                    <thead class="border-b border-gray-200 text-gray-500 dark:border-dark-700 dark:text-dark-400">
+                      <tr>
+                        <th class="px-2 py-2 font-medium">{{ t('modelPlaza.apiDocs.parameterName') }}</th>
+                        <th class="px-2 py-2 font-medium">{{ t('modelPlaza.apiDocs.parameterLocation') }}</th>
+                        <th class="px-2 py-2 font-medium">{{ t('modelPlaza.apiDocs.parameterType') }}</th>
+                        <th class="px-2 py-2 font-medium">{{ t('modelPlaza.apiDocs.parameterRequirement') }}</th>
+                        <th class="px-2 py-2 font-medium">{{ t('modelPlaza.apiDocs.parameterDescription') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-gray-700 dark:divide-dark-700 dark:text-gray-300">
+                      <tr v-for="parameter in step.parameters" :key="`${parameter.location}-${parameter.name}`">
+                        <td class="px-2 py-2 font-mono text-gray-900 dark:text-white">{{ parameter.name }}</td>
+                        <td class="px-2 py-2">{{ parameterLocationLabel(parameter.location) }}</td>
+                        <td class="px-2 py-2 font-mono">{{ parameter.type }}</td>
+                        <td class="px-2 py-2">
+                          {{ t(parameter.required ? 'modelPlaza.apiDocs.required' : 'modelPlaza.apiDocs.optional') }}
+                        </td>
+                        <td class="px-2 py-2">{{ parameter.description }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
                 <CodeExample
                   :title="t('modelPlaza.apiDocs.requestExample')"
                   :copy-label="t('modelPlaza.apiDocs.copy')"
@@ -227,6 +255,13 @@
                   @copy="copyText"
                 />
               </section>
+            </div>
+
+            <div v-if="activeVariant.termination" class="mt-5 border-l-2 border-primary-500 pl-3">
+              <p class="text-xs font-medium text-gray-500 dark:text-dark-400">
+                {{ t('modelPlaza.apiDocs.termination') }}
+              </p>
+              <p class="mt-1 text-sm text-gray-700 dark:text-gray-300">{{ activeVariant.termination }}</p>
             </div>
           </section>
         </div>
@@ -590,6 +625,10 @@ function modeLabel(mode: ModelAPIDocsEndpointVariant['mode']) {
 
 function transportLabel(transport: ModelAPIDocsEndpointVariant['transport'], delivery: ModelAPIDocsEndpointVariant['delivery']) {
   return `${transport.toUpperCase()} / ${delivery.replace('_', ' ').toUpperCase()}`
+}
+
+function parameterLocationLabel(location: string) {
+  return t(`modelPlaza.apiDocs.parameterLocations.${location}`)
 }
 
 async function copyText(value: string) {

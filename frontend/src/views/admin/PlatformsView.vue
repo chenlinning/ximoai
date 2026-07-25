@@ -143,11 +143,30 @@
             class="input"
             disabled
           />
-          <select v-else v-model="form.protocol" class="input" required>
+          <select v-else v-model="form.protocol" class="input" required @change="resetCapabilitiesForProtocol">
             <option v-for="option in customProtocolOptions" :key="option.value" :value="option.value">
               {{ option.label }}
             </option>
           </select>
+        </div>
+        <div v-if="!isProtocolDisabled">
+          <label class="input-label">{{ t('admin.platforms.capabilities') }}</label>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label
+              v-for="capability in capabilityOptions"
+              :key="capability"
+              class="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 dark:border-dark-700 dark:text-gray-300"
+            >
+              <input
+                v-model="form.capabilities"
+                type="checkbox"
+                :value="capability"
+                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600"
+              />
+              {{ capabilityLabel(capability) }}
+            </label>
+          </div>
+          <p class="input-hint">{{ t('admin.platforms.capabilitiesHint') }}</p>
         </div>
         <div>
           <label class="input-label">{{ t('admin.platforms.baseUrl') }}</label>
@@ -207,6 +226,11 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'
 import { customPlatformFallbackColor, platformBadgeStyle } from '@/utils/platformColors'
+import {
+  capabilityOptionsForProtocol,
+  defaultCapabilitiesForProtocol,
+  normalizePlatformCapabilities
+} from '@/extensions/platforms/capabilities'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -224,6 +248,7 @@ const form = reactive({
   display_name: '',
   protocol: 'openai_compatible',
   base_url: '',
+  capabilities: defaultCapabilitiesForProtocol('openai_compatible'),
   color: '#64748B',
   enabled: true,
 })
@@ -259,10 +284,16 @@ const protocolLabel = (protocol: string) => {
   return protocol || 'native'
 }
 
-const capabilitiesForProtocol = (protocol: string) => {
-  if (protocol === 'anthropic') return ['messages']
-  if (protocol === 'gemini') return ['messages', 'native_gemini']
-  return ['responses', 'chat_completions', 'images']
+const capabilityOptions = computed(() => capabilityOptionsForProtocol(form.protocol, editingPlatform.value?.kind))
+
+const capabilityLabel = (capability: string) => {
+  const key = `admin.platforms.capability.${capability}`
+  const label = t(key)
+  return label === key ? capability : label
+}
+
+const resetCapabilitiesForProtocol = () => {
+  form.capabilities = defaultCapabilitiesForProtocol(form.protocol, editingPlatform.value?.kind)
 }
 
 const displayColor = (platform: Platform) => {
@@ -274,6 +305,7 @@ const resetForm = () => {
   form.display_name = ''
   form.protocol = 'openai_compatible'
   form.base_url = ''
+  form.capabilities = defaultCapabilitiesForProtocol(form.protocol)
   form.color = '#64748B'
   form.enabled = true
 }
@@ -290,6 +322,7 @@ const openEditDialog = (platform: Platform) => {
   form.display_name = platform.display_name
   form.protocol = platform.protocol
   form.base_url = platform.base_url
+  form.capabilities = normalizePlatformCapabilities(platform.protocol, platform.capabilities || [], platform.kind)
   form.color = platform.color || '#64748B'
   form.enabled = platform.enabled
   showDialog.value = true
@@ -325,9 +358,7 @@ const submitPlatform = async () => {
     protocol: canEditProtocol ? form.protocol : editingPlatform.value?.protocol || form.protocol,
     base_url: canEditBaseURL ? form.base_url.trim() : editingPlatform.value?.base_url || '',
     auth_modes: ['apikey'],
-    capabilities: editingPlatform.value?.builtin
-      ? (canEditProtocol ? capabilitiesForProtocol(form.protocol) : editingPlatform.value.capabilities)
-      : capabilitiesForProtocol(form.protocol),
+    capabilities: canEditProtocol ? form.capabilities : editingPlatform.value?.capabilities || form.capabilities,
     color: form.color.trim(),
     enabled: form.enabled,
   }

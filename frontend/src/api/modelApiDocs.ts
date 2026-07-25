@@ -5,6 +5,14 @@ export type ModelAPIDocsMode = 'sync' | 'stream' | 'async' | 'bidirectional'
 export type ModelAPIDocsTransport = 'http' | 'websocket'
 export type ModelAPIDocsDelivery = 'json' | 'sse' | 'binary' | 'websocket_frames'
 
+export interface ModelAPIDocsParameter {
+  name: string
+  location: 'header' | 'path' | 'query' | 'body' | 'form' | 'frame'
+  required: boolean
+  type: string
+  description: string
+}
+
 export interface ModelAPIDocsWorkflowStep {
   id: string
   title: string
@@ -13,6 +21,7 @@ export interface ModelAPIDocsWorkflowStep {
   content_type?: string
   request_example?: string
   response_example?: string
+  parameters?: ModelAPIDocsParameter[]
 }
 
 export interface ModelAPIDocsEndpointVariant {
@@ -21,6 +30,7 @@ export interface ModelAPIDocsEndpointVariant {
   mode: ModelAPIDocsMode
   transport: ModelAPIDocsTransport
   delivery: ModelAPIDocsDelivery
+  termination?: string
   steps: ModelAPIDocsWorkflowStep[]
 }
 

@@ -69,7 +69,7 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 					billingModes = append(billingModes, model.Pricing.BillingMode)
 				}
 				input := normalizeModelAPIDocsResolutionInput(modelAPIDocsResolutionInput{
-					Platform: section.Platform, Protocol: platform.Protocol, Model: model.Name,
+					Platform: section.Platform, Kind: platform.RuntimeKind(), Protocol: platform.Protocol, Model: model.Name,
 					Capabilities: platform.Capabilities, BillingModes: billingModes,
 				})
 				targets = append(targets, modelPlazaCatalogTarget{
@@ -91,7 +91,7 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 		if loadErr == nil {
 			saved = savedBindings[index]
 			if saved != nil {
-				if validationErr := validateXimoAIModelAPIDocsBinding(*saved, target.input.Capabilities); validationErr != nil {
+				if validationErr := validateXimoAIModelAPIDocsBinding(*saved, target.input.Capabilities, target.input.Kind); validationErr != nil {
 					if isAdmin {
 						return fmt.Errorf("stored model API documentation configuration is invalid: %w", validationErr)
 					}

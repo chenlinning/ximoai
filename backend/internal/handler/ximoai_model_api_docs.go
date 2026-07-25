@@ -65,7 +65,7 @@ func (h *AvailableChannelHandler) SaveModelPlazaDocs(c *gin.Context) {
 		response.ErrorFrom(c, infraerrors.BadRequest("MODEL_API_DOCS_PROTOCOL_INVALID", "protocol does not match the platform"))
 		return
 	}
-	if err := validateXimoAIModelAPIDocsBinding(binding, platform.Capabilities); err != nil {
+	if err := validateXimoAIModelAPIDocsBinding(binding, platform.Capabilities, platform.RuntimeKind()); err != nil {
 		response.ErrorFrom(c, infraerrors.BadRequest("MODEL_API_DOCS_BINDING_INVALID", err.Error()))
 		return
 	}

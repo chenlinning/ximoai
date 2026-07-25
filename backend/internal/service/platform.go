@@ -11,6 +11,7 @@ const (
 
 	PlatformCapabilityResponses       = "responses"
 	PlatformCapabilityChatCompletions = "chat_completions"
+	PlatformCapabilityEmbeddings      = "embeddings"
 	PlatformCapabilityImages          = "images"
 	PlatformCapabilityVideos          = "videos"
 	PlatformCapabilityAudio           = "audio"

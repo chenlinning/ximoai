@@ -34,6 +34,7 @@ func TestXimoAIModelAPIDocsProfilesAreStructurallyValid(t *testing.T) {
 			require.Contains(t, []string{"http", "websocket"}, variant.Transport)
 			require.Contains(t, []string{"json", "sse", "binary", "websocket_frames"}, variant.Delivery)
 			require.NotEmpty(t, variant.Steps)
+			require.NotEmpty(t, variant.Termination)
 			_, duplicate = variantIDs[variant.ID]
 			require.False(t, duplicate, "duplicate variant id %s/%s", profile.ID, variant.ID)
 			variantIDs[variant.ID] = struct{}{}
@@ -44,8 +45,116 @@ func TestXimoAIModelAPIDocsProfilesAreStructurallyValid(t *testing.T) {
 				require.Equal(t, "websocket_frames", variant.Delivery)
 				require.Equal(t, "GET", variant.Steps[0].Method)
 			}
+			for _, workflowStep := range variant.Steps {
+				require.Contains(t, workflowStep.Parameters, ModelAPIDocsParameter{
+					Name: "Authorization", Location: "header", Required: true, Type: "string",
+					Description: "Bearer API key for the XimoAI gateway.",
+				})
+			}
 		}
 	}
+}
+
+func TestXimoAIModelAPIDocsOffersCompleteOpenAICompatibleEditorProfiles(t *testing.T) {
+	profiles := compatibleModelAPIDocsProfiles(modelAPIDocsResolutionInput{
+		Platform: "custom-openai", Protocol: service.PlatformProtocolOpenAICompatible, Model: "custom-model",
+		Capabilities: []string{
+			service.PlatformCapabilityResponses,
+			service.PlatformCapabilityChatCompletions,
+			service.PlatformCapabilityEmbeddings,
+			service.PlatformCapabilityImages,
+			service.PlatformCapabilityVideos,
+			service.PlatformCapabilityAudio,
+			service.PlatformCapabilityRealtime,
+		},
+	})
+	ids := make([]string, 0, len(profiles))
+	for _, profile := range profiles {
+		ids = append(ids, profile.ID)
+	}
+
+	for _, expected := range []string{
+		"openai_responses", "openai_responses_realtime", "openai_chat_completions",
+		"openai_embeddings", "openai_image_generation",
+	} {
+		require.Contains(t, ids, expected)
+	}
+	require.NotContains(t, ids, "openai_video_generation")
+	require.NotContains(t, ids, "openai_audio_speech")
+	require.NotContains(t, ids, "openai_live_call")
+}
+
+func TestXimoAIModelAPIDocsRecognizesRenamedCustomizedBuiltinKinds(t *testing.T) {
+	tests := []struct {
+		name         string
+		kind         string
+		capabilities []string
+		profiles     []string
+	}{
+		{
+			name: "grok video", kind: service.PlatformKindGrokVideo,
+			capabilities: []string{service.PlatformCapabilityVideos},
+			profiles:     []string{"ximoai_grok_video_generation", "ximoai_grok_video_extension"},
+		},
+		{
+			name: "openai audio", kind: service.PlatformKindOpenAIAudio,
+			capabilities: []string{service.PlatformCapabilityChatCompletions, service.PlatformCapabilityAudio},
+			profiles:     []string{"openai_chat_completions", "openai_audio_speech", "openai_audio_transcription", "openai_audio_translation"},
+		},
+		{
+			name: "kling audio", kind: service.PlatformKindKlingAudio,
+			capabilities: []string{service.PlatformCapabilityAudio},
+			profiles:     []string{"openai_audio_speech"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			profiles := compatibleModelAPIDocsProfiles(modelAPIDocsResolutionInput{
+				Platform: "renamed-platform", Kind: tt.kind, Protocol: service.PlatformProtocolGemini,
+				Model: "custom-model", Capabilities: tt.capabilities,
+			})
+			ids := make([]string, 0, len(profiles))
+			for _, profile := range profiles {
+				ids = append(ids, profile.ID)
+			}
+			require.ElementsMatch(t, tt.profiles, ids)
+		})
+	}
+}
+
+func TestXimoAIModelAPIDocsGrokVideoDoesNotAdvertiseUnsupportedSteps(t *testing.T) {
+	profiles := compatibleModelAPIDocsProfiles(modelAPIDocsResolutionInput{
+		Platform: "renamed-video", Kind: service.PlatformKindGrokVideo,
+		Protocol: service.PlatformProtocolOpenAICompatible, Model: "grok-video-3",
+		Capabilities: []string{service.PlatformCapabilityVideos},
+	})
+
+	for _, profile := range profiles {
+		require.NotEqual(t, "openai_video_edit", profile.ID)
+		for _, variant := range profile.Variants {
+			for _, workflowStep := range variant.Steps {
+				require.NotContains(t, workflowStep.Path, "/content")
+			}
+		}
+		if profile.ID == "ximoai_grok_video_extension" {
+			require.Contains(t, profile.Variants[0].Steps[0].RequestExample, `"video"`)
+		}
+	}
+}
+
+func TestXimoAIModelAPIDocsOffersLiveOnlyForOfficialOpenAI(t *testing.T) {
+	profiles := compatibleModelAPIDocsProfiles(modelAPIDocsResolutionInput{
+		Platform: service.PlatformOpenAI, Protocol: service.PlatformProtocolOpenAI, Model: "gpt-live",
+		Capabilities: []string{service.PlatformCapabilityRealtime},
+	})
+	ids := make([]string, 0, len(profiles))
+	for _, profile := range profiles {
+		ids = append(ids, profile.ID)
+	}
+
+	require.Contains(t, ids, "openai_live_call")
+	require.Contains(t, ids, "openai_live_sideband")
 }
 
 func TestXimoAIModelAPIDocsVolcengineProfileMatrix(t *testing.T) {
@@ -98,13 +207,17 @@ func TestXimoAIModelAPIDocsProfilesDoNotExposeUpstreamEndpointsOrCredentials(t *
 func TestXimoAIModelAPIDocsAsyncImageProfilesKeepDistinctSubmitPaths(t *testing.T) {
 	profiles := XimoAIModelAPIDocsProfiles()
 	paths := map[string]string{}
+	requests := map[string]string{}
 	for _, profile := range profiles {
 		if len(profile.Variants) > 0 && len(profile.Variants[0].Steps) > 0 {
 			paths[profile.ID] = profile.Variants[0].Steps[0].Path
+			requests[profile.ID] = profile.Variants[0].Steps[0].RequestExample
 		}
 	}
 	require.Equal(t, "/v1/images/generations/async", paths["openai_image_generation_async"])
 	require.Equal(t, "/v1/images/edits/async", paths["openai_image_edit_async"])
+	require.Contains(t, requests["openai_image_edit"], `"image"`)
+	require.Contains(t, requests["openai_image_edit_async"], `"image"`)
 }
 
 func TestXimoAIModelAPIDocsAutomaticVolcengineBindings(t *testing.T) {
@@ -120,7 +233,8 @@ func TestXimoAIModelAPIDocsAutomaticVolcengineBindings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
 			binding := resolveXimoAIModelAPIDocsAutomaticBinding(modelAPIDocsResolutionInput{
-				Platform:     service.PlatformVolcengineAgentPlan,
+				Platform:     "renamed-volcengine",
+				Kind:         service.PlatformKindVolcengineAgentPlan,
 				Protocol:     service.PlatformProtocolNative,
 				Model:        tt.model,
 				Capabilities: []string{service.PlatformCapabilityImages, service.PlatformCapabilityAudio},
@@ -179,7 +293,12 @@ func TestXimoAIModelAPIDocsRealtimeRequiresExplicitCapability(t *testing.T) {
 	require.NotContains(t, modelAPIDocsBindingProfileIDs(resolveXimoAIModelAPIDocsAutomaticBinding(input)), "openai_responses_realtime")
 
 	input.Capabilities = append(input.Capabilities, service.PlatformCapabilityRealtime)
-	require.Contains(t, modelAPIDocsBindingProfileIDs(resolveXimoAIModelAPIDocsAutomaticBinding(input)), "openai_responses_realtime")
+	available := []string{}
+	for _, profile := range compatibleModelAPIDocsProfiles(input) {
+		available = append(available, profile.ID)
+	}
+	require.Contains(t, available, "openai_responses_realtime")
+	require.NotContains(t, modelAPIDocsBindingProfileIDs(resolveXimoAIModelAPIDocsAutomaticBinding(input)), "openai_responses_realtime")
 }
 
 func TestXimoAIModelAPIDocsBindingAllowsMultipleCategories(t *testing.T) {
@@ -193,7 +312,7 @@ func TestXimoAIModelAPIDocsBindingAllowsMultipleCategories(t *testing.T) {
 	require.NoError(t, validateXimoAIModelAPIDocsBinding(binding, []string{
 		service.PlatformCapabilityResponses,
 		service.PlatformCapabilityImages,
-	}))
+	}, ""))
 	require.Len(t, selectedXimoAIModelAPIDocsProfiles(binding), 2)
 }
 
@@ -223,6 +342,6 @@ func TestXimoAIModelAPIDocsProtocolChangeDoesNotReuseIncompatibleProfiles(t *tes
 		}},
 	}
 
-	err := validateXimoAIModelAPIDocsBinding(binding, []string{service.PlatformCapabilityMessages})
+	err := validateXimoAIModelAPIDocsBinding(binding, []string{service.PlatformCapabilityMessages}, "")
 	require.Error(t, err)
 }

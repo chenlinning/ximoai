@@ -264,6 +264,45 @@ func TestPlatformService_UpdateAllowsXimoAIBuiltinPlatformRename(t *testing.T) {
 	require.Equal(t, PlatformKindGrokVideo, updated.Kind)
 	require.Equal(t, PlatformProtocolGemini, updated.Protocol)
 	require.Equal(t, "https://video.new.test", updated.BaseURL)
+	require.Contains(t, updated.Capabilities, PlatformCapabilityVideos)
+}
+
+func TestPlatformService_UpdateKeepsRequiredCapabilitiesForXimoAIBuiltinKinds(t *testing.T) {
+	tests := []struct {
+		slug         string
+		kind         string
+		capabilities []string
+		required     []string
+	}{
+		{PlatformGrokVideo, PlatformKindGrokVideo, []string{PlatformCapabilityResponses}, []string{PlatformCapabilityVideos}},
+		{PlatformOpenAIAudio, PlatformKindOpenAIAudio, []string{PlatformCapabilityResponses}, []string{PlatformCapabilityChatCompletions, PlatformCapabilityAudio}},
+		{PlatformKlingAudio, PlatformKindKlingAudio, []string{PlatformCapabilityResponses}, []string{PlatformCapabilityAudio}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.slug, func(t *testing.T) {
+			repo := &platformRepoStubForPlatformService{platforms: map[string]Platform{
+				tt.slug: {
+					Slug: tt.slug, Kind: tt.kind, DisplayName: tt.slug,
+					Protocol: PlatformProtocolOpenAICompatible, BaseURL: "https://example.test",
+					AuthModes: []string{AccountTypeAPIKey}, Capabilities: tt.required,
+					Enabled: true, Builtin: true,
+				},
+			}}
+			svc := NewPlatformService(repo)
+
+			updated, err := svc.Update(context.Background(), tt.slug, Platform{
+				Slug: tt.slug, DisplayName: tt.slug, Protocol: PlatformProtocolOpenAICompatible,
+				BaseURL: "https://example.test", AuthModes: []string{AccountTypeAPIKey},
+				Capabilities: tt.capabilities, Enabled: true,
+			})
+
+			require.NoError(t, err)
+			for _, capability := range tt.required {
+				require.Contains(t, updated.Capabilities, capability)
+			}
+		})
+	}
 }
 
 func TestPlatformService_UpdateAllowsCoreBuiltinPlatformRenameButKeepsProtocolAndBaseURL(t *testing.T) {
