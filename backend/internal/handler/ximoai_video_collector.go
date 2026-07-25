@@ -113,7 +113,7 @@ func (h *VideoCollectorHandler) proxy(c *gin.Context, method, path string, forwa
 		response.Error(c, http.StatusBadGateway, "Video collector is unavailable")
 		return
 	}
-	defer upstream.Body.Close()
+	defer func() { _ = upstream.Body.Close() }()
 	for _, header := range []string{
 		"Content-Type", "Content-Length", "Content-Disposition", "Content-Range",
 		"Accept-Ranges", "Cache-Control", "Last-Modified", "X-Accel-Buffering", "X-Delete-At",

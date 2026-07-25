@@ -132,7 +132,7 @@ func (s *HTTPServer) handleDownload(w http.ResponseWriter, r *http.Request, user
 		writeManagerError(w, err)
 		return
 	}
-	defer lease.Close()
+	defer func() { _ = lease.Close() }()
 	fileInfo, err := lease.Stat()
 	if err != nil {
 		writeJSONError(w, http.StatusGone, "download file is no longer available")
