@@ -53,7 +53,7 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 		h.errorResponse(c, http.StatusInternalServerError, "api_error", "User context not found")
 		return
 	}
-	if apiKey.Group == nil || h.XimoAIPlatformKind(c.Request.Context(), apiKey.Group.Platform) != service.PlatformKindVolcengineAgentPlan {
+	if apiKey.Group == nil || !h.IsVolcengineAgentPlanPlatform(c.Request.Context(), apiKey.Group.Platform) {
 		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 		h.errorResponse(c, http.StatusNotFound, "not_found_error", "Volcengine Agent Plan API is not supported for this platform")
 		return
@@ -134,7 +134,7 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 		}
 
 		account := selection.Account
-		if account.Type != service.AccountTypeAPIKey || account.PlatformRuntimeKind() != service.PlatformKindVolcengineAgentPlan {
+		if account.Type != service.AccountTypeAPIKey || !h.isVolcengineAgentPlanAccount(c.Request.Context(), account, apiKey.Group.Platform) {
 			if selection.ReleaseFunc != nil {
 				selection.ReleaseFunc()
 			}
@@ -191,6 +191,17 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 	}
 
 	h.writeVolcengineAgentPlanError(c, lastErr)
+}
+
+func (h *GatewayHandler) isVolcengineAgentPlanAccount(ctx context.Context, account *service.Account, groupPlatform string) bool {
+	if account == nil {
+		return false
+	}
+	if account.PlatformRuntimeKind() == service.PlatformKindVolcengineAgentPlan {
+		return true
+	}
+	return service.NormalizePlatformSlug(account.Platform) == service.NormalizePlatformSlug(groupPlatform) &&
+		h.IsVolcengineAgentPlanPlatform(ctx, groupPlatform)
 }
 
 func (h *GatewayHandler) parseVolcengineAgentPlanRequest(

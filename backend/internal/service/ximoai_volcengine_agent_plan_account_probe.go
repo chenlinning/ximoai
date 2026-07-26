@@ -84,7 +84,9 @@ func (s *AccountTestService) testVolcengineAgentPlanConnection(
 	if err != nil {
 		return s.sendErrorAndEnd(c, err.Error())
 	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+	providerCode := strings.TrimSpace(resp.Header.Get("X-Api-Status-Code"))
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices ||
+		(providerCode != "" && !volcengineAgentPlanSuccessCode(providerCode)) {
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body))))
 	}
 

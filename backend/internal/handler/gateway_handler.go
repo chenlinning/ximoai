@@ -1084,6 +1084,10 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		writeGrokModelsList(c, xai.DefaultModelIDs())
 		return
 	}
+	if modelsFallbackPlatform == service.PlatformVolcengineAgentPlan {
+		writeModelsList(c, modelsFallbackPlatform, defaultModelIDsForPlatform(modelsFallbackPlatform))
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
@@ -1320,6 +1324,12 @@ func defaultModelIDsForPlatform(platform string) []string {
 		return mergeModelIDs(ids, nil)
 	case service.PlatformGrok:
 		return xai.DefaultModelIDs()
+	case service.PlatformVolcengineAgentPlan:
+		return []string{
+			service.VolcengineAgentPlanSeedreamModel,
+			service.VolcengineAgentPlanTTSModel,
+			service.VolcengineAgentPlanASRModel,
+		}
 	case service.PlatformComposite:
 		ids := make([]string, 0)
 		seen := make(map[string]struct{})

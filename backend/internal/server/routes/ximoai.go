@@ -43,12 +43,6 @@ type ximoAIGatewayContext struct {
 
 func registerXimoAIV1GatewayRoutes(gateway *gin.RouterGroup, ctx ximoAIGatewayContext) {
 	h := ctx.handlers
-	gateway.POST("/volcengine/images/generations", h.Gateway.VolcengineAgentPlanImages)
-	gateway.POST("/volcengine/audio/tts/unidirectional", h.Gateway.VolcengineAgentPlanTTSUnidirectional)
-	gateway.GET("/volcengine/audio/tts/unidirectional/stream", h.Gateway.VolcengineAgentPlanTTSUnidirectionalStream)
-	gateway.GET("/volcengine/audio/tts/bidirection", h.Gateway.VolcengineAgentPlanTTSBidirection)
-	gateway.GET("/volcengine/audio/asr/bigmodel_async", h.Gateway.VolcengineAgentPlanASRBigmodelAsync)
-	gateway.GET("/volcengine/audio/asr/bigmodel_nostream", h.Gateway.VolcengineAgentPlanASRBigmodelNostream)
 	gateway.POST("/audio/speech", ximoAIAudioOnly(h.Gateway, true, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/transcriptions", ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
 	gateway.POST("/audio/translations", ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))
@@ -71,6 +65,12 @@ func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
 	r.POST("/audio/translations", withXimoAICommon(common, ximoAIAudioOnly(h.Gateway, false, "Audio API is not supported for this platform", h.OpenAIGateway.Audio))...)
 	r.POST("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
 	r.GET("/videos", withXimoAICommon(common, func(c *gin.Context) { openAIEndpointUnsupported(c, "Video endpoint not found") })...)
+	r.POST("/api/plan/v3/images/generations", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanImages)...)
+	r.POST("/api/v3/plan/tts/unidirectional", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanTTSUnidirectional)...)
+	r.GET("/api/v3/plan/tts/unidirectional/stream", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanTTSUnidirectionalStream)...)
+	r.GET("/api/v3/plan/tts/bidirection", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanTTSBidirection)...)
+	r.GET("/api/v3/plan/sauc/bigmodel_async", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanASRBigmodelAsync)...)
+	r.GET("/api/v3/plan/sauc/bigmodel_nostream", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanASRBigmodelNostream)...)
 }
 
 func withXimoAICommon(common []gin.HandlerFunc, last gin.HandlerFunc) []gin.HandlerFunc {

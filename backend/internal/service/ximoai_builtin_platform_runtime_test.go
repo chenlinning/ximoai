@@ -64,12 +64,46 @@ func TestXimoAIVolcengineAgentPlanRuntimeKind(t *testing.T) {
 	require.True(t, IsXimoAIMediaPlatformKind(account.PlatformRuntimeKind()))
 }
 
+func TestXimoAIVolcengineAgentPlanDefinitionSupportsLegacyNativePlatform(t *testing.T) {
+	legacyNative := Platform{
+		Slug:     "volcengine",
+		Protocol: PlatformProtocolNative,
+		BaseURL:  PlatformDefaultBaseURLVolcengineAgentPlan,
+		Enabled:  true,
+		Builtin:  true,
+	}
+	customOpenAI := Platform{
+		Slug:     "volcengine",
+		Protocol: PlatformProtocolOpenAICompatible,
+		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
+		Enabled:  true,
+	}
+
+	require.True(t, legacyNative.IsVolcengineAgentPlan())
+	require.Equal(t, PlatformKindVolcengineAgentPlan, legacyNative.RuntimeKind())
+	require.False(t, customOpenAI.IsVolcengineAgentPlan())
+}
+
 func TestVolcengineAgentPlanDefaultModelsList(t *testing.T) {
 	require.Equal(t, []string{
 		VolcengineAgentPlanSeedreamModel,
 		VolcengineAgentPlanTTSModel,
 		VolcengineAgentPlanASRModel,
 	}, defaultModelsListCandidateIDs(PlatformVolcengineAgentPlan))
+}
+
+func TestVolcengineAgentPlanDefaultsImageGenerationEnabled(t *testing.T) {
+	require.True(t, defaultAllowImageGenerationForPlatform(PlatformVolcengineAgentPlan))
+	require.True(t, defaultAllowImageGenerationForPlatformDefinition("volcengine", &Platform{
+		Slug:     "volcengine",
+		Protocol: PlatformProtocolNative,
+		BaseURL:  PlatformDefaultBaseURLVolcengineAgentPlan,
+	}))
+	require.False(t, defaultAllowImageGenerationForPlatformDefinition("volcengine", &Platform{
+		Slug:     "volcengine",
+		Protocol: PlatformProtocolOpenAICompatible,
+		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
+	}))
 }
 
 func TestVolcengineAgentPlanSchedulerPlatformIsDiscoveredFromActiveAccount(t *testing.T) {

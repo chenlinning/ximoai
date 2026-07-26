@@ -289,7 +289,7 @@ func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, ac
 		return s.routeAntigravityTest(c, account, modelID, opts.Prompt)
 	}
 
-	if account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan {
+	if s.isVolcengineAgentPlanAccount(ctx, account) {
 		return s.testVolcengineAgentPlanConnection(c, account, modelID, opts.Prompt)
 	}
 
@@ -306,6 +306,20 @@ func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, ac
 	}
 
 	return s.testClaudeAccountConnection(c, account, modelID)
+}
+
+func (s *AccountTestService) isVolcengineAgentPlanAccount(ctx context.Context, account *Account) bool {
+	if account == nil {
+		return false
+	}
+	if account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan {
+		return true
+	}
+	if s == nil || s.platformService == nil {
+		return false
+	}
+	platform, err := s.platformService.GetBySlug(ctx, account.Platform)
+	return err == nil && platform != nil && platform.IsVolcengineAgentPlan()
 }
 
 func (s *AccountTestService) isOpenAIProtocolAccount(ctx context.Context, account *Account) bool {

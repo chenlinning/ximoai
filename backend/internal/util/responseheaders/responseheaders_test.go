@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilterHeadersDisabledUsesDefaultAllowlist(t *testing.T) {
@@ -64,4 +65,15 @@ func TestFilterHeadersEnabledUsesAllowlist(t *testing.T) {
 	if filtered.Get("X-Blocked") != "" {
 		t.Fatalf("expected X-Blocked removed, got %q", filtered.Get("X-Blocked"))
 	}
+}
+
+func TestWriteFilteredHeadersAllowsVolcengineLogID(t *testing.T) {
+	dst := make(http.Header)
+	WriteFilteredHeaders(dst, http.Header{
+		"X-Tt-Logid": []string{"tt-logid"},
+		"X-Api-Key":  []string{"must-not-leak"},
+	}, nil)
+
+	require.Equal(t, "tt-logid", dst.Get("X-Tt-Logid"))
+	require.Empty(t, dst.Get("X-Api-Key"))
 }

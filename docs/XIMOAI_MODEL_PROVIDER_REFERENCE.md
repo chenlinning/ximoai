@@ -91,9 +91,9 @@ Relevant implementation:
 | Per-request + Audio | `tts` | `sync` |
 | Grok-video kind | `video` | `async` |
 | Kling Audio kind | `tts` | `sync` |
-| Volcengine Agent Plan Seedream | `image` | `sync` |
+| Volcengine Agent Plan Seedream | `image` | `sync`, `stream` |
 | Volcengine Agent Plan TTS | `tts` | `sync`, `stream`, `bidirectional` |
-| Volcengine Agent Plan ASR | `asr` | `sync`, `async` |
+| Volcengine Agent Plan ASR | `asr` | `stream` |
 
 There is currently no independent `music` model type. Music models should not be described as TTS merely because both use audio-related billing.
 

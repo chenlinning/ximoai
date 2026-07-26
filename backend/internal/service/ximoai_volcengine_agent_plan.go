@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -94,8 +94,7 @@ func VolcengineAgentPlanWebSocketHeaders(endpoint VolcengineAgentPlanEndpoint, a
 	headers.Set("X-Api-Key", apiKey)
 	headers.Set("X-Api-Connect-Id", newVolcengineAgentPlanRequestID())
 	switch endpoint {
-	case VolcengineAgentPlanTTSUnidirectional,
-		VolcengineAgentPlanTTSUnidirectionalStream,
+	case VolcengineAgentPlanTTSUnidirectionalStream,
 		VolcengineAgentPlanTTSBidirection:
 		headers.Set("X-Api-Resource-Id", VolcengineAgentPlanTTSResourceID)
 		headers.Set("X-Control-Require-Usage-Tokens-Return", "*")
@@ -107,12 +106,20 @@ func VolcengineAgentPlanWebSocketHeaders(endpoint VolcengineAgentPlanEndpoint, a
 	return headers
 }
 
-func newVolcengineAgentPlanRequestID() string {
-	random := make([]byte, 16)
-	if _, err := rand.Read(random); err == nil {
-		return hex.EncodeToString(random)
+func VolcengineAgentPlanHTTPHeaders(endpoint VolcengineAgentPlanEndpoint, apiKey string) http.Header {
+	headers := make(http.Header)
+	if endpoint != VolcengineAgentPlanTTSUnidirectional {
+		return headers
 	}
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	headers.Set("X-Api-Key", apiKey)
+	headers.Set("X-Api-Resource-Id", VolcengineAgentPlanTTSResourceID)
+	headers.Set("X-Api-Request-Id", newVolcengineAgentPlanRequestID())
+	headers.Set("X-Control-Require-Usage-Tokens-Return", "*")
+	return headers
+}
+
+func newVolcengineAgentPlanRequestID() string {
+	return uuid.NewString()
 }
 
 type VolcengineAgentPlanUpstreamError struct {
@@ -167,11 +174,15 @@ func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
 	}
 
 	forwardBody := body
-	if endpoint == VolcengineAgentPlanImagesGenerations && strings.TrimSpace(upstreamModel) != "" {
-		forwardBody, err = sjson.SetBytes(body, "model", upstreamModel)
-		if err != nil {
-			return nil, fmt.Errorf("rewrite Volcengine image model: %w", err)
+	streamResponse := endpoint == VolcengineAgentPlanTTSUnidirectional
+	if endpoint == VolcengineAgentPlanImagesGenerations {
+		if strings.TrimSpace(upstreamModel) != "" {
+			forwardBody, err = sjson.SetBytes(body, "model", upstreamModel)
+			if err != nil {
+				return nil, fmt.Errorf("rewrite Volcengine image model: %w", err)
+			}
 		}
+		streamResponse = gjson.GetBytes(forwardBody, "stream").Bool()
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, bytes.NewReader(forwardBody))
 	if err != nil {
@@ -189,7 +200,7 @@ func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
 	if endpoint == VolcengineAgentPlanImagesGenerations {
 		req.Header.Set("Authorization", "Bearer "+token)
 	} else {
-		planHeaders := VolcengineAgentPlanWebSocketHeaders(VolcengineAgentPlanTTSUnidirectional, token)
+		planHeaders := VolcengineAgentPlanHTTPHeaders(endpoint, token)
 		for key, values := range planHeaders {
 			for _, value := range values {
 				req.Header.Add(key, value)
@@ -205,12 +216,12 @@ func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
 		if tlsProfile := s.tlsFPProfileService.ResolveTLSProfile(account); tlsProfile != nil {
 			start := time.Now()
 			resp, requestErr := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, tlsProfile)
-			return s.finishVolcengineAgentPlanHTTP(c, resp, requestErr, endpoint, upstreamModel, start)
+			return s.finishVolcengineAgentPlanHTTP(c, resp, requestErr, endpoint, upstreamModel, streamResponse, start)
 		}
 	}
 	start := time.Now()
 	resp, requestErr := s.httpUpstream.Do(req, proxyURL, account.ID, account.Concurrency)
-	return s.finishVolcengineAgentPlanHTTP(c, resp, requestErr, endpoint, upstreamModel, start)
+	return s.finishVolcengineAgentPlanHTTP(c, resp, requestErr, endpoint, upstreamModel, streamResponse, start)
 }
 
 func (s *GatewayService) finishVolcengineAgentPlanHTTP(
@@ -219,6 +230,7 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 	requestErr error,
 	endpoint VolcengineAgentPlanEndpoint,
 	upstreamModel string,
+	streamResponse bool,
 	start time.Time,
 ) (*ForwardResult, error) {
 	if requestErr != nil {
@@ -228,13 +240,13 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 		return nil, fmt.Errorf("volcengine agent plan upstream returned no response")
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, err := readVolcengineAgentPlanResponseBody(resp.Body)
-	if err != nil {
-		return nil, err
-	}
 	providerCode := strings.TrimSpace(resp.Header.Get("X-Api-Status-Code"))
 	providerFailed := providerCode != "" && !volcengineAgentPlanSuccessCode(providerCode)
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices || providerFailed {
+		body, err := readVolcengineAgentPlanResponseBody(resp.Body)
+		if err != nil {
+			return nil, err
+		}
 		statusCode := resp.StatusCode
 		if statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices {
 			statusCode = http.StatusBadGateway
@@ -244,6 +256,45 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 			ProviderCode: providerCode,
 			Body:         body,
 			Headers:      resp.Header.Clone(),
+		}
+	}
+	if streamResponse {
+		stats, err := s.streamVolcengineAgentPlanHTTPResponse(c, resp, endpoint)
+		if err != nil {
+			return nil, err
+		}
+		if !stats.Successful(endpoint) {
+			return nil, fmt.Errorf("volcengine agent plan stream did not complete successfully")
+		}
+		model := strings.TrimSpace(upstreamModel)
+		result := &ForwardResult{
+			RequestID:     volcengineAgentPlanResponseRequestID(resp.Header),
+			Model:         model,
+			UpstreamModel: model,
+			RequestCount:  1,
+			Stream:        true,
+			Duration:      time.Since(start),
+		}
+		if endpoint == VolcengineAgentPlanImagesGenerations {
+			result.ImageCount = stats.ImageCount
+			if result.ImageCount <= 0 {
+				result.ImageCount = 1
+			}
+		}
+		return result, nil
+	}
+
+	body, err := readVolcengineAgentPlanResponseBody(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := parseVolcengineAgentPlanResponseStats(endpoint, body)
+	if endpoint == VolcengineAgentPlanImagesGenerations && !stats.Successful(endpoint) {
+		return nil, &VolcengineAgentPlanUpstreamError{
+			StatusCode: http.StatusBadGateway,
+			Body:       body,
+			Headers:    resp.Header.Clone(),
 		}
 	}
 
@@ -260,16 +311,243 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 		model = responseModel
 	}
 	result := &ForwardResult{
-		RequestID:     strings.TrimSpace(resp.Header.Get("X-Request-Id")),
+		RequestID:     volcengineAgentPlanResponseRequestID(resp.Header),
 		Model:         model,
 		UpstreamModel: model,
 		RequestCount:  1,
 		Duration:      time.Since(start),
 	}
 	if endpoint == VolcengineAgentPlanImagesGenerations {
-		result.ImageCount = 1
+		result.ImageCount = stats.ImageCount
+		if result.ImageCount <= 0 {
+			result.ImageCount = 1
+		}
 	}
 	return result, nil
+}
+
+func (s *GatewayService) streamVolcengineAgentPlanHTTPResponse(c *gin.Context, resp *http.Response, endpoint VolcengineAgentPlanEndpoint) (volcengineAgentPlanResponseStats, error) {
+	observer := newVolcengineAgentPlanResponseObserver(endpoint)
+	if c == nil {
+		_, err := io.Copy(observer, resp.Body)
+		return observer.Stats(), err
+	}
+	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+	if strings.TrimSpace(c.Writer.Header().Get("Content-Type")) == "" {
+		c.Writer.Header().Set("Content-Type", "application/octet-stream")
+	}
+	c.Header("Cache-Control", "no-cache")
+	c.Header("X-Accel-Buffering", "no")
+	c.Status(resp.StatusCode)
+
+	flusher, _ := c.Writer.(http.Flusher)
+	writer := io.Writer(c.Writer)
+	if flusher != nil {
+		writer = &volcengineAgentPlanFlushWriter{writer: c.Writer, flusher: flusher}
+	}
+	if _, err := io.CopyBuffer(writer, io.TeeReader(resp.Body, observer), make([]byte, 32<<10)); err != nil {
+		return volcengineAgentPlanResponseStats{}, fmt.Errorf("stream Volcengine Agent Plan response: %w", err)
+	}
+	return observer.Stats(), nil
+}
+
+type volcengineAgentPlanFlushWriter struct {
+	writer  io.Writer
+	flusher http.Flusher
+}
+
+func (w *volcengineAgentPlanFlushWriter) Write(payload []byte) (int, error) {
+	written, err := w.writer.Write(payload)
+	if written > 0 {
+		w.flusher.Flush()
+	}
+	return written, err
+}
+
+type volcengineAgentPlanResponseStats struct {
+	ImageCount  int
+	Completed   bool
+	Failed      bool
+	ImageEvents int
+}
+
+type volcengineAgentPlanResponseObserver struct {
+	endpoint VolcengineAgentPlanEndpoint
+	pending  []byte
+	stats    volcengineAgentPlanResponseStats
+}
+
+func newVolcengineAgentPlanResponseObserver(endpoint VolcengineAgentPlanEndpoint) *volcengineAgentPlanResponseObserver {
+	return &volcengineAgentPlanResponseObserver{endpoint: endpoint}
+}
+
+func (o *volcengineAgentPlanResponseObserver) Write(payload []byte) (int, error) {
+	if o == nil {
+		return len(payload), nil
+	}
+	o.pending = append(o.pending, payload...)
+	if o.endpoint == VolcengineAgentPlanTTSUnidirectional {
+		o.consumeTTSJSON()
+		return len(payload), nil
+	}
+	for {
+		index := bytes.IndexByte(o.pending, '\n')
+		if index < 0 {
+			break
+		}
+		o.observeLine(o.pending[:index])
+		o.pending = o.pending[index+1:]
+	}
+	return len(payload), nil
+}
+
+func (o *volcengineAgentPlanResponseObserver) Stats() volcengineAgentPlanResponseStats {
+	if o == nil {
+		return volcengineAgentPlanResponseStats{}
+	}
+	if o.endpoint == VolcengineAgentPlanTTSUnidirectional {
+		o.consumeTTSJSON()
+		if len(bytes.TrimSpace(o.pending)) > 0 {
+			o.stats.Failed = true
+		}
+	} else {
+		o.observeLine(o.pending)
+	}
+	o.pending = nil
+	return o.stats
+}
+
+func (o *volcengineAgentPlanResponseObserver) observeLine(line []byte) {
+	line = bytes.TrimSpace(line)
+	if len(line) == 0 {
+		return
+	}
+	if bytes.HasPrefix(bytes.ToLower(line), []byte("data:")) {
+		line = bytes.TrimSpace(line[len("data:"):])
+	}
+	if !json.Valid(line) {
+		return
+	}
+	o.observeImageJSON(line)
+}
+
+func (o *volcengineAgentPlanResponseObserver) consumeTTSJSON() {
+	for {
+		trimmed := bytes.TrimLeft(o.pending, " \t\r\n")
+		if len(trimmed) == 0 {
+			o.pending = nil
+			return
+		}
+		decoder := json.NewDecoder(bytes.NewReader(trimmed))
+		var raw json.RawMessage
+		if err := decoder.Decode(&raw); err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				o.pending = trimmed
+				return
+			}
+			o.pending = trimmed
+			return
+		}
+		consumed := int(decoder.InputOffset())
+		if consumed <= 0 || consumed > len(trimmed) {
+			o.pending = trimmed
+			return
+		}
+		o.observeTTSJSON(raw)
+		o.pending = trimmed[consumed:]
+	}
+}
+
+func (o *volcengineAgentPlanResponseObserver) observeTTSJSON(body []byte) {
+	code := strings.TrimSpace(gjson.GetBytes(body, "code").String())
+	if code == "" {
+		return
+	}
+	if code == "20000000" {
+		o.stats.Completed = true
+		return
+	}
+	if code != "0" && code != "200" {
+		o.stats.Failed = true
+	}
+}
+
+func (o *volcengineAgentPlanResponseObserver) observeImageJSON(body []byte) {
+	typeName := strings.TrimSpace(gjson.GetBytes(body, "type").String())
+	switch typeName {
+	case "image_generation.partial_succeeded":
+		o.stats.ImageEvents++
+	case "image_generation.completed":
+		o.stats.Completed = true
+		generatedImages := gjson.GetBytes(body, "usage.generated_images")
+		if generatedImages.Exists() {
+			o.stats.ImageCount = int(generatedImages.Int())
+		} else {
+			o.stats.ImageCount = o.stats.ImageEvents
+		}
+		if errorNode := gjson.GetBytes(body, "error"); errorNode.Exists() && o.stats.ImageCount == 0 {
+			o.stats.Failed = true
+		}
+	case "image_generation.partial_failed":
+		// A failed image does not fail the whole group; the completed event supplies
+		// the final successful image count.
+	default:
+		data := gjson.GetBytes(body, "data")
+		if data.IsArray() {
+			count := 0
+			for _, item := range data.Array() {
+				if strings.TrimSpace(item.Get("url").String()) != "" ||
+					strings.TrimSpace(item.Get("b64_json").String()) != "" {
+					count++
+				}
+			}
+			o.stats.ImageCount = count
+			o.stats.Completed = true
+		}
+		if errorNode := gjson.GetBytes(body, "error"); errorNode.Exists() {
+			o.stats.Failed = true
+		}
+	}
+}
+
+func (o *volcengineAgentPlanResponseObserver) Successful(endpoint VolcengineAgentPlanEndpoint) bool {
+	if o == nil {
+		return false
+	}
+	return o.stats.Successful(endpoint)
+}
+
+func (s volcengineAgentPlanResponseStats) Successful(endpoint VolcengineAgentPlanEndpoint) bool {
+	if s.Failed || !s.Completed {
+		return false
+	}
+	if endpoint == VolcengineAgentPlanImagesGenerations {
+		return s.ImageCount > 0
+	}
+	return true
+}
+
+func parseVolcengineAgentPlanResponseStats(endpoint VolcengineAgentPlanEndpoint, body []byte) volcengineAgentPlanResponseStats {
+	observer := newVolcengineAgentPlanResponseObserver(endpoint)
+	_, _ = observer.Write(body)
+	return observer.Stats()
+}
+
+func volcengineAgentPlanWebSocketResponseHeaders(headers http.Header) http.Header {
+	allowed := make(http.Header)
+	for _, key := range []string{"X-Tt-Logid", "X-Api-Connect-Id", "X-Request-Id"} {
+		for _, value := range headers.Values(key) {
+			allowed.Add(key, value)
+		}
+	}
+	return allowed
+}
+
+func volcengineAgentPlanResponseRequestID(headers http.Header) string {
+	if requestID := strings.TrimSpace(headers.Get("X-Request-Id")); requestID != "" {
+		return requestID
+	}
+	return strings.TrimSpace(headers.Get("X-Tt-Logid"))
 }
 
 func readVolcengineAgentPlanResponseBody(body io.Reader) ([]byte, error) {
@@ -331,10 +609,14 @@ func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
 	}
 	defer func() { _ = upstreamConn.Close() }()
 
+	clientResponseHeaders := make(http.Header)
+	if upstreamResp != nil {
+		clientResponseHeaders = volcengineAgentPlanWebSocketResponseHeaders(upstreamResp.Header)
+	}
 	clientConn, err := (&websocket.Upgrader{
 		ReadBufferSize:  32 << 10,
 		WriteBufferSize: 32 << 10,
-	}).Upgrade(c.Writer, c.Request, nil)
+	}).Upgrade(c.Writer, c.Request, clientResponseHeaders)
 	if err != nil {
 		return nil, fmt.Errorf("upgrade client WebSocket: %w", err)
 	}

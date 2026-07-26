@@ -151,14 +151,36 @@ func TestGatewayRoutesVolcengineAgentPlanNativePathsAreRegistered(t *testing.T) 
 	}
 
 	for _, route := range []string{
-		"POST /v1/volcengine/images/generations",
-		"POST /v1/volcengine/audio/tts/unidirectional",
-		"GET /v1/volcengine/audio/tts/unidirectional/stream",
-		"GET /v1/volcengine/audio/tts/bidirection",
-		"GET /v1/volcengine/audio/asr/bigmodel_async",
-		"GET /v1/volcengine/audio/asr/bigmodel_nostream",
+		"POST /api/plan/v3/images/generations",
+		"POST /api/v3/plan/tts/unidirectional",
+		"GET /api/v3/plan/tts/unidirectional/stream",
+		"GET /api/v3/plan/tts/bidirection",
+		"GET /api/v3/plan/sauc/bigmodel_async",
+		"GET /api/v3/plan/sauc/bigmodel_nostream",
 	} {
 		require.True(t, registered[route], "%s should be registered", route)
+	}
+}
+
+func TestGatewayRoutesVolcengineAgentPlanLegacyPathsAreNotRegistered(t *testing.T) {
+	router := newGatewayRoutesTestRouter(service.PlatformVolcengineAgentPlan)
+	for _, route := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/v1/volcengine/images/generations"},
+		{http.MethodPost, "/v1/volcengine/audio/tts/unidirectional"},
+		{http.MethodGet, "/v1/volcengine/audio/tts/unidirectional/stream"},
+		{http.MethodGet, "/v1/volcengine/audio/tts/bidirection"},
+		{http.MethodGet, "/v1/volcengine/audio/asr/bigmodel_async"},
+		{http.MethodGet, "/v1/volcengine/audio/asr/bigmodel_nostream"},
+	} {
+		req := httptest.NewRequest(route.method, route.path, strings.NewReader(`{"model":"seed-tts-2.0"}`))
+		w := httptest.NewRecorder()
+
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusNotFound, w.Code, "legacy path=%s must remain removed", route.path)
 	}
 }
 

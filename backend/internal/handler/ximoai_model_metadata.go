@@ -137,13 +137,13 @@ func resolveAutomaticModelMetadata(input modelMetadataResolutionInput) modelMeta
 		switch input.RecognitionModel {
 		case service.VolcengineAgentPlanSeedreamModel:
 			metadata.Types = []string{modelTypeImage}
-			metadata.InvocationModes = []string{modelInvocationSync}
+			metadata.InvocationModes = []string{modelInvocationSync, modelInvocationStream}
 		case service.VolcengineAgentPlanTTSModel:
 			metadata.Types = []string{modelTypeTTS}
 			metadata.InvocationModes = []string{modelInvocationSync, modelInvocationStream, modelInvocationBidirectional}
 		case service.VolcengineAgentPlanASRModel:
 			metadata.Types = []string{modelTypeASR}
-			metadata.InvocationModes = []string{modelInvocationSync, modelInvocationAsync}
+			metadata.InvocationModes = []string{modelInvocationStream}
 		}
 		return metadata
 	}

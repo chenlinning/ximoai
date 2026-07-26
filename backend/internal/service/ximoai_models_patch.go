@@ -51,7 +51,13 @@ func (s *PlatformService) XimoAIModelsFallbackPlatform(ctx context.Context, slug
 		return slug
 	}
 	platform, err := s.GetBySlug(ctx, slug)
-	if err != nil || platform == nil || platform.Builtin || !platform.Enabled {
+	if err != nil || platform == nil || !platform.Enabled {
+		return slug
+	}
+	if platform.IsVolcengineAgentPlan() {
+		return PlatformVolcengineAgentPlan
+	}
+	if platform.Builtin {
 		return slug
 	}
 

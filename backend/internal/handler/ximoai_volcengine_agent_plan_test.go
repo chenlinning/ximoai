@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,7 +16,7 @@ import (
 func newVolcengineAgentPlanHandlerContext(platform, body string) (*gin.Context, *httptest.ResponseRecorder) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/volcengine/images/generations", strings.NewReader(body))
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/plan/v3/images/generations", strings.NewReader(body))
 	groupID := int64(1)
 	c.Set(string(servermiddleware.ContextKeyAPIKey), &service.APIKey{
 		ID:      1,
@@ -44,4 +45,28 @@ func TestVolcengineAgentPlanImagesRequiresNativeModel(t *testing.T) {
 
 	require.Equal(t, http.StatusBadRequest, recorder.Code)
 	require.Contains(t, recorder.Body.String(), "model is required")
+}
+
+func TestVolcengineAgentPlanPlatformRecognizesLegacyNativeDefinitionOnly(t *testing.T) {
+	legacyNative := &GatewayHandler{platformService: service.NewPlatformService(&ximoAIModelsPlatformRepoStub{
+		platform: service.Platform{
+			Slug:     "volcengine",
+			Protocol: service.PlatformProtocolNative,
+			BaseURL:  service.PlatformDefaultBaseURLVolcengineAgentPlan,
+			Enabled:  true,
+			Builtin:  true,
+		},
+	})}
+	customOpenAI := &GatewayHandler{platformService: service.NewPlatformService(&ximoAIModelsPlatformRepoStub{
+		platform: service.Platform{
+			Slug:     "volcengine",
+			Protocol: service.PlatformProtocolOpenAICompatible,
+			BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
+			Enabled:  true,
+		},
+	})}
+
+	require.True(t, legacyNative.IsVolcengineAgentPlanPlatform(context.Background(), "volcengine"))
+	require.False(t, customOpenAI.IsVolcengineAgentPlanPlatform(context.Background(), "volcengine"))
+	require.True(t, customOpenAI.IsOpenAICompatiblePlatform(context.Background(), "volcengine"))
 }

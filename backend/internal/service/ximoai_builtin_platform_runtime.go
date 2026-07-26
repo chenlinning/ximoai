@@ -39,7 +39,18 @@ func (p Platform) RuntimeKind() string {
 	if kind := strings.ToLower(strings.TrimSpace(p.Kind)); kind != "" {
 		return kind
 	}
+	if strings.EqualFold(strings.TrimSpace(p.Protocol), PlatformProtocolNative) &&
+		strings.EqualFold(
+			strings.TrimRight(strings.TrimSpace(p.BaseURL), "/"),
+			PlatformDefaultBaseURLVolcengineAgentPlan,
+		) {
+		return PlatformKindVolcengineAgentPlan
+	}
 	return XimoAIPlatformKindFromLegacySlug(p.Slug)
+}
+
+func (p Platform) IsVolcengineAgentPlan() bool {
+	return p.RuntimeKind() == PlatformKindVolcengineAgentPlan
 }
 
 func (p Platform) RequiresAPIKeyBaseURL() bool {

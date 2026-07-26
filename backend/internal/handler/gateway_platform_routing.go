@@ -26,9 +26,16 @@ func (h *GatewayHandler) IsOpenAIChatCompletionsPlatform(ctx context.Context, pl
 func (h *GatewayHandler) XimoAIPlatformKind(ctx context.Context, platform string) string {
 	platform = service.NormalizePlatformSlug(platform)
 	if registered := h.registeredPlatform(ctx, platform); registered != nil {
+		if registered.IsVolcengineAgentPlan() {
+			return service.PlatformKindVolcengineAgentPlan
+		}
 		return registered.RuntimeKind()
 	}
 	return service.XimoAIPlatformKindFromLegacySlug(platform)
+}
+
+func (h *GatewayHandler) IsVolcengineAgentPlanPlatform(ctx context.Context, platform string) bool {
+	return h.XimoAIPlatformKind(ctx, platform) == service.PlatformKindVolcengineAgentPlan
 }
 
 func (h *GatewayHandler) IsXimoAIMediaPlatform(ctx context.Context, platform string) bool {
