@@ -3,7 +3,6 @@ package handler
 import (
 	"testing"
 
-	"github.com/Wei-Shaw/sub2api/internal/service"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,26 +31,4 @@ func TestDetectXimoAIModelBrand(t *testing.T) {
 			require.Equal(t, tt.brand, detectXimoAIModelBrand(tt.model))
 		})
 	}
-}
-
-func TestBuildXimoAIModelBrandDetailsUsesAdministratorOverride(t *testing.T) {
-	override := &service.ModelBrandOverride{
-		Platform: "custom-openai",
-		Model:    "gpt-5.4",
-		Brand:    "XimoAI Lab",
-	}
-
-	details := buildXimoAIModelBrandDetails("gpt-5.4", override, true)
-
-	require.Equal(t, "XimoAI Lab", details.Brand)
-	require.NotNil(t, details.Editor)
-	require.Equal(t, "OpenAI", details.Editor.AutomaticBrand)
-	require.Equal(t, ximoAIModelBrandSourceAdministrator, details.Editor.Source)
-}
-
-func TestBuildXimoAIModelBrandDetailsHidesEditorFromUsers(t *testing.T) {
-	details := buildXimoAIModelBrandDetails("grok-4", nil, false)
-
-	require.Equal(t, "xAI", details.Brand)
-	require.Nil(t, details.Editor)
 }

@@ -10,10 +10,8 @@ import (
 )
 
 func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	admin.PUT("/model-plaza/docs", h.AvailableChannel.SaveModelPlazaDocs)
-	admin.DELETE("/model-plaza/docs", h.AvailableChannel.DeleteModelPlazaDocs)
-	admin.PUT("/model-plaza/brand", h.AvailableChannel.SaveModelPlazaBrand)
-	admin.DELETE("/model-plaza/brand", h.AvailableChannel.DeleteModelPlazaBrand)
+	admin.PUT("/model-plaza/metadata", h.AvailableChannel.SaveModelPlazaMetadata)
+	admin.DELETE("/model-plaza/metadata", h.AvailableChannel.DeleteModelPlazaMetadata)
 
 	platforms := admin.Group("/platforms")
 	{

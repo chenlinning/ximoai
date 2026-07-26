@@ -18,52 +18,76 @@
         </button>
       </div>
 
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div class="relative w-full lg:max-w-md">
-          <Icon
-            name="search"
-            size="md"
-            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
-          />
-          <input
-            v-model="searchQuery"
-            type="text"
-            :placeholder="t('modelPlaza.searchPlaceholder')"
-            class="input pl-10"
-          />
-        </div>
-
-        <div class="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 lg:w-auto lg:justify-end lg:pb-0">
-          <button
-            v-for="brand in brandList"
-            :key="brand"
-            type="button"
-            :data-model-brand="brand"
-            class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
-            :class="brandButtonClass(brand)"
-            @click="selectBrand(brand)"
-          >
-            {{ brand === allBrandsKey ? t('modelPlaza.allBrands') : brand }}
-          </button>
-        </div>
+      <div class="relative w-full lg:max-w-md">
+        <Icon
+          name="search"
+          size="md"
+          class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
+        />
+        <input
+          v-model="searchQuery"
+          type="text"
+          :placeholder="t('modelPlaza.searchPlaceholder')"
+          class="input pl-10"
+        />
       </div>
 
-      <div class="flex w-full min-w-0 items-center gap-3">
-        <span class="flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
-          {{ t('modelPlaza.modelType') }}
-        </span>
-        <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
-          <button
-            v-for="category in categoryList"
-            :key="category"
+      <div class="space-y-3">
+        <div data-filter-level="brand" class="flex w-full min-w-0 items-center gap-3">
+          <span class="w-16 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
+            {{ t('modelPlaza.brand') }}
+          </span>
+          <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
+            <button
+              v-for="brand in brandList"
+              :key="brand"
             type="button"
-            :data-model-category="category"
-            class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
-            :class="categoryButtonClass(category)"
-            @click="activeCategory = category"
-          >
-            {{ category === allCategoriesKey ? t('modelPlaza.allTypes') : t(`modelPlaza.apiDocs.categories.${category}`) }}
-          </button>
+              :data-model-brand="brand"
+              class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
+              :class="filterButtonClass(brand, activeBrand)"
+              @click="activeBrand = brand"
+            >
+              {{ brand === allBrandsKey ? t('modelPlaza.allBrands') : brand }}
+            </button>
+          </div>
+        </div>
+
+        <div data-filter-level="type" class="flex w-full min-w-0 items-center gap-3">
+          <span class="w-16 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
+            {{ t('modelPlaza.modelType') }}
+          </span>
+          <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
+            <button
+              v-for="type in typeFilterOptions"
+              :key="type"
+              type="button"
+              :data-model-category="type"
+              class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
+              :class="filterButtonClass(type, activeType)"
+              @click="activeType = type"
+            >
+              {{ type === allTypesKey ? t('modelPlaza.allTypes') : typeLabel(type as ModelType) }}
+            </button>
+          </div>
+        </div>
+
+        <div data-filter-level="mode" class="flex w-full min-w-0 items-center gap-3">
+          <span class="w-16 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
+            {{ t('modelPlaza.invocationMode') }}
+          </span>
+          <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
+            <button
+              v-for="mode in modeFilterOptions"
+              :key="mode"
+              type="button"
+              :data-model-mode="mode"
+              class="inline-flex h-9 flex-shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors"
+              :class="filterButtonClass(mode, activeMode)"
+              @click="activeMode = mode"
+            >
+              {{ mode === allModesKey ? t('modelPlaza.allModes') : modeLabel(mode as ModelInvocationMode) }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -91,18 +115,18 @@
         <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.noModels') }}</p>
       </div>
 
-      <div v-else class="model-card-grid grid gap-4">
+      <div
+        v-else
+        data-model-grid
+        data-card-min-width="20rem"
+        data-card-max-width="24rem"
+        class="model-card-grid grid gap-4"
+      >
         <article
           v-for="model in filteredModels"
           :key="model.key"
-          role="button"
-          tabindex="0"
-          :aria-label="t('modelPlaza.apiDocs.open', { model: model.name })"
           :data-model-key="model.key"
-          class="card card-hover group relative cursor-pointer overflow-hidden p-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-dark-900"
-          @click="openModelDocs(model)"
-          @keydown.enter.prevent="openModelDocs(model)"
-          @keydown.space.prevent="openModelDocs(model)"
+          class="card group relative w-full max-w-96 overflow-hidden p-5"
         >
           <div
             class="absolute inset-x-0 top-0 h-1"
@@ -116,33 +140,54 @@
                 {{ model.name }}
               </h2>
               <div class="mt-2 flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center rounded-md border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-300">
+                <span
+                  :data-model-brand-chip="model.brand"
+                  class="inline-flex items-center rounded-md bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-950/40 dark:text-primary-300"
+                >
                   {{ model.brand }}
                 </span>
-                <button
-                  v-if="model.brandEditor"
-                  type="button"
-                  :data-model-brand-edit="model.key"
-                  class="btn btn-ghost btn-icon btn-sm"
-                  :title="t('modelPlaza.brandEditor.edit')"
-                  @click.stop="selectedBrandModel = model"
+                <span
+                  v-for="type in model.types"
+                  :key="`type-${type}`"
+                  :data-model-type-chip="type"
+                  class="inline-flex items-center rounded-md bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
                 >
-                  <Icon name="edit" size="xs" />
-                </button>
+                  {{ typeLabel(type) }}
+                </span>
+                <span
+                  v-for="mode in model.invocationModes"
+                  :key="`mode-${mode}`"
+                  :data-model-mode-chip="mode"
+                  class="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                >
+                  {{ modeLabel(mode) }}
+                </span>
                 <span class="text-xs text-gray-500 dark:text-dark-400">
                   {{ t('modelPlaza.groupCount', { count: model.groups.length }) }}
                 </span>
               </div>
             </div>
 
-            <button
-              type="button"
-              class="btn btn-ghost btn-icon flex-shrink-0"
-              :title="t('modelPlaza.copyModelName')"
-              @click.stop="copyName(model.name)"
-            >
-              <Icon name="copy" size="sm" />
-            </button>
+            <div class="flex flex-shrink-0 items-center gap-1">
+              <button
+                v-if="model.metadataEditor"
+                type="button"
+                :data-model-metadata-edit="model.key"
+                class="btn btn-ghost btn-icon"
+                :title="t('modelPlaza.metadataEditor.edit')"
+                @click="selectedMetadataModel = model"
+              >
+                <Icon name="edit" size="sm" />
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-icon"
+                :title="t('modelPlaza.copyModelName')"
+                @click="copyName(model.name)"
+              >
+                <Icon name="copy" size="sm" />
+              </button>
+            </div>
           </div>
 
           <div class="space-y-3">
@@ -259,24 +304,17 @@
         </article>
       </div>
 
-      <ModelApiDocsDialog
-        v-if="selectedDocsModel"
-        :show="Boolean(selectedDocsModel)"
-        :model-name="selectedDocsModel.name"
-        :documentation="selectedDocsModel.documentation"
-        @updated="updateModelDocumentation"
-        @close="selectedDocsModel = null"
-      />
-
-      <ModelBrandDialog
-        v-if="selectedBrandModel && selectedBrandModel.brandEditor"
-        :show="Boolean(selectedBrandModel)"
-        :platform="selectedBrandModel.platform"
-        :model-name="selectedBrandModel.name"
-        :brand="selectedBrandModel.brand"
-        :editor="selectedBrandModel.brandEditor"
-        @updated="updateModelBrand"
-        @close="selectedBrandModel = null"
+      <ModelMetadataDialog
+        v-if="selectedMetadataModel && selectedMetadataModel.metadataEditor"
+        :show="Boolean(selectedMetadataModel)"
+        :platform="selectedMetadataModel.platform"
+        :model-name="selectedMetadataModel.name"
+        :brand="selectedMetadataModel.brand"
+        :types="selectedMetadataModel.types"
+        :invocation-modes="selectedMetadataModel.invocationModes"
+        :editor="selectedMetadataModel.metadataEditor"
+        @updated="updateModelMetadata"
+        @close="selectedMetadataModel = null"
       />
     </div>
   </AppLayout>
@@ -287,15 +325,19 @@ import { computed, h, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
-import ModelApiDocsDialog from './ModelApiDocsDialog.vue'
-import ModelBrandDialog from './ModelBrandDialog.vue'
+import ModelMetadataDialog from './ModelMetadataDialog.vue'
 import userChannelsAPI, {
   type UserAvailableChannel,
   type UserPricingInterval,
   type UserSupportedModelPricing
 } from '@/api/channels'
-import type { ModelAPIDocsCategory, ModelAPIDocsResponse } from '@/api/modelApiDocs'
-import type { ModelBrandEditor, ModelBrandState } from '@/api/modelBrand'
+import type {
+  ModelInvocationMode,
+  ModelMetadataEditor,
+  ModelMetadataState,
+  ModelReasoningLevel,
+  ModelType
+} from '@/api/modelMetadata'
 import {
   BILLING_MODE_IMAGE,
   BILLING_MODE_PER_REQUEST,
@@ -347,12 +389,11 @@ interface ModelEntry {
   name: string
   platform: string
   brand: string
-  brandEditor: ModelBrandEditor | null
-  categories: ModelAPIDocsCategory[]
-  capabilities: string[]
-  protocols: string[]
-  invocationModes: string[]
-  documentation: ModelAPIDocsResponse
+  metadataEditor: ModelMetadataEditor | null
+  types: ModelType[]
+  invocationModes: ModelInvocationMode[]
+  reasoningLevels: ModelReasoningLevel[]
+  thinkingSupported: boolean
   groups: ModelGroup[]
 }
 
@@ -366,8 +407,12 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const perMillionScale = 1_000_000
 const allBrandsKey = 'all'
-const allCategoriesKey = 'all'
-const categoryOrder: ModelAPIDocsCategory[] = ['conversation', 'image', 'video', 'tts', 'asr']
+const allTypesKey = 'all'
+const allModesKey = 'all'
+const typeOptions: ModelType[] = ['conversation', 'embedding', 'image', 'video', 'tts', 'asr']
+const invocationModeOptions: ModelInvocationMode[] = ['sync', 'stream', 'async', 'bidirectional', 'batch']
+const typeFilterOptions = [allTypesKey, ...typeOptions]
+const modeFilterOptions = [allModesKey, ...invocationModeOptions]
 
 const loading = ref(false)
 const error = ref('')
@@ -375,22 +420,13 @@ const models = ref<ModelEntry[]>([])
 const platforms = ref<Platform[]>([])
 const searchQuery = ref('')
 const activeBrand = ref(allBrandsKey)
-const activeCategory = ref(allCategoriesKey)
-const selectedDocsModel = ref<ModelEntry | null>(null)
-const selectedBrandModel = ref<ModelEntry | null>(null)
+const activeType = ref(allTypesKey)
+const activeMode = ref(allModesKey)
+const selectedMetadataModel = ref<ModelEntry | null>(null)
 
 const brandList = computed(() => {
   const brands = Array.from(new Set(models.value.map((model) => model.brand))).sort()
   return [allBrandsKey, ...brands]
-})
-
-const categoryList = computed(() => {
-  const available = new Set<ModelAPIDocsCategory>()
-  for (const model of models.value) {
-    if (activeBrand.value !== allBrandsKey && model.brand !== activeBrand.value) continue
-    for (const category of model.categories) available.add(category)
-  }
-  return [allCategoriesKey, ...categoryOrder.filter((category) => available.has(category))]
 })
 
 const filteredModels = computed(() => {
@@ -399,7 +435,10 @@ const filteredModels = computed(() => {
     if (activeBrand.value !== allBrandsKey && model.brand !== activeBrand.value) {
       return false
     }
-    if (activeCategory.value !== allCategoriesKey && !model.categories.includes(activeCategory.value as ModelAPIDocsCategory)) {
+    if (activeType.value !== allTypesKey && !model.types.includes(activeType.value as ModelType)) {
+      return false
+    }
+    if (activeMode.value !== allModesKey && !model.invocationModes.includes(activeMode.value as ModelInvocationMode)) {
       return false
     }
     if (!q) return true
@@ -416,22 +455,8 @@ const filteredModels = computed(() => {
   })
 })
 
-function selectBrand(brand: string) {
-  activeBrand.value = brand
-  if (!categoryList.value.includes(activeCategory.value)) {
-    activeCategory.value = allCategoriesKey
-  }
-}
-
-function brandButtonClass(brand: string): string {
-  if (brand === activeBrand.value) {
-    return 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600'
-  }
-  return 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400'
-}
-
-function categoryButtonClass(category: string): string {
-  if (category === activeCategory.value) {
+function filterButtonClass(value: string, active: string): string {
+  if (value === active) {
     return 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600'
   }
   return 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-800 dark:text-gray-300 dark:hover:border-primary-600 dark:hover:text-primary-400'
@@ -441,28 +466,24 @@ function platformColor(platform: string): string {
   return platformDisplayColor(platforms.value, platform)
 }
 
-function openModelDocs(model: ModelEntry) {
-  selectedDocsModel.value = model
+function typeLabel(type: ModelType) {
+  return t(`modelPlaza.types.${type}`)
 }
 
-function updateModelDocumentation(documentation: ModelAPIDocsResponse) {
-  if (!selectedDocsModel.value) return
-  selectedDocsModel.value.documentation = documentation
-  selectedDocsModel.value.categories = documentation.binding.categories.map((category) => category.category)
-  if (!categoryList.value.includes(activeCategory.value)) {
-    activeCategory.value = allCategoriesKey
-  }
+function modeLabel(mode: ModelInvocationMode) {
+  return t(`modelPlaza.modes.${mode}`)
 }
 
-function updateModelBrand(state: ModelBrandState) {
-  if (!selectedBrandModel.value) return
-  selectedBrandModel.value.brand = state.brand
-  selectedBrandModel.value.brandEditor = state.editor || null
+function updateModelMetadata(state: ModelMetadataState) {
+  if (!selectedMetadataModel.value) return
+  selectedMetadataModel.value.brand = state.brand
+  selectedMetadataModel.value.types = [...state.types]
+  selectedMetadataModel.value.invocationModes = [...state.invocation_modes]
+  selectedMetadataModel.value.reasoningLevels = [...(state.reasoning_levels ?? [])]
+  selectedMetadataModel.value.thinkingSupported = Boolean(state.thinking_supported)
+  selectedMetadataModel.value.metadataEditor = state.editor || null
   activeBrand.value = state.brand
-  selectedBrandModel.value = null
-  if (!categoryList.value.includes(activeCategory.value)) {
-    activeCategory.value = allCategoriesKey
-  }
+  selectedMetadataModel.value = null
 }
 
 function platformAccentStyle(platform: string) {
@@ -566,12 +587,11 @@ function buildModels(channels: UserAvailableChannel[]): ModelEntry[] {
             name: supportedModel.name,
             platform,
             brand: supportedModel.brand || 'Other',
-            brandEditor: supportedModel.brand_editor || null,
-            categories: supportedModel.types || [],
-            capabilities: supportedModel.capabilities || [],
-            protocols: supportedModel.protocols || [],
+            metadataEditor: supportedModel.metadata_editor || null,
+            types: supportedModel.types || [],
             invocationModes: supportedModel.invocation_modes || [],
-            documentation: supportedModel.api_documentation,
+            reasoningLevels: supportedModel.reasoning_levels || [],
+            thinkingSupported: Boolean(supportedModel.thinking_supported),
             groups: []
           })
         }
@@ -640,9 +660,6 @@ async function loadData() {
     if (activeBrand.value !== allBrandsKey && !brandList.value.includes(activeBrand.value)) {
       activeBrand.value = allBrandsKey
     }
-    if (!categoryList.value.includes(activeCategory.value)) {
-      activeCategory.value = allCategoriesKey
-    }
   } catch (err: unknown) {
     error.value = extractApiErrorMessage(err, t('modelPlaza.loadError'))
   } finally {
@@ -655,6 +672,11 @@ onMounted(loadData)
 
 <style scoped>
 .model-card-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+}
+
+.model-card-grid > * {
+  width: 100%;
+  max-width: 24rem;
 }
 </style>

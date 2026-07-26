@@ -95,16 +95,16 @@ type userPricingIntervalDTO struct {
 
 // userSupportedModel 用户可见的支持模型条目。
 type userSupportedModel struct {
-	Name             string                     `json:"name"`
-	Platform         string                     `json:"platform"`
-	Brand            string                     `json:"brand,omitempty"`
-	BrandEditor      *modelBrandEditorResponse  `json:"brand_editor,omitempty"`
-	Pricing          *userSupportedModelPricing `json:"pricing"`
-	Types            []string                   `json:"types"`
-	Capabilities     []string                   `json:"capabilities"`
-	Protocols        []string                   `json:"protocols"`
-	InvocationModes  []string                   `json:"invocation_modes"`
-	APIDocumentation *modelAPIDocsResponse      `json:"api_documentation"`
+	Name              string                       `json:"name"`
+	Platform          string                       `json:"platform"`
+	Brand             string                       `json:"brand,omitempty"`
+	MetadataEditor    *modelMetadataEditorResponse `json:"metadata_editor,omitempty"`
+	Pricing           *userSupportedModelPricing   `json:"pricing"`
+	Types             []string                     `json:"types"`
+	InvocationModes   []string                     `json:"invocation_modes"`
+	ReasoningLevels   []string                     `json:"reasoning_levels,omitempty"`
+	ThinkingSupported bool                         `json:"thinking_supported,omitempty"`
+	recognitionName   string
 }
 
 // userChannelPlatformSection 单渠道内某个平台的子视图：用户可见的分组 + 该平台
@@ -299,9 +299,10 @@ func toUserSupportedModels(
 			}
 		}
 		out = append(out, userSupportedModel{
-			Name:     m.Name,
-			Platform: m.Platform,
-			Pricing:  toUserPricing(m.Pricing),
+			Name:            m.Name,
+			Platform:        m.Platform,
+			Pricing:         toUserPricing(m.Pricing),
+			recognitionName: m.RecognitionName,
 		})
 	}
 	return out

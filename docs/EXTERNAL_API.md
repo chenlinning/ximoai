@@ -554,6 +554,11 @@ platforms[].groups[].rate_multiplier
 platforms[].groups[].is_exclusive
 platforms[].supported_models[].name
 platforms[].supported_models[].platform
+platforms[].supported_models[].brand
+platforms[].supported_models[].types
+platforms[].supported_models[].invocation_modes
+platforms[].supported_models[].reasoning_levels (when verified or overridden)
+platforms[].supported_models[].thinking_supported (when verified or overridden)
 platforms[].supported_models[].pricing.billing_mode
 platforms[].supported_models[].pricing.input_price
 platforms[].supported_models[].pricing.output_price

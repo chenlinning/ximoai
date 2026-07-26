@@ -1,35 +1,8 @@
 package handler
 
-import (
-	"context"
-	"fmt"
-	"strings"
+import "strings"
 
-	"github.com/Wei-Shaw/sub2api/internal/service"
-)
-
-const (
-	ximoAIModelBrandOther               = "Other"
-	ximoAIModelBrandSourceAutomatic     = "automatic"
-	ximoAIModelBrandSourceAdministrator = "administrator"
-)
-
-type modelBrandEditorResponse struct {
-	AutomaticBrand string `json:"automatic_brand"`
-	Source         string `json:"source"`
-}
-
-type modelBrandDetails struct {
-	Brand  string                    `json:"brand"`
-	Editor *modelBrandEditorResponse `json:"editor,omitempty"`
-}
-
-type modelBrandTarget struct {
-	channelIndex int
-	sectionIndex int
-	modelIndex   int
-	lookup       service.ModelBrandOverride
-}
+const ximoAIModelBrandOther = "Other"
 
 type modelBrandRule struct {
 	brand    string
@@ -104,62 +77,4 @@ func hasXimoAIModelBrandPrefix(model, prefix string) bool {
 	default:
 		return model[len(prefix)] >= '0' && model[len(prefix)] <= '9'
 	}
-}
-
-func buildXimoAIModelBrandDetails(model string, override *service.ModelBrandOverride, isAdmin bool) modelBrandDetails {
-	automaticBrand := detectXimoAIModelBrand(model)
-	brand := automaticBrand
-	source := ximoAIModelBrandSourceAutomatic
-	if override != nil {
-		brand = override.Brand
-		source = ximoAIModelBrandSourceAdministrator
-	}
-	details := modelBrandDetails{Brand: brand}
-	if isAdmin {
-		details.Editor = &modelBrandEditorResponse{AutomaticBrand: automaticBrand, Source: source}
-	}
-	return details
-}
-
-func (h *AvailableChannelHandler) enrichXimoAIModelBrands(
-	ctx context.Context,
-	channels []userAvailableChannel,
-	isAdmin bool,
-) error {
-	targets := make([]modelBrandTarget, 0)
-	lookups := make([]service.ModelBrandOverride, 0)
-	for channelIndex := range channels {
-		for sectionIndex := range channels[channelIndex].Platforms {
-			section := &channels[channelIndex].Platforms[sectionIndex]
-			for modelIndex := range section.SupportedModels {
-				lookup := service.ModelBrandOverride{
-					Platform: section.Platform,
-					Model:    section.SupportedModels[modelIndex].Name,
-				}
-				targets = append(targets, modelBrandTarget{
-					channelIndex: channelIndex,
-					sectionIndex: sectionIndex,
-					modelIndex:   modelIndex,
-					lookup:       lookup,
-				})
-				lookups = append(lookups, lookup)
-			}
-		}
-	}
-
-	overrides, err := h.settingService.GetXimoAIModelBrandOverrides(ctx, lookups)
-	if err != nil && isAdmin {
-		return fmt.Errorf("load model brand configuration: %w", err)
-	}
-	for index, target := range targets {
-		var override *service.ModelBrandOverride
-		if err == nil {
-			override = overrides[index]
-		}
-		details := buildXimoAIModelBrandDetails(target.lookup.Model, override, isAdmin)
-		model := &channels[target.channelIndex].Platforms[target.sectionIndex].SupportedModels[target.modelIndex]
-		model.Brand = details.Brand
-		model.BrandEditor = details.Editor
-	}
-	return nil
 }

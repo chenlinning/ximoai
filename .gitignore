@@ -142,6 +142,7 @@ docs/*
 !docs/ASYNC_IMAGE_TASKS.md
 !docs/workbench-control-plane-auth.md
 !docs/MODEL_PLAZA_API_DOCUMENTATION_TASK.md
+!docs/XIMOAI_MODEL_PROVIDER_REFERENCE.md
 !docs/legal/
 !docs/legal/*.md
 .serena/

@@ -7,19 +7,11 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/service"
 )
 
-type modelPlazaModelDetails struct {
-	Types            []string
-	Capabilities     []string
-	Protocols        []string
-	InvocationModes  []string
-	APIDocumentation modelAPIDocsResponse
-}
-
-type modelPlazaCatalogTarget struct {
+type modelPlazaMetadataTarget struct {
 	channelIndex int
 	sectionIndex int
 	modelIndex   int
-	input        modelAPIDocsResolutionInput
+	input        modelMetadataResolutionInput
 }
 
 func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
@@ -45,8 +37,8 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 		platformIndex[platform.Slug] = platform
 	}
 
-	targets := make([]modelPlazaCatalogTarget, 0)
-	lookupTargets := make([]service.ModelAPIDocsBinding, 0)
+	targets := make([]modelPlazaMetadataTarget, 0)
+	lookups := make([]service.ModelMetadataOverride, 0)
 	for channelIndex := range channels {
 		for sectionIndex := range channels[channelIndex].Platforms {
 			section := &channels[channelIndex].Platforms[sectionIndex]
@@ -68,111 +60,46 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 				if model.Pricing != nil && model.Pricing.BillingMode != "" {
 					billingModes = append(billingModes, model.Pricing.BillingMode)
 				}
-				input := normalizeModelAPIDocsResolutionInput(modelAPIDocsResolutionInput{
-					Platform: section.Platform, Kind: platform.RuntimeKind(), Protocol: platform.Protocol, Model: model.Name,
-					Capabilities: platform.Capabilities, BillingModes: billingModes,
+				input := modelMetadataResolutionInput{
+					Platform:         section.Platform,
+					Kind:             platform.RuntimeKind(),
+					Protocol:         platform.Protocol,
+					Model:            model.Name,
+					RecognitionModel: model.recognitionName,
+					Capabilities:     platform.Capabilities,
+					BillingModes:     billingModes,
+				}
+				targets = append(targets, modelPlazaMetadataTarget{
+					channelIndex: channelIndex,
+					sectionIndex: sectionIndex,
+					modelIndex:   modelIndex,
+					input:        input,
 				})
-				targets = append(targets, modelPlazaCatalogTarget{
-					channelIndex: channelIndex, sectionIndex: sectionIndex, modelIndex: modelIndex, input: input,
-				})
-				lookupTargets = append(lookupTargets, service.ModelAPIDocsBinding{
-					Platform: input.Platform, Protocol: input.Protocol, Model: input.Model,
+				lookups = append(lookups, service.ModelMetadataOverride{
+					Platform: input.Platform,
+					Model:    input.Model,
 				})
 			}
 		}
 	}
 
-	savedBindings, loadErr := h.settingService.GetXimoAIModelAPIDocsBindings(ctx, lookupTargets)
+	overrides, loadErr := h.settingService.GetXimoAIModelMetadataOverrides(ctx, lookups)
 	if loadErr != nil && isAdmin {
-		return fmt.Errorf("load model API documentation configuration: %w", loadErr)
+		return fmt.Errorf("load model metadata configuration: %w", loadErr)
 	}
 	for index, target := range targets {
-		var saved *service.ModelAPIDocsBinding
+		var override *service.ModelMetadataOverride
 		if loadErr == nil {
-			saved = savedBindings[index]
-			if saved != nil {
-				if validationErr := validateXimoAIModelAPIDocsBinding(*saved, target.input.Capabilities, target.input.Kind); validationErr != nil {
-					if isAdmin {
-						return fmt.Errorf("stored model API documentation configuration is invalid: %w", validationErr)
-					}
-					saved = nil
-				}
-			}
+			override = overrides[index]
 		}
-		details := buildModelPlazaModelDetails(target.input, saved, isAdmin)
+		details := buildModelPlazaMetadata(target.input, override, isAdmin)
 		model := &channels[target.channelIndex].Platforms[target.sectionIndex].SupportedModels[target.modelIndex]
+		model.Brand = details.Brand
 		model.Types = details.Types
-		model.Capabilities = details.Capabilities
-		model.Protocols = details.Protocols
 		model.InvocationModes = details.InvocationModes
-		model.APIDocumentation = &details.APIDocumentation
+		model.ReasoningLevels = details.ReasoningLevels
+		model.ThinkingSupported = details.ThinkingSupported
+		model.MetadataEditor = details.Editor
 	}
-	return h.enrichXimoAIModelBrands(ctx, channels, isAdmin)
-}
-
-func buildModelPlazaModelDetails(
-	input modelAPIDocsResolutionInput,
-	saved *service.ModelAPIDocsBinding,
-	isAdmin bool,
-) modelPlazaModelDetails {
-	automatic := resolveXimoAIModelAPIDocsAutomaticBinding(input)
-	effective := automatic
-	source := "automatic"
-	if saved != nil {
-		effective = *saved
-		source = "administrator"
-	}
-	profiles := applyModelAPIDocsTemplateValues(selectedXimoAIModelAPIDocsProfiles(effective), input.Model)
-	documentation := modelAPIDocsResponse{
-		Platform: input.Platform, Protocol: input.Protocol, Model: input.Model, Source: source,
-		Binding: effective, Profiles: profiles,
-	}
-	if isAdmin {
-		documentation.Editor = &modelAPIDocsEditorResponse{
-			AutomaticBinding:  automatic,
-			AvailableProfiles: applyModelAPIDocsTemplateValues(compatibleModelAPIDocsProfiles(input), input.Model),
-		}
-	}
-
-	types := make([]string, 0, len(effective.Categories))
-	for _, category := range effective.Categories {
-		types = appendUniqueModelCatalogValue(types, category.Category)
-	}
-	capabilities := make([]string, 0)
-	protocols := make([]string, 0)
-	modes := make([]string, 0)
-	for _, profile := range profiles {
-		capability := profile.capability
-		if capability == "" {
-			switch profile.Category {
-			case modelDocsCategoryImage:
-				capability = service.PlatformCapabilityImages
-			case modelDocsCategoryVideo:
-				capability = service.PlatformCapabilityVideos
-			case modelDocsCategoryTTS, modelDocsCategoryASR:
-				capability = service.PlatformCapabilityAudio
-			}
-		}
-		capabilities = appendUniqueModelCatalogValue(capabilities, capability)
-		protocols = appendUniqueModelCatalogValue(protocols, profile.Protocol)
-		for _, variant := range profile.Variants {
-			modes = appendUniqueModelCatalogValue(modes, variant.Mode)
-		}
-	}
-	return modelPlazaModelDetails{
-		Types: types, Capabilities: capabilities, Protocols: protocols,
-		InvocationModes: modes, APIDocumentation: documentation,
-	}
-}
-
-func appendUniqueModelCatalogValue(values []string, value string) []string {
-	if value == "" {
-		return values
-	}
-	for _, current := range values {
-		if current == value {
-			return values
-		}
-	}
-	return append(values, value)
+	return nil
 }
