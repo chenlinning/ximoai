@@ -979,7 +979,7 @@ func (s *GatewayService) readOrStreamVolcengineAgentPlanErrorResponse(c *gin.Con
 	preview := append([]byte(nil), buffered[:min(len(buffered), 4096)]...)
 	if c == nil {
 		_, _ = io.Copy(io.Discard, resp.Body)
-		return preview, false, fmt.Errorf("Volcengine Agent Plan error response requires streaming")
+		return preview, false, fmt.Errorf("volcengine Agent Plan error response requires streaming")
 	}
 
 	s.WriteVolcengineAgentPlanResponseHeaders(c.Writer.Header(), resp.Header)

@@ -692,13 +692,13 @@ type volcengineAgentPlanCountingWriter struct {
 }
 
 func (w *volcengineAgentPlanCountingWriter) Write(payload []byte) (int, error) {
-	w.ResponseWriter.WriteHeaderNow()
+	w.WriteHeaderNow()
 	w.written += int64(len(payload))
 	return len(payload), nil
 }
 
 func (w *volcengineAgentPlanCountingWriter) WriteString(payload string) (int, error) {
-	w.ResponseWriter.WriteHeaderNow()
+	w.WriteHeaderNow()
 	w.written += int64(len(payload))
 	return len(payload), nil
 }
