@@ -922,6 +922,11 @@ func (s *GatewayService) isUpstreamModelRestrictedByChannel(ctx context.Context,
 	if s.channelService == nil {
 		return false
 	}
+	if account != nil && account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan {
+		if route, ok := VolcengineAgentPlanModelRouteFromContext(ctx); ok && route.ChannelMappedModel != "" {
+			requestedModel = route.ChannelMappedModel
+		}
+	}
 	upstreamModel := resolveAccountUpstreamModel(account, requestedModel)
 	if upstreamModel == "" {
 		return false

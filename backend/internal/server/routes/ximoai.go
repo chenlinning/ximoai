@@ -69,6 +69,7 @@ func registerXimoAIRootGatewayRoutes(r *gin.Engine, ctx ximoAIGatewayContext) {
 	r.POST("/api/v3/plan/tts/unidirectional", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanTTSUnidirectional)...)
 	r.GET("/api/v3/plan/tts/unidirectional/stream", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanTTSUnidirectionalStream)...)
 	r.GET("/api/v3/plan/tts/bidirection", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanTTSBidirection)...)
+	r.GET("/api/v3/plan/sauc/bigmodel", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanASRBigmodel)...)
 	r.GET("/api/v3/plan/sauc/bigmodel_async", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanASRBigmodelAsync)...)
 	r.GET("/api/v3/plan/sauc/bigmodel_nostream", withXimoAICommon(common, h.Gateway.VolcengineAgentPlanASRBigmodelNostream)...)
 }

@@ -155,6 +155,7 @@ func TestGatewayRoutesVolcengineAgentPlanNativePathsAreRegistered(t *testing.T) 
 		"POST /api/v3/plan/tts/unidirectional",
 		"GET /api/v3/plan/tts/unidirectional/stream",
 		"GET /api/v3/plan/tts/bidirection",
+		"GET /api/v3/plan/sauc/bigmodel",
 		"GET /api/v3/plan/sauc/bigmodel_async",
 		"GET /api/v3/plan/sauc/bigmodel_nostream",
 	} {

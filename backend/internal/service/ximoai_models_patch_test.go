@@ -99,6 +99,25 @@ func TestGetXimoAIAvailableModels_FallsBackWithoutPlatformMapping(t *testing.T) 
 	require.Equal(t, []string{"account-model"}, models)
 }
 
+func TestGetXimoAIAvailableModels_UsesVolcengineRuntimeKindForNativeGroup(t *testing.T) {
+	groupID := int64(43)
+	accountRepo := &ximoAIModelsAccountRepoStub{accounts: []Account{{
+		ID:       1,
+		Platform: "legacy-volcengine-slug",
+		Credentials: map[string]any{
+			PlatformKindCredentialKey: PlatformKindVolcengineAgentPlan,
+			"model_mapping": map[string]any{
+				"doubao-seed-tts-2.0": "seed-tts-2.0",
+			},
+		},
+	}}}
+
+	svc := &GatewayService{accountRepo: accountRepo}
+	models := svc.GetXimoAIAvailableModels(context.Background(), &groupID, PlatformVolcengineAgentPlan)
+
+	require.Equal(t, []string{"doubao-seed-tts-2.0"}, models)
+}
+
 type ximoAIModelsPlatformRepoStub struct {
 	PlatformRepository
 	platform Platform

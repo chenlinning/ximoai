@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -29,6 +29,7 @@ const (
 	VolcengineAgentPlanTTSUnidirectional       VolcengineAgentPlanEndpoint = "tts_unidirectional"
 	VolcengineAgentPlanTTSUnidirectionalStream VolcengineAgentPlanEndpoint = "tts_unidirectional_stream"
 	VolcengineAgentPlanTTSBidirection          VolcengineAgentPlanEndpoint = "tts_bidirection"
+	VolcengineAgentPlanASRBigmodel             VolcengineAgentPlanEndpoint = "asr_bigmodel"
 	VolcengineAgentPlanASRBigmodelAsync        VolcengineAgentPlanEndpoint = "asr_bigmodel_async"
 	VolcengineAgentPlanASRBigmodelNostream     VolcengineAgentPlanEndpoint = "asr_bigmodel_nostream"
 
@@ -40,7 +41,11 @@ const (
 	VolcengineAgentPlanASRResourceID = "volc.seedasr.sauc.duration"
 )
 
-const volcengineAgentPlanMaxHTTPResponseBytes = 64 << 20
+const (
+	volcengineAgentPlanMaxBufferedResponseBytes = 64 << 20
+	volcengineAgentPlanMaxBufferedErrorBytes    = 2 << 20
+	volcengineAgentPlanMaxObservedLineBytes     = 1 << 20
+)
 
 func VolcengineAgentPlanUpstreamURL(endpoint VolcengineAgentPlanEndpoint) (string, error) {
 	switch endpoint {
@@ -52,6 +57,8 @@ func VolcengineAgentPlanUpstreamURL(endpoint VolcengineAgentPlanEndpoint) (strin
 		return "wss://openspeech.bytedance.com/api/v3/plan/tts/unidirectional/stream", nil
 	case VolcengineAgentPlanTTSBidirection:
 		return "wss://openspeech.bytedance.com/api/v3/plan/tts/bidirection", nil
+	case VolcengineAgentPlanASRBigmodel:
+		return "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel", nil
 	case VolcengineAgentPlanASRBigmodelAsync:
 		return "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_async", nil
 	case VolcengineAgentPlanASRBigmodelNostream:
@@ -65,6 +72,7 @@ func (e VolcengineAgentPlanEndpoint) IsWebSocket() bool {
 	switch e {
 	case VolcengineAgentPlanTTSUnidirectionalStream,
 		VolcengineAgentPlanTTSBidirection,
+		VolcengineAgentPlanASRBigmodel,
 		VolcengineAgentPlanASRBigmodelAsync,
 		VolcengineAgentPlanASRBigmodelNostream:
 		return true
@@ -81,7 +89,8 @@ func (e VolcengineAgentPlanEndpoint) BillingModel() string {
 		VolcengineAgentPlanTTSUnidirectionalStream,
 		VolcengineAgentPlanTTSBidirection:
 		return VolcengineAgentPlanTTSModel
-	case VolcengineAgentPlanASRBigmodelAsync,
+	case VolcengineAgentPlanASRBigmodel,
+		VolcengineAgentPlanASRBigmodelAsync,
 		VolcengineAgentPlanASRBigmodelNostream:
 		return VolcengineAgentPlanASRModel
 	default:
@@ -90,36 +99,63 @@ func (e VolcengineAgentPlanEndpoint) BillingModel() string {
 }
 
 func VolcengineAgentPlanWebSocketHeaders(endpoint VolcengineAgentPlanEndpoint, apiKey string) http.Header {
-	headers := make(http.Header)
-	headers.Set("X-Api-Key", apiKey)
-	headers.Set("X-Api-Connect-Id", newVolcengineAgentPlanRequestID())
-	switch endpoint {
-	case VolcengineAgentPlanTTSUnidirectionalStream,
-		VolcengineAgentPlanTTSBidirection:
-		headers.Set("X-Api-Resource-Id", VolcengineAgentPlanTTSResourceID)
-		headers.Set("X-Control-Require-Usage-Tokens-Return", "*")
-	case VolcengineAgentPlanASRBigmodelAsync, VolcengineAgentPlanASRBigmodelNostream:
-		headers.Set("X-Api-Resource-Id", VolcengineAgentPlanASRResourceID)
-		headers.Set("X-Api-Request-Id", newVolcengineAgentPlanRequestID())
-		headers.Set("X-Api-Sequence", "-1")
-	}
-	return headers
+	return volcengineAgentPlanProxyHeaders(nil, endpoint, apiKey, "")
 }
 
 func VolcengineAgentPlanHTTPHeaders(endpoint VolcengineAgentPlanEndpoint, apiKey string) http.Header {
+	return volcengineAgentPlanProxyHeaders(nil, endpoint, apiKey, "")
+}
+
+func volcengineAgentPlanProxyHeaders(source http.Header, endpoint VolcengineAgentPlanEndpoint, apiKey, upstreamModel string) http.Header {
 	headers := make(http.Header)
-	if endpoint != VolcengineAgentPlanTTSUnidirectional {
-		return headers
+	for key, values := range source {
+		if volcengineAgentPlanHopByHopHeader(key) || volcengineAgentPlanPrivateRequestHeader(key) ||
+			strings.EqualFold(key, "Authorization") ||
+			strings.EqualFold(key, "X-Api-Key") || strings.EqualFold(key, "X-Goog-Api-Key") {
+			continue
+		}
+		headers[key] = append([]string(nil), values...)
 	}
-	headers.Set("X-Api-Key", apiKey)
-	headers.Set("X-Api-Resource-Id", VolcengineAgentPlanTTSResourceID)
-	headers.Set("X-Api-Request-Id", newVolcengineAgentPlanRequestID())
-	headers.Set("X-Control-Require-Usage-Tokens-Return", "*")
+	if endpoint == VolcengineAgentPlanImagesGenerations {
+		headers.Set("Authorization", "Bearer "+apiKey)
+	} else {
+		headers.Set("X-Api-Key", apiKey)
+		if model := strings.TrimSpace(upstreamModel); model != "" {
+			headers.Set("X-Api-Resource-Id", model)
+		}
+	}
 	return headers
 }
 
-func newVolcengineAgentPlanRequestID() string {
-	return uuid.NewString()
+func volcengineAgentPlanPrivateRequestHeader(key string) bool {
+	lower := strings.ToLower(strings.TrimSpace(key))
+	switch lower {
+	case "cookie", "set-cookie", "forwarded", "x-real-ip", "x-client-ip", "true-client-ip",
+		"cf-connecting-ip", "x-original-url", "x-rewrite-url", "x-original-host":
+		return true
+	}
+	return strings.HasPrefix(lower, "x-forwarded-") ||
+		strings.HasPrefix(lower, "x-envoy-") ||
+		strings.HasPrefix(lower, "x-internal-")
+}
+
+func volcengineAgentPlanHopByHopHeader(key string) bool {
+	switch {
+	case strings.EqualFold(key, "Connection"),
+		strings.EqualFold(key, "Keep-Alive"),
+		strings.EqualFold(key, "Proxy-Authenticate"),
+		strings.EqualFold(key, "Proxy-Authorization"),
+		strings.EqualFold(key, "TE"),
+		strings.EqualFold(key, "Trailer"),
+		strings.EqualFold(key, "Transfer-Encoding"),
+		strings.EqualFold(key, "Upgrade"),
+		strings.EqualFold(key, "Host"),
+		strings.EqualFold(key, "Content-Length"),
+		strings.HasPrefix(strings.ToLower(key), "sec-websocket-"):
+		return true
+	default:
+		return false
+	}
 }
 
 type VolcengineAgentPlanUpstreamError struct {
@@ -145,6 +181,51 @@ func (e *VolcengineAgentPlanUpstreamError) Retryable() bool {
 		e.StatusCode == http.StatusRequestTimeout ||
 		e.StatusCode == http.StatusTooManyRequests ||
 		e.StatusCode >= http.StatusInternalServerError
+}
+
+func appendVolcengineAgentPlanOpsError(
+	c *gin.Context,
+	account *Account,
+	targetURL string,
+	statusCode int,
+	headers http.Header,
+	body []byte,
+	kind string,
+	reason string,
+	cause error,
+) {
+	if c == nil {
+		return
+	}
+	message := "Volcengine Agent Plan upstream request failed"
+	if extracted := strings.TrimSpace(extractUpstreamErrorMessage(body)); extracted != "" {
+		message = extracted
+	} else if cause != nil {
+		message = cause.Error()
+	} else if statusCode > 0 {
+		message = fmt.Sprintf("Volcengine Agent Plan upstream returned HTTP %d", statusCode)
+	}
+	detail := ""
+	if len(body) > 0 {
+		detail = truncateString(string(body), 4096)
+	}
+	event := OpsUpstreamErrorEvent{
+		Passthrough:          true,
+		UpstreamStatusCode:   statusCode,
+		UpstreamURL:          safeUpstreamURL(targetURL),
+		UpstreamRequestID:    volcengineAgentPlanResponseRequestID(headers),
+		UpstreamResponseBody: detail,
+		Kind:                 kind,
+		Reason:               strings.TrimSpace(reason),
+		Message:              message,
+		Detail:               detail,
+	}
+	if account != nil {
+		event.Platform = account.Platform
+		event.AccountID = account.ID
+		event.AccountName = account.Name
+	}
+	appendOpsUpstreamError(c, event)
 }
 
 func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
@@ -188,24 +269,15 @@ func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	requestHeaders := http.Header(nil)
 	if c != nil && c.Request != nil {
-		if contentType := strings.TrimSpace(c.GetHeader("Content-Type")); contentType != "" {
-			req.Header.Set("Content-Type", contentType)
-		}
-		if accept := strings.TrimSpace(c.GetHeader("Accept")); accept != "" {
-			req.Header.Set("Accept", accept)
-		}
+		requestHeaders = c.Request.Header
 	}
-	if endpoint == VolcengineAgentPlanImagesGenerations {
-		req.Header.Set("Authorization", "Bearer "+token)
-	} else {
-		planHeaders := VolcengineAgentPlanHTTPHeaders(endpoint, token)
-		for key, values := range planHeaders {
-			for _, value := range values {
-				req.Header.Add(key, value)
-			}
-		}
+	for key, values := range volcengineAgentPlanProxyHeaders(requestHeaders, endpoint, token, upstreamModel) {
+		req.Header[key] = append([]string(nil), values...)
+	}
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
 	}
 
 	proxyURL := ""
@@ -216,16 +288,18 @@ func (s *GatewayService) ForwardVolcengineAgentPlanHTTP(
 		if tlsProfile := s.tlsFPProfileService.ResolveTLSProfile(account); tlsProfile != nil {
 			start := time.Now()
 			resp, requestErr := s.httpUpstream.DoWithTLS(req, proxyURL, account.ID, account.Concurrency, tlsProfile)
-			return s.finishVolcengineAgentPlanHTTP(c, resp, requestErr, endpoint, upstreamModel, streamResponse, start)
+			return s.finishVolcengineAgentPlanHTTP(c, account, targetURL, resp, requestErr, endpoint, upstreamModel, streamResponse, start)
 		}
 	}
 	start := time.Now()
 	resp, requestErr := s.httpUpstream.Do(req, proxyURL, account.ID, account.Concurrency)
-	return s.finishVolcengineAgentPlanHTTP(c, resp, requestErr, endpoint, upstreamModel, streamResponse, start)
+	return s.finishVolcengineAgentPlanHTTP(c, account, targetURL, resp, requestErr, endpoint, upstreamModel, streamResponse, start)
 }
 
 func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 	c *gin.Context,
+	account *Account,
+	targetURL string,
 	resp *http.Response,
 	requestErr error,
 	endpoint VolcengineAgentPlanEndpoint,
@@ -234,37 +308,44 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 	start time.Time,
 ) (*ForwardResult, error) {
 	if requestErr != nil {
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, 0, nil, nil, "request_error", "", requestErr)
 		return nil, fmt.Errorf("volcengine agent plan upstream request failed: %w", requestErr)
 	}
 	if resp == nil {
-		return nil, fmt.Errorf("volcengine agent plan upstream returned no response")
+		err := fmt.Errorf("volcengine agent plan upstream returned no response")
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, 0, nil, nil, "request_error", "", err)
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	providerCode := strings.TrimSpace(resp.Header.Get("X-Api-Status-Code"))
 	providerFailed := providerCode != "" && !volcengineAgentPlanSuccessCode(providerCode)
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices || providerFailed {
-		body, err := readVolcengineAgentPlanResponseBody(resp.Body)
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, streamed, err := s.readOrStreamVolcengineAgentPlanErrorResponse(c, resp)
 		if err != nil {
+			appendVolcengineAgentPlanOpsError(c, account, targetURL, resp.StatusCode, resp.Header, nil, "response_read_error", providerCode, err)
 			return nil, err
 		}
-		statusCode := resp.StatusCode
-		if statusCode >= http.StatusOK && statusCode < http.StatusMultipleChoices {
-			statusCode = http.StatusBadGateway
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, resp.StatusCode, resp.Header, body, "http_error", providerCode, nil)
+		if streamed {
+			return nil, fmt.Errorf("volcengine agent plan upstream returned HTTP %d", resp.StatusCode)
 		}
 		return nil, &VolcengineAgentPlanUpstreamError{
-			StatusCode:   statusCode,
+			StatusCode:   resp.StatusCode,
 			ProviderCode: providerCode,
 			Body:         body,
 			Headers:      resp.Header.Clone(),
 		}
 	}
-	if streamResponse {
-		stats, err := s.streamVolcengineAgentPlanHTTPResponse(c, resp, endpoint)
+	if streamResponse || endpoint == VolcengineAgentPlanImagesGenerations {
+		stats, err := s.streamVolcengineAgentPlanHTTPResponse(c, resp, endpoint, streamResponse)
 		if err != nil {
+			appendVolcengineAgentPlanOpsError(c, account, targetURL, resp.StatusCode, resp.Header, nil, "stream_error", providerCode, err)
 			return nil, err
 		}
-		if !stats.Successful(endpoint) {
-			return nil, fmt.Errorf("volcengine agent plan stream did not complete successfully")
+		if providerFailed || !stats.Successful(endpoint) {
+			err := fmt.Errorf("volcengine agent plan response did not complete successfully")
+			appendVolcengineAgentPlanOpsError(c, account, targetURL, resp.StatusCode, resp.Header, []byte(stats.FailureMessage), "business_error", providerCode, err)
+			return nil, err
 		}
 		model := strings.TrimSpace(upstreamModel)
 		result := &ForwardResult{
@@ -272,7 +353,7 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 			Model:         model,
 			UpstreamModel: model,
 			RequestCount:  1,
-			Stream:        true,
+			Stream:        streamResponse,
 			Duration:      time.Since(start),
 		}
 		if endpoint == VolcengineAgentPlanImagesGenerations {
@@ -286,25 +367,24 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 
 	body, err := readVolcengineAgentPlanResponseBody(resp.Body)
 	if err != nil {
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, resp.StatusCode, resp.Header, nil, "response_read_error", providerCode, err)
 		return nil, err
 	}
 
 	stats := parseVolcengineAgentPlanResponseStats(endpoint, body)
-	if endpoint == VolcengineAgentPlanImagesGenerations && !stats.Successful(endpoint) {
-		return nil, &VolcengineAgentPlanUpstreamError{
-			StatusCode: http.StatusBadGateway,
-			Body:       body,
-			Headers:    resp.Header.Clone(),
-		}
-	}
 
 	if c != nil {
-		responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+		s.WriteVolcengineAgentPlanResponseHeaders(c.Writer.Header(), resp.Header)
 		contentType := strings.TrimSpace(resp.Header.Get("Content-Type"))
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
 		c.Data(resp.StatusCode, contentType, body)
+	}
+	if providerFailed || (endpoint == VolcengineAgentPlanImagesGenerations && !stats.Successful(endpoint)) {
+		err := fmt.Errorf("volcengine agent plan response did not complete successfully")
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, resp.StatusCode, resp.Header, body, "business_error", providerCode, err)
+		return nil, err
 	}
 	model := strings.TrimSpace(upstreamModel)
 	if responseModel := strings.TrimSpace(gjson.GetBytes(body, "model").String()); responseModel != "" {
@@ -326,23 +406,25 @@ func (s *GatewayService) finishVolcengineAgentPlanHTTP(
 	return result, nil
 }
 
-func (s *GatewayService) streamVolcengineAgentPlanHTTPResponse(c *gin.Context, resp *http.Response, endpoint VolcengineAgentPlanEndpoint) (volcengineAgentPlanResponseStats, error) {
+func (s *GatewayService) streamVolcengineAgentPlanHTTPResponse(c *gin.Context, resp *http.Response, endpoint VolcengineAgentPlanEndpoint, flush bool) (volcengineAgentPlanResponseStats, error) {
 	observer := newVolcengineAgentPlanResponseObserver(endpoint)
 	if c == nil {
 		_, err := io.Copy(observer, resp.Body)
 		return observer.Stats(), err
 	}
-	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+	s.WriteVolcengineAgentPlanResponseHeaders(c.Writer.Header(), resp.Header)
 	if strings.TrimSpace(c.Writer.Header().Get("Content-Type")) == "" {
 		c.Writer.Header().Set("Content-Type", "application/octet-stream")
 	}
-	c.Header("Cache-Control", "no-cache")
-	c.Header("X-Accel-Buffering", "no")
+	if flush {
+		c.Header("Cache-Control", "no-cache")
+		c.Header("X-Accel-Buffering", "no")
+	}
 	c.Status(resp.StatusCode)
 
 	flusher, _ := c.Writer.(http.Flusher)
 	writer := io.Writer(c.Writer)
-	if flusher != nil {
+	if flush && flusher != nil {
 		writer = &volcengineAgentPlanFlushWriter{writer: c.Writer, flusher: flusher}
 	}
 	if _, err := io.CopyBuffer(writer, io.TeeReader(resp.Body, observer), make([]byte, 32<<10)); err != nil {
@@ -365,16 +447,20 @@ func (w *volcengineAgentPlanFlushWriter) Write(payload []byte) (int, error) {
 }
 
 type volcengineAgentPlanResponseStats struct {
-	ImageCount  int
-	Completed   bool
-	Failed      bool
-	ImageEvents int
+	ImageCount     int
+	Completed      bool
+	Failed         bool
+	ImageEvents    int
+	FailureMessage string
 }
 
 type volcengineAgentPlanResponseObserver struct {
-	endpoint VolcengineAgentPlanEndpoint
-	pending  []byte
-	stats    volcengineAgentPlanResponseStats
+	endpoint     VolcengineAgentPlanEndpoint
+	pending      []byte
+	stats        volcengineAgentPlanResponseStats
+	imageMode    byte
+	droppingLine bool
+	imageJSON    *volcengineAgentPlanImageJSONObserver
 }
 
 func newVolcengineAgentPlanResponseObserver(endpoint VolcengineAgentPlanEndpoint) *volcengineAgentPlanResponseObserver {
@@ -385,18 +471,14 @@ func (o *volcengineAgentPlanResponseObserver) Write(payload []byte) (int, error)
 	if o == nil {
 		return len(payload), nil
 	}
-	o.pending = append(o.pending, payload...)
 	if o.endpoint == VolcengineAgentPlanTTSUnidirectional {
+		o.pending = append(o.pending, payload...)
 		o.consumeTTSJSON()
 		return len(payload), nil
 	}
-	for {
-		index := bytes.IndexByte(o.pending, '\n')
-		if index < 0 {
-			break
-		}
-		o.observeLine(o.pending[:index])
-		o.pending = o.pending[index+1:]
+	if o.endpoint == VolcengineAgentPlanImagesGenerations {
+		o.observeImagePayload(payload)
+		return len(payload), nil
 	}
 	return len(payload), nil
 }
@@ -410,11 +492,214 @@ func (o *volcengineAgentPlanResponseObserver) Stats() volcengineAgentPlanRespons
 		if len(bytes.TrimSpace(o.pending)) > 0 {
 			o.stats.Failed = true
 		}
+	} else if o.imageMode == 'j' && o.imageJSON != nil {
+		o.stats.ImageCount = o.imageJSON.imageCount
+		o.stats.Completed = o.imageJSON.completed
+		o.stats.Failed = o.imageJSON.failed
 	} else {
-		o.observeLine(o.pending)
+		if !o.droppingLine {
+			o.observeLine(o.pending)
+		}
 	}
 	o.pending = nil
 	return o.stats
+}
+
+func (o *volcengineAgentPlanResponseObserver) observeImagePayload(payload []byte) {
+	if o.imageMode == 0 {
+		o.pending = append(o.pending, payload...)
+		trimmed := bytes.TrimSpace(o.pending)
+		if len(trimmed) == 0 {
+			return
+		}
+		if trimmed[0] == '{' {
+			o.imageMode = 'j'
+			o.imageJSON = &volcengineAgentPlanImageJSONObserver{dataArrayDepth: -1, itemObjectDepth: -1}
+			o.imageJSON.Write(o.pending)
+			o.pending = nil
+			return
+		}
+		o.imageMode = 'l'
+		payload = o.pending
+		o.pending = nil
+	}
+	if o.imageMode == 'j' {
+		o.imageJSON.Write(payload)
+		return
+	}
+	o.observeImageLines(payload)
+}
+
+func (o *volcengineAgentPlanResponseObserver) observeImageLines(payload []byte) {
+	for len(payload) > 0 {
+		if o.droppingLine {
+			index := bytes.IndexByte(payload, '\n')
+			if index < 0 {
+				return
+			}
+			o.droppingLine = false
+			payload = payload[index+1:]
+			continue
+		}
+		index := bytes.IndexByte(payload, '\n')
+		if index >= 0 {
+			if len(o.pending)+index <= volcengineAgentPlanMaxObservedLineBytes {
+				o.pending = append(o.pending, payload[:index]...)
+				o.observeLine(o.pending)
+			}
+			o.pending = nil
+			payload = payload[index+1:]
+			continue
+		}
+		if len(o.pending)+len(payload) > volcengineAgentPlanMaxObservedLineBytes {
+			o.pending = nil
+			o.droppingLine = true
+			return
+		}
+		o.pending = append(o.pending, payload...)
+		return
+	}
+}
+
+type volcengineAgentPlanImageJSONObserver struct {
+	stack           []byte
+	inString        bool
+	escaped         bool
+	stringIsValue   bool
+	stringIsTarget  bool
+	stringHasValue  bool
+	stringBuffer    []byte
+	candidate       string
+	currentKey      string
+	expectValue     bool
+	dataArrayDepth  int
+	itemObjectDepth int
+	itemHasImage    bool
+	imageCount      int
+	completed       bool
+	failed          bool
+}
+
+func (o *volcengineAgentPlanImageJSONObserver) Write(payload []byte) {
+	if o == nil {
+		return
+	}
+	for _, current := range payload {
+		if o.inString {
+			if o.escaped {
+				o.escaped = false
+				if o.stringIsTarget {
+					o.stringHasValue = true
+				}
+				continue
+			}
+			if current == '\\' {
+				o.escaped = true
+				continue
+			}
+			if current == '"' {
+				o.finishString()
+				continue
+			}
+			if o.stringIsTarget {
+				o.stringHasValue = true
+			} else if !o.stringIsValue && len(o.stringBuffer) < 128 {
+				o.stringBuffer = append(o.stringBuffer, current)
+			}
+			continue
+		}
+
+		switch current {
+		case ' ', '\t', '\r', '\n':
+			continue
+		case '"':
+			o.inString = true
+			o.stringIsValue = o.expectValue
+			o.stringIsTarget = o.expectValue && o.itemObjectDepth > 0 && len(o.stack) == o.itemObjectDepth &&
+				(o.currentKey == "url" || o.currentKey == "b64_json")
+			o.stringHasValue = false
+			o.stringBuffer = o.stringBuffer[:0]
+		case ':':
+			o.currentKey = o.candidate
+			o.candidate = ""
+			o.expectValue = true
+			if len(o.stack) == 1 && o.currentKey == "error" {
+				o.failed = true
+			}
+		case '{':
+			if o.dataArrayDepth > 0 && len(o.stack) == o.dataArrayDepth && o.stack[len(o.stack)-1] == '[' {
+				o.itemObjectDepth = len(o.stack) + 1
+				o.itemHasImage = false
+			}
+			o.stack = append(o.stack, current)
+			o.clearValueState()
+		case '[':
+			if o.expectValue && o.currentKey == "data" && len(o.stack) == 1 && o.stack[0] == '{' {
+				o.dataArrayDepth = len(o.stack) + 1
+			}
+			o.stack = append(o.stack, current)
+			o.clearValueState()
+		case '}':
+			if len(o.stack) == o.itemObjectDepth && o.itemObjectDepth > 0 {
+				if o.itemHasImage {
+					o.imageCount++
+				}
+				o.itemObjectDepth = -1
+				o.itemHasImage = false
+			}
+			if len(o.stack) == 1 && o.stack[0] == '{' {
+				o.completed = true
+			}
+			o.pop('}')
+			o.clearValueState()
+		case ']':
+			if len(o.stack) == o.dataArrayDepth && o.dataArrayDepth > 0 {
+				o.dataArrayDepth = -1
+			}
+			o.pop(']')
+			o.clearValueState()
+		case ',':
+			o.clearValueState()
+		default:
+			if o.expectValue {
+				o.clearValueState()
+			}
+		}
+	}
+}
+
+func (o *volcengineAgentPlanImageJSONObserver) finishString() {
+	o.inString = false
+	if o.stringIsTarget && o.stringHasValue {
+		o.itemHasImage = true
+	}
+	if o.stringIsValue {
+		o.clearValueState()
+	} else {
+		o.candidate = string(o.stringBuffer)
+	}
+	o.stringIsValue = false
+	o.stringIsTarget = false
+	o.stringHasValue = false
+	o.stringBuffer = o.stringBuffer[:0]
+}
+
+func (o *volcengineAgentPlanImageJSONObserver) clearValueState() {
+	o.expectValue = false
+	o.currentKey = ""
+	o.candidate = ""
+}
+
+func (o *volcengineAgentPlanImageJSONObserver) pop(closing byte) {
+	if len(o.stack) == 0 {
+		return
+	}
+	opening := o.stack[len(o.stack)-1]
+	if (closing == '}' && opening != '{') || (closing == ']' && opening != '[') {
+		o.failed = true
+		return
+	}
+	o.stack = o.stack[:len(o.stack)-1]
 }
 
 func (o *volcengineAgentPlanResponseObserver) observeLine(line []byte) {
@@ -469,6 +754,7 @@ func (o *volcengineAgentPlanResponseObserver) observeTTSJSON(body []byte) {
 	}
 	if code != "0" && code != "200" {
 		o.stats.Failed = true
+		o.stats.FailureMessage = strings.TrimSpace(gjson.GetBytes(body, "message").String())
 	}
 }
 
@@ -487,6 +773,7 @@ func (o *volcengineAgentPlanResponseObserver) observeImageJSON(body []byte) {
 		}
 		if errorNode := gjson.GetBytes(body, "error"); errorNode.Exists() && o.stats.ImageCount == 0 {
 			o.stats.Failed = true
+			o.stats.FailureMessage = errorNode.Raw
 		}
 	case "image_generation.partial_failed":
 		// A failed image does not fail the whole group; the completed event supplies
@@ -506,6 +793,7 @@ func (o *volcengineAgentPlanResponseObserver) observeImageJSON(body []byte) {
 		}
 		if errorNode := gjson.GetBytes(body, "error"); errorNode.Exists() {
 			o.stats.Failed = true
+			o.stats.FailureMessage = errorNode.Raw
 		}
 	}
 }
@@ -535,12 +823,35 @@ func parseVolcengineAgentPlanResponseStats(endpoint VolcengineAgentPlanEndpoint,
 
 func volcengineAgentPlanWebSocketResponseHeaders(headers http.Header) http.Header {
 	allowed := make(http.Header)
-	for _, key := range []string{"X-Tt-Logid", "X-Api-Connect-Id", "X-Request-Id"} {
-		for _, value := range headers.Values(key) {
-			allowed.Add(key, value)
+	copyVolcengineAgentPlanDiagnosticHeaders(allowed, headers)
+	return allowed
+}
+
+func copyVolcengineAgentPlanDiagnosticHeaders(dst, src http.Header) {
+	for _, key := range []string{"X-Api-Status-Code", "X-Api-Message", "X-Tt-Logid", "X-Api-Connect-Id", "X-Request-Id"} {
+		values := src.Values(key)
+		if len(values) == 0 {
+			continue
+		}
+		dst.Del(key)
+		for _, value := range values {
+			dst.Add(key, value)
 		}
 	}
-	return allowed
+}
+
+// WriteVolcengineAgentPlanResponseHeaders applies the shared response-header
+// policy and then restores the provider diagnostics required for troubleshooting.
+func (s *GatewayService) WriteVolcengineAgentPlanResponseHeaders(dst, src http.Header) {
+	if dst == nil || src == nil {
+		return
+	}
+	var filter *responseheaders.CompiledHeaderFilter
+	if s != nil {
+		filter = s.responseHeaderFilter
+	}
+	responseheaders.WriteFilteredHeaders(dst, src, filter)
+	copyVolcengineAgentPlanDiagnosticHeaders(dst, src)
 }
 
 func volcengineAgentPlanResponseRequestID(headers http.Header) string {
@@ -551,15 +862,44 @@ func volcengineAgentPlanResponseRequestID(headers http.Header) string {
 }
 
 func readVolcengineAgentPlanResponseBody(body io.Reader) ([]byte, error) {
-	limited := io.LimitReader(body, volcengineAgentPlanMaxHTTPResponseBytes+1)
+	limited := io.LimitReader(body, volcengineAgentPlanMaxBufferedResponseBytes+1)
 	data, err := io.ReadAll(limited)
 	if err != nil {
 		return nil, fmt.Errorf("read Volcengine Agent Plan response: %w", err)
 	}
-	if len(data) > volcengineAgentPlanMaxHTTPResponseBytes {
-		return nil, fmt.Errorf("volcengine agent plan response exceeds %d bytes", volcengineAgentPlanMaxHTTPResponseBytes)
+	if len(data) > volcengineAgentPlanMaxBufferedResponseBytes {
+		return nil, fmt.Errorf("volcengine agent plan buffered response exceeds %d bytes", volcengineAgentPlanMaxBufferedResponseBytes)
 	}
 	return data, nil
+}
+
+func (s *GatewayService) readOrStreamVolcengineAgentPlanErrorResponse(c *gin.Context, resp *http.Response) ([]byte, bool, error) {
+	limited := io.LimitReader(resp.Body, volcengineAgentPlanMaxBufferedErrorBytes+1)
+	buffered, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, false, fmt.Errorf("read Volcengine Agent Plan error response: %w", err)
+	}
+	if len(buffered) <= volcengineAgentPlanMaxBufferedErrorBytes {
+		return buffered, false, nil
+	}
+	preview := append([]byte(nil), buffered[:min(len(buffered), 4096)]...)
+	if c == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return preview, false, fmt.Errorf("Volcengine Agent Plan error response requires streaming")
+	}
+
+	s.WriteVolcengineAgentPlanResponseHeaders(c.Writer.Header(), resp.Header)
+	if strings.TrimSpace(c.Writer.Header().Get("Content-Type")) == "" {
+		c.Writer.Header().Set("Content-Type", "application/octet-stream")
+	}
+	c.Status(resp.StatusCode)
+	if _, err := c.Writer.Write(buffered); err != nil {
+		return preview, true, fmt.Errorf("write Volcengine Agent Plan error response: %w", err)
+	}
+	if _, err := io.CopyBuffer(c.Writer, resp.Body, make([]byte, 32<<10)); err != nil {
+		return preview, true, fmt.Errorf("stream Volcengine Agent Plan error response: %w", err)
+	}
+	return preview, true, nil
 }
 
 func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
@@ -567,6 +907,7 @@ func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
 	c *gin.Context,
 	account *Account,
 	endpoint VolcengineAgentPlanEndpoint,
+	upstreamModel string,
 ) (*ForwardResult, error) {
 	if account == nil || account.Type != AccountTypeAPIKey {
 		return nil, fmt.Errorf("volcengine agent plan requires an API Key account")
@@ -594,20 +935,29 @@ func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
 		}
 		dialer.Proxy = http.ProxyURL(parsedProxy)
 	}
-	upstreamConn, upstreamResp, err := dialer.DialContext(ctx, targetURL, VolcengineAgentPlanWebSocketHeaders(endpoint, token))
+	requestHeaders := http.Header(nil)
+	if c.Request != nil {
+		requestHeaders = c.Request.Header
+	}
+	upstreamConn, upstreamResp, err := dialer.DialContext(ctx, targetURL, volcengineAgentPlanProxyHeaders(requestHeaders, endpoint, token, upstreamModel))
 	if err != nil {
 		if upstreamResp != nil {
 			defer func() { _ = upstreamResp.Body.Close() }()
 			body, _ := io.ReadAll(io.LimitReader(upstreamResp.Body, 2<<20))
+			appendVolcengineAgentPlanOpsError(c, account, targetURL, upstreamResp.StatusCode, upstreamResp.Header, body, "http_error", "", err)
 			return nil, &VolcengineAgentPlanUpstreamError{
 				StatusCode: upstreamResp.StatusCode,
 				Body:       body,
 				Headers:    upstreamResp.Header.Clone(),
 			}
 		}
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, 0, nil, nil, "request_error", "", err)
 		return nil, fmt.Errorf("connect Volcengine Agent Plan WebSocket: %w", err)
 	}
 	defer func() { _ = upstreamConn.Close() }()
+	if upstreamResp != nil && upstreamResp.Body != nil {
+		defer func() { _ = upstreamResp.Body.Close() }()
+	}
 
 	clientResponseHeaders := make(http.Header)
 	if upstreamResp != nil {
@@ -643,13 +993,27 @@ func (s *GatewayService) ProxyVolcengineAgentPlanWebSocket(
 	}
 
 	requestCount := tracker.RequestCount()
-	if requestCount == 0 {
-		return nil, fmt.Errorf("volcengine agent plan websocket closed before a successful result: %w", firstErr)
+	if tracker.Failed() || requestCount == 0 {
+		message := tracker.FailureMessage()
+		if message == "" {
+			message = "websocket closed before a successful final result"
+		}
+		failure := fmt.Errorf("volcengine agent plan %s: %w", message, firstErr)
+		var upstreamHeaders http.Header
+		if upstreamResp != nil {
+			upstreamHeaders = upstreamResp.Header
+		}
+		appendVolcengineAgentPlanOpsError(c, account, targetURL, http.StatusSwitchingProtocols, upstreamHeaders, []byte(message), "websocket_error", "", failure)
+		return nil, failure
+	}
+	requestID := ""
+	if upstreamResp != nil {
+		requestID = volcengineAgentPlanResponseRequestID(upstreamResp.Header)
 	}
 	return &ForwardResult{
-		RequestID:     newVolcengineAgentPlanRequestID(),
-		Model:         endpoint.BillingModel(),
-		UpstreamModel: endpoint.BillingModel(),
+		RequestID:     requestID,
+		Model:         upstreamModel,
+		UpstreamModel: upstreamModel,
 		RequestCount:  requestCount,
 		Stream:        true,
 		Duration:      time.Since(start),
@@ -665,6 +1029,13 @@ func proxyVolcengineAgentPlanFrames(
 	for {
 		messageType, payload, err := source.ReadMessage()
 		if err != nil {
+			if closeErr, ok := err.(*websocket.CloseError); ok {
+				_ = destination.WriteControl(
+					websocket.CloseMessage,
+					websocket.FormatCloseMessage(closeErr.Code, closeErr.Text),
+					time.Now().Add(time.Second),
+				)
+			}
 			errCh <- err
 			return
 		}
@@ -683,6 +1054,8 @@ type volcengineAgentPlanWSUsageTracker struct {
 	endpoint        VolcengineAgentPlanEndpoint
 	pendingSessions int
 	requestCount    int
+	failed          bool
+	failureMessage  string
 }
 
 func newVolcengineAgentPlanWSUsageTracker(endpoint VolcengineAgentPlanEndpoint) *volcengineAgentPlanWSUsageTracker {
@@ -699,19 +1072,27 @@ func (t *volcengineAgentPlanWSUsageTracker) ObserveClientMessage(payload []byte)
 }
 
 func (t *volcengineAgentPlanWSUsageTracker) ObserveUpstreamMessage(payload []byte) {
-	if t == nil || !volcengineAgentPlanBusinessSuccess(payload) {
+	if t == nil {
 		return
 	}
+	observation := observeVolcengineAgentPlanWebSocketMessage(payload)
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if observation.Failed {
+		t.failed = true
+		if observation.Message != "" {
+			t.failureMessage = observation.Message
+		}
+		return
+	}
 	if t.endpoint == VolcengineAgentPlanTTSBidirection {
-		if t.pendingSessions > 0 {
+		if observation.Event == volcengineAgentPlanEventSessionFinished && t.pendingSessions > 0 {
 			t.pendingSessions--
 			t.requestCount++
 		}
 		return
 	}
-	if t.requestCount == 0 {
+	if observation.Final && t.requestCount == 0 {
 		t.requestCount = 1
 	}
 }
@@ -722,40 +1103,228 @@ func (t *volcengineAgentPlanWSUsageTracker) RequestCount() int {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.failed {
+		return 0
+	}
 	return t.requestCount
 }
 
+func (t *volcengineAgentPlanWSUsageTracker) Failed() bool {
+	if t == nil {
+		return false
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.failed
+}
+
+func (t *volcengineAgentPlanWSUsageTracker) FailureMessage() string {
+	if t == nil {
+		return ""
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.failureMessage
+}
+
 func volcengineAgentPlanStartSession(payload []byte) bool {
+	observation := observeVolcengineAgentPlanWebSocketMessage(payload)
+	if observation.Event == volcengineAgentPlanEventStartSession {
+		return true
+	}
 	decoded := strings.ToLower(string(decodeVolcengineAgentPlanPayload(payload)))
 	return strings.Contains(decoded, "startsession") || strings.Contains(decoded, "start_session")
 }
 
-func volcengineAgentPlanBusinessSuccess(payload []byte) bool {
-	decoded := decodeVolcengineAgentPlanPayload(payload)
-	if len(bytes.TrimSpace(decoded)) == 0 {
-		return false
-	}
-	lower := strings.ToLower(string(decoded))
-	if strings.Contains(lower, "connectionstarted") ||
-		strings.Contains(lower, "connection_started") ||
-		strings.Contains(lower, "sessionstarted") ||
-		strings.Contains(lower, "session_started") {
-		return false
-	}
-	if strings.Contains(lower, `"error"`) ||
-		strings.Contains(lower, `"status":"failed"`) ||
-		strings.Contains(lower, `"status": "failed"`) {
-		return false
-	}
-	var envelope map[string]any
-	if json.Unmarshal(decoded, &envelope) == nil {
-		if rawCode, ok := envelope["code"]; ok {
-			if !volcengineAgentPlanSuccessValue(rawCode) {
-				return false
+const (
+	volcengineAgentPlanMessageTypeFullServerResponse = 0x9
+	volcengineAgentPlanMessageTypeAudioResponse      = 0xb
+	volcengineAgentPlanMessageTypeError              = 0xf
+	volcengineAgentPlanEventStartSession             = 100
+	volcengineAgentPlanEventSessionFinished          = 152
+	volcengineAgentPlanEventSessionFailed            = 153
+)
+
+type volcengineAgentPlanWSObservation struct {
+	Event   int32
+	Final   bool
+	Failed  bool
+	Message string
+}
+
+type volcengineAgentPlanBinaryFrame struct {
+	messageType byte
+	flags       byte
+	event       int32
+	sequence    int32
+	hasEvent    bool
+	hasSequence bool
+	errorCode   uint32
+	compression byte
+	payload     []byte
+}
+
+func observeVolcengineAgentPlanWebSocketMessage(payload []byte) volcengineAgentPlanWSObservation {
+	if frame, ok := parseVolcengineAgentPlanBinaryFrame(payload); ok {
+		observation := volcengineAgentPlanWSObservation{Event: frame.event}
+		if frame.messageType == volcengineAgentPlanMessageTypeError {
+			observation.Failed = true
+			observation.Message = fmt.Sprintf("upstream websocket error code %d", frame.errorCode)
+			if detail := strings.TrimSpace(string(decodeVolcengineAgentPlanFramePayload(frame))); detail != "" {
+				observation.Message += ": " + sanitizeUpstreamErrorMessage(truncateString(detail, 2048))
+			}
+			return observation
+		}
+		if frame.hasEvent {
+			switch frame.event {
+			case volcengineAgentPlanEventSessionFinished:
+				observation.Final = true
+			case volcengineAgentPlanEventSessionFailed, 51:
+				observation.Failed = true
+				observation.Message = fmt.Sprintf("upstream websocket event %d", frame.event)
+			}
+			return observation
+		}
+		if frame.messageType == volcengineAgentPlanMessageTypeFullServerResponse ||
+			frame.messageType == volcengineAgentPlanMessageTypeAudioResponse {
+			observation.Final = frame.flags&0x2 != 0 || (frame.hasSequence && frame.sequence < 0)
+			decoded := decodeVolcengineAgentPlanFramePayload(frame)
+			failed, message := volcengineAgentPlanJSONFailure(decoded)
+			observation.Failed = failed
+			observation.Message = message
+			if observation.Failed {
+				observation.Final = false
 			}
 		}
+		return observation
 	}
-	return true
+
+	decoded := decodeVolcengineAgentPlanPayload(payload)
+	failed, message := volcengineAgentPlanJSONFailure(decoded)
+	observation := volcengineAgentPlanWSObservation{Failed: failed, Message: message}
+	if len(bytes.TrimSpace(decoded)) == 0 || !json.Valid(decoded) {
+		return observation
+	}
+	event := gjson.GetBytes(decoded, "event")
+	if event.Type == gjson.Number {
+		observation.Event = int32(event.Int())
+	} else {
+		switch strings.ToLower(strings.ReplaceAll(strings.TrimSpace(event.String()), "_", "")) {
+		case "startsession":
+			observation.Event = volcengineAgentPlanEventStartSession
+		case "sessionfinished":
+			observation.Event = volcengineAgentPlanEventSessionFinished
+		case "sessionfailed", "connectionfailed":
+			observation.Event = volcengineAgentPlanEventSessionFailed
+		}
+	}
+	if observation.Event == volcengineAgentPlanEventSessionFinished {
+		observation.Final = true
+	}
+	if observation.Event == volcengineAgentPlanEventSessionFailed {
+		observation.Failed = true
+		observation.Final = false
+	}
+	return observation
+}
+
+func parseVolcengineAgentPlanBinaryFrame(payload []byte) (volcengineAgentPlanBinaryFrame, bool) {
+	if len(payload) < 4 || payload[0]>>4 != 1 {
+		return volcengineAgentPlanBinaryFrame{}, false
+	}
+	headerSize := int(payload[0]&0x0f) * 4
+	if headerSize < 4 || headerSize > len(payload) {
+		return volcengineAgentPlanBinaryFrame{}, false
+	}
+	frame := volcengineAgentPlanBinaryFrame{
+		messageType: payload[1] >> 4,
+		flags:       payload[1] & 0x0f,
+		compression: payload[2] & 0x0f,
+	}
+	offset := headerSize
+	if frame.flags&0x4 != 0 {
+		if offset+4 > len(payload) {
+			return volcengineAgentPlanBinaryFrame{}, false
+		}
+		frame.event = int32(binary.BigEndian.Uint32(payload[offset : offset+4]))
+		frame.hasEvent = true
+		offset += 4
+		frame.payload = payload[offset:]
+		return frame, true
+	}
+	if frame.messageType == volcengineAgentPlanMessageTypeError {
+		if offset+8 > len(payload) {
+			return volcengineAgentPlanBinaryFrame{}, false
+		}
+		frame.errorCode = binary.BigEndian.Uint32(payload[offset : offset+4])
+		offset += 4
+		payloadSize := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+		offset += 4
+		if payloadSize < 0 || offset+payloadSize > len(payload) {
+			return volcengineAgentPlanBinaryFrame{}, false
+		}
+		frame.payload = payload[offset : offset+payloadSize]
+		return frame, true
+	}
+	if frame.flags&0x1 != 0 {
+		if offset+4 > len(payload) {
+			return volcengineAgentPlanBinaryFrame{}, false
+		}
+		frame.sequence = int32(binary.BigEndian.Uint32(payload[offset : offset+4]))
+		frame.hasSequence = true
+		offset += 4
+	}
+	if offset+4 > len(payload) {
+		frame.payload = payload[offset:]
+		return frame, true
+	}
+	payloadSize := int(binary.BigEndian.Uint32(payload[offset : offset+4]))
+	offset += 4
+	if payloadSize < 0 || offset+payloadSize > len(payload) {
+		return volcengineAgentPlanBinaryFrame{}, false
+	}
+	frame.payload = payload[offset : offset+payloadSize]
+	return frame, true
+}
+
+func decodeVolcengineAgentPlanFramePayload(frame volcengineAgentPlanBinaryFrame) []byte {
+	if frame.compression != 1 || len(frame.payload) == 0 {
+		return frame.payload
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(frame.payload))
+	if err != nil {
+		return frame.payload
+	}
+	decoded, readErr := io.ReadAll(io.LimitReader(reader, 4<<20))
+	_ = reader.Close()
+	if readErr != nil {
+		return frame.payload
+	}
+	return decoded
+}
+
+func volcengineAgentPlanJSONFailure(payload []byte) (bool, string) {
+	trimmed := bytes.TrimSpace(payload)
+	if len(trimmed) == 0 || !json.Valid(trimmed) {
+		return false, ""
+	}
+	if errorNode := gjson.GetBytes(trimmed, "error"); errorNode.Exists() {
+		return true, strings.TrimSpace(errorNode.Raw)
+	}
+	if strings.EqualFold(strings.TrimSpace(gjson.GetBytes(trimmed, "status").String()), "failed") {
+		return true, strings.TrimSpace(gjson.GetBytes(trimmed, "message").String())
+	}
+	if code := gjson.GetBytes(trimmed, "code"); code.Exists() {
+		value := code.Value()
+		if !volcengineAgentPlanSuccessValue(value) {
+			message := strings.TrimSpace(gjson.GetBytes(trimmed, "message").String())
+			if message == "" {
+				message = "upstream websocket business error"
+			}
+			return true, message
+		}
+	}
+	return false, ""
 }
 
 func volcengineAgentPlanSuccessValue(code any) bool {

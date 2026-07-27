@@ -37,6 +37,7 @@ func (s *GatewayService) ResolveUserGroupRateMultiplier(ctx context.Context, use
 // RecordUsageInput 记录使用量的输入参数。
 // 异步 worker 只接收计费所需快照，不能持有 ParsedRequest/RequestBodyRef 这类大请求体引用。
 type RecordUsageInput struct {
+	RequirePaidRequest bool // Reject zero/token pricing for native per-request endpoints.
 	Result             *ForwardResult
 	APIKey             *APIKey
 	User               *User
@@ -578,6 +579,7 @@ func (s *GatewayService) RecordUsage(ctx context.Context, input *RecordUsageInpu
 		ForceCacheBilling:  input.ForceCacheBilling,
 		APIKeyService:      input.APIKeyService,
 		QuotaPlatform:      input.QuotaPlatform,
+		RequirePaidRequest: input.RequirePaidRequest,
 		ChannelUsageFields: input.ChannelUsageFields,
 	}, &recordUsageOpts{})
 }
@@ -630,6 +632,7 @@ func (s *GatewayService) RecordUsageWithLongContext(ctx context.Context, input *
 
 // recordUsageCoreInput 是 recordUsageCore 的公共输入字段，从两种输入结构体中提取。
 type recordUsageCoreInput struct {
+	RequirePaidRequest bool
 	Result             *ForwardResult
 	APIKey             *APIKey
 	User               *User
@@ -724,6 +727,11 @@ func (s *GatewayService) recordUsageCore(ctx context.Context, input *recordUsage
 	cost := s.calculateRecordUsageCostWithCandidates(ctx, result, apiKey, billingModels, multiplier, imageMultiplier, opts)
 	if err := validateBillableUsageCost(cost, result.ImageCount, 0); err != nil {
 		return err
+	}
+	if input.RequirePaidRequest {
+		if err := validatePositivePerRequestUsageCost(cost); err != nil {
+			return err
+		}
 	}
 
 	// 判断计费方式：订阅模式 vs 余额模式

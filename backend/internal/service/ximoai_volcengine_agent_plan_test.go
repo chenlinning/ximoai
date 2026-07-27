@@ -3,14 +3,15 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,6 +20,7 @@ type volcengineAgentPlanHTTPUpstreamStub struct {
 	body    []byte
 	status  int
 	resp    []byte
+	reader  io.Reader
 	headers http.Header
 }
 
@@ -44,10 +46,14 @@ func (s *volcengineAgentPlanHTTPUpstreamStub) capture(req *http.Request) (*http.
 	for key, values := range s.headers {
 		headers[key] = append([]string(nil), values...)
 	}
+	responseBody := io.Reader(bytes.NewReader(s.resp))
+	if s.reader != nil {
+		responseBody = s.reader
+	}
 	return &http.Response{
 		StatusCode: status,
 		Header:     headers,
-		Body:       io.NopCloser(bytes.NewReader(s.resp)),
+		Body:       io.NopCloser(responseBody),
 	}, nil
 }
 
@@ -57,6 +63,7 @@ func TestVolcengineAgentPlanUpstreamURLs(t *testing.T) {
 		VolcengineAgentPlanTTSUnidirectional:       "https://openspeech.bytedance.com/api/v3/plan/tts/unidirectional",
 		VolcengineAgentPlanTTSUnidirectionalStream: "wss://openspeech.bytedance.com/api/v3/plan/tts/unidirectional/stream",
 		VolcengineAgentPlanTTSBidirection:          "wss://openspeech.bytedance.com/api/v3/plan/tts/bidirection",
+		VolcengineAgentPlanASRBigmodel:             "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel",
 		VolcengineAgentPlanASRBigmodelAsync:        "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_async",
 		VolcengineAgentPlanASRBigmodelNostream:     "wss://openspeech.bytedance.com/api/v3/plan/sauc/bigmodel_nostream",
 	}
@@ -106,7 +113,7 @@ func TestForwardVolcengineAgentPlanHTTPPreservesBodyAndReplacesAuthentication(t 
 	require.Equal(t, http.StatusOK, recorder.Code)
 }
 
-func TestForwardVolcengineAgentPlanTTSUsesPlanHeaders(t *testing.T) {
+func TestForwardVolcengineAgentPlanTTSPreservesOfficialHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	upstream := &volcengineAgentPlanHTTPUpstreamStub{resp: []byte(`{"code":0,"data":"base64"}{"code":20000000,"usage":{"text_words":5}}`)}
 	svc := &GatewayService{httpUpstream: upstream}
@@ -120,6 +127,17 @@ func TestForwardVolcengineAgentPlanTTSUsesPlanHeaders(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/v3/plan/tts/unidirectional", bytes.NewReader([]byte(`{"text":"hello"}`)))
+	c.Request.Header.Set("Authorization", "Bearer client-key-must-not-leak")
+	c.Request.Header.Set("X-Api-Resource-Id", "public-seed-tts")
+	c.Request.Header.Set("X-Api-Request-Id", "client-request-id")
+	c.Request.Header.Set("X-Control-Require-Usage-Tokens-Return", "*")
+	c.Request.Header.Set("X-Volcengine-Client-Flag", "keep-me")
+	c.Request.Header.Set("Cookie", "main_session=must-not-leak")
+	c.Request.Header.Set("Forwarded", "for=203.0.113.1;proto=https")
+	c.Request.Header.Set("X-Forwarded-For", "203.0.113.1")
+	c.Request.Header.Set("X-Forwarded-Host", "internal.example")
+	c.Request.Header.Set("X-Real-Ip", "203.0.113.1")
+	c.Request.Header.Set("Cf-Connecting-Ip", "203.0.113.1")
 
 	result, err := svc.ForwardVolcengineAgentPlanHTTP(
 		context.Background(), c, account, VolcengineAgentPlanTTSUnidirectional, []byte(`{"text":"hello"}`), VolcengineAgentPlanTTSModel,
@@ -128,10 +146,17 @@ func TestForwardVolcengineAgentPlanTTSUsesPlanHeaders(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "tts-key", upstream.request.Header.Get("X-Api-Key"))
 	require.Equal(t, VolcengineAgentPlanTTSResourceID, upstream.request.Header.Get("X-Api-Resource-Id"))
-	require.NotEmpty(t, upstream.request.Header.Get("X-Api-Request-Id"))
+	require.Equal(t, "client-request-id", upstream.request.Header.Get("X-Api-Request-Id"))
 	require.Empty(t, upstream.request.Header.Get("X-Api-Connect-Id"))
 	require.Equal(t, "*", upstream.request.Header.Get("X-Control-Require-Usage-Tokens-Return"))
+	require.Equal(t, "keep-me", upstream.request.Header.Get("X-Volcengine-Client-Flag"))
 	require.Empty(t, upstream.request.Header.Get("Authorization"))
+	require.Empty(t, upstream.request.Header.Get("Cookie"))
+	require.Empty(t, upstream.request.Header.Get("Forwarded"))
+	require.Empty(t, upstream.request.Header.Get("X-Forwarded-For"))
+	require.Empty(t, upstream.request.Header.Get("X-Forwarded-Host"))
+	require.Empty(t, upstream.request.Header.Get("X-Real-Ip"))
+	require.Empty(t, upstream.request.Header.Get("Cf-Connecting-Ip"))
 	require.True(t, recorder.Flushed)
 	require.Equal(t, string(upstream.resp), recorder.Body.String())
 	require.Zero(t, result.ImageCount)
@@ -331,9 +356,14 @@ func TestForwardVolcengineAgentPlanHTTPDoesNotCommitUpstreamFailures(t *testing.
 	require.Equal(t, http.StatusTooManyRequests, upstreamErr.StatusCode)
 	require.True(t, upstreamErr.Retryable())
 	require.False(t, c.Writer.Written())
+	events := volcengineAgentPlanOpsEvents(t, c)
+	require.Len(t, events, 1)
+	require.Equal(t, "http_error", events[0].Kind)
+	require.Equal(t, http.StatusTooManyRequests, events[0].UpstreamStatusCode)
+	require.Equal(t, int64(9), events[0].AccountID)
 }
 
-func TestForwardVolcengineAgentPlanHTTPRejectsProviderErrorInSuccessStatus(t *testing.T) {
+func TestForwardVolcengineAgentPlanHTTPPreservesProviderErrorInSuccessStatus(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	upstream := &volcengineAgentPlanHTTPUpstreamStub{
 		resp:    []byte(`{"message":"invalid request"}`),
@@ -350,28 +380,31 @@ func TestForwardVolcengineAgentPlanHTTPRejectsProviderErrorInSuccessStatus(t *te
 	)
 
 	require.Nil(t, result)
-	var upstreamErr *VolcengineAgentPlanUpstreamError
-	require.ErrorAs(t, err, &upstreamErr)
-	require.Equal(t, "45000000", upstreamErr.ProviderCode)
-	require.Equal(t, http.StatusBadGateway, upstreamErr.StatusCode)
-	require.False(t, c.Writer.Written())
+	require.Error(t, err)
+	require.True(t, c.Writer.Written())
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.Equal(t, "45000000", recorder.Header().Get("X-Api-Status-Code"))
+	require.Equal(t, string(upstream.resp), recorder.Body.String())
+	events := volcengineAgentPlanOpsEvents(t, c)
+	require.Len(t, events, 1)
+	require.Equal(t, "business_error", events[0].Kind)
+	require.Equal(t, http.StatusOK, events[0].UpstreamStatusCode)
+	require.Equal(t, "45000000", events[0].Reason)
 }
 
-func TestVolcengineAgentPlanWSHeaders(t *testing.T) {
+func TestVolcengineAgentPlanWSHeadersOnlySetUpstreamCredential(t *testing.T) {
 	tts := VolcengineAgentPlanWebSocketHeaders(VolcengineAgentPlanTTSBidirection, "tts-key")
 	require.Equal(t, "tts-key", tts.Get("X-Api-Key"))
-	require.Equal(t, VolcengineAgentPlanTTSResourceID, tts.Get("X-Api-Resource-Id"))
-	require.NotEmpty(t, tts.Get("X-Api-Connect-Id"))
-	require.Equal(t, "*", tts.Get("X-Control-Require-Usage-Tokens-Return"))
+	require.Empty(t, tts.Get("X-Api-Resource-Id"))
+	require.Empty(t, tts.Get("X-Api-Connect-Id"))
+	require.Empty(t, tts.Get("X-Control-Require-Usage-Tokens-Return"))
 
 	asr := VolcengineAgentPlanWebSocketHeaders(VolcengineAgentPlanASRBigmodelAsync, "asr-key")
 	require.Equal(t, "asr-key", asr.Get("X-Api-Key"))
-	require.Equal(t, VolcengineAgentPlanASRResourceID, asr.Get("X-Api-Resource-Id"))
-	require.NotEmpty(t, asr.Get("X-Api-Request-Id"))
-	require.NotEmpty(t, asr.Get("X-Api-Connect-Id"))
-	require.Equal(t, "-1", asr.Get("X-Api-Sequence"))
-	_, err := uuid.Parse(asr.Get("X-Api-Request-Id"))
-	require.NoError(t, err)
+	require.Empty(t, asr.Get("X-Api-Resource-Id"))
+	require.Empty(t, asr.Get("X-Api-Request-Id"))
+	require.Empty(t, asr.Get("X-Api-Connect-Id"))
+	require.Empty(t, asr.Get("X-Api-Sequence"))
 }
 
 func TestVolcengineAgentPlanWebSocketResponseHeadersAllowOfficialDiagnosticsOnly(t *testing.T) {
@@ -414,28 +447,188 @@ func TestVolcengineAgentPlanResponseObserverParsesConcatenatedTTSJSON(t *testing
 	require.False(t, stats.Failed)
 }
 
-func TestVolcengineAgentPlanWSUsageTrackerCountsLogicalTasksOnce(t *testing.T) {
+func TestVolcengineAgentPlanWSUsageTrackerCountsOnlyCompletedSessions(t *testing.T) {
 	tracker := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanTTSBidirection)
-	tracker.ObserveUpstreamMessage([]byte(`{"event":"ConnectionStarted"}`))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(50))
 	require.Zero(t, tracker.RequestCount())
 
-	tracker.ObserveClientMessage([]byte(`{"event":"StartSession"}`))
-	tracker.ObserveUpstreamMessage([]byte(`{"event":"SessionStarted"}`))
+	tracker.ObserveClientMessage(volcengineAgentPlanEventFrame(100))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(150))
 	require.Zero(t, tracker.RequestCount())
-	tracker.ObserveUpstreamMessage([]byte(`{"event":"audio","data":"chunk-1"}`))
-	tracker.ObserveUpstreamMessage([]byte(`{"event":"audio","data":"chunk-2"}`))
-	tracker.ObserveClientMessage([]byte(`{"event":"StartSession"}`))
-	tracker.ObserveUpstreamMessage([]byte(`{"event":"audio","data":"chunk-3"}`))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(352))
+	require.Zero(t, tracker.RequestCount())
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(152))
+
+	tracker.ObserveClientMessage(volcengineAgentPlanEventFrame(100))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(352))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(152))
 
 	require.Equal(t, 2, tracker.RequestCount())
+	require.False(t, tracker.Failed())
+}
 
-	failed := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanASRBigmodelAsync)
-	failed.ObserveUpstreamMessage([]byte(`{"error":{"message":"invalid audio"}}`))
-	require.Zero(t, failed.RequestCount())
+func TestVolcengineAgentPlanWSUsageTrackerRejectsErrorAndIncompleteFrames(t *testing.T) {
+	errorTracker := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanASRBigmodelAsync)
+	errorTracker.ObserveUpstreamMessage(volcengineAgentPlanErrorFrame(45000000, `{"message":"invalid audio"}`))
+	require.True(t, errorTracker.Failed())
+	require.Zero(t, errorTracker.RequestCount())
+	require.Contains(t, errorTracker.FailureMessage(), "45000000")
+
+	partial := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanASRBigmodelNostream)
+	partial.ObserveUpstreamMessage(volcengineAgentPlanASRFrame(1, `{"code":0,"result":{"text":"hel"}}`))
+	require.False(t, partial.Failed())
+	require.Zero(t, partial.RequestCount())
 
 	success := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanASRBigmodelNostream)
-	success.ObserveUpstreamMessage([]byte(`{"code":20000000,"result":{"text":"hello"}}`))
+	success.ObserveUpstreamMessage(volcengineAgentPlanASRFrame(-1, `{"code":20000000,"result":{"text":"hello"}}`))
 	require.Equal(t, 1, success.RequestCount())
+	require.False(t, success.Failed())
+}
+
+func TestVolcengineAgentPlanWSUsageTrackerWaitsForUnidirectionalTTSFinalEvent(t *testing.T) {
+	tracker := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanTTSUnidirectionalStream)
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(350))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(352))
+	require.Zero(t, tracker.RequestCount())
+
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(152))
+	require.Equal(t, 1, tracker.RequestCount())
+}
+
+func TestVolcengineAgentPlanWSUsageTrackerFailureOverridesEarlierCompletion(t *testing.T) {
+	tracker := newVolcengineAgentPlanWSUsageTracker(VolcengineAgentPlanTTSBidirection)
+	tracker.ObserveClientMessage(volcengineAgentPlanEventFrame(100))
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(152))
+	require.Equal(t, 1, tracker.RequestCount())
+
+	tracker.ObserveUpstreamMessage(volcengineAgentPlanEventFrame(153))
+	require.True(t, tracker.Failed())
+	require.Zero(t, tracker.RequestCount())
+}
+
+func TestForwardVolcengineAgentPlanLargeImageResponseIsNotCapped(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const paddingSize = int64(64<<20) + 1024
+	prefix := `{"data":[{"b64_json":"`
+	suffix := `"}]}`
+	upstream := &volcengineAgentPlanHTTPUpstreamStub{
+		reader: io.MultiReader(strings.NewReader(prefix), &volcengineAgentPlanRepeatReader{remaining: paddingSize, value: 'a'}, strings.NewReader(suffix)),
+	}
+	svc := &GatewayService{httpUpstream: upstream}
+	account := &Account{ID: 19, Type: AccountTypeAPIKey, Credentials: map[string]any{"api_key": "key"}}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	countingWriter := &volcengineAgentPlanCountingWriter{ResponseWriter: c.Writer}
+	c.Writer = countingWriter
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/plan/v3/images/generations", nil)
+	body := []byte(`{"model":"doubao-seedream-5.0-lite","prompt":"mountains"}`)
+
+	result, err := svc.ForwardVolcengineAgentPlanHTTP(
+		context.Background(), c, account, VolcengineAgentPlanImagesGenerations, body, VolcengineAgentPlanSeedreamModel,
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, 1, result.ImageCount)
+	require.Equal(t, int64(len(prefix)+len(suffix))+paddingSize, countingWriter.written)
+}
+
+func TestForwardVolcengineAgentPlanLargeErrorResponseStreamsCompletely(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	const payloadSize = int64(3 << 20)
+	upstream := &volcengineAgentPlanHTTPUpstreamStub{
+		status:  http.StatusBadGateway,
+		reader:  &volcengineAgentPlanRepeatReader{remaining: payloadSize, value: 'x'},
+		headers: http.Header{"Retry-After": []string{"9"}},
+	}
+	svc := &GatewayService{httpUpstream: upstream}
+	account := &Account{ID: 20, Type: AccountTypeAPIKey, Credentials: map[string]any{"api_key": "key"}}
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	countingWriter := &volcengineAgentPlanCountingWriter{ResponseWriter: c.Writer}
+	c.Writer = countingWriter
+	c.Request = httptest.NewRequest(http.MethodPost, "/api/plan/v3/images/generations", nil)
+
+	result, err := svc.ForwardVolcengineAgentPlanHTTP(
+		context.Background(), c, account, VolcengineAgentPlanImagesGenerations, []byte(`{"model":"m"}`), "m",
+	)
+
+	require.Nil(t, result)
+	require.Error(t, err)
+	require.True(t, c.Writer.Written())
+	require.Equal(t, http.StatusBadGateway, c.Writer.Status())
+	require.Equal(t, "9", c.Writer.Header().Get("Retry-After"))
+	require.Equal(t, payloadSize, countingWriter.written)
+	events := volcengineAgentPlanOpsEvents(t, c)
+	require.Len(t, events, 1)
+	require.Equal(t, "http_error", events[0].Kind)
+}
+
+func volcengineAgentPlanOpsEvents(t *testing.T, c *gin.Context) []*OpsUpstreamErrorEvent {
+	t.Helper()
+	raw, ok := c.Get(OpsUpstreamErrorsKey)
+	require.True(t, ok)
+	events, ok := raw.([]*OpsUpstreamErrorEvent)
+	require.True(t, ok)
+	return events
+}
+
+func volcengineAgentPlanEventFrame(event int32) []byte {
+	frame := []byte{0x11, 0x94, 0x10, 0x00}
+	return binary.BigEndian.AppendUint32(frame, uint32(event))
+}
+
+func volcengineAgentPlanASRFrame(sequence int32, body string) []byte {
+	flags := byte(0x1)
+	if sequence < 0 {
+		flags = 0x3
+	}
+	frame := []byte{0x11, 0x90 | flags, 0x10, 0x00}
+	frame = binary.BigEndian.AppendUint32(frame, uint32(sequence))
+	frame = binary.BigEndian.AppendUint32(frame, uint32(len(body)))
+	return append(frame, body...)
+}
+
+func volcengineAgentPlanErrorFrame(code uint32, body string) []byte {
+	frame := []byte{0x11, 0xf0, 0x10, 0x00}
+	frame = binary.BigEndian.AppendUint32(frame, code)
+	frame = binary.BigEndian.AppendUint32(frame, uint32(len(body)))
+	return append(frame, body...)
+}
+
+type volcengineAgentPlanRepeatReader struct {
+	remaining int64
+	value     byte
+}
+
+func (r *volcengineAgentPlanRepeatReader) Read(payload []byte) (int, error) {
+	if r.remaining <= 0 {
+		return 0, io.EOF
+	}
+	if int64(len(payload)) > r.remaining {
+		payload = payload[:r.remaining]
+	}
+	for i := range payload {
+		payload[i] = r.value
+	}
+	r.remaining -= int64(len(payload))
+	return len(payload), nil
+}
+
+type volcengineAgentPlanCountingWriter struct {
+	gin.ResponseWriter
+	written int64
+}
+
+func (w *volcengineAgentPlanCountingWriter) Write(payload []byte) (int, error) {
+	w.ResponseWriter.WriteHeaderNow()
+	w.written += int64(len(payload))
+	return len(payload), nil
+}
+
+func (w *volcengineAgentPlanCountingWriter) WriteString(payload string) (int, error) {
+	w.ResponseWriter.WriteHeaderNow()
+	w.written += int64(len(payload))
+	return len(payload), nil
 }
 
 func TestVolcengineAgentPlanAccountTestUsesNativeSeedreamEndpoint(t *testing.T) {

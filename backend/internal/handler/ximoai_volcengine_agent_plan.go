@@ -34,6 +34,10 @@ func (h *GatewayHandler) VolcengineAgentPlanTTSBidirection(c *gin.Context) {
 	h.handleVolcengineAgentPlan(c, service.VolcengineAgentPlanTTSBidirection)
 }
 
+func (h *GatewayHandler) VolcengineAgentPlanASRBigmodel(c *gin.Context) {
+	h.handleVolcengineAgentPlan(c, service.VolcengineAgentPlanASRBigmodel)
+}
+
 func (h *GatewayHandler) VolcengineAgentPlanASRBigmodelAsync(c *gin.Context) {
 	h.handleVolcengineAgentPlan(c, service.VolcengineAgentPlanASRBigmodelAsync)
 }
@@ -85,6 +89,17 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 	setOpsEndpointContext(c, "", int16(service.RequestTypeFromLegacy(endpoint.IsWebSocket(), false)))
 
 	channelMapping, _ := h.gatewayService.ResolveChannelMappingAndRestrict(c.Request.Context(), apiKey.GroupID, requestedModel)
+	channelMappedModel := strings.TrimSpace(channelMapping.MappedModel)
+	if channelMappedModel == "" {
+		channelMappedModel = requestedModel
+	}
+	c.Request = c.Request.WithContext(service.WithVolcengineAgentPlanModelRoute(
+		c.Request.Context(),
+		service.VolcengineAgentPlanModelRoute{
+			PublicModel:        requestedModel,
+			ChannelMappedModel: channelMappedModel,
+		},
+	))
 	subscription, _ := servermiddleware.GetSubscriptionFromContext(c)
 	streamStarted := false
 	userRelease, err := h.concurrencyHelper.AcquireUserSlotWithWait(c, subject.UserID, subject.Concurrency, false, &streamStarted)
@@ -149,18 +164,14 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 			return
 		}
 
-		upstreamModel := requestedModel
-		if endpoint == service.VolcengineAgentPlanImagesGenerations {
-			upstreamModel = strings.TrimSpace(channelMapping.MappedModel)
-			if upstreamModel == "" {
-				upstreamModel = requestedModel
-			}
-			upstreamModel = account.GetMappedModel(upstreamModel)
+		upstreamModel := service.ResolveVolcengineAgentPlanUpstreamModel(account, channelMappedModel)
+		if upstreamModel == "" {
+			upstreamModel = requestedModel
 		}
 
 		var result *service.ForwardResult
 		if endpoint.IsWebSocket() {
-			result, err = h.gatewayService.ProxyVolcengineAgentPlanWebSocket(c.Request.Context(), c, account, endpoint)
+			result, err = h.gatewayService.ProxyVolcengineAgentPlanWebSocket(c.Request.Context(), c, account, endpoint, upstreamModel)
 		} else {
 			result, err = h.gatewayService.ForwardVolcengineAgentPlanHTTP(c.Request.Context(), c, account, endpoint, body, upstreamModel)
 		}
@@ -209,7 +220,11 @@ func (h *GatewayHandler) parseVolcengineAgentPlanRequest(
 	endpoint service.VolcengineAgentPlanEndpoint,
 ) ([]byte, string, bool) {
 	if endpoint.IsWebSocket() {
-		return nil, endpoint.BillingModel(), true
+		requestedModel := strings.TrimSpace(c.GetHeader("X-Api-Resource-Id"))
+		if requestedModel == "" {
+			requestedModel = endpoint.BillingModel()
+		}
+		return nil, requestedModel, true
 	}
 	body, err := pkghttputil.ReadRequestBodyWithPrealloc(c.Request)
 	if err != nil {
@@ -225,7 +240,11 @@ func (h *GatewayHandler) parseVolcengineAgentPlanRequest(
 		return nil, "", false
 	}
 	if endpoint != service.VolcengineAgentPlanImagesGenerations {
-		return body, endpoint.BillingModel(), true
+		requestedModel := strings.TrimSpace(c.GetHeader("X-Api-Resource-Id"))
+		if requestedModel == "" {
+			requestedModel = endpoint.BillingModel()
+		}
+		return body, requestedModel, true
 	}
 	if !gjson.ValidBytes(body) {
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Request body must be valid JSON")
@@ -299,9 +318,13 @@ func (h *GatewayHandler) writeVolcengineAgentPlanError(c *gin.Context, err error
 	}
 	var upstreamErr *service.VolcengineAgentPlanUpstreamError
 	if errors.As(err, &upstreamErr) {
-		for _, header := range []string{"X-Api-Status-Code", "X-Api-Message", "X-Tt-Logid", "X-Request-Id"} {
-			if value := strings.TrimSpace(upstreamErr.Headers.Get(header)); value != "" {
-				c.Header(header, value)
+		if h.gatewayService != nil {
+			h.gatewayService.WriteVolcengineAgentPlanResponseHeaders(c.Writer.Header(), upstreamErr.Headers)
+		} else {
+			for _, header := range []string{"X-Api-Status-Code", "X-Api-Message", "X-Tt-Logid", "X-Api-Connect-Id", "X-Request-Id"} {
+				if value := strings.TrimSpace(upstreamErr.Headers.Get(header)); value != "" {
+					c.Header(header, value)
+				}
 			}
 		}
 		contentType := strings.TrimSpace(upstreamErr.Headers.Get("Content-Type"))
@@ -359,6 +382,7 @@ func (h *GatewayHandler) recordVolcengineAgentPlanUsage(
 			IPAddress:          clientIP,
 			RequestPayloadHash: requestPayloadHash,
 			APIKeyService:      h.apiKeyService,
+			RequirePaidRequest: endpoint != service.VolcengineAgentPlanImagesGenerations,
 			ChannelUsageFields: usageFields,
 		}); err != nil {
 			logger.L().With(

@@ -60,3 +60,27 @@ func TestChannelPricingHasPositiveConfiguredPrice(t *testing.T) {
 		Intervals: []PricingInterval{{PerRequestPrice: testPtrFloat64(0.01)}},
 	}))
 }
+
+func TestValidatePositivePerRequestUsageCost(t *testing.T) {
+	tests := []struct {
+		name    string
+		cost    *CostBreakdown
+		wantErr bool
+	}{
+		{name: "missing pricing", cost: nil, wantErr: true},
+		{name: "token mode", cost: &CostBreakdown{BillingMode: string(BillingModeToken), ActualCost: 1}, wantErr: true},
+		{name: "zero per request price", cost: &CostBreakdown{BillingMode: string(BillingModePerRequest)}, wantErr: true},
+		{name: "positive per request price", cost: &CostBreakdown{BillingMode: string(BillingModePerRequest), ActualCost: 0.39}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePositivePerRequestUsageCost(tt.cost)
+			if tt.wantErr {
+				require.ErrorIs(t, err, ErrBillablePricingRequired)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}

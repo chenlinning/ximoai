@@ -60,6 +60,14 @@ func validateBillableUsageCost(cost *CostBreakdown, imageCount, videoCount int) 
 	return nil
 }
 
+func validatePositivePerRequestUsageCost(cost *CostBreakdown) error {
+	if cost == nil || BillingMode(cost.BillingMode) != BillingModePerRequest || cost.ActualCost <= 0 {
+		mode := resolveUsageBillingMode(cost, 0, 0)
+		return fmt.Errorf("%w: billing_mode=%s expected=%s", ErrBillablePricingRequired, mode, BillingModePerRequest)
+	}
+	return nil
+}
+
 func resolveUsageBillingMode(cost *CostBreakdown, imageCount, videoCount int) BillingMode {
 	if cost != nil && cost.BillingMode != "" {
 		return BillingMode(cost.BillingMode)
