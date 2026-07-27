@@ -4,11 +4,22 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
 )
+
+type membershipRateSyncerStubForGroupUpdate struct {
+	err     error
+	groupID int64
+}
+
+func (s *membershipRateSyncerStubForGroupUpdate) SyncGroupRate(_ context.Context, groupID int64) error {
+	s.groupID = groupID
+	return s.err
+}
 
 func ptrString[T ~string](v T) *string {
 	s := string(v)
@@ -178,24 +189,12 @@ func (s *platformRepoStubForAdmin) GetBySlug(_ context.Context, slug string) (*P
 	return nil, ErrPlatformNotFound
 }
 
-func (s *platformRepoStubForAdmin) Create(_ context.Context, _ *Platform) error {
-	panic("unexpected Create call")
-}
-
 func (s *platformRepoStubForAdmin) Update(_ context.Context, _ *Platform) error {
 	panic("unexpected Update call")
 }
 
 func (s *platformRepoStubForAdmin) Rename(_ context.Context, _ string, _ *Platform) error {
 	panic("unexpected Rename call")
-}
-
-func (s *platformRepoStubForAdmin) Delete(_ context.Context, _ string) error {
-	panic("unexpected Delete call")
-}
-
-func (s *platformRepoStubForAdmin) Usage(_ context.Context, _ string) (PlatformUsage, error) {
-	return PlatformUsage{}, nil
 }
 
 type compositeRouteRepoStubForAdmin struct {
@@ -808,6 +807,27 @@ func TestAdminService_UpdateGroup_InvalidatesAuthCacheOnRPMLimitChange(t *testin
 	require.Equal(t, []int64{1}, invalidator.groupIDs, "分组 RPMLimit 写入 auth snapshot，变更后必须失效 API Key 认证缓存")
 }
 
+func TestAdminService_UpdateGroup_InvalidatesCacheAndSucceedsWhenMembershipSyncNeedsRetry(t *testing.T) {
+	existingGroup := &Group{
+		ID: 1, Name: "existing-group", Platform: PlatformAnthropic,
+		Status: StatusActive, RateMultiplier: 1,
+	}
+	repo := &groupRepoStubForAdmin{getByID: existingGroup}
+	invalidator := &authCacheInvalidatorStub{}
+	rateSyncer := &membershipRateSyncerStubForGroupUpdate{err: errors.New("temporary membership sync failure")}
+	svc := &adminServiceImpl{
+		groupRepo: repo, authCacheInvalidator: invalidator, membershipRateSyncer: rateSyncer,
+	}
+	rateMultiplier := 1.2
+
+	group, err := svc.UpdateGroup(context.Background(), 1, &UpdateGroupInput{RateMultiplier: &rateMultiplier})
+
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.Equal(t, int64(1), rateSyncer.groupID)
+	require.Equal(t, []int64{1}, invalidator.groupIDs)
+}
+
 func TestAdminService_UpdateGroup_ReasoningEffortMappingsTriState(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -1014,24 +1034,26 @@ func TestAdminService_CreateGroup_ClearsMessagesDispatchFieldsForNonOpenAIPlatfo
 	require.Equal(t, OpenAIMessagesDispatchModelConfig{}, repo.created.MessagesDispatchModelConfig)
 }
 
-func TestAdminService_CreateGroup_PreservesMessagesDispatchForOpenAICompatiblePlatform(t *testing.T) {
+func TestAdminService_CreateGroup_PreservesMessagesDispatchForXimoAIOpenAICompatiblePlatform(t *testing.T) {
 	repo := &groupRepoStubForAdmin{}
 	platformService := NewPlatformService(&platformRepoStubForAdmin{platforms: map[string]Platform{
-		"acme": {
-			Slug:        "acme",
-			DisplayName: "Acme",
+		PlatformOpenAIAudio: {
+			Slug:        PlatformOpenAIAudio,
+			Kind:        PlatformKindOpenAIAudio,
+			DisplayName: "OpenAI Audio",
 			Protocol:    PlatformProtocolOpenAICompatible,
-			BaseURL:     "https://api.acme.test",
+			BaseURL:     "https://api.audio.test",
 			AuthModes:   []string{AccountTypeAPIKey},
 			Enabled:     true,
+			Builtin:     true,
 		},
 	}})
 	svc := &adminServiceImpl{groupRepo: repo, platformService: platformService}
 
 	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
-		Name:                  "acme-group",
-		Description:           "custom openai-compatible",
-		Platform:              "acme",
+		Name:                  "audio-group",
+		Description:           "XimoAI OpenAI-compatible",
+		Platform:              PlatformOpenAIAudio,
 		RateMultiplier:        1.0,
 		AllowMessagesDispatch: true,
 		MessagesDispatchModelConfig: OpenAIMessagesDispatchModelConfig{
@@ -1050,6 +1072,7 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 		"renamed-video": {
 			Slug:      "renamed-video",
 			Kind:      PlatformKindGrokVideo,
+			Protocol:  PlatformProtocolOpenAICompatible,
 			BaseURL:   "",
 			AuthModes: []string{AccountTypeAPIKey},
 			Enabled:   true,
@@ -1058,6 +1081,7 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 		"renamed-kling": {
 			Slug:      "renamed-kling",
 			Kind:      PlatformKindKlingAudio,
+			Protocol:  PlatformProtocolAnthropic,
 			BaseURL:   "https://kling.example/v1",
 			AuthModes: []string{AccountTypeAPIKey},
 			Enabled:   true,
@@ -1066,6 +1090,7 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 		"renamed-openai-audio": {
 			Slug:      "renamed-openai-audio",
 			Kind:      PlatformKindOpenAIAudio,
+			Protocol:  PlatformProtocolGemini,
 			BaseURL:   "",
 			AuthModes: []string{AccountTypeAPIKey},
 			Enabled:   true,
@@ -1080,6 +1105,7 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, PlatformKindGrokVideo, videoCredentials[PlatformKindCredentialKey])
+	require.Equal(t, PlatformProtocolOpenAICompatible, videoCredentials["platform_protocol"])
 
 	_, err = svc.normalizeAccountCredentialsForPlatform(
 		context.Background(), "renamed-video", AccountTypeAPIKey,
@@ -1093,6 +1119,7 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, PlatformKindKlingAudio, klingCredentials[PlatformKindCredentialKey])
+	require.Equal(t, PlatformProtocolAnthropic, klingCredentials["platform_protocol"])
 	require.Equal(t, "https://kling.example/v1", klingCredentials["base_url"])
 
 	openAIAudioCredentials, err := svc.normalizeAccountCredentialsForPlatform(
@@ -1101,6 +1128,7 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, PlatformKindOpenAIAudio, openAIAudioCredentials[PlatformKindCredentialKey])
+	require.Equal(t, PlatformProtocolGemini, openAIAudioCredentials["platform_protocol"])
 	require.NotContains(t, openAIAudioCredentials, "base_url")
 }
 
@@ -1726,6 +1754,72 @@ func TestAdminService_CreateCompositeRoute_NormalizesAndPersists(t *testing.T) {
 	require.True(t, route.Enabled)
 	require.Equal(t, "route note", route.Notes)
 	require.Equal(t, route, routeRepo.created)
+}
+
+func TestAdminService_CreateCompositeRoute_AllowsEnabledXimoAIBuiltinPlatform(t *testing.T) {
+	groupRepo := &groupRepoStubForAdmin{
+		getByID: &Group{ID: 7, Platform: PlatformComposite},
+	}
+	routeRepo := &compositeRouteRepoStubForAdmin{nextID: 99}
+	platformService := NewPlatformService(&platformRepoStubForAdmin{platforms: map[string]Platform{
+		PlatformOpenAIAudio: {
+			Slug:     PlatformOpenAIAudio,
+			Kind:     PlatformKindOpenAIAudio,
+			Protocol: PlatformProtocolOpenAICompatible,
+			Enabled:  true,
+			Builtin:  true,
+		},
+	}})
+	svc := &adminServiceImpl{
+		groupRepo:          groupRepo,
+		compositeRouteRepo: routeRepo,
+		platformService:    platformService,
+	}
+
+	route, err := svc.CreateCompositeRoute(context.Background(), 7, CompositeRouteInput{
+		PublicModel:    "router/audio",
+		TargetPlatform: " OPENAI-AUDIO ",
+		UpstreamModel:  "audio-model",
+		Endpoint:       CompositeRouteEndpointResponses,
+		Enabled:        true,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, PlatformOpenAIAudio, route.TargetPlatform)
+	require.Equal(t, route, routeRepo.created)
+}
+
+func TestAdminService_CreateCompositeRoute_RejectsMissingOrDisabledPlatform(t *testing.T) {
+	groupRepo := &groupRepoStubForAdmin{
+		getByID: &Group{ID: 7, Platform: PlatformComposite},
+	}
+	platformService := NewPlatformService(&platformRepoStubForAdmin{platforms: map[string]Platform{
+		"disabled-openai": {
+			Slug:     "disabled-openai",
+			Protocol: PlatformProtocolOpenAICompatible,
+			Enabled:  false,
+		},
+	}})
+
+	for _, targetPlatform := range []string{"missing-openai", "disabled-openai"} {
+		t.Run(targetPlatform, func(t *testing.T) {
+			routeRepo := &compositeRouteRepoStubForAdmin{}
+			svc := &adminServiceImpl{
+				groupRepo:          groupRepo,
+				compositeRouteRepo: routeRepo,
+				platformService:    platformService,
+			}
+
+			_, err := svc.CreateCompositeRoute(context.Background(), 7, CompositeRouteInput{
+				PublicModel:    "router/acme",
+				TargetPlatform: targetPlatform,
+				Enabled:        true,
+			})
+
+			require.Error(t, err)
+			require.Nil(t, routeRepo.created)
+		})
+	}
 }
 
 func TestAdminService_UpdateAndDeleteCompositeRouteRequireRouteOwnership(t *testing.T) {

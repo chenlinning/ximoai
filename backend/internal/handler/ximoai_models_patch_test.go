@@ -26,61 +26,30 @@ func (s *ximoAIModelsPlatformRepoStub) GetBySlug(_ context.Context, slug string)
 	return &platform, nil
 }
 
-func TestGatewayModels_XimoAICustomPlatformFallbackFollowsProtocol(t *testing.T) {
+func TestGatewayModels_XimoAIMediaPlatformsNeverFallBackToClaude(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	tests := []struct {
-		name      string
-		slug      string
-		protocol  string
-		wantModel string
-		notModel  string
-	}{
-		{
-			name:      "openai compatible",
-			slug:      "acme-openai",
-			protocol:  service.PlatformProtocolOpenAICompatible,
-			wantModel: "gpt-5.4",
-			notModel:  "claude-sonnet-4-6",
-		},
-		{
-			name:      "gemini",
-			slug:      "acme-gemini",
-			protocol:  service.PlatformProtocolGemini,
-			wantModel: "gemini-2.5-flash",
-			notModel:  "claude-sonnet-4-6",
-		},
-		{
-			name:      "anthropic",
-			slug:      "acme-anthropic",
-			protocol:  service.PlatformProtocolAnthropic,
-			wantModel: "claude-sonnet-4-6",
-			notModel:  "gemini-2.5-flash",
-		},
+	tests := []service.Platform{
+		{Slug: service.PlatformGrokVideo, Kind: service.PlatformKindGrokVideo, Protocol: service.PlatformProtocolOpenAICompatible, Enabled: true, Builtin: true},
+		{Slug: service.PlatformOpenAIAudio, Kind: service.PlatformKindOpenAIAudio, Protocol: service.PlatformProtocolOpenAICompatible, Enabled: true, Builtin: true},
+		{Slug: service.PlatformKlingAudio, Kind: service.PlatformKindKlingAudio, Protocol: service.PlatformProtocolOpenAICompatible, Enabled: true, Builtin: true},
 	}
 
-	for i, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			groupID := int64(80 + i)
+	for i, platform := range tests {
+		t.Run(platform.Slug, func(t *testing.T) {
+			groupID := int64(120 + i)
 			h := newGatewayModelsHandlerForTest(&gatewayModelsAccountRepoStub{
 				byGroup: map[int64][]service.Account{
-					groupID: {{ID: 1, Platform: tt.slug}},
+					groupID: {{ID: 1, Platform: platform.Slug}},
 				},
 			})
-			h.platformService = service.NewPlatformService(&ximoAIModelsPlatformRepoStub{
-				platform: service.Platform{
-					Slug:     tt.slug,
-					Protocol: tt.protocol,
-					Enabled:  true,
-					Builtin:  false,
-				},
-			})
+			h.platformService = service.NewPlatformService(&ximoAIModelsPlatformRepoStub{platform: platform})
 
 			rec := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(rec)
 			c.Request = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 			c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
-				Group: &service.Group{ID: groupID, Platform: tt.slug},
+				Group: &service.Group{ID: groupID, Platform: platform.Slug},
 			})
 
 			h.Models(c)
@@ -88,9 +57,7 @@ func TestGatewayModels_XimoAICustomPlatformFallbackFollowsProtocol(t *testing.T)
 			require.Equal(t, http.StatusOK, rec.Code)
 			var got gatewayModelsResponseForTest
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-			ids := modelIDsForTest(got.Data)
-			require.Contains(t, ids, tt.wantModel)
-			require.NotContains(t, ids, tt.notModel)
+			require.Empty(t, modelIDsForTest(got.Data))
 		})
 	}
 }

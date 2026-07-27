@@ -11,9 +11,12 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/tidwall/gjson"
 )
 
 const (
+	openAIVideosEndpoint        = "/v1/videos"
 	klingAudioPublicModel       = "kling-audio"
 	klingAudioTTSModel          = "kling-audio-tts"
 	klingCustomVoicesModel      = "kling-custom-voices"
@@ -22,6 +25,69 @@ const (
 	defaultGrokVideoSize        = "720P"
 	defaultKlingVoiceLanguage   = "zh"
 )
+
+func normalizeOpenAIVideoEndpointPath(path string) string {
+	path = strings.TrimSpace(path)
+	if strings.HasPrefix(path, "/v1/videos") {
+		return path
+	}
+	if strings.HasPrefix(path, "/videos") {
+		return "/v1" + path
+	}
+	return ""
+}
+
+func buildOpenAIVideosURL(base, endpoint string) string {
+	normalized := strings.TrimRight(strings.TrimSpace(base), "/")
+	endpoint = strings.TrimSpace(endpoint)
+	if endpoint == "" {
+		endpoint = openAIVideosEndpoint
+	}
+	relative := strings.TrimPrefix(endpoint, "/v1")
+	if strings.HasSuffix(normalized, endpoint) || strings.HasSuffix(normalized, relative) {
+		return normalized
+	}
+	if strings.HasSuffix(normalized, "/v1/videos") {
+		return normalized + strings.TrimPrefix(endpoint, "/v1/videos")
+	}
+	if strings.HasSuffix(normalized, "/v1") {
+		return normalized + relative
+	}
+	return normalized + endpoint
+}
+
+func extractOpenAIVideoID(body []byte) string {
+	for _, path := range []string{"id", "video_id", "task_id", "name", "operation.name", "video.id", "data.id", "data.video_id", "data.task_id", "data.name"} {
+		if value := strings.TrimSpace(gjson.GetBytes(body, path).String()); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func extractOpenAIVideoIDFromEndpoint(endpoint string) string {
+	parts := strings.Split(strings.Trim(strings.TrimSpace(endpoint), "/"), "/")
+	for i, part := range parts {
+		if part != "videos" || i+1 >= len(parts) {
+			continue
+		}
+		next := strings.TrimSpace(parts[i+1])
+		switch next {
+		case "", "characters", "edits", "extensions":
+			return ""
+		case "operations":
+			if i+2 >= len(parts) {
+				return ""
+			}
+			next = strings.TrimSuffix(strings.Join(parts[i+1:], "/"), "/content")
+		}
+		if decoded, err := url.PathUnescape(next); err == nil {
+			next = decoded
+		}
+		return strings.TrimSpace(next)
+	}
+	return ""
+}
 
 var openAIVoiceNames = map[string]struct{}{
 	"alloy":   {},

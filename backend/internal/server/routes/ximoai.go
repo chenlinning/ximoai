@@ -16,9 +16,7 @@ func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	platforms := admin.Group("/platforms")
 	{
 		platforms.GET("", h.Admin.Platform.List)
-		platforms.POST("", h.Admin.Platform.Create)
 		platforms.PUT("/:slug", h.Admin.Platform.Update)
-		platforms.DELETE("/:slug", h.Admin.Platform.Delete)
 	}
 }
 

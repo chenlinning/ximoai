@@ -12,7 +12,9 @@ describe('platform capability editor options', () => {
       'chat_completions',
       'embeddings',
       'images',
-      'realtime'
+      'audio',
+      'realtime',
+      'codex'
     ])
   })
 
@@ -25,11 +27,15 @@ describe('platform capability editor options', () => {
     expect(capabilityOptionsForProtocol('openai_compatible', 'kling_audio')).toEqual(['audio'])
   })
 
-  it('uses conservative defaults for newly created custom platforms', () => {
+  it('uses the built-in protocol capabilities for newly created custom platforms', () => {
     expect(defaultCapabilitiesForProtocol('openai_compatible')).toEqual([
       'responses',
       'chat_completions',
-      'images'
+      'embeddings',
+      'images',
+      'audio',
+      'realtime',
+      'codex'
     ])
     expect(defaultCapabilitiesForProtocol('gemini')).toEqual(['messages', 'native_gemini', 'videos'])
   })

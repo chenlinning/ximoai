@@ -4281,37 +4281,30 @@ const exclusiveOptions = computed(() => [
   { value: "false", label: t("admin.groups.nonExclusive") },
 ]);
 
-const platformOptions = computed(() => [
-  ...platforms.value.map((platform) => ({
+const platformOptions = computed(() => {
+  const options = platforms.value.filter((platform) => platform.enabled).map((platform) => ({
     value: platform.slug,
     label: platform.display_name,
-  })),
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
-  { value: "gemini", label: "Gemini" },
-  { value: "antigravity", label: "Antigravity" },
-  { value: "grok", label: "Grok" },
-  { value: "composite", label: "Composite" },
-]);
+  }));
+  if (!options.some((option) => option.value === "composite")) {
+    options.push({ value: "composite", label: "Composite" });
+  }
+  return options;
+});
 
 const platformFilterOptions = computed(() => [
   { value: "", label: t("admin.groups.allPlatforms") },
   ...platformOptions.value,
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
-  { value: "gemini", label: "Gemini" },
-  { value: "antigravity", label: "Antigravity" },
-  { value: "grok", label: "Grok" },
-  { value: "composite", label: "Composite" },
 ]);
 
-const compositeRoutePlatformOptions = computed(() => [
-  { value: "anthropic", label: "Anthropic" },
-  { value: "openai", label: "OpenAI" },
-  { value: "gemini", label: "Gemini" },
-  { value: "antigravity", label: "Antigravity" },
-  { value: "grok", label: "Grok" },
-]);
+const compositeRoutePlatformOptions = computed(() =>
+  platforms.value
+    .filter((platform) => platform.enabled && platform.slug !== "composite")
+    .map((platform) => ({
+      value: platform.slug,
+      label: platform.display_name,
+    })),
+);
 
 const compositeRouteEndpointOptions = computed(() => [
   { value: "any", label: t("admin.groups.compositeRoutes.endpoints.any") },
@@ -5352,7 +5345,7 @@ const loadCapacitySummary = async () => {
 
 const loadPlatforms = async () => {
   try {
-    platforms.value = await adminAPI.platforms.list(true);
+    platforms.value = await adminAPI.platforms.list();
   } catch (error) {
     console.error("Error loading platforms:", error);
   }
@@ -5847,6 +5840,8 @@ const formatCompositeEndpoint = (endpoint: CompositeRouteEndpoint) =>
 
 const formatCompositePlatform = (platform: string) => {
   if (!platform) return "—";
+  const definition = getPlatformBySlug(platform);
+  if (definition) return definition.display_name;
   return t(`admin.groups.platforms.${platform}`);
 };
 

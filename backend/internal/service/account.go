@@ -1256,10 +1256,6 @@ func (a *Account) IsOpenAIApiKey() bool {
 	return a.IsOpenAI() && a.Type == AccountTypeAPIKey
 }
 
-func (a *Account) IsOpenAICompatibleAPIKey() bool {
-	return a != nil && a.Type == AccountTypeAPIKey
-}
-
 func (a *Account) IsOpenAICompatibleCustomAPIKey() bool {
 	if a == nil || a.Type != AccountTypeAPIKey {
 		return false

@@ -70,26 +70,6 @@ WHERE slug = $1`, slug)
 	return platform, rows.Err()
 }
 
-func (r *platformRepository) Create(ctx context.Context, platform *service.Platform) error {
-	if platform == nil {
-		return errors.New("platform is nil")
-	}
-	authModes, err := json.Marshal(platform.AuthModes)
-	if err != nil {
-		return err
-	}
-	capabilities, err := json.Marshal(platform.Capabilities)
-	if err != nil {
-		return err
-	}
-	_, err = r.db.ExecContext(ctx, `
-INSERT INTO platforms (slug, kind, display_name, protocol, base_url, auth_modes, capabilities, color, enabled, builtin)
-VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, FALSE)`,
-		platform.Slug, platform.Kind, platform.DisplayName, platform.Protocol, platform.BaseURL,
-		string(authModes), string(capabilities), platform.Color, platform.Enabled)
-	return err
-}
-
 func (r *platformRepository) Update(ctx context.Context, platform *service.Platform) error {
 	if platform == nil {
 		return errors.New("platform is nil")
@@ -182,12 +162,6 @@ WHERE slug = $1`,
 	if _, err = tx.ExecContext(ctx, `UPDATE channels SET model_mapping = jsonb_set(model_mapping - $1, ARRAY[$2], model_mapping -> $1, true), updated_at = NOW() WHERE model_mapping ? $1`, oldSlug, platform.Slug); err != nil {
 		return fmt.Errorf("rename channel mapping platforms: %w", err)
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE openai_video_jobs SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
-		return fmt.Errorf("rename video job platforms: %w", err)
-	}
-	if _, err = tx.ExecContext(ctx, `UPDATE openai_video_characters SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
-		return fmt.Errorf("rename video character platforms: %w", err)
-	}
 	if _, err = tx.ExecContext(ctx, `UPDATE user_platform_quotas SET platform = $2, updated_at = NOW() WHERE platform = $1`, oldSlug, platform.Slug); err != nil {
 		return fmt.Errorf("rename user platform quotas: %w", err)
 	}
@@ -196,39 +170,6 @@ WHERE slug = $1`,
 	}
 	committed = true
 	return nil
-}
-
-func (r *platformRepository) Delete(ctx context.Context, slug string) error {
-	result, err := r.db.ExecContext(ctx, `DELETE FROM platforms WHERE slug = $1 AND builtin = FALSE`, slug)
-	if err != nil {
-		return err
-	}
-	if affected, _ := result.RowsAffected(); affected == 0 {
-		return service.ErrPlatformNotFound
-	}
-	return nil
-}
-
-func (r *platformRepository) Usage(ctx context.Context, slug string) (service.PlatformUsage, error) {
-	var usage service.PlatformUsage
-	err := r.db.QueryRowContext(ctx, `
-SELECT
-    (SELECT COUNT(*) FROM accounts WHERE platform = $1),
-    (SELECT COUNT(*) FROM groups WHERE platform = $1),
-    (SELECT COUNT(*) FROM channel_model_pricing WHERE platform = $1),
-    (SELECT COUNT(*) FROM channel_account_stats_model_pricing WHERE platform = $1),
-    (SELECT COUNT(*) FROM channels WHERE model_mapping ? $1)
-`, slug).Scan(
-		&usage.AccountCount,
-		&usage.GroupCount,
-		&usage.ChannelPricingCount,
-		&usage.AccountStatsPricingCount,
-		&usage.ChannelMappingCount,
-	)
-	if err != nil {
-		return service.PlatformUsage{}, err
-	}
-	return usage, nil
 }
 
 type platformScanner interface {

@@ -350,9 +350,11 @@ func TestListAvailableChannelPricing_KeepsOnlyChannelPricedModels(t *testing.T) 
 
 	require.NoError(t, err)
 	require.Len(t, out, 1)
-	require.Len(t, out[0].SupportedModels, 1)
+	require.Len(t, out[0].SupportedModels, 2)
 	require.Equal(t, "gpt-priced", out[0].SupportedModels[0].Name)
+	require.Equal(t, "gpt-zero", out[0].SupportedModels[1].Name)
 	require.NotNil(t, out[0].SupportedModels[0].Pricing)
+	require.NotNil(t, out[0].SupportedModels[1].Pricing)
 }
 
 func TestListAvailableChannelPricing_HidesMappedTargetsAndKeepsAliasPricing(t *testing.T) {

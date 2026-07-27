@@ -73,26 +73,6 @@ func (h *PlatformHandler) ListPublic(c *gin.Context) {
 	response.Success(c, out)
 }
 
-func (h *PlatformHandler) Create(c *gin.Context) {
-	var req platformRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.ErrorFrom(c, infraerrors.BadRequest("VALIDATION_ERROR", err.Error()))
-		return
-	}
-	platform := requestToPlatform(req)
-	if req.Enabled != nil {
-		platform.Enabled = *req.Enabled
-	} else {
-		platform.Enabled = true
-	}
-	created, err := h.platformService.Create(c.Request.Context(), platform)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, platformToResponse(*created))
-}
-
 func (h *PlatformHandler) Update(c *gin.Context) {
 	var req platformRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -116,14 +96,6 @@ func (h *PlatformHandler) Update(c *gin.Context) {
 		return
 	}
 	response.Success(c, platformToResponse(*updated))
-}
-
-func (h *PlatformHandler) Delete(c *gin.Context) {
-	if err := h.platformService.Delete(c.Request.Context(), c.Param("slug")); err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	response.Success(c, gin.H{"message": "Platform deleted successfully"})
 }
 
 func requestToPlatform(req platformRequest) service.Platform {

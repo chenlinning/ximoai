@@ -399,107 +399,6 @@ TOTP：
 | `POST` | `/api/v1/user/totp/enable` |
 | `POST` | `/api/v1/user/totp/disable` |
 
-### 子网站登录会员资料
-
-该接口用于子网站在用户完成本站登录后，读取当前登录用户的会员系统信息、可用分组和系统托管 API Key。它不接受 `user_id` 参数，只返回 JWT 所属用户的数据。
-
-| 方法 | 路径 | 鉴权 | 返回 |
-|---|---|---|---|
-| `GET` | `/api/v1/membership/external-profile` | 用户 JWT | `ExternalMembershipProfile` |
-
-请求示例：
-
-```http
-GET /api/v1/membership/external-profile HTTP/1.1
-Host: ximoai.cn
-Authorization: Bearer <jwt_access_token>
-```
-
-返回示例：
-
-```json
-{
-  "code": 0,
-  "message": "success",
-  "reason": "",
-  "metadata": {},
-  "data": {
-    "user_id": 123,
-    "membership": {
-      "level": {
-        "id": 5,
-        "name": "钻石会员",
-        "code": "diamond",
-        "color": "#0099ff",
-        "discount_rate": 0.8,
-        "enabled": true,
-        "is_default": false,
-        "sort_order": 4,
-        "description": "",
-        "groups": []
-      },
-      "starts_at": "2026-06-18T00:00:00Z",
-      "expires_at": null,
-      "levels": [],
-      "groups": [
-        {
-          "id": 8,
-          "name": "codex自用",
-          "platform": "openai",
-          "rate_multiplier": 1,
-          "effective_rate_multiplier": 0.8,
-          "is_exclusive": true,
-          "status": "active",
-          "subscription_type": "standard"
-        }
-      ],
-      "managed_keys": [
-        {
-          "id": 1,
-          "user_id": 123,
-          "group_id": 8,
-          "api_key_id": 99,
-          "membership_level_id": 5,
-          "status": "active",
-          "disabled_reason": "",
-          "group": {},
-          "api_key": {
-            "id": 99,
-            "user_id": 123,
-            "key": "sk-full-managed-key",
-            "key_suffix": "d-key",
-            "masked_key": "sk-...d-key",
-            "name": "Membership Key - codex自用",
-            "status": "active",
-            "group_id": 8
-          }
-        }
-      ]
-    }
-  }
-}
-```
-
-字段说明：
-
-```text
-data.user_id: 当前 JWT 所属用户 ID
-data.membership.level: 当前会员等级
-data.membership.levels: 全部可展示会员等级及权益
-data.membership.groups: 当前会员等级可用分组；effective_rate_multiplier 为分组倍率与会员折扣后的实际结算倍率
-data.membership.managed_keys: 系统为该会员等级托管的 API Key 列表
-data.membership.managed_keys[].api_key.key: 完整 API Key，供子网站代表当前用户调用协议网关
-data.membership.managed_keys[].api_key.masked_key: 脱敏 Key，仅供展示
-```
-
-安全约定：
-
-```text
-该接口返回完整托管 API Key，只应由可信子网站服务端调用或在受控前端场景中使用。
-不要把返回结果写入公开日志、浏览器长期存储或第三方分析系统。
-会员中心展示接口 /api/v1/membership 仍只返回 masked_key/key_suffix，不返回完整 key。
-```
-
 ### 用户 API Key
 
 | 方法 | 路径 |
@@ -950,39 +849,6 @@ Audio 请求可以是 JSON 或 multipart。本站必须能解析 `model`，否�
 | `GET` | `/responses` |
 
 Realtime 使用 WebSocket。鉴权仍使用 API Key，平台需具备 realtime capability。
-
-### OpenAI Videos 与异步查询
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| `POST` | `/v1/videos` | 创建视频任务 |
-| `GET` | `/v1/videos` | 查询当前 Key 可见任务列表 |
-| `GET` | `/v1/videos/:id` | 查询任务状态 |
-| `DELETE` | `/v1/videos/:id` | 删除任务或透传删除 |
-| `GET` | `/v1/videos/:id/content` | 获取视频内容 |
-| `POST` | `/v1/videos/edits` | 视频编辑 |
-| `POST` | `/v1/videos/extensions` | 视频扩展 |
-| `POST` | `/v1/videos/:id/remix` | remix |
-| `POST` | `/v1/videos/characters` | 创建角色 |
-| `GET` | `/v1/videos/characters/:id` | 查询角色 |
-| `POST` | `/videos` | 根路径别名 |
-| `GET` | `/videos` | 根路径别名 |
-| `POST/GET/DELETE` | `/videos/*subpath` | 根路径子路径别名 |
-
-创建类请求可以是 JSON 或 multipart。本站固定解析以下字段：
-
-```text
-model
-```
-
-为了关联 remix/edit/extend 的来源任务，会额外识别：
-
-```text
-video.id, video_id, source_video_id, input_video.id, input_video_id,
-multipart: video, video_id, source_video_id, video[id]
-```
-
-对 OpenAI 兼容上游，其他字段按原 body 透传。对 Gemini 兼容上游，会按 Gemini 视频 endpoint 转换。用户必须自行调用查询入口获取异步结果，本站不主动替用户轮询。
 
 ### Gemini Native 入口
 
@@ -1718,13 +1584,11 @@ id, name, group_ids, account_ids, pricing
 
 OpenAI 兼容上游使用账号配置的 Base URL 和 API Key/OAuth 凭据。自定义平台的能力由 `protocol` 与 `capabilities` 共同参与入口放行和前端展示，但实际路由最终会按平台协议与能力检查执行。
 
-Gemini 视频已支持 Gemini native 入口和 OpenAI 视频入口到 Gemini 兼容上游的适配。Anthropic 不提供视频协议入口。
+Gemini 视频使用 Gemini native 入口。Anthropic 不提供视频协议入口。
 
 异步任务不会由站点主动轮询。用户必须调用对应协议的查询入口，例如：
 
 ```text
-GET /v1/videos/:id
-GET /v1/videos/:id/content
 GET /v1beta/operations/*operation
 ```
 

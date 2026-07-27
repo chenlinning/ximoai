@@ -4,14 +4,24 @@ const protocolCapabilities: Record<string, string[]> = {
     'chat_completions',
     'embeddings',
     'images',
-    'realtime'
+    'audio',
+    'realtime',
+    'codex'
   ],
   anthropic: ['messages'],
   gemini: ['messages', 'native_gemini', 'videos']
 }
 
 const protocolDefaults: Record<string, string[]> = {
-  openai_compatible: ['responses', 'chat_completions', 'images'],
+  openai_compatible: [
+    'responses',
+    'chat_completions',
+    'embeddings',
+    'images',
+    'audio',
+    'realtime',
+    'codex'
+  ],
   anthropic: ['messages'],
   gemini: ['messages', 'native_gemini', 'videos']
 }

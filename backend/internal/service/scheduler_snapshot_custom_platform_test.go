@@ -83,6 +83,16 @@ type schedulerSnapshotAccountRepo struct {
 	accounts []Account
 }
 
+type schedulerSnapshotCountingAccountRepo struct {
+	schedulerSnapshotAccountRepo
+	listActiveCalls int
+}
+
+func (r *schedulerSnapshotCountingAccountRepo) ListActive(ctx context.Context) ([]Account, error) {
+	r.listActiveCalls++
+	return r.schedulerSnapshotAccountRepo.ListActive(ctx)
+}
+
 func (r schedulerSnapshotAccountRepo) ListActive(context.Context) ([]Account, error) {
 	return r.accounts, nil
 }
@@ -224,4 +234,51 @@ func TestSchedulerSnapshotService_DefaultBucketsIncludeCustomAccountPlatform(t *
 
 	require.Contains(t, buckets, SchedulerBucket{GroupID: 0, Platform: customPlatform, Mode: SchedulerModeSingle})
 	require.Contains(t, buckets, SchedulerBucket{GroupID: 0, Platform: customPlatform, Mode: SchedulerModeForced})
+}
+
+func TestSchedulerPlatformsForGroupIDsLoadsActiveAccountsOnce(t *testing.T) {
+	repo := &schedulerSnapshotCountingAccountRepo{schedulerSnapshotAccountRepo: schedulerSnapshotAccountRepo{accounts: []Account{
+		{ID: 1, Platform: "custom-openai", GroupIDs: []int64{7}},
+		{ID: 2, Platform: "custom-gemini", GroupIDs: []int64{8}},
+	}}}
+	svc := NewSchedulerSnapshotService(nil, nil, repo, nil, nil)
+
+	platforms := svc.schedulerPlatformsForGroupIDs(context.Background(), []int64{7, 8})
+
+	require.Equal(t, 1, repo.listActiveCalls)
+	require.Contains(t, platforms, "custom-openai")
+	require.Contains(t, platforms, "custom-gemini")
+}
+
+func TestSchedulerPlatformsForGroupAccountsDoesNotLeakCustomPlatformsAcrossGroups(t *testing.T) {
+	accounts := []Account{
+		{ID: 1, Platform: "custom-openai", GroupIDs: []int64{7}},
+		{ID: 2, Platform: "custom-gemini", GroupIDs: []int64{8}},
+	}
+
+	platforms := schedulerPlatformsForGroupAccounts(7, accounts)
+
+	require.Contains(t, platforms, "custom-openai")
+	require.NotContains(t, platforms, "custom-gemini")
+}
+
+func TestSchedulerGroupLifecycleSeenIncludesDynamicAccountPlatform(t *testing.T) {
+	cache := &schedulerSnapshotRecordingCache{}
+	groupID := int64(7)
+	customPlatform := "custom-openai"
+	svc := NewSchedulerSnapshotService(
+		cache,
+		nil,
+		schedulerSnapshotAccountRepo{accounts: []Account{{
+			ID: 1, Platform: customPlatform, Status: StatusActive, Schedulable: true, GroupIDs: []int64{groupID},
+		}}},
+		schedulerSnapshotGroupRepo{groups: map[int64]Group{
+			groupID: {ID: groupID, Platform: PlatformComposite, Status: StatusActive, Hydrated: true},
+		}},
+		nil,
+	)
+	seen := map[batchSeenKey]struct{}{}
+
+	require.NoError(t, svc.handleGroupEvent(context.Background(), &groupID, seen))
+	require.Contains(t, seen, batchSeenKey{groupID: groupID, platform: customPlatform})
 }

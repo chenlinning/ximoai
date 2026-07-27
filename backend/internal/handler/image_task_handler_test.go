@@ -106,6 +106,48 @@ func TestAsyncImageHandlerSubmitAndPoll(t *testing.T) {
 	require.Contains(t, pollWriter.Body.String(), "https://example.test/image.png")
 }
 
+func TestAsyncImageHandlerAcceptsResolvedCustomOpenAIPlatform(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	store := &asyncImageMemoryStore{tasks: make(map[string]*service.ImageTaskRecord)}
+	tasks := service.NewImageTaskServiceWithUploader(store, nil, time.Hour, time.Minute)
+	executed := make(chan string, 1)
+	h := &AsyncImageHandler{
+		tasks:  tasks,
+		openAI: &OpenAIGatewayHandler{gatewayService: &service.OpenAIGatewayService{}},
+	}
+	h.execute = func(platform string, c *gin.Context) {
+		executed <- platform
+		c.JSON(http.StatusOK, gin.H{"data": []gin.H{{"url": "https://example.test/image.png"}}})
+	}
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		groupID := int64(4)
+		c.Set(string(middleware2.ContextKeyAPIKey), &service.APIKey{
+			ID:      10,
+			UserID:  8,
+			GroupID: &groupID,
+			Group:   &service.Group{ID: groupID, Platform: "custom-openai", AllowImageGeneration: true},
+		})
+		c.Set(string(middleware2.ContextKeyUser), middleware2.AuthSubject{UserID: 8, Concurrency: 1})
+		c.Next()
+	})
+	router.POST("/v1/images/generations/async", h.Submit)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations/async", strings.NewReader(`{"model":"flux-1.1-pro","prompt":"cat"}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusAccepted, w.Code)
+	select {
+	case platform := <-executed:
+		require.Equal(t, "custom-openai", platform)
+	case <-time.After(time.Second):
+		t.Fatal("custom image task was not executed")
+	}
+}
+
 // When object storage is not configured the feature is fully disabled: the
 // endpoints must return 404 without creating a task or writing to Redis.
 func TestAsyncImageHandlerDisabledReturns404(t *testing.T) {

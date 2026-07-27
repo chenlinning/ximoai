@@ -9,11 +9,27 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/tlsfingerprint"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
+
+type volcengineAgentPlanRateLimitRepoStub struct {
+	AccountRepository
+	tempAccountID int64
+	tempUntil     time.Time
+	tempReason    string
+}
+
+func (s *volcengineAgentPlanRateLimitRepoStub) SetTempUnschedulable(_ context.Context, id int64, until time.Time, reason string) error {
+	s.tempAccountID = id
+	s.tempUntil = until
+	s.tempReason = reason
+	return nil
+}
 
 type volcengineAgentPlanHTTPUpstreamStub struct {
 	request *http.Request
@@ -75,6 +91,62 @@ func TestVolcengineAgentPlanUpstreamURLs(t *testing.T) {
 			require.Equal(t, want, got)
 		})
 	}
+}
+
+func TestHandleVolcengineAgentPlanUpstreamErrorCoolsDownServerFailures(t *testing.T) {
+	repo := &volcengineAgentPlanRateLimitRepoStub{}
+	rateLimit := NewRateLimitService(repo, nil, &config.Config{}, nil, nil)
+	svc := &GatewayService{accountRepo: repo, rateLimitService: rateLimit}
+	account := &Account{ID: 77, Platform: PlatformVolcengineAgentPlan, Type: AccountTypeAPIKey}
+	err := &VolcengineAgentPlanUpstreamError{
+		StatusCode: http.StatusBadGateway,
+		Body:       []byte(`{"message":"temporary upstream failure"}`),
+		Headers:    http.Header{},
+	}
+
+	svc.HandleVolcengineAgentPlanUpstreamError(context.Background(), account, err, VolcengineAgentPlanTTSModel)
+
+	require.Equal(t, int64(77), repo.tempAccountID)
+	require.True(t, repo.tempUntil.After(time.Now()))
+	require.Contains(t, repo.tempReason, "Volcengine Agent Plan")
+}
+
+func TestValidateVolcengineAgentPlanPricingRequiresPositivePerRequestChannelPrice(t *testing.T) {
+	groupID := int64(88)
+	price := 0.02
+	channelService := NewChannelService(&ximoAIModelsChannelRepoStub{channel: Channel{
+		ID:       1,
+		Status:   StatusActive,
+		GroupIDs: []int64{groupID},
+		ModelPricing: []ChannelModelPricing{{
+			Platform:        PlatformVolcengineAgentPlan,
+			Models:          []string{VolcengineAgentPlanTTSModel},
+			BillingMode:     BillingModePerRequest,
+			PerRequestPrice: &price,
+		}},
+	}, groupPlatforms: map[int64]string{groupID: PlatformVolcengineAgentPlan}}, nil, nil, nil)
+	billingService := NewBillingService(&config.Config{}, nil)
+	svc := &GatewayService{
+		channelService: channelService,
+		billingService: billingService,
+		resolver:       NewModelPricingResolver(channelService, billingService),
+	}
+	apiKey := &APIKey{GroupID: &groupID, Group: &Group{ID: groupID, Platform: PlatformVolcengineAgentPlan}}
+	usageFields := ChannelUsageFields{
+		OriginalModel:      "doubao-seed-tts-2.0",
+		ChannelMappedModel: VolcengineAgentPlanTTSModel,
+		BillingModelSource: BillingModelSourceChannelMapped,
+	}
+
+	require.NoError(t, svc.ValidateVolcengineAgentPlanPricing(
+		context.Background(), apiKey, VolcengineAgentPlanTTSUnidirectional, usageFields, VolcengineAgentPlanTTSModel,
+	))
+
+	usageFields.ChannelMappedModel = "missing-price"
+	err := svc.ValidateVolcengineAgentPlanPricing(
+		context.Background(), apiKey, VolcengineAgentPlanTTSUnidirectional, usageFields, "missing-upstream-price",
+	)
+	require.ErrorIs(t, err, ErrBillablePricingRequired)
 }
 
 func TestForwardVolcengineAgentPlanHTTPPreservesBodyAndReplacesAuthentication(t *testing.T) {

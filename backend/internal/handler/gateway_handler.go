@@ -1049,11 +1049,16 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 	// Prefer channel-facing model aliases; fall back to the upstream account list.
 	availableModels := h.gatewayService.GetXimoAIAvailableModels(c.Request.Context(), groupID, platform)
 	modelsFallbackPlatform := platform
+	emptyModelsFallback := false
 	if len(availableModels) == 0 && h.platformService != nil {
 		modelsFallbackPlatform = h.platformService.XimoAIModelsFallbackPlatform(c.Request.Context(), platform)
+		emptyModelsFallback = h.platformService.XimoAIModelsUseEmptyFallback(c.Request.Context(), platform)
 	}
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 		fallbackModels := defaultModelIDsForPlatform(modelsFallbackPlatform)
+		if emptyModelsFallback {
+			fallbackModels = nil
+		}
 		availableModels = filterModelsByCustomList(customModelsListSource(platform, availableModels, fallbackModels), fallbackModels, apiKey.Group.ModelsListConfig.Models)
 		writeCustomModelsList(c, platform, availableModels)
 		return
@@ -1061,6 +1066,10 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 
 	if len(availableModels) > 0 {
 		writeModelsList(c, platform, availableModels)
+		return
+	}
+	if emptyModelsFallback {
+		writeModelsList(c, platform, nil)
 		return
 	}
 
@@ -1330,6 +1339,8 @@ func defaultModelIDsForPlatform(platform string) []string {
 			service.VolcengineAgentPlanTTSModel,
 			service.VolcengineAgentPlanASRModel,
 		}
+	case service.PlatformGrokVideo, service.PlatformOpenAIAudio, service.PlatformKlingAudio:
+		return nil
 	case service.PlatformComposite:
 		ids := make([]string, 0)
 		seen := make(map[string]struct{})
@@ -2375,6 +2386,30 @@ func (h *GatewayHandler) submitUsageRecordTask(parent context.Context, task serv
 		if recovered := recover(); recovered != nil {
 			logger.L().With(
 				zap.String("component", "handler.gateway.messages"),
+				zap.Any("panic", recovered),
+			).Error("gateway.usage_record_task_panic_recovered")
+		}
+	}()
+	task(ctx)
+}
+
+func (h *GatewayHandler) submitMandatoryUsageRecordTask(parent context.Context, task service.UsageRecordTask) {
+	if task == nil {
+		return
+	}
+	task = wrapUsageRecordTaskContext(parent, task)
+	if h.usageRecordWorkerPool != nil {
+		if mode := h.usageRecordWorkerPool.Submit(task); mode != service.UsageRecordSubmitModeDropped {
+			return
+		}
+		logger.L().With(zap.String("component", "handler.gateway.usage")).Warn("gateway.usage_record_task_mandatory_sync_fallback")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			logger.L().With(
+				zap.String("component", "handler.gateway.usage"),
 				zap.Any("panic", recovered),
 			).Error("gateway.usage_record_task_panic_recovered")
 		}

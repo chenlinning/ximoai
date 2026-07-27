@@ -24,6 +24,8 @@ import (
 
 type VolcengineAgentPlanEndpoint string
 
+var ErrBillablePricingRequired = errors.New("billable usage requires positive pricing")
+
 const (
 	VolcengineAgentPlanImagesGenerations       VolcengineAgentPlanEndpoint = "images_generations"
 	VolcengineAgentPlanTTSUnidirectional       VolcengineAgentPlanEndpoint = "tts_unidirectional"
@@ -32,6 +34,7 @@ const (
 	VolcengineAgentPlanASRBigmodel             VolcengineAgentPlanEndpoint = "asr_bigmodel"
 	VolcengineAgentPlanASRBigmodelAsync        VolcengineAgentPlanEndpoint = "asr_bigmodel_async"
 	VolcengineAgentPlanASRBigmodelNostream     VolcengineAgentPlanEndpoint = "asr_bigmodel_nostream"
+	volcengineAgentPlanServerErrorCooldown                                 = 30 * time.Second
 
 	VolcengineAgentPlanSeedreamModel = "doubao-seedream-5.0-lite"
 	VolcengineAgentPlanTTSModel      = "seed-tts-2.0"
@@ -181,6 +184,97 @@ func (e *VolcengineAgentPlanUpstreamError) Retryable() bool {
 		e.StatusCode == http.StatusRequestTimeout ||
 		e.StatusCode == http.StatusTooManyRequests ||
 		e.StatusCode >= http.StatusInternalServerError
+}
+
+func (s *GatewayService) HandleVolcengineAgentPlanUpstreamError(ctx context.Context, account *Account, err error, requestedModel string) {
+	if s == nil || s.rateLimitService == nil || account == nil || err == nil {
+		return
+	}
+	var upstreamErr *VolcengineAgentPlanUpstreamError
+	if !errors.As(err, &upstreamErr) || upstreamErr == nil {
+		return
+	}
+	stopped := s.rateLimitService.HandleUpstreamError(
+		ctx, account, upstreamErr.StatusCode, upstreamErr.Headers, upstreamErr.Body, requestedModel,
+	)
+	if !stopped && upstreamErr.StatusCode >= http.StatusInternalServerError {
+		s.rateLimitService.coolDownVolcengineAgentPlanServerFailure(ctx, account, upstreamErr.StatusCode, upstreamErr.Body)
+	}
+}
+
+func (s *RateLimitService) coolDownVolcengineAgentPlanServerFailure(ctx context.Context, account *Account, statusCode int, body []byte) {
+	if s == nil || s.accountRepo == nil || account == nil {
+		return
+	}
+	now := time.Now()
+	until := now.Add(volcengineAgentPlanServerErrorCooldown)
+	message := strings.TrimSpace(extractUpstreamErrorMessage(body))
+	if message == "" {
+		message = http.StatusText(statusCode)
+	}
+	reason := fmt.Sprintf("Volcengine Agent Plan upstream HTTP %d: %s", statusCode, message)
+	state := &TempUnschedState{
+		UntilUnix:       until.Unix(),
+		TriggeredAtUnix: now.Unix(),
+		StatusCode:      statusCode,
+		MatchedKeyword:  "volcengine_agent_plan_server_error",
+		RuleIndex:       -1,
+		ErrorMessage:    reason,
+	}
+	s.notifyAccountSchedulingBlocked(account, until, "volcengine_agent_plan_server_error")
+	if err := s.accountRepo.SetTempUnschedulable(ctx, account.ID, until, reason); err != nil {
+		return
+	}
+	if s.tempUnschedCache != nil {
+		_ = s.tempUnschedCache.SetTempUnsched(ctx, account.ID, state)
+	}
+}
+
+func (s *GatewayService) ValidateVolcengineAgentPlanPricing(
+	ctx context.Context,
+	apiKey *APIKey,
+	endpoint VolcengineAgentPlanEndpoint,
+	usageFields ChannelUsageFields,
+	upstreamModel string,
+) error {
+	if s == nil || apiKey == nil || apiKey.GroupID == nil || apiKey.Group == nil || s.resolver == nil {
+		return fmt.Errorf("%w: Volcengine Agent Plan channel pricing is unavailable", ErrBillablePricingRequired)
+	}
+	billingModel := strings.TrimSpace(usageFields.ChannelMappedModel)
+	switch usageFields.BillingModelSource {
+	case BillingModelSourceRequested:
+		billingModel = strings.TrimSpace(usageFields.OriginalModel)
+	case BillingModelSourceUpstream:
+		billingModel = strings.TrimSpace(upstreamModel)
+	}
+	candidates := usageBillingModelCandidates(
+		billingModel,
+		usageFields.ChannelMappedModel,
+		usageFields.OriginalModel,
+		upstreamModel,
+	)
+	for _, candidate := range candidates {
+		resolved := s.resolveChannelPricing(ctx, candidate, apiKey)
+		if resolved == nil || !volcengineAgentPlanPricingModeAllowed(endpoint, resolved.Mode) {
+			continue
+		}
+		if resolved.DefaultPerRequestPrice > 0 {
+			return nil
+		}
+		for _, tier := range resolved.RequestTiers {
+			if tier.PerRequestPrice != nil && *tier.PerRequestPrice > 0 {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("%w: Volcengine Agent Plan model=%s requires positive per-request channel pricing", ErrBillablePricingRequired, billingModel)
+}
+
+func volcengineAgentPlanPricingModeAllowed(endpoint VolcengineAgentPlanEndpoint, mode BillingMode) bool {
+	if endpoint == VolcengineAgentPlanImagesGenerations {
+		return mode == BillingModePerRequest || mode == BillingModeImage
+	}
+	return mode == BillingModePerRequest
 }
 
 func appendVolcengineAgentPlanOpsError(

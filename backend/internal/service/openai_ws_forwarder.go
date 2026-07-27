@@ -207,8 +207,7 @@ func (e *OpenAIWSClientCloseError) Reason() string {
 
 // OpenAIWSIngressHooks 定义入站 WS 每个 turn 的生命周期回调。
 type OpenAIWSIngressHooks struct {
-	// InitialRequestModel 是首帧渠道映射前的请求模型，只用于 usage metadata
-	// 的 reasoning effort 后缀推导，禁止用于上游请求或计费模型。
+	// InitialRequestModel is the client-facing model from the first frame.
 	InitialRequestModel string
 	// MaxReasoningEffort limits explicit reasoning effort values for this WS session.
 	MaxReasoningEffort string
@@ -216,6 +215,7 @@ type OpenAIWSIngressHooks struct {
 	ReasoningEffortMappings []ReasoningEffortMapping
 	BeforeTurn              func(turn int) error
 	BeforeRequest           func(turn int, payload []byte, originalModel string) error
+	MapRequestModel         func(turn int, originalModel string) (string, error)
 	AfterTurn               func(turn int, result *OpenAIForwardResult, turnErr error)
 }
 

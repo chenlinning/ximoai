@@ -23,7 +23,7 @@ The project can theoretically connect any provider that exposes a compatible Ope
 
 | Platform | Protocol | Project entry surface | Declared capabilities | Classification expectation |
 |---|---|---|---|---|
-| `openai` | OpenAI | `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/images/*`, `/v1/audio/*`, `/v1/realtime`, `/v1/videos` | Responses, Chat Completions, Embeddings, Images, Audio, Realtime, Videos, Codex | Conversation, embedding, image, TTS/ASR, video |
+| `openai` | OpenAI | `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/images/*`, `/v1/audio/*`, `/v1/realtime` | Responses, Chat Completions, Embeddings, Images, Audio, Realtime, Codex | Conversation, embedding, image, TTS/ASR |
 | `anthropic` | Anthropic native | `/v1/messages` | Messages | Conversation |
 | `gemini` | Gemini native | `/v1beta/models/*:generateContent`, `streamGenerateContent`, `countTokens`, video actions | Messages, native Gemini, Videos | Conversation, video |
 | `antigravity` | Antigravity native | `/antigravity/v1/messages`, `/antigravity/v1beta/*` | Messages, native Gemini | Conversation |

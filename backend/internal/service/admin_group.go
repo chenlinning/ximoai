@@ -121,6 +121,9 @@ func (s *adminServiceImpl) CreateCompositeRoute(ctx context.Context, groupID int
 	if err != nil {
 		return nil, err
 	}
+	if err := s.platformRegistry().ValidatePlatformSlug(ctx, route.TargetPlatform); err != nil {
+		return nil, err
+	}
 	if err := s.compositeRouteRepo.Create(ctx, route); err != nil {
 		return nil, err
 	}
@@ -141,6 +144,9 @@ func (s *adminServiceImpl) UpdateCompositeRoute(ctx context.Context, groupID, ro
 	}
 	route, err := compositeRouteFromInput(groupID, input)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.platformRegistry().ValidatePlatformSlug(ctx, route.TargetPlatform); err != nil {
 		return nil, err
 	}
 	route.ID = routeID
@@ -206,6 +212,7 @@ func (s *adminServiceImpl) compositeRouteBelongsToGroup(ctx context.Context, gro
 
 func compositeRouteFromInput(groupID int64, input CompositeRouteInput) (*CompositeModelRoute, error) {
 	input = normalizeCompositeRouteInput(input)
+	input.TargetPlatform = NormalizePlatformSlug(input.TargetPlatform)
 	if input.PublicModel == "" {
 		return nil, fmt.Errorf("public_model is required")
 	}
@@ -849,14 +856,13 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if err := s.groupRepo.Update(ctx, group); err != nil {
 		return nil, err
 	}
-	if input.RateMultiplier != nil && s.membershipRateSyncer != nil {
-		if err := s.membershipRateSyncer.SyncGroupRate(ctx, id); err != nil {
-			return nil, err
-		}
-	}
-
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
+	}
+	if input.RateMultiplier != nil && s.membershipRateSyncer != nil {
+		if err := s.membershipRateSyncer.SyncGroupRate(ctx, id); err != nil {
+			logger.LegacyPrintf("service.admin", "sync membership rates after group update failed: group_id=%d err=%v", id, err)
+		}
 	}
 
 	// 如果指定了复制账号的源分组，同步绑定（替换当前分组的账号）
@@ -970,6 +976,7 @@ func (s *adminServiceImpl) normalizeAccountCredentialsForPlatform(ctx context.Co
 	}
 	if accountType == AccountTypeAPIKey && platform.RuntimeKind() != "" {
 		credentials[PlatformKindCredentialKey] = platform.RuntimeKind()
+		credentials["platform_protocol"] = platform.Protocol
 	}
 	if accountType == AccountTypeAPIKey && platform.RequiresAPIKeyBaseURL() {
 		if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
@@ -979,19 +986,6 @@ func (s *adminServiceImpl) normalizeAccountCredentialsForPlatform(ctx context.Co
 			return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_BASE_URL_REQUIRED", "base_url is required for this platform")
 		}
 	}
-	if platform.Builtin || accountType != AccountTypeAPIKey {
-		return credentials, nil
-	}
-	if strings.TrimSpace(accountCredentialString(credentials, "api_key")) == "" {
-		return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_API_KEY_REQUIRED", "api_key is required for custom platforms")
-	}
-	if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
-		credentials["base_url"] = platform.BaseURL
-	}
-	if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
-		return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_BASE_URL_REQUIRED", "base_url is required for custom platforms")
-	}
-	credentials["platform_protocol"] = platform.Protocol
 	return credentials, nil
 }
 

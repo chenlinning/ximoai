@@ -16,13 +16,13 @@ services:
   # Sub2API Application
   # ===========================================================================
   sub2api:
-	image: ${SUB2API_IMAGE:-ilemon00/sub2api:latest}
-	build:
-	  context: ..
-	  dockerfile: Dockerfile
-	  args:
-		GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
-	container_name: sub2api
+    image: ${SUB2API_IMAGE:-ilemon00/sub2api:latest}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,direct}
+    container_name: sub2api
     restart: unless-stopped
     ulimits:
       nofile:

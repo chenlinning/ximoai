@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <div class="mx-auto flex h-full w-full max-w-7xl flex-col gap-4 p-4 sm:p-6">
-      <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+      <div>
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
             {{ t('admin.platforms.title') }}
@@ -10,14 +10,6 @@
             {{ t('admin.platforms.description') }}
           </p>
         </div>
-        <button class="btn btn-primary" @click="openCreateDialog">
-          <Icon name="plus" size="sm" class="mr-2" />
-          {{ t('admin.platforms.create') }}
-        </button>
-      </div>
-
-      <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
-        {{ t('admin.platforms.openAICompatibleOnly') }}
       </div>
 
       <div class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-dark-700 dark:bg-dark-800">
@@ -67,7 +59,7 @@
                       {{ platform.display_name }}
                     </span>
                     <span class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-600 dark:text-gray-300">
-                      {{ platform.builtin ? t('admin.platforms.builtin') : t('admin.platforms.custom') }}
+                      {{ t('admin.platforms.builtin') }}
                     </span>
                   </div>
                 </td>
@@ -99,14 +91,6 @@
                       <Icon name="edit" size="xs" class="mr-1" />
                       {{ t('common.edit') }}
                     </button>
-                    <button
-                      class="btn btn-danger px-3 py-1.5 text-xs"
-                      :disabled="platform.builtin"
-                      @click="openDeleteDialog(platform)"
-                    >
-                      <Icon name="trash" size="xs" class="mr-1" />
-                      {{ t('common.delete') }}
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -118,7 +102,7 @@
 
     <BaseDialog
       :show="showDialog"
-      :title="editingPlatform ? t('admin.platforms.edit') : t('admin.platforms.create')"
+      :title="t('admin.platforms.edit')"
       width="normal"
       @close="closeDialog"
     >
@@ -128,8 +112,12 @@
         </div>
         <div>
           <label class="input-label">{{ t('admin.platforms.slug') }}</label>
-          <input v-model.trim="form.slug" class="input font-mono" required />
-          <p v-if="!editingPlatform" class="input-hint">{{ t('admin.platforms.slugHint') }}</p>
+          <input
+            v-model.trim="form.slug"
+            class="input font-mono"
+            :disabled="isCoreBuiltinPlatform(editingPlatform)"
+            required
+          />
         </div>
         <div>
           <label class="input-label">{{ t('admin.platforms.displayName') }}</label>
@@ -202,16 +190,6 @@
       </template>
     </BaseDialog>
 
-    <ConfirmDialog
-      :show="showDeleteDialog"
-      :title="t('common.delete')"
-      :message="t('admin.platforms.deleteConfirm', { name: deletingPlatform?.display_name || deletingPlatform?.slug })"
-      :confirm-text="t('common.delete')"
-      :cancel-text="t('common.cancel')"
-      :danger="true"
-      @confirm="deletePlatform"
-      @cancel="showDeleteDialog = false"
-    />
   </AppLayout>
 </template>
 
@@ -222,7 +200,6 @@ import { adminAPI } from '@/api/admin'
 import type { Platform } from '@/types'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
-import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores/app'
 import { customPlatformFallbackColor, platformBadgeStyle } from '@/utils/platformColors'
@@ -239,9 +216,7 @@ const platforms = ref<Platform[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const showDialog = ref(false)
-const showDeleteDialog = ref(false)
 const editingPlatform = ref<Platform | null>(null)
-const deletingPlatform = ref<Platform | null>(null)
 
 const form = reactive({
   slug: '',
@@ -300,22 +275,6 @@ const displayColor = (platform: Platform) => {
   return platform.color || customPlatformFallbackColor(platform.slug)
 }
 
-const resetForm = () => {
-  form.slug = ''
-  form.display_name = ''
-  form.protocol = 'openai_compatible'
-  form.base_url = ''
-  form.capabilities = defaultCapabilitiesForProtocol(form.protocol)
-  form.color = '#64748B'
-  form.enabled = true
-}
-
-const openCreateDialog = () => {
-  editingPlatform.value = null
-  resetForm()
-  showDialog.value = true
-}
-
 const openEditDialog = (platform: Platform) => {
   editingPlatform.value = platform
   form.slug = platform.slug
@@ -363,13 +322,9 @@ const submitPlatform = async () => {
     enabled: form.enabled,
   }
   try {
-    if (editingPlatform.value) {
-      await adminAPI.platforms.update(editingPlatform.value.slug, payload)
-      appStore.showSuccess(t('admin.platforms.updateSuccess'))
-    } else {
-      await adminAPI.platforms.create(payload)
-      appStore.showSuccess(t('admin.platforms.createSuccess'))
-    }
+    if (!editingPlatform.value) return
+    await adminAPI.platforms.update(editingPlatform.value.slug, payload)
+    appStore.showSuccess(t('admin.platforms.updateSuccess'))
     showDialog.value = false
     await loadPlatforms()
   } catch (error: any) {
@@ -395,24 +350,6 @@ const toggleEnabled = async (platform: Platform) => {
     await loadPlatforms()
   } catch (error: any) {
     appStore.showError(error.message || t('admin.platforms.failedToSave'))
-  }
-}
-
-const openDeleteDialog = (platform: Platform) => {
-  if (platform.builtin) return
-  deletingPlatform.value = platform
-  showDeleteDialog.value = true
-}
-
-const deletePlatform = async () => {
-  if (!deletingPlatform.value) return
-  try {
-    await adminAPI.platforms.remove(deletingPlatform.value.slug)
-    appStore.showSuccess(t('admin.platforms.deleteSuccess'))
-    showDeleteDialog.value = false
-    await loadPlatforms()
-  } catch (error: any) {
-    appStore.showError(error.message || t('admin.platforms.failedToDelete'))
   }
 }
 

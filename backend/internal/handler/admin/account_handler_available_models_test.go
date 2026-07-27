@@ -94,24 +94,12 @@ func (r *availableModelsPlatformRepo) GetBySlug(_ context.Context, slug string) 
 	return &platform, nil
 }
 
-func (r *availableModelsPlatformRepo) Create(_ context.Context, _ *service.Platform) error {
-	return nil
-}
-
 func (r *availableModelsPlatformRepo) Update(_ context.Context, _ *service.Platform) error {
 	return nil
 }
 
 func (r *availableModelsPlatformRepo) Rename(_ context.Context, _ string, _ *service.Platform) error {
 	return nil
-}
-
-func (r *availableModelsPlatformRepo) Delete(_ context.Context, _ string) error {
-	return nil
-}
-
-func (r *availableModelsPlatformRepo) Usage(_ context.Context, _ string) (service.PlatformUsage, error) {
-	return service.PlatformUsage{}, nil
 }
 
 func TestAccountHandlerGetAvailableModels_GrokUsesXAIModels(t *testing.T) {

@@ -255,15 +255,32 @@ func (r *groupLifecycleTestGroupRepo) callCount() int {
 type groupLifecycleTestAccountRepo struct {
 	AccountRepository
 
-	mu              sync.Mutex
-	calls           int
-	callsByPlatform map[string]int
-	err             error
-	started         chan struct{}
-	release         chan struct{}
-	once            sync.Once
-	beforeLoad      func()
-	beforeLoadOnce  sync.Once
+	mu               sync.Mutex
+	calls            int
+	callsByPlatform  map[string]int
+	err              error
+	started          chan struct{}
+	release          chan struct{}
+	once             sync.Once
+	beforeLoad       func()
+	beforeLoadOnce   sync.Once
+	activeAccounts   []Account
+	listActiveErr    error
+	listActiveCalls  int
+	beforeListActive func()
+}
+
+func (r *groupLifecycleTestAccountRepo) ListActive(context.Context) ([]Account, error) {
+	r.mu.Lock()
+	r.listActiveCalls++
+	accounts := append([]Account(nil), r.activeAccounts...)
+	err := r.listActiveErr
+	beforeListActive := r.beforeListActive
+	r.mu.Unlock()
+	if beforeListActive != nil {
+		beforeListActive()
+	}
+	return accounts, err
 }
 
 func (r *groupLifecycleTestAccountRepo) load(ctx context.Context, platform string) ([]Account, error) {
@@ -320,6 +337,12 @@ func (r *groupLifecycleTestAccountRepo) platformCallCount(platform string) int {
 	return r.callsByPlatform[platform]
 }
 
+func (r *groupLifecycleTestAccountRepo) listActiveCallCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.listActiveCalls
+}
+
 func newGroupLifecycleTestService(cache SchedulerCache, accounts AccountRepository, groups GroupRepository, runMode string) *SchedulerSnapshotService {
 	return NewSchedulerSnapshotService(cache, nil, accounts, groups, &config.Config{RunMode: runMode})
 }
@@ -347,6 +370,16 @@ func requireLifecycleSeen(t *testing.T, seen map[batchSeenKey]struct{}, groupID 
 	for _, platform := range schedulerSnapshotPlatforms() {
 		_, ok = seen[batchSeenKey{groupID: groupID, platform: platform}]
 		require.True(t, ok)
+	}
+}
+
+func requireLifecycleOnlySeen(t *testing.T, seen map[batchSeenKey]struct{}, groupID int64) {
+	t.Helper()
+	_, ok := seen[batchSeenKey{groupID: groupID, lifecycle: true}]
+	require.True(t, ok)
+	for _, platform := range schedulerSnapshotPlatforms() {
+		_, ok = seen[batchSeenKey{groupID: groupID, platform: platform}]
+		require.False(t, ok)
 	}
 }
 
@@ -397,7 +430,7 @@ func TestSchedulerGroupLifecycleInactiveAndMissingRetireAllHistoricalBucketsWith
 			require.Equal(t, 1, groups.callCount())
 			_, _, listCalls := cache.lifecycleCounts()
 			require.Equal(t, 1, listCalls)
-			requireLifecycleSeen(t, seen, groupID)
+			requireLifecycleOnlySeen(t, seen, groupID)
 		})
 	}
 }
@@ -431,6 +464,11 @@ func TestSchedulerGroupLifecycleActiveReopensAndRebuildsAllCurrentBuckets(t *tes
 	}
 	groups := &groupLifecycleTestGroupRepo{group: &Group{ID: groupID, Platform: PlatformOpenAI, Status: StatusActive, Hydrated: true}}
 	accounts := &groupLifecycleTestAccountRepo{}
+	accounts.beforeListActive = func() {
+		held, tokenCount := cache.leaseHeldAndTokenCount()
+		require.True(t, held, "active accounts must be captured while the group lifecycle lease is held")
+		require.Zero(t, tokenCount, "bucket reopen starts after the active account snapshot")
+	}
 	accounts.beforeLoad = func() {
 		held, tokenCount := cache.leaseHeldAndTokenCount()
 		require.False(t, held, "the group lifecycle lease must be released before the first account query")
@@ -448,6 +486,7 @@ func TestSchedulerGroupLifecycleActiveReopensAndRebuildsAllCurrentBuckets(t *tes
 	require.Contains(t, bucketStrings(registered), historical.String())
 	require.Len(t, cache.tokens(), len(current))
 	require.Equal(t, builtinSchedulerAccountQueryCount(), accounts.callCount())
+	require.Equal(t, 1, accounts.listActiveCallCount())
 	require.Equal(t, 1, accounts.platformCallCount(PlatformOpenAI))
 	for _, bucket := range current {
 		_, published := cache.counts(bucket)
@@ -525,7 +564,7 @@ func TestSchedulerGroupLifecycleLaterInactiveFencesLongActiveRebuild(t *testing.
 	err := <-activeResult
 	require.ErrorIs(t, err, ErrSchedulerBucketRetired)
 	requireLifecycleNotSeen(t, activeSeen, groupID)
-	requireLifecycleSeen(t, inactiveSeen, groupID)
+	requireLifecycleOnlySeen(t, inactiveSeen, groupID)
 }
 
 func TestSchedulerGroupLifecycleEpochPreventsABA(t *testing.T) {

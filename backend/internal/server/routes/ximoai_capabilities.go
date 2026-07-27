@@ -22,8 +22,13 @@ func isGrokVideoGatewayPlatform(c *gin.Context, gateway *handler.GatewayHandler)
 
 func ximoAIAudioOnly(gateway *handler.GatewayHandler, allowKling bool, message string, next gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		platform := service.NormalizePlatformSlug(getGroupPlatform(c))
 		kind := ximoAIPlatformKind(c, gateway)
-		if kind != service.PlatformKindOpenAIAudio && (!allowKling || kind != service.PlatformKindKlingAudio) {
+		allowed := kind == service.PlatformKindOpenAIAudio || (allowKling && kind == service.PlatformKindKlingAudio)
+		if !allowed && gateway != nil {
+			allowed = gateway.IsOpenAIAudioPlatform(c.Request.Context(), platform)
+		}
+		if !allowed {
 			openAIEndpointUnsupported(c, message)
 			return
 		}

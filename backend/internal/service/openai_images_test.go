@@ -58,6 +58,23 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_JSON(t *testing.T) {
 	require.False(t, parsed.Multipart)
 }
 
+func TestParseOpenAIImagesRequestForRoutingDefersModelValidation(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", nil)
+	c.Request.Header.Set("Content-Type", "application/json")
+	body := []byte(`{"model":"draw-pro","prompt":"cat"}`)
+	svc := &OpenAIGatewayService{}
+
+	_, strictErr := svc.ParseOpenAIImagesRequest(c, body)
+	parsed, routingErr := svc.ParseOpenAIImagesRequestForRouting(c, body)
+
+	require.Error(t, strictErr)
+	require.NoError(t, routingErr)
+	require.Equal(t, "draw-pro", parsed.Model)
+}
+
 func TestOpenAIGatewayServiceParseOpenAIImagesRequest_MultipartEdit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -1177,6 +1194,43 @@ func TestOpenAIGatewayServiceForwardImages_APIKeyGenerationUsesConfiguredV1BaseU
 	require.Equal(t, "gpt-image-2", gjson.GetBytes(upstream.lastBody, "model").String())
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "aGVsbG8=", gjson.Get(rec.Body.String(), "data.0.b64_json").String())
+}
+
+func TestOpenAIGatewayServiceForwardImages_CustomAPIKeyUsesFinalRoutingModel(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	body := []byte(`{"model":"public-image","prompt":"draw a cat","response_format":"b64_json"}`)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/images/generations", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = req
+
+	upstream := &httpUpstreamRecorder{resp: &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"created":1710000007,"data":[{"b64_json":"aGVsbG8="}]}`)),
+	}}
+	svc := &OpenAIGatewayService{cfg: &config.Config{}, httpUpstream: upstream}
+	parsed, err := svc.ParseOpenAIImagesRequestForRouting(c, body)
+	require.NoError(t, err)
+	account := &Account{
+		ID:       7,
+		Name:     "acme-images",
+		Platform: "acme-openai",
+		Type:     AccountTypeAPIKey,
+		Credentials: map[string]any{
+			"api_key":           "test-api-key",
+			"base_url":          "https://image-upstream.example/v1",
+			"platform_protocol": PlatformProtocolOpenAICompatible,
+		},
+	}
+
+	result, err := svc.ForwardImages(context.Background(), c, account, body, parsed, "flux-1.1-pro")
+	require.NoError(t, err)
+	require.Equal(t, "flux-1.1-pro", result.Model)
+	require.Equal(t, "flux-1.1-pro", result.UpstreamModel)
+	require.Equal(t, "flux-1.1-pro", gjson.GetBytes(upstream.lastBody, "model").String())
 }
 
 func TestOpenAIGatewayServiceForwardImages_APIKeyStreamJSONResponseBillsImage(t *testing.T) {

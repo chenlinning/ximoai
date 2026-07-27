@@ -14,13 +14,13 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-func TestAccountTestService_TestAccountConnection_CustomOpenAICompatibleUsesOpenAIPath(t *testing.T) {
+func TestAccountTestService_TestAccountConnection_XimoAIOpenAICompatibleUsesOpenAIPath(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	account := Account{
 		ID:          10,
-		Name:        "acme-openai",
-		Platform:    "acme-openai",
+		Name:        "openai-audio",
+		Platform:    PlatformOpenAIAudio,
 		Type:        AccountTypeAPIKey,
 		Status:      StatusActive,
 		Schedulable: true,
@@ -38,13 +38,15 @@ func TestAccountTestService_TestAccountConnection_CustomOpenAICompatibleUsesOpen
 	}}
 	platformService := NewPlatformService(&platformRepoStubForPlatformService{
 		platforms: map[string]Platform{
-			"acme-openai": {
-				Slug:        "acme-openai",
-				DisplayName: "Acme OpenAI",
+			PlatformOpenAIAudio: {
+				Slug:        PlatformOpenAIAudio,
+				Kind:        PlatformKindOpenAIAudio,
+				DisplayName: "OpenAI Audio",
 				Protocol:    PlatformProtocolOpenAICompatible,
 				BaseURL:     "https://api.acme.test/v1",
 				AuthModes:   []string{AccountTypeAPIKey},
 				Enabled:     true,
+				Builtin:     true,
 			},
 		},
 	})
@@ -68,20 +70,21 @@ func TestAccountTestService_TestAccountConnection_CustomOpenAICompatibleUsesOpen
 	require.Contains(t, rec.Body.String(), `"type":"test_complete"`)
 }
 
-func TestAccountTestService_TestAccountConnection_CustomGeminiCompatibleUsesGeminiPath(t *testing.T) {
+func TestAccountTestService_TestAccountConnection_XimoAIGeminiCompatibleUsesGeminiPath(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	account := Account{
 		ID:          11,
-		Name:        "acme-gemini",
-		Platform:    "acme-gemini",
+		Name:        "kling-audio",
+		Platform:    PlatformKlingAudio,
 		Type:        AccountTypeAPIKey,
 		Status:      StatusActive,
 		Schedulable: true,
 		Concurrency: 1,
 		Credentials: map[string]any{
-			"api_key":  "gemini-key",
-			"base_url": "https://gemini.acme.test",
+			"api_key":           "gemini-key",
+			"base_url":          "https://gemini.acme.test",
+			"platform_protocol": PlatformProtocolGemini,
 		},
 	}
 	repo := stubOpenAIAccountRepo{accounts: []Account{account}}
@@ -92,13 +95,15 @@ func TestAccountTestService_TestAccountConnection_CustomGeminiCompatibleUsesGemi
 	}}
 	platformService := NewPlatformService(&platformRepoStubForPlatformService{
 		platforms: map[string]Platform{
-			"acme-gemini": {
-				Slug:        "acme-gemini",
-				DisplayName: "Acme Gemini",
+			PlatformKlingAudio: {
+				Slug:        PlatformKlingAudio,
+				Kind:        PlatformKindKlingAudio,
+				DisplayName: "Kling Audio",
 				Protocol:    PlatformProtocolGemini,
 				BaseURL:     "https://gemini.acme.test",
 				AuthModes:   []string{AccountTypeAPIKey},
 				Enabled:     true,
+				Builtin:     true,
 			},
 		},
 	})

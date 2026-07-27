@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -33,27 +32,12 @@ var (
 type PlatformRepository interface {
 	List(ctx context.Context, includeDisabled bool) ([]Platform, error)
 	GetBySlug(ctx context.Context, slug string) (*Platform, error)
-	Create(ctx context.Context, platform *Platform) error
 	Update(ctx context.Context, platform *Platform) error
 	Rename(ctx context.Context, oldSlug string, platform *Platform) error
-	Delete(ctx context.Context, slug string) error
-	Usage(ctx context.Context, slug string) (PlatformUsage, error)
 }
 
 type PlatformService struct {
 	repo PlatformRepository
-}
-
-type PlatformUsage struct {
-	AccountCount             int64
-	GroupCount               int64
-	ChannelPricingCount      int64
-	AccountStatsPricingCount int64
-	ChannelMappingCount      int64
-}
-
-func (u PlatformUsage) Total() int64 {
-	return u.AccountCount + u.GroupCount + u.ChannelPricingCount + u.AccountStatsPricingCount + u.ChannelMappingCount
 }
 
 func NewPlatformService(repo PlatformRepository) *PlatformService {
@@ -68,8 +52,16 @@ func (s *PlatformService) List(ctx context.Context, includeDisabled bool) ([]Pla
 	if err != nil {
 		return nil, err
 	}
-	sortPlatforms(platforms)
-	return platforms, nil
+	builtin := platforms[:0]
+	for i := range platforms {
+		if !platforms[i].Builtin {
+			continue
+		}
+		platforms[i].Capabilities = normalizeStringSet(platforms[i].Capabilities)
+		builtin = append(builtin, platforms[i])
+	}
+	sortPlatforms(builtin)
+	return builtin, nil
 }
 
 func (s *PlatformService) GetBySlug(ctx context.Context, slug string) (*Platform, error) {
@@ -86,21 +78,15 @@ func (s *PlatformService) GetBySlug(ctx context.Context, slug string) (*Platform
 		}
 		return nil, ErrPlatformNotFound
 	}
-	return s.repo.GetBySlug(ctx, slug)
-}
-
-func (s *PlatformService) Create(ctx context.Context, input Platform) (*Platform, error) {
-	platform, err := normalizePlatformInput(input, false)
+	platform, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	if s == nil || s.repo == nil {
-		return nil, errors.New("platform repository not configured")
+	if platform == nil || !platform.Builtin {
+		return nil, ErrPlatformNotFound
 	}
-	if err := s.repo.Create(ctx, platform); err != nil {
-		return nil, err
-	}
-	return s.repo.GetBySlug(ctx, platform.Slug)
+	platform.Capabilities = normalizeStringSet(platform.Capabilities)
+	return platform, nil
 }
 
 func (s *PlatformService) Update(ctx context.Context, slug string, input Platform) (*Platform, error) {
@@ -114,6 +100,13 @@ func (s *PlatformService) Update(ctx context.Context, slug string, input Platfor
 	current, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return nil, err
+	}
+	if current == nil || !current.Builtin {
+		return nil, ErrPlatformNotFound
+	}
+	requestedSlug := NormalizePlatformSlug(input.Slug)
+	if current.Builtin && !builtinPlatformSlugEditable(*current) && requestedSlug != "" && requestedSlug != current.Slug {
+		return nil, infraerrors.BadRequest("BUILTIN_PLATFORM_SLUG_READONLY", "core builtin platform slug cannot be changed")
 	}
 	if current.Builtin {
 		if !builtinPlatformProtocolEditable(*current) {
@@ -148,39 +141,6 @@ func (s *PlatformService) Update(ctx context.Context, slug string, input Platfor
 		return nil, err
 	}
 	return s.repo.GetBySlug(ctx, platform.Slug)
-}
-
-func (s *PlatformService) Delete(ctx context.Context, slug string) error {
-	slug = NormalizePlatformSlug(slug)
-	if slug == "" {
-		return ErrPlatformInvalid
-	}
-	platform, err := s.GetBySlug(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if platform.Builtin {
-		return infraerrors.BadRequest("BUILTIN_PLATFORM_READONLY", "builtin platforms cannot be deleted")
-	}
-	usage, err := s.repo.Usage(ctx, slug)
-	if err != nil {
-		return err
-	}
-	if usage.Total() > 0 {
-		return infraerrors.Conflict(
-			"PLATFORM_IN_USE",
-			fmt.Sprintf(
-				"platform %s is in use by %d accounts, %d groups, %d channel pricing rules, %d account stats pricing rules, and %d channel mappings",
-				slug,
-				usage.AccountCount,
-				usage.GroupCount,
-				usage.ChannelPricingCount,
-				usage.AccountStatsPricingCount,
-				usage.ChannelMappingCount,
-			),
-		)
-	}
-	return s.repo.Delete(ctx, slug)
 }
 
 func (s *PlatformService) IsOpenAICompatible(ctx context.Context, slug string) bool {
@@ -227,9 +187,6 @@ func (s *PlatformService) ValidateAccountPlatform(ctx context.Context, platformS
 		return infraerrors.BadRequest("UNSUPPORTED_PLATFORM_AUTH_MODE",
 			fmt.Sprintf("platform %s does not support account type %s", platform.Slug, accountType))
 	}
-	if !platform.Builtin && accountType != AccountTypeAPIKey {
-		return infraerrors.BadRequest("CUSTOM_PLATFORM_APIKEY_ONLY", "custom platforms only support API Key accounts")
-	}
 	return nil
 }
 
@@ -272,28 +229,6 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 	default:
 		return nil, infraerrors.BadRequest("INVALID_PLATFORM_PROTOCOL", "protocol must be native, openai, openai_compatible, anthropic, or gemini")
 	}
-	if !input.Builtin && !isCustomPlatformProtocol(input.Protocol) {
-		return nil, infraerrors.BadRequest("INVALID_CUSTOM_PLATFORM_PROTOCOL", "custom platforms must use openai_compatible, anthropic, or gemini protocol")
-	}
-	if !input.Builtin && isCustomPlatformProtocol(input.Protocol) {
-		if input.BaseURL == "" {
-			return nil, infraerrors.BadRequest("INVALID_PLATFORM_BASE_URL", "base_url is required for custom platforms")
-		}
-		if _, err := url.ParseRequestURI(input.BaseURL); err != nil {
-			return nil, infraerrors.BadRequest("INVALID_PLATFORM_BASE_URL", "base_url must be a valid URL")
-		}
-		input.AuthModes = []string{AccountTypeAPIKey}
-		if len(input.Capabilities) == 0 {
-			input.Capabilities = defaultCustomPlatformCapabilities(input.Protocol)
-		}
-	}
-	if input.Protocol == PlatformProtocolOpenAI && !input.Builtin {
-		if input.Slug != PlatformOpenAI {
-			return nil, infraerrors.BadRequest("INVALID_PLATFORM_PROTOCOL", "openai protocol is reserved for the openai platform")
-		}
-		input.Slug = PlatformOpenAI
-		input.BaseURL = PlatformDefaultBaseURLOpenAI
-	}
 	if len(input.AuthModes) == 0 {
 		return nil, infraerrors.BadRequest("INVALID_PLATFORM_AUTH_MODES", "auth_modes is required")
 	}
@@ -307,17 +242,8 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 	return &input, nil
 }
 
-func isCustomPlatformProtocol(protocol string) bool {
-	switch protocol {
-	case PlatformProtocolOpenAICompatible, PlatformProtocolAnthropic, PlatformProtocolGemini:
-		return true
-	default:
-		return false
-	}
-}
-
 func builtinPlatformSlugEditable(platform Platform) bool {
-	return platform.Builtin
+	return platform.Builtin && !isCoreBuiltinPlatform(platform)
 }
 
 func builtinPlatformProtocolEditable(platform Platform) bool {
@@ -344,21 +270,6 @@ func isCoreBuiltinPlatform(platform Platform) bool {
 		containsString(platform.AuthModes, AccountTypeUpstream) ||
 		containsString(platform.AuthModes, AccountTypeServiceAccount) ||
 		containsString(platform.AuthModes, AccountTypeBedrock)
-}
-
-func defaultCustomPlatformCapabilities(protocol string) []string {
-	switch protocol {
-	case PlatformProtocolAnthropic:
-		return []string{PlatformCapabilityMessages}
-	case PlatformProtocolGemini:
-		return []string{PlatformCapabilityMessages, PlatformCapabilityNativeGemini, PlatformCapabilityVideos}
-	default:
-		return []string{
-			PlatformCapabilityResponses,
-			PlatformCapabilityChatCompletions,
-			PlatformCapabilityImages,
-		}
-	}
 }
 
 func ensureRequiredPlatformCapabilities(kind string, capabilities []string) []string {
@@ -450,7 +361,6 @@ func builtinPlatforms(includeDisabled bool) []Platform {
 				PlatformCapabilityChatCompletions,
 				PlatformCapabilityEmbeddings,
 				PlatformCapabilityImages,
-				PlatformCapabilityVideos,
 				PlatformCapabilityAudio,
 				PlatformCapabilityRealtime,
 				PlatformCapabilityCodex,

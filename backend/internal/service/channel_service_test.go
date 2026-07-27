@@ -2064,6 +2064,32 @@ func TestCompositeChannelLookupUsesResolvedTargetPlatform(t *testing.T) {
 	require.Equal(t, "claude-sonnet-4-5", anthropicResult.MappedModel)
 }
 
+func TestCompositeChannelLookupUsesResolvedCustomPlatform(t *testing.T) {
+	const customPlatform = "acme-openai"
+	channel := Channel{
+		ID:       1,
+		Status:   StatusActive,
+		GroupIDs: []int64{99},
+		ModelPricing: []ChannelModelPricing{
+			{Platform: customPlatform, Models: []string{"acme-*"}},
+		},
+		ModelMapping: map[string]map[string]string{
+			customPlatform: {
+				"public-acme": "acme-reasoning",
+			},
+		},
+	}
+	cache := populateChannelCache([]Channel{channel}, map[int64]string{99: PlatformComposite})
+	svc := &ChannelService{}
+	svc.cache.Store(cache)
+
+	ctx := WithResolvedTargetPlatform(context.Background(), customPlatform)
+	require.NotNil(t, svc.GetChannelModelPricing(ctx, 99, "acme-reasoning"))
+	result := svc.ResolveChannelMapping(ctx, 99, "public-acme")
+	require.True(t, result.Mapped)
+	require.Equal(t, "acme-reasoning", result.MappedModel)
+}
+
 // ===========================================================================
 // 9. Antigravity platform isolation — no cross-platform pricing leakage
 // ===========================================================================
@@ -2366,31 +2392,33 @@ func TestValidatePricingBillingMode(t *testing.T) {
 			name:    "per_request no price no intervals - invalid",
 			pricing: []ChannelModelPricing{{BillingMode: BillingModePerRequest}},
 			wantErr: true,
-			errMsg:  "positive per-request price or intervals required",
+			errMsg:  "per-request price or intervals required",
 		},
 		{
-			name: "per_request zero price - invalid",
+			name: "per_request zero price - valid",
 			pricing: []ChannelModelPricing{{
 				BillingMode:     BillingModePerRequest,
 				PerRequestPrice: testPtrFloat64(0),
 			}},
-			wantErr: true,
-			errMsg:  "positive per-request price or intervals required",
 		},
 		{
-			name: "video zero interval price - invalid",
+			name: "video zero interval price - valid",
 			pricing: []ChannelModelPricing{{
 				BillingMode: BillingModeVideo,
 				Intervals:   []PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(1000), PerRequestPrice: testPtrFloat64(0)}},
 			}},
+		},
+		{
+			name:    "video no price no intervals - invalid",
+			pricing: []ChannelModelPricing{{BillingMode: BillingModeVideo}},
 			wantErr: true,
-			errMsg:  "positive per-request price or intervals required",
+			errMsg:  "per-request price or intervals required",
 		},
 		{
 			name:    "image no price no intervals - invalid",
 			pricing: []ChannelModelPricing{{BillingMode: BillingModeImage}},
 			wantErr: true,
-			errMsg:  "positive per-request price or intervals required",
+			errMsg:  "per-request price or intervals required",
 		},
 		{
 			name:    "empty list - valid",

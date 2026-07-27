@@ -247,34 +247,40 @@ func TestBuildUpstreamModelsRequestsForAPIKeyAccounts(t *testing.T) {
 	require.Equal(t, "antigravity-key", antigravityReq.Header.Get("x-api-key"))
 }
 
-func TestBuildUpstreamModelsRequestUsesCustomPlatformProtocol(t *testing.T) {
+func TestBuildUpstreamModelsRequestUsesXimoAIBuiltinPlatformProtocol(t *testing.T) {
 	t.Parallel()
 
 	platformService := NewPlatformService(&platformRepoStubForPlatformService{
 		platforms: map[string]Platform{
-			"custom-openai": {
-				Slug:        "custom-openai",
-				DisplayName: "Custom OpenAI",
+			PlatformGrokVideo: {
+				Slug:        PlatformGrokVideo,
+				Kind:        PlatformKindGrokVideo,
+				DisplayName: "Grok-video",
 				Protocol:    PlatformProtocolOpenAICompatible,
 				BaseURL:     "https://openai.example.com/v1",
 				AuthModes:   []string{AccountTypeAPIKey},
 				Enabled:     true,
+				Builtin:     true,
 			},
-			"custom-gemini": {
-				Slug:        "custom-gemini",
-				DisplayName: "Custom Gemini",
+			PlatformOpenAIAudio: {
+				Slug:        PlatformOpenAIAudio,
+				Kind:        PlatformKindOpenAIAudio,
+				DisplayName: "OpenAI Audio",
 				Protocol:    PlatformProtocolGemini,
 				BaseURL:     "https://gemini.example.com/v1beta",
 				AuthModes:   []string{AccountTypeAPIKey},
 				Enabled:     true,
+				Builtin:     true,
 			},
-			"custom-anthropic": {
-				Slug:        "custom-anthropic",
-				DisplayName: "Custom Anthropic",
+			PlatformKlingAudio: {
+				Slug:        PlatformKlingAudio,
+				Kind:        PlatformKindKlingAudio,
+				DisplayName: "Kling Audio",
 				Protocol:    PlatformProtocolAnthropic,
 				BaseURL:     "https://anthropic.example.com/v1",
 				AuthModes:   []string{AccountTypeAPIKey},
 				Enabled:     true,
+				Builtin:     true,
 			},
 		},
 	})
@@ -285,7 +291,7 @@ func TestBuildUpstreamModelsRequestUsesCustomPlatformProtocol(t *testing.T) {
 	ctx := context.Background()
 
 	openAIReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
-		Platform: "custom-openai",
+		Platform: PlatformGrokVideo,
 		Type:     AccountTypeAPIKey,
 		Credentials: map[string]any{
 			"api_key":  "openai-key",
@@ -297,7 +303,7 @@ func TestBuildUpstreamModelsRequestUsesCustomPlatformProtocol(t *testing.T) {
 	require.Equal(t, "Bearer openai-key", openAIReq.Header.Get("Authorization"))
 
 	geminiReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
-		Platform: "custom-gemini",
+		Platform: PlatformOpenAIAudio,
 		Type:     AccountTypeAPIKey,
 		Credentials: map[string]any{
 			"api_key":  "gemini-key",
@@ -309,7 +315,7 @@ func TestBuildUpstreamModelsRequestUsesCustomPlatformProtocol(t *testing.T) {
 	require.Equal(t, "gemini-key", geminiReq.Header.Get("x-goog-api-key"))
 
 	anthropicReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
-		Platform: "custom-anthropic",
+		Platform: PlatformKlingAudio,
 		Type:     AccountTypeAPIKey,
 		Credentials: map[string]any{
 			"api_key":  "anthropic-key",

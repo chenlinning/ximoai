@@ -681,7 +681,7 @@ func (s *SchedulerSnapshotService) reconcileGroupLifecycle(ctx context.Context, 
 			}
 		}
 	}
-	markGroupLifecycleSeen(seen, groupID)
+	markGroupLifecycleSeen(seen, groupID, plan.tasks)
 	return nil
 }
 
@@ -726,7 +726,11 @@ func (s *SchedulerSnapshotService) prepareGroupLifecycle(ctx context.Context, gr
 	if len(canonicalOverride) > 0 {
 		buckets = canonicalOverride[0]
 	} else if plan.active {
-		platforms := append([]string(nil), builtinSchedulerPlatforms()...)
+		activeAccounts, err := s.listActiveSchedulerAccounts(lifecycleCtx)
+		if err != nil {
+			return schedulerGroupLifecyclePlan{}, err
+		}
+		platforms := schedulerPlatformsForGroupAccounts(groupID, activeAccounts)
 		platforms = appendSchedulerPlatform(platforms, group.Platform)
 		buckets = schedulerBucketsForPlatforms(groupID, platforms)
 	}
@@ -774,13 +778,13 @@ func (s *SchedulerSnapshotService) releaseGroupLifecycleLease(lease SchedulerGro
 	return s.cache.ReleaseGroupLifecycleLease(releaseCtx, lease)
 }
 
-func markGroupLifecycleSeen(seen map[batchSeenKey]struct{}, groupID int64) {
+func markGroupLifecycleSeen(seen map[batchSeenKey]struct{}, groupID int64, tasks []schedulerBucketWriteTask) {
 	if seen == nil {
 		return
 	}
 	seen[batchSeenKey{groupID: groupID, lifecycle: true}] = struct{}{}
-	for _, platform := range schedulerSnapshotPlatforms() {
-		seen[batchSeenKey{groupID: groupID, platform: platform}] = struct{}{}
+	for _, task := range tasks {
+		seen[batchSeenKey{groupID: groupID, platform: task.bucket.Platform}] = struct{}{}
 	}
 }
 
@@ -1020,10 +1024,11 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 		return err
 	}
 	registered = dedupeBuckets(registered)
-	canonicalPlatforms, err := s.fullRebuildSchedulerPlatforms(ctx)
+	activeAccounts, err := s.listActiveSchedulerAccounts(ctx)
 	if err != nil {
 		return err
 	}
+	canonicalPlatforms := schedulerPlatformsForAccounts(activeAccounts)
 
 	if s.isRunModeSimple() {
 		canonical := schedulerBucketsForPlatforms(0, canonicalPlatforms)
@@ -1063,7 +1068,7 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 
 	reopenedTasks := make([]schedulerBucketWriteTask, 0)
 	for _, groupID := range activeGroupIDs {
-		canonical := schedulerBucketsForPlatforms(groupID, canonicalPlatforms)
+		canonical := schedulerBucketsForPlatforms(groupID, schedulerPlatformsForGroupAccounts(groupID, activeAccounts))
 		canonicalTasks, captureErr := s.captureFullRebuildCanonicalTasks(ctx, canonical)
 		if captureErr == nil {
 			capturedTasks = append(capturedTasks, canonicalTasks...)
@@ -1103,7 +1108,7 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 	sort.Slice(staleGroupIDs, func(i, j int) bool { return staleGroupIDs[i] < staleGroupIDs[j] })
 
 	for _, groupID := range staleGroupIDs {
-		canonical := schedulerBucketsForPlatforms(groupID, canonicalPlatforms)
+		canonical := schedulerBucketsForPlatforms(groupID, schedulerPlatformsForGroupAccounts(groupID, activeAccounts))
 		plan, err := s.prepareGroupLifecycle(ctx, groupID, registeredByGroup[groupID], canonical)
 		if err != nil {
 			return err
@@ -1117,19 +1122,11 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 	return s.prepareAndRebuildFullSnapshot(ctx, capturedTasks, reopenedTasks, ordinaryBuckets, reason)
 }
 
-func (s *SchedulerSnapshotService) fullRebuildSchedulerPlatforms(ctx context.Context) ([]string, error) {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
+func (s *SchedulerSnapshotService) listActiveSchedulerAccounts(ctx context.Context) ([]Account, error) {
 	if s == nil || s.accountRepo == nil {
-		return platforms, nil
+		return nil, nil
 	}
-	accounts, err := s.accountRepo.ListActive(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, account := range accounts {
-		platforms = appendSchedulerPlatform(platforms, account.Platform)
-	}
-	return platforms, nil
+	return s.accountRepo.ListActive(ctx)
 }
 
 func (s *SchedulerSnapshotService) listActiveSchedulerGroupIDs(ctx context.Context) ([]int64, error) {
@@ -1661,12 +1658,27 @@ func builtinSchedulerPlatforms() []string {
 }
 
 func (s *SchedulerSnapshotService) defaultSchedulerPlatforms(ctx context.Context) []string {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
 	if s != nil && s.accountRepo != nil {
 		if accounts, err := s.accountRepo.ListActive(ctx); err == nil {
-			for _, account := range accounts {
-				platforms = appendSchedulerPlatform(platforms, account.Platform)
-			}
+			return schedulerPlatformsForAccounts(accounts)
+		}
+	}
+	return builtinSchedulerPlatforms()
+}
+
+func schedulerPlatformsForAccounts(accounts []Account) []string {
+	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
+	for _, account := range accounts {
+		platforms = appendSchedulerPlatform(platforms, account.Platform)
+	}
+	return platforms
+}
+
+func schedulerPlatformsForGroupAccounts(groupID int64, accounts []Account) []string {
+	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
+	for _, account := range accounts {
+		if schedulerAccountBelongsToGroup(account, groupID) {
+			platforms = appendSchedulerPlatform(platforms, account.Platform)
 		}
 	}
 	return platforms
@@ -1677,6 +1689,10 @@ func (s *SchedulerSnapshotService) schedulerPlatformsForGroupIDs(ctx context.Con
 	if s == nil {
 		return platforms
 	}
+	var activeAccounts []Account
+	if s.accountRepo != nil {
+		activeAccounts, _ = s.accountRepo.ListActive(ctx)
+	}
 	for _, groupID := range groupIDs {
 		if groupID <= 0 {
 			continue
@@ -1686,13 +1702,9 @@ func (s *SchedulerSnapshotService) schedulerPlatformsForGroupIDs(ctx context.Con
 				platforms = appendSchedulerPlatform(platforms, group.Platform)
 			}
 		}
-		if s.accountRepo != nil {
-			if accounts, err := s.accountRepo.ListActive(ctx); err == nil {
-				for _, account := range accounts {
-					if schedulerAccountBelongsToGroup(account, groupID) {
-						platforms = appendSchedulerPlatform(platforms, account.Platform)
-					}
-				}
+		for _, account := range activeAccounts {
+			if schedulerAccountBelongsToGroup(account, groupID) {
+				platforms = appendSchedulerPlatform(platforms, account.Platform)
 			}
 		}
 	}

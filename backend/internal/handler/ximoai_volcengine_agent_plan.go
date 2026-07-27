@@ -168,6 +168,16 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 		if upstreamModel == "" {
 			upstreamModel = requestedModel
 		}
+		usageFields := channelMapping.ToUsageFields(requestedModel, upstreamModel)
+		if pricingErr := h.gatewayService.ValidateVolcengineAgentPlanPricing(
+			c.Request.Context(), apiKey, endpoint, usageFields, upstreamModel,
+		); pricingErr != nil {
+			if accountRelease != nil {
+				accountRelease()
+			}
+			h.errorResponse(c, http.StatusServiceUnavailable, "billing_configuration_error", pricingErr.Error())
+			return
+		}
 
 		var result *service.ForwardResult
 		if endpoint.IsWebSocket() {
@@ -181,6 +191,7 @@ func (h *GatewayHandler) handleVolcengineAgentPlan(c *gin.Context, endpoint serv
 
 		if err != nil {
 			lastErr = err
+			h.gatewayService.HandleVolcengineAgentPlanUpstreamError(c.Request.Context(), account, err, upstreamModel)
 			if c.Writer.Written() {
 				reqLog.Warn("volcengine_agent_plan.forward_failed_after_response_started", zap.Int64("account_id", account.ID), zap.Error(err))
 				return
@@ -368,7 +379,7 @@ func (h *GatewayHandler) recordVolcengineAgentPlanUsage(
 	clientIP := ip.GetClientIP(c)
 	inboundEndpoint := GetInboundEndpoint(c)
 
-	h.submitUsageRecordTask(c.Request.Context(), func(ctx context.Context) {
+	h.submitMandatoryUsageRecordTask(c.Request.Context(), func(ctx context.Context) {
 		if err := h.gatewayService.RecordUsage(ctx, &service.RecordUsageInput{
 			Result:             result,
 			QuotaPlatform:      quotaPlatform,
@@ -382,7 +393,6 @@ func (h *GatewayHandler) recordVolcengineAgentPlanUsage(
 			IPAddress:          clientIP,
 			RequestPayloadHash: requestPayloadHash,
 			APIKeyService:      h.apiKeyService,
-			RequirePaidRequest: endpoint != service.VolcengineAgentPlanImagesGenerations,
 			ChannelUsageFields: usageFields,
 		}); err != nil {
 			logger.L().With(

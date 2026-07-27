@@ -550,7 +550,7 @@ func TestGatewayServiceRecordUsage_ReasoningEffortNil(t *testing.T) {
 	require.Nil(t, usageRepo.lastLog.ReasoningEffort)
 }
 
-func TestGatewayServiceRecordUsage_RequiresPositivePerRequestPricingWhenRequested(t *testing.T) {
+func TestGatewayServiceRecordUsage_PerRequestPricingBillsCompletedRequests(t *testing.T) {
 	groupID := int64(990)
 	model := "seed-tts-2.0"
 	newInput := func() *RecordUsageInput {
@@ -567,38 +567,22 @@ func TestGatewayServiceRecordUsage_RequiresPositivePerRequestPricingWhenRequeste
 				GroupID: i64p(groupID),
 				Group:   &Group{ID: groupID, Platform: PlatformVolcengineAgentPlan, RateMultiplier: 1},
 			},
-			User:               &User{ID: 901},
-			Account:            &Account{ID: 902},
-			RequirePaidRequest: true,
+			User:    &User{ID: 901},
+			Account: &Account{ID: 902},
 		}
 	}
 
-	t.Run("positive per request price bills every completed request", func(t *testing.T) {
-		usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
-		userRepo := &openAIRecordUsageUserRepoStub{}
-		svc := newGatewayRecordUsageServiceForTest(usageRepo, userRepo, &openAIRecordUsageSubRepoStub{})
-		svc.resolver = newPerRequestChannelPricingResolverForTest(t, groupID, model, 0.39, BillingModePerRequest)
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	userRepo := &openAIRecordUsageUserRepoStub{}
+	svc := newGatewayRecordUsageServiceForTest(usageRepo, userRepo, &openAIRecordUsageSubRepoStub{})
+	svc.resolver = newPerRequestChannelPricingResolverForTest(t, groupID, model, 0.39, BillingModePerRequest)
 
-		err := svc.RecordUsage(context.Background(), newInput())
+	err := svc.RecordUsage(context.Background(), newInput())
 
-		require.NoError(t, err)
-		require.NotNil(t, usageRepo.lastLog)
-		require.InDelta(t, 0.78, usageRepo.lastLog.ActualCost, 1e-12)
-		require.InDelta(t, 0.78, userRepo.lastAmount, 1e-12)
-	})
-
-	t.Run("missing channel pricing is rejected", func(t *testing.T) {
-		svc := newGatewayRecordUsageServiceForTest(&openAIRecordUsageLogRepoStub{}, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{})
-		err := svc.RecordUsage(context.Background(), newInput())
-		require.ErrorIs(t, err, ErrBillablePricingRequired)
-	})
-
-	t.Run("token channel pricing is rejected", func(t *testing.T) {
-		svc := newGatewayRecordUsageServiceForTest(&openAIRecordUsageLogRepoStub{}, &openAIRecordUsageUserRepoStub{}, &openAIRecordUsageSubRepoStub{})
-		svc.resolver = newPerRequestChannelPricingResolverForTest(t, groupID, model, 0.39, BillingModeToken)
-		err := svc.RecordUsage(context.Background(), newInput())
-		require.ErrorIs(t, err, ErrBillablePricingRequired)
-	})
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.InDelta(t, 0.78, usageRepo.lastLog.ActualCost, 1e-12)
+	require.InDelta(t, 0.78, userRepo.lastAmount, 1e-12)
 }
 
 func newPerRequestChannelPricingResolverForTest(t *testing.T, groupID int64, model string, price float64, mode BillingMode) *ModelPricingResolver {

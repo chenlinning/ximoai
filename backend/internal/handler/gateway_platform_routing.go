@@ -69,6 +69,34 @@ func (h *GatewayHandler) IsOpenAIAPIKeyProtocolPlatform(ctx context.Context, pla
 		(!registered.Builtin && registered.Protocol == service.PlatformProtocolOpenAICompatible)
 }
 
+func (h *GatewayHandler) IsOpenAIImagesPlatform(ctx context.Context, platform string) bool {
+	platform = service.NormalizePlatformSlug(platform)
+	if platform == service.PlatformOpenAI {
+		return true
+	}
+	registered := h.registeredPlatform(ctx, platform)
+	if registered == nil || service.IsXimoAIMediaPlatformKind(registered.RuntimeKind()) {
+		return false
+	}
+	return (registered.Protocol == service.PlatformProtocolOpenAI ||
+		(!registered.Builtin && registered.Protocol == service.PlatformProtocolOpenAICompatible)) &&
+		registered.SupportsCapability(service.PlatformCapabilityImages)
+}
+
+func (h *GatewayHandler) IsOpenAIAudioPlatform(ctx context.Context, platform string) bool {
+	platform = service.NormalizePlatformSlug(platform)
+	if platform == service.PlatformOpenAI {
+		return true
+	}
+	registered := h.registeredPlatform(ctx, platform)
+	if registered == nil || service.IsXimoAIMediaPlatformKind(registered.RuntimeKind()) {
+		return false
+	}
+	return (registered.Protocol == service.PlatformProtocolOpenAI ||
+		(!registered.Builtin && registered.Protocol == service.PlatformProtocolOpenAICompatible)) &&
+		registered.SupportsCapability(service.PlatformCapabilityAudio)
+}
+
 func (h *GatewayHandler) isGeminiProtocolAccount(account *service.Account) bool {
 	return account != nil && (account.IsGemini() || account.IsGeminiCompatibleAPIKey())
 }

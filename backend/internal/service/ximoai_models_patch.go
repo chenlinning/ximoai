@@ -84,8 +84,6 @@ func ximoAIChannelMappedModelIDs(channel *Channel, platform string) ([]string, b
 	return models, true
 }
 
-// XimoAIModelsFallbackPlatform maps only non-builtin custom platforms to the
-// official platform whose default model list matches the selected protocol.
 func (s *PlatformService) XimoAIModelsFallbackPlatform(ctx context.Context, slug string) string {
 	slug = NormalizePlatformSlug(slug)
 	if s == nil || slug == "" {
@@ -98,18 +96,21 @@ func (s *PlatformService) XimoAIModelsFallbackPlatform(ctx context.Context, slug
 	if platform.IsVolcengineAgentPlan() {
 		return PlatformVolcengineAgentPlan
 	}
-	if platform.Builtin {
-		return slug
-	}
+	return slug
+}
 
-	switch platform.Protocol {
-	case PlatformProtocolOpenAICompatible:
-		return PlatformOpenAI
-	case PlatformProtocolGemini:
-		return PlatformGemini
-	case PlatformProtocolAnthropic:
-		return PlatformAnthropic
+func (s *PlatformService) XimoAIModelsUseEmptyFallback(ctx context.Context, slug string) bool {
+	if s == nil {
+		return false
+	}
+	platform, err := s.GetBySlug(ctx, NormalizePlatformSlug(slug))
+	if err != nil || platform == nil || !platform.Enabled {
+		return false
+	}
+	switch platform.RuntimeKind() {
+	case PlatformKindGrokVideo, PlatformKindOpenAIAudio, PlatformKindKlingAudio:
+		return true
 	default:
-		return slug
+		return false
 	}
 }

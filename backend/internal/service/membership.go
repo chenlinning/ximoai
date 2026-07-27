@@ -453,12 +453,14 @@ func (s *MembershipService) SyncMembershipLevel(ctx context.Context, levelID int
 	if err != nil {
 		return err
 	}
+	var syncErr error
 	for _, membership := range memberships {
 		if err := s.SyncUserMembership(ctx, membership.UserID); err != nil {
 			logger.LegacyPrintf("service.membership", "sync user membership failed: user_id=%d level_id=%d err=%v", membership.UserID, levelID, err)
+			syncErr = errors.Join(syncErr, fmt.Errorf("sync user %d membership: %w", membership.UserID, err))
 		}
 	}
-	return nil
+	return syncErr
 }
 
 func (s *MembershipService) SyncGroupRate(ctx context.Context, groupID int64) error {
@@ -466,12 +468,14 @@ func (s *MembershipService) SyncGroupRate(ctx context.Context, groupID int64) er
 	if err != nil {
 		return err
 	}
+	var syncErr error
 	for _, level := range levels {
 		if err := s.SyncMembershipLevel(ctx, level.ID); err != nil {
 			logger.LegacyPrintf("service.membership", "sync group membership rate failed: group_id=%d level_id=%d err=%v", groupID, level.ID, err)
+			syncErr = errors.Join(syncErr, fmt.Errorf("sync membership level %d: %w", level.ID, err))
 		}
 	}
-	return nil
+	return syncErr
 }
 
 func (s *MembershipService) ExpireMemberships(ctx context.Context) error {
@@ -508,16 +512,17 @@ func (s *MembershipService) RepairMembershipState(ctx context.Context) error {
 	}
 	const batchSize = 5000
 	var afterID int64
+	var repairErr error
 	for {
 		if err := ctx.Err(); err != nil {
-			return err
+			return errors.Join(repairErr, err)
 		}
 		active, err := s.repo.ListActiveUserMembershipsAfterID(ctx, afterID, batchSize)
 		if err != nil {
-			return err
+			return errors.Join(repairErr, err)
 		}
 		if len(active) == 0 {
-			return nil
+			return repairErr
 		}
 		for _, membership := range active {
 			if membership.ID > afterID {
@@ -525,6 +530,7 @@ func (s *MembershipService) RepairMembershipState(ctx context.Context) error {
 			}
 			if err := s.SyncUserMembership(ctx, membership.UserID); err != nil {
 				logger.LegacyPrintf("service.membership", "repair membership failed: user_id=%d membership_id=%d err=%v", membership.UserID, membership.ID, err)
+				repairErr = errors.Join(repairErr, fmt.Errorf("repair membership %d for user %d: %w", membership.ID, membership.UserID, err))
 			}
 		}
 	}

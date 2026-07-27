@@ -915,7 +915,7 @@ const adminNavItems = computed((): NavItem[] => {
 
   const visible = applyFeatureFlags(baseItems)
 
-  // 绠€鍗曟ā寮忎笅锛屽湪绯荤粺璁剧疆鍓嶆彃鍏?API瀵嗛挜
+  // Keep settings and custom menu entries available in simple mode.
   if (authStore.isSimpleMode) {
     const filtered = visible.filter(item => !item.hideInSimpleMode)
     filtered.push({ path: '/admin/settings', label: t('nav.settings'), icon: CogIcon })

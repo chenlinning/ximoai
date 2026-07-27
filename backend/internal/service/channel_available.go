@@ -222,7 +222,7 @@ func nonZeroPtr(v float64) *float64 {
 func filterSupportedModelsWithPricing(models []SupportedModel) []SupportedModel {
 	out := make([]SupportedModel, 0, len(models))
 	for i := range models {
-		if !channelPricingHasPositiveConfiguredPrice(models[i].Pricing) {
+		if models[i].Pricing == nil {
 			continue
 		}
 		out = append(out, models[i])

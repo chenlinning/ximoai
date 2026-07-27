@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestHandleGrokMediaErrorResponseVideoStatus502DoesNotUnscheduleAccount(t *testing.T) {
+func TestHandleGrokMediaErrorResponseVideoStatus502UsesOfficialNonPoolCooldown(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -25,7 +25,7 @@ func TestHandleGrokMediaErrorResponseVideoStatus502DoesNotUnscheduleAccount(t *t
 		ID:          7101,
 		Name:        "grok-video-status",
 		Platform:    PlatformGrok,
-		Type:        AccountTypeOAuth,
+		Type:        AccountTypeAPIKey,
 		Status:      StatusActive,
 		Schedulable: true,
 	}
@@ -51,8 +51,30 @@ func TestHandleGrokMediaErrorResponseVideoStatus502DoesNotUnscheduleAccount(t *t
 	var failoverErr *UpstreamFailoverError
 	require.True(t, errors.As(err, &failoverErr))
 	require.Equal(t, http.StatusBadGateway, failoverErr.StatusCode)
-	require.Zero(t, repo.tempUnschedCalls)
+	require.Equal(t, 1, repo.tempUnschedCalls)
 	require.Zero(t, repo.rateLimitedCalls)
+	require.Equal(t, "grok upstream temporary error", repo.lastTempUnschedReason)
+	require.True(t, svc.isOpenAIAccountRuntimeBlocked(account))
+}
+
+func TestHandleGrokMediaAccountUpstreamErrorVideoStatus502KeepsPoolAccountSchedulable(t *testing.T) {
+	account := &Account{
+		ID:          7103,
+		Platform:    PlatformGrok,
+		Type:        AccountTypeAPIKey,
+		Status:      StatusActive,
+		Schedulable: true,
+		Credentials: map[string]any{"pool_mode": true},
+	}
+	repo := &grokQuotaAccountRepo{}
+	svc := &OpenAIGatewayService{accountRepo: repo}
+
+	svc.handleGrokMediaAccountUpstreamError(
+		context.Background(), account, GrokMediaEndpointVideoStatus,
+		http.StatusBadGateway, nil, nil,
+	)
+
+	require.Zero(t, repo.tempUnschedCalls)
 	require.False(t, svc.isOpenAIAccountRuntimeBlocked(account))
 }
 

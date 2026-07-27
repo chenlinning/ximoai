@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -52,7 +53,7 @@ func (s *OpenAIGatewayService) forwardXimoAIGrokVideoMedia(
 	}
 	upstreamCtx, releaseUpstreamCtx := detachUpstreamContext(ctx)
 	defer releaseUpstreamCtx()
-	upstreamReq, err := s.buildOpenAIVideoRequest(upstreamCtx, c, account, providerReq.Method, providerReq.Endpoint, providerReq.Body, providerReq.ContentType, token)
+	upstreamReq, err := s.buildXimoAIGrokVideoRequest(upstreamCtx, c, account, providerReq, token)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +110,49 @@ func (s *OpenAIGatewayService) forwardXimoAIGrokVideoMedia(
 	}, nil
 }
 
+func (s *OpenAIGatewayService) buildXimoAIGrokVideoRequest(
+	ctx context.Context,
+	c *gin.Context,
+	account *Account,
+	providerReq providerProtocolRequest,
+	token string,
+) (*http.Request, error) {
+	baseURL, err := s.validateUpstreamBaseURL(account.GetGrokBaseURL())
+	if err != nil {
+		return nil, err
+	}
+	targetURL := buildOpenAIVideosURL(baseURL, providerReq.Endpoint)
+	if c != nil && c.Request != nil && strings.TrimSpace(c.Request.URL.RawQuery) != "" {
+		separator := "?"
+		if strings.Contains(targetURL, "?") {
+			separator = "&"
+		}
+		targetURL += separator + c.Request.URL.RawQuery
+	}
+	req, err := http.NewRequestWithContext(ctx, providerReq.Method, targetURL, bytes.NewReader(providerReq.Body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	if c != nil && c.Request != nil {
+		for key, values := range c.Request.Header {
+			if !openaiPassthroughAllowedHeaders[strings.ToLower(key)] {
+				continue
+			}
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+	}
+	if userAgent := account.GetOpenAIUserAgent(); userAgent != "" {
+		req.Header.Set("User-Agent", userAgent)
+	}
+	if contentType := strings.TrimSpace(providerReq.ContentType); contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	return req, nil
+}
+
 func ximoAIGrokVideoPublicEndpoint(endpoint GrokMediaEndpoint, requestID string) (string, string, error) {
 	switch endpoint {
 	case GrokMediaEndpointVideosGenerations:
@@ -124,4 +168,16 @@ func ximoAIGrokVideoPublicEndpoint(endpoint GrokMediaEndpoint, requestID string)
 	default:
 		return "", "", fmt.Errorf("grok-video does not support media endpoint %s", endpoint)
 	}
+}
+
+func (s *OpenAIGatewayService) handleGrokMediaAccountUpstreamError(
+	ctx context.Context,
+	account *Account,
+	endpoint GrokMediaEndpoint,
+	statusCode int,
+	headers http.Header,
+	responseBody []byte,
+) {
+	_ = endpoint
+	s.handleGrokAccountUpstreamError(ctx, account, statusCode, headers, responseBody)
 }

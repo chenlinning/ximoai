@@ -87,7 +87,7 @@ func TestParseVolcengineAgentPlanRequestUsesOfficialResourceIDForWebSocketAudio(
 	}
 }
 
-func TestVolcengineAgentPlanPlatformRecognizesLegacyNativeDefinitionOnly(t *testing.T) {
+func TestVolcengineAgentPlanPlatformRecognizesLegacyNativeDefinition(t *testing.T) {
 	legacyNative := &GatewayHandler{platformService: service.NewPlatformService(&ximoAIModelsPlatformRepoStub{
 		platform: service.Platform{
 			Slug:     "volcengine",
@@ -97,18 +97,7 @@ func TestVolcengineAgentPlanPlatformRecognizesLegacyNativeDefinitionOnly(t *test
 			Builtin:  true,
 		},
 	})}
-	customOpenAI := &GatewayHandler{platformService: service.NewPlatformService(&ximoAIModelsPlatformRepoStub{
-		platform: service.Platform{
-			Slug:     "volcengine",
-			Protocol: service.PlatformProtocolOpenAICompatible,
-			BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
-			Enabled:  true,
-		},
-	})}
-
 	require.True(t, legacyNative.IsVolcengineAgentPlanPlatform(context.Background(), "volcengine"))
-	require.False(t, customOpenAI.IsVolcengineAgentPlanPlatform(context.Background(), "volcengine"))
-	require.True(t, customOpenAI.IsOpenAICompatiblePlatform(context.Background(), "volcengine"))
 }
 
 func TestWriteVolcengineAgentPlanErrorPreservesSafeUpstreamHeaders(t *testing.T) {

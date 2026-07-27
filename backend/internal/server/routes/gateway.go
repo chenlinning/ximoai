@@ -67,6 +67,9 @@ func RegisterGatewayRoutes(
 	isOpenAIAPIKeyProtocolGatewayPlatform := func(c *gin.Context) bool {
 		return h != nil && h.Gateway != nil && h.Gateway.IsOpenAIAPIKeyProtocolPlatform(c.Request.Context(), getGroupPlatform(c))
 	}
+	isOpenAIImagesGatewayPlatform := func(c *gin.Context) bool {
+		return h != nil && h.Gateway != nil && h.Gateway.IsOpenAIImagesPlatform(c.Request.Context(), getGroupPlatform(c))
+	}
 	countTokensHandler := func(c *gin.Context) {
 		if rejectXimoAIMediaOpenAIEndpoint(c) {
 			return
@@ -98,7 +101,7 @@ func RegisterGatewayRoutes(
 		case service.PlatformGrok:
 			h.OpenAIGateway.GrokImages(c)
 		default:
-			if isOpenAIAPIKeyProtocolGatewayPlatform(c) {
+			if isOpenAIImagesGatewayPlatform(c) {
 				h.OpenAIGateway.Images(c)
 				return
 			}
@@ -110,6 +113,19 @@ func RegisterGatewayRoutes(
 				},
 			})
 		}
+	}
+	asyncImagesHandler := func(c *gin.Context) {
+		if getGroupPlatform(c) == service.PlatformGrok || isOpenAIImagesGatewayPlatform(c) {
+			h.AsyncImage.Submit(c)
+			return
+		}
+		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": gin.H{
+				"type":    "not_found_error",
+				"message": "Images API is not supported for this platform",
+			},
+		})
 	}
 	videoGenerationHandler := func(c *gin.Context) {
 		if isGrokVideoGatewayPlatform(c, h.Gateway) {
@@ -258,8 +274,8 @@ func RegisterGatewayRoutes(
 		})
 		gateway.POST("/images/generations", imagesHandler)
 		gateway.POST("/images/edits", imagesHandler)
-		gateway.POST("/images/generations/async", h.AsyncImage.Submit)
-		gateway.POST("/images/edits/async", h.AsyncImage.Submit)
+		gateway.POST("/images/generations/async", asyncImagesHandler)
+		gateway.POST("/images/edits/async", asyncImagesHandler)
 		gateway.GET("/images/tasks/:task_id", h.AsyncImage.Get)
 		gateway.POST("/images/batches", h.BatchImage.Submit)
 		gateway.GET("/images/batches", h.BatchImage.List)
@@ -370,8 +386,8 @@ func RegisterGatewayRoutes(
 		requireGroup:    requireGroupAnthropic,
 		handlers:        h,
 	})
-	r.POST("/images/generations/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.AsyncImage.Submit)
-	r.POST("/images/edits/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.AsyncImage.Submit)
+	r.POST("/images/generations/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, asyncImagesHandler)
+	r.POST("/images/edits/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, asyncImagesHandler)
 	r.GET("/images/tasks/:task_id", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.AsyncImage.Get)
 	r.POST("/videos/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, videoGenerationHandler)
 	r.POST("/videos/edits", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, videoEditHandler)
