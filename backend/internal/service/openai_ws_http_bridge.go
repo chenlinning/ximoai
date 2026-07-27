@@ -506,6 +506,9 @@ func resolveGrokWSCacheIdentity(c *gin.Context, account *Account, seedPayload, c
 func resolveGrokWSUpstreamModel(account *Account, body []byte, originalModel string) string {
 	upstreamModel := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	originalModel = strings.TrimSpace(originalModel)
+	// Shared ingress has already applied channel and account mappings when the
+	// body model differs from the client-facing model. Only resolve from the
+	// original model when the body still carries that original value.
 	if account != nil && originalModel != "" && (upstreamModel == "" || upstreamModel == originalModel) {
 		if mappedModel := normalizeOpenAIModelForUpstream(account, account.GetMappedModel(originalModel)); mappedModel != "" {
 			upstreamModel = mappedModel

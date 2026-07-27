@@ -25,6 +25,8 @@ type openAIWSClientFrameConn struct {
 	interTurnIdleTimeout time.Duration
 	interTurnStarted     chan struct{}
 	waitingForNextTurn   atomic.Bool
+	// The relay observes upstream payloads, while clients must keep seeing the
+	// model identifier they supplied for the current turn.
 	restoreResponseModel func([]byte) []byte
 }
 
@@ -1113,11 +1115,13 @@ func (s *OpenAIGatewayService) proxyResponsesWebSocketV2Passthrough(
 					FirstTokenMs:          turn.FirstTokenMs,
 				}
 				logOpenAIWSV2Passthrough(
-					"relay_turn_completed account_id=%d turn=%d request_id=%s terminal_event=%s duration_ms=%d first_token_ms=%d input_tokens=%d output_tokens=%d cache_read_tokens=%d",
+					"relay_turn_completed account_id=%d turn=%d request_id=%s terminal_event=%s turn_requested_model=%s turn_upstream_model=%s duration_ms=%d first_token_ms=%d input_tokens=%d output_tokens=%d cache_read_tokens=%d",
 					account.ID,
 					turnNo,
 					truncateOpenAIWSLogValue(turnResult.RequestID, openAIWSIDValueMaxLen),
 					truncateOpenAIWSLogValue(turn.TerminalEventType, openAIWSLogValueMaxLen),
+					truncateOpenAIWSLogValue(turnRequestModel, openAIWSLogValueMaxLen),
+					truncateOpenAIWSLogValue(turnUpstreamModel, openAIWSLogValueMaxLen),
 					turnResult.Duration.Milliseconds(),
 					openAIWSFirstTokenMsForLog(turnResult.FirstTokenMs),
 					turnResult.Usage.InputTokens,

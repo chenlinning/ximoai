@@ -34,31 +34,38 @@ import {
 import { Line } from 'vue-chartjs'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import { themeColor } from '@/utils/theme-colors'
+import type { DailyPaymentStats } from '@/types/payment'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
 const { t } = useI18n()
 
 const props = defineProps<{
-  data: { date: string; amount: number; count: number }[]
+  data: DailyPaymentStats[]
   loading?: boolean
 }>()
 
+const colorTokens = ['blue-500', 'purple-500', 'amber-500', 'red-500']
+
 const chartData = computed(() => {
   if (!props.data || props.data.length === 0) return null
+  const currencies = [...new Set(props.data.flatMap(day => Object.keys(day.amount)))].sort()
   return {
     labels: props.data.map(d => d.date),
     datasets: [
-      {
-        label: t('payment.admin.revenue'),
-        data: props.data.map(d => d.amount),
-        borderColor: themeColor('blue-500'),
-        backgroundColor: themeColor('blue-500', 0.1),
-        fill: true,
-        tension: 0.3,
-        pointRadius: 3,
-        pointHoverRadius: 5,
-      },
+      ...currencies.map((currency, index) => {
+        const colorToken = colorTokens[index % colorTokens.length]
+        return {
+          label: `${currency} ${t('payment.admin.revenue')}`,
+          data: props.data.map(day => day.amount[currency] || 0),
+          borderColor: themeColor(colorToken),
+          backgroundColor: themeColor(colorToken, 0.1),
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        }
+      }),
       {
         label: t('payment.admin.orderCount'),
         data: props.data.map(d => d.count),

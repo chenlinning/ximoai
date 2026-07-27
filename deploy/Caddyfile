@@ -67,7 +67,7 @@ api.sub2api.com {
 		gzip 6
 		minimum_length 256
 		match {
-			# Do not match text/*: compressing text/event-stream buffers SSE.
+			# 不使用 text/*，否则 text/event-stream 会被压缩并缓冲到流结束
 			header Content-Type text/css*
 			header Content-Type text/csv*
 			header Content-Type text/html*
