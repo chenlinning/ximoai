@@ -230,6 +230,105 @@ func TestCheckChannelPricingRestriction_NoChannel(t *testing.T) {
 		"no channel for group → allowed")
 }
 
+func TestVolcengineAgentPlanChannelRestrictionAllowsPricedPublicAlias(t *testing.T) {
+	groupID := int64(44)
+	price := 0.39
+	channel := Channel{
+		ID:                 11,
+		Status:             StatusActive,
+		GroupIDs:           []int64{groupID},
+		RestrictModels:     true,
+		BillingModelSource: BillingModelSourceChannelMapped,
+		ModelPricing: []ChannelModelPricing{{
+			Platform:        PlatformVolcengineAgentPlan,
+			Models:          []string{"doubao-seed-asr-2.0"},
+			BillingMode:     BillingModePerRequest,
+			PerRequestPrice: &price,
+		}},
+		ModelMapping: map[string]map[string]string{
+			PlatformVolcengineAgentPlan: {
+				"doubao-seed-asr-2.0": VolcengineAgentPlanASRResourceID,
+			},
+		},
+	}
+	channelService := newTestChannelService(makeStandardRepo(channel, map[int64]string{
+		groupID: PlatformVolcengineAgentPlan,
+	}))
+	svc := &GatewayService{channelService: channelService}
+	ctx := WithVolcengineAgentPlanModelRoute(context.Background(), VolcengineAgentPlanModelRoute{
+		PublicModel:        "doubao-seed-asr-2.0",
+		ChannelMappedModel: VolcengineAgentPlanASRResourceID,
+	})
+
+	require.False(t, svc.checkChannelPricingRestriction(ctx, &groupID, "doubao-seed-asr-2.0"))
+}
+
+func TestVolcengineAgentPlanUpstreamRestrictionAllowsPricedPublicAlias(t *testing.T) {
+	groupID := int64(45)
+	price := 0.39
+	channel := Channel{
+		ID:                 12,
+		Status:             StatusActive,
+		GroupIDs:           []int64{groupID},
+		RestrictModels:     true,
+		BillingModelSource: BillingModelSourceUpstream,
+		ModelPricing: []ChannelModelPricing{{
+			Platform:        PlatformVolcengineAgentPlan,
+			Models:          []string{"doubao-seed-tts-2.0"},
+			BillingMode:     BillingModePerRequest,
+			PerRequestPrice: &price,
+		}},
+	}
+	channelService := newTestChannelService(makeStandardRepo(channel, map[int64]string{
+		groupID: PlatformVolcengineAgentPlan,
+	}))
+	svc := &GatewayService{channelService: channelService}
+	account := &Account{
+		Platform: PlatformVolcengineAgentPlan,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{
+				"doubao-seed-tts-2.0": VolcengineAgentPlanTTSResourceID,
+			},
+		},
+	}
+	ctx := WithVolcengineAgentPlanModelRoute(context.Background(), VolcengineAgentPlanModelRoute{
+		PublicModel:        "doubao-seed-tts-2.0",
+		ChannelMappedModel: "doubao-seed-tts-2.0",
+	})
+
+	require.False(t, svc.isUpstreamModelRestrictedByChannel(ctx, groupID, account, "doubao-seed-tts-2.0"))
+}
+
+func TestVolcengineAgentPlanChannelRestrictionRejectsUnpricedModelChain(t *testing.T) {
+	groupID := int64(46)
+	channel := Channel{
+		ID:                 13,
+		Status:             StatusActive,
+		GroupIDs:           []int64{groupID},
+		RestrictModels:     true,
+		BillingModelSource: BillingModelSourceChannelMapped,
+		ModelPricing: []ChannelModelPricing{{
+			Platform: PlatformVolcengineAgentPlan,
+			Models:   []string{"another-model"},
+		}},
+		ModelMapping: map[string]map[string]string{
+			PlatformVolcengineAgentPlan: {
+				"doubao-seed-asr-2.0": VolcengineAgentPlanASRResourceID,
+			},
+		},
+	}
+	channelService := newTestChannelService(makeStandardRepo(channel, map[int64]string{
+		groupID: PlatformVolcengineAgentPlan,
+	}))
+	svc := &GatewayService{channelService: channelService}
+	ctx := WithVolcengineAgentPlanModelRoute(context.Background(), VolcengineAgentPlanModelRoute{
+		PublicModel:        "doubao-seed-asr-2.0",
+		ChannelMappedModel: VolcengineAgentPlanASRResourceID,
+	})
+
+	require.True(t, svc.checkChannelPricingRestriction(ctx, &groupID, "doubao-seed-asr-2.0"))
+}
+
 // --- isUpstreamModelRestrictedByChannel ---
 
 func TestIsUpstreamModelRestrictedByChannel_Restricted(t *testing.T) {

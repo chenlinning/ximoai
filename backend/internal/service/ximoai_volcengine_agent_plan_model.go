@@ -66,3 +66,23 @@ func VolcengineAgentPlanAccountSupportsModel(account *Account, publicModel, chan
 	}
 	return false
 }
+
+// volcengineAgentPlanModelChainRestrictedByChannel keeps the native route
+// allowlist aligned with the same model candidates used by usage billing.
+func (s *GatewayService) volcengineAgentPlanModelChainRestrictedByChannel(
+	ctx context.Context,
+	groupID int64,
+	primaryModel string,
+	route VolcengineAgentPlanModelRoute,
+) bool {
+	if s == nil || s.channelService == nil {
+		return false
+	}
+	models := usageBillingModelCandidates(primaryModel, route.ChannelMappedModel, route.PublicModel)
+	for _, model := range models {
+		if !s.channelService.IsModelRestricted(ctx, groupID, model) {
+			return false
+		}
+	}
+	return len(models) > 0
+}
