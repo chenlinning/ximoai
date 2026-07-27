@@ -13,12 +13,28 @@
           :class="innerSizeClass"
           v-html="sanitizedValue"
         ></span>
-        <!-- Image mode: show as img -->
+        <!-- Image and cover image mode: show as img -->
         <img
-          v-else-if="mode === 'image' && modelValue"
+          v-else-if="modelValue && (mode === 'image' || (mode === 'cover' && coverType === 'image'))"
           :src="modelValue"
           alt=""
           class="h-full w-full object-contain"
+        />
+        <video
+          v-else-if="mode === 'cover' && modelValue && coverType === 'video'"
+          :src="modelValue"
+          class="h-full w-full object-contain"
+          autoplay
+          muted
+          loop
+          playsinline
+        />
+        <iframe
+          v-else-if="mode === 'cover' && modelValue && coverType === 'html'"
+          :srcdoc="htmlCover"
+          title=""
+          class="h-full w-full border-0"
+          sandbox=""
         />
         <!-- Empty placeholder -->
         <svg
@@ -72,11 +88,12 @@
 import { ref, computed } from 'vue'
 import Icon from '@/components/icons/Icon.vue'
 import { sanitizeSvg } from '@/utils/sanitize'
+import { decodeXimoAIHomeHTMLCover, resolveXimoAIHomeCoverType } from '@/utils/ximoaiHomeCover'
 
 const props = withDefaults(defineProps<{
   modelValue: string
-  mode?: 'image' | 'svg'
-  size?: 'sm' | 'md'
+  mode?: 'image' | 'svg' | 'cover'
+  size?: 'sm' | 'md' | 'lg'
   uploadLabel?: string
   removeLabel?: string
   hint?: string
@@ -96,13 +113,24 @@ const emit = defineEmits<{
 
 const error = ref('')
 
-const acceptTypes = computed(() => props.mode === 'svg' ? '.svg' : 'image/*')
+const acceptTypes = computed(() => {
+  if (props.mode === 'svg') return '.svg'
+  if (props.mode === 'cover') return 'image/*,video/*,.html,.htm,.xhtml'
+  return 'image/*'
+})
+
+const coverType = computed(() => resolveXimoAIHomeCoverType(props.modelValue ?? ''))
+const htmlCover = computed(() => decodeXimoAIHomeHTMLCover(props.modelValue ?? ''))
 
 const sanitizedValue = computed(() =>
   props.mode === 'svg' ? sanitizeSvg(props.modelValue ?? '') : ''
 )
 
-const previewSizeClass = computed(() => props.size === 'sm' ? 'h-14 w-14' : 'h-20 w-20')
+const previewSizeClass = computed(() => {
+  if (props.size === 'sm') return 'h-14 w-14'
+  if (props.size === 'lg') return 'h-40 w-72'
+  return 'h-20 w-20'
+})
 const innerSizeClass = computed(() => props.size === 'sm' ? 'h-7 w-7' : 'h-12 w-12')
 const placeholderSizeClass = computed(() => props.size === 'sm' ? 'h-5 w-5' : 'h-8 w-8')
 
@@ -127,8 +155,15 @@ function handleUpload(event: Event) {
     }
     reader.readAsText(file)
   } else {
-    if (!file.type.startsWith('image/')) {
-      error.value = 'Please select an image file'
+    const fileName = file.name.toLowerCase()
+    const isHTML = file.type === 'text/html' || file.type === 'application/xhtml+xml' || /\.(html?|xhtml)$/.test(fileName)
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|ogg|mov|m4v)$/.test(fileName)
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif)$/.test(fileName)
+    const isAllowed = props.mode === 'cover' ? isImage || isVideo || isHTML : isImage
+    if (!isAllowed) {
+      error.value = props.mode === 'cover'
+        ? 'Please select an image, GIF, video, or HTML file'
+        : 'Please select an image file'
       input.value = ''
       return
     }

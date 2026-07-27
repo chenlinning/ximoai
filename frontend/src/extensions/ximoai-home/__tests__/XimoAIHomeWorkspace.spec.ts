@@ -74,6 +74,8 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     await findButton('Workbench').trigger('click')
     await flushPromises()
     expect(createSSOTicket).toHaveBeenCalledWith('https://workbench.ximoai.cn/app')
+    expect(findButton('Workbench').classes()).toContain('border-primary-500')
+    expect(findButton('Novel').classes()).toContain('border-gray-300')
     expect(wrapper.findAll('iframe').map((frame) => frame.attributes('src'))).toEqual([
       'https://workbench.ximoai.cn/sso/entry?ticket=test'
     ])

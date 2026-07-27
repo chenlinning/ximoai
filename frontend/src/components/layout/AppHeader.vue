@@ -1,8 +1,12 @@
 <template>
   <header :class="headerClass">
     <div
-      class="flex h-16 items-center gap-2 px-2 sm:px-4 md:px-6"
-      :class="props.variant === 'floating' ? 'justify-end' : 'justify-between'"
+      class="flex items-center gap-2 px-2 sm:px-4 md:px-6"
+      :class="props.variant === 'floating'
+        ? 'h-16 justify-end'
+        : props.variant === 'workspace'
+          ? 'min-h-16 flex-wrap py-2 lg:grid lg:h-16 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] lg:flex-nowrap lg:py-0'
+          : 'h-16 justify-between'"
     >
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div v-if="props.variant === 'default'" class="flex shrink-0 items-center gap-2 sm:gap-4">
@@ -23,14 +27,22 @@
           </p>
         </div>
       </div>
-      <div v-else-if="props.variant === 'workspace'" class="flex min-w-0 flex-1 items-center">
+      <div
+        v-else-if="props.variant === 'workspace'"
+        class="order-2 flex min-w-0 w-full items-center justify-center lg:order-none lg:col-start-2 lg:w-auto lg:justify-self-center"
+      >
         <slot name="left" />
       </div>
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
       <div
         class="flex min-w-0 shrink-0 items-center gap-1 sm:gap-3"
-        :class="{ 'pointer-events-auto': props.variant === 'floating' }"
+        :class="[
+          props.variant === 'workspace'
+            ? 'order-1 w-full justify-end lg:order-none lg:col-start-3 lg:w-auto lg:justify-self-end'
+            : '',
+          { 'pointer-events-auto': props.variant === 'floating' }
+        ]"
       >
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />

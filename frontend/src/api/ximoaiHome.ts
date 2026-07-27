@@ -7,6 +7,7 @@ export interface XimoAIHomeTab {
   cover_url?: string
   enabled: boolean
   workbench_sso?: boolean
+  diamond_only?: boolean
   sort_order: number
 }
 

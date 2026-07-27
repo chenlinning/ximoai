@@ -305,6 +305,19 @@ func TestWorkbenchSSOService_IssueTicketUsesSelectedHomeTabOrigin(t *testing.T) 
 	require.Error(t, err)
 }
 
+func TestWorkbenchSSOService_RejectsDiamondOnlyTabForNonDiamondMember(t *testing.T) {
+	svc, _ := newWorkbenchSSOTestService(t, map[string]string{
+		SettingKeyWorkbenchTicketTTLSeconds: "60",
+		SettingKeyXimoAIHomeTabs:            `[{"id":"workbench","label":"Workbench","url":"https://workbench.ximoai.cn/app","enabled":true,"workbench_sso":true,"diamond_only":true}]`,
+	})
+	svc.membershipGetter = workbenchMembershipGetterStub{
+		summary: &MembershipSummary{Level: &MembershipLevel{Code: "platinum"}},
+	}
+
+	_, err := svc.IssueTicket(context.Background(), 123, "https://workbench.ximoai.cn")
+	require.Error(t, err)
+}
+
 func TestWorkbenchSSOService_AudienceCredentialsAreIsolated(t *testing.T) {
 	svc, _ := newWorkbenchSSOTestService(t, map[string]string{
 		SettingKeyXimoAIHomeTabs: `[

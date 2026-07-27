@@ -19,7 +19,7 @@ const (
 	maxXimoAIHomeTabs        = 24
 	maxXimoAIHomeTabLabelLen = 48
 	maxXimoAIHomeTabURLLen   = 2048
-	maxXimoAIHomeCoverLen    = 400 * 1024
+	maxXimoAIHomeCoverLen    = 17 * 1024 * 1024
 )
 
 var ximoAIHomeTabIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -31,6 +31,7 @@ type XimoAIHomeTab struct {
 	CoverURL     string `json:"cover_url,omitempty"`
 	Enabled      bool   `json:"enabled"`
 	WorkbenchSSO bool   `json:"workbench_sso,omitempty"`
+	DiamondOnly  bool   `json:"diamond_only,omitempty"`
 	SortOrder    int    `json:"sort_order"`
 }
 
@@ -140,15 +141,20 @@ func validateXimoAIHomeCoverURL(raw string) error {
 		return nil
 	}
 	lower := strings.ToLower(raw)
-	if strings.HasPrefix(lower, "data:image/") {
-		if strings.Contains(lower[:min(len(lower), 128)], ";base64,") {
+	if strings.HasPrefix(lower, "data:") {
+		headerEnd := strings.IndexByte(lower, ',')
+		if headerEnd < 0 || !strings.Contains(lower[:headerEnd], ";base64") {
+			return fmt.Errorf("data media must be base64 encoded")
+		}
+		mimeType := strings.TrimPrefix(strings.SplitN(lower[5:headerEnd], ";", 2)[0], " ")
+		if strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/") || mimeType == "text/html" || mimeType == "application/xhtml+xml" {
 			return nil
 		}
-		return fmt.Errorf("data image must be base64 encoded")
+		return fmt.Errorf("unsupported data cover type")
 	}
 	parsed, err := url.ParseRequestURI(raw)
 	if err != nil || !parsed.IsAbs() || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return fmt.Errorf("must be an HTTP(S), relative, or base64 image URL")
+		return fmt.Errorf("must be an HTTP(S), relative, or base64 image, video, or HTML URL")
 	}
 	if parsed.User != nil {
 		return fmt.Errorf("must not contain embedded credentials")

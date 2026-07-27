@@ -34,12 +34,12 @@
           <label class="input-label">{{ t('ximoaiHome.cover') }}</label>
           <ImageUpload
             v-model="tab.cover_url"
-            mode="image"
-            size="sm"
+            mode="cover"
+            size="lg"
             :upload-label="t('ximoaiHome.uploadCover')"
             :remove-label="t('ximoaiHome.removeCover')"
             :hint="t('ximoaiHome.coverHint')"
-            :max-size="400 * 1024"
+            :max-size="12 * 1024 * 1024"
           />
         </div>
 
@@ -52,6 +52,10 @@
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <Toggle v-model="tab.workbench_sso" />
               {{ t('ximoaiHome.workbenchSSO') }}
+            </label>
+            <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <Toggle v-model="tab.diamond_only" />
+              {{ t('ximoaiHome.diamondOnly') }}
             </label>
           </div>
           <div class="flex items-center gap-1">
@@ -88,9 +92,10 @@ import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
-interface EditorTab extends Omit<XimoAIHomeTabInput, 'cover_url' | 'workbench_sso'> {
+interface EditorTab extends Omit<XimoAIHomeTabInput, 'cover_url' | 'workbench_sso' | 'diamond_only'> {
   cover_url: string
   workbench_sso: boolean
+  diamond_only: boolean
   editorKey: string
 }
 
@@ -101,7 +106,13 @@ const loading = ref(true)
 const saving = ref(false)
 
 function toEditorTab(tab: XimoAIHomeTab): EditorTab {
-  return { ...tab, cover_url: tab.cover_url || '', workbench_sso: !!tab.workbench_sso, editorKey: tab.id }
+  return {
+    ...tab,
+    cover_url: tab.cover_url || '',
+    workbench_sso: !!tab.workbench_sso,
+    diamond_only: !!tab.diamond_only,
+    editorKey: tab.id
+  }
 }
 
 function addTab() {
@@ -112,6 +123,7 @@ function addTab() {
     cover_url: '',
     enabled: true,
     workbench_sso: false,
+    diamond_only: false,
     editorKey: crypto.randomUUID()
   })
 }

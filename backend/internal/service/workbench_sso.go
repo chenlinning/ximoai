@@ -119,6 +119,9 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 	if err != nil {
 		return nil, err
 	}
+	if err := s.requireDiamondMembershipForAudience(ctx, userID, normalizedAudience); err != nil {
+		return nil, err
+	}
 	if err := s.ensureRedis(ctx); err != nil {
 		return nil, err
 	}
@@ -188,6 +191,9 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 	if record.Audience != normalizedAudience {
 		return nil, infraerrors.Unauthorized("WORKBENCH_SSO_AUDIENCE_MISMATCH", "ticket audience mismatch")
 	}
+	if err := s.requireDiamondMembershipForAudience(ctx, record.UserID, normalizedAudience); err != nil {
+		return nil, err
+	}
 	userContext, err := s.buildUserContext(ctx, record.UserID)
 	if err != nil {
 		return nil, err
@@ -203,6 +209,37 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 		WorkbenchUserContext: userContext,
 		Authorization:        authorization,
 	}, nil
+}
+
+func (s *WorkbenchSSOService) requireDiamondMembershipForAudience(ctx context.Context, userID int64, audience string) error {
+	if s == nil || s.settingService == nil || s.membershipGetter == nil {
+		return infraerrors.InternalServer("WORKBENCH_SSO_MEMBERSHIP_UNAVAILABLE", "workbench membership check is unavailable")
+	}
+	tabs, err := s.settingService.GetXimoAIHomeTabs(ctx)
+	if err != nil {
+		return err
+	}
+	requiresDiamond := false
+	for _, tab := range tabs {
+		if !tab.Enabled || !tab.WorkbenchSSO || !tab.DiamondOnly {
+			continue
+		}
+		if normalizeWorkbenchAudience(tab.URL) == audience {
+			requiresDiamond = true
+			break
+		}
+	}
+	if !requiresDiamond {
+		return nil
+	}
+	summary, err := s.membershipGetter.GetUserMembership(ctx, userID)
+	if err != nil {
+		return infraerrors.InternalServer("WORKBENCH_SSO_MEMBERSHIP_UNAVAILABLE", "workbench membership check is unavailable").WithCause(err)
+	}
+	if summary == nil || summary.Level == nil || !strings.EqualFold(strings.TrimSpace(summary.Level.Code), "diamond") {
+		return infraerrors.Forbidden("WORKBENCH_SSO_DIAMOND_REQUIRED", "diamond membership is required for this home tab")
+	}
+	return nil
 }
 
 func (s *WorkbenchSSOService) RefreshControlToken(ctx context.Context, refreshToken, audience string) (*WorkbenchControlAuthorization, error) {

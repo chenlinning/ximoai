@@ -1,5 +1,5 @@
 <template>
-  <main class="relative min-h-screen overflow-hidden bg-gray-50 dark:bg-dark-950">
+  <main class="relative flex min-h-screen flex-col overflow-x-hidden bg-gray-50 dark:bg-dark-950">
     <template v-if="!activeTabID">
       <LoginGalaxyBackground class="fixed inset-0 z-0" />
       <AppHeader
@@ -23,19 +23,34 @@
           </div>
 
           <div class="home-entry-grid">
-            <button
+            <div
               v-for="tab in tabs"
               :key="tab.id"
-              type="button"
-              class="group overflow-hidden rounded-lg border border-white/60 bg-white/90 text-left shadow-lg backdrop-blur transition hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-dark-700/80 dark:bg-dark-900/90 dark:hover:border-primary-600"
-              @click="activateTab(tab.id)"
+              class="group relative overflow-hidden rounded-lg border border-white/60 bg-white/90 text-left shadow-lg backdrop-blur transition hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl dark:border-dark-700/80 dark:bg-dark-900/90 dark:hover:border-primary-600"
             >
               <div class="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-dark-800">
                 <img
-                  v-if="tab.cover_url"
+                  v-if="tab.cover_url && coverType(tab.cover_url) === 'image'"
                   :src="tab.cover_url"
                   :alt="tab.label"
                   class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                />
+                <video
+                  v-else-if="tab.cover_url && coverType(tab.cover_url) === 'video'"
+                  :src="tab.cover_url"
+                  :aria-label="tab.label"
+                  class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                />
+                <iframe
+                  v-else-if="tab.cover_url && coverType(tab.cover_url) === 'html'"
+                  :srcdoc="htmlCover(tab.cover_url)"
+                  :title="tab.label"
+                  class="h-full w-full border-0"
+                  sandbox=""
                 />
                 <div
                   v-else
@@ -50,7 +65,14 @@
                 </span>
                 <Icon name="chevronRight" size="sm" class="shrink-0 text-gray-400 group-hover:text-primary-500" />
               </div>
-            </button>
+              <button
+                type="button"
+                class="absolute inset-0 z-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+                @click="activateTab(tab.id)"
+              >
+                <span class="sr-only">{{ tab.label }}</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -63,16 +85,16 @@
         show-console-button
       >
         <template #left>
-          <div class="flex min-w-0 flex-1 items-center gap-2">
-            <nav class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" :aria-label="t('ximoaiHome.tabs')">
+          <div class="min-w-0 max-w-full overflow-x-auto">
+            <nav class="flex w-max min-w-full items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
                 type="button"
-                class="shrink-0 rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                class="shrink-0 rounded-md border px-3 py-2 text-sm font-medium transition-colors"
                 :class="activeTabID === tab.id
-                  ? 'bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'"
+                  ? 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'"
                 @click="activateTab(tab.id)"
               >
                 {{ tab.label }}
@@ -82,7 +104,7 @@
         </template>
       </AppHeader>
 
-      <section class="relative h-[calc(100vh-4rem)] bg-white dark:bg-dark-950">
+      <section class="relative min-h-0 flex-1 bg-white dark:bg-dark-950">
         <div
           v-for="tab in tabs"
           v-show="activeTabID === tab.id"
@@ -124,6 +146,7 @@ import Icon from '@/components/icons/Icon.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
+import { decodeXimoAIHomeHTMLCover, resolveXimoAIHomeCoverType } from '@/utils/ximoaiHomeCover'
 import {
   addLoadedTab,
   buildPreferencesMessage,
@@ -146,6 +169,8 @@ let themeObserver: MutationObserver | null = null
 
 const siteName = computed(() => appStore.siteName || 'XimoAI')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
+const coverType = resolveXimoAIHomeCoverType
+const htmlCover = decodeXimoAIHomeHTMLCover
 
 function setLoading(tabID: string, loading: boolean) {
   const next = new Set(loadingTabIDs.value)
@@ -221,6 +246,12 @@ function handleMessage(event: MessageEvent) {
 
 watch([theme, locale], broadcastPreferences)
 
+watch(() => props.tabs, (nextTabs) => {
+  if (activeTabID.value && !nextTabs.some((tab) => tab.id === activeTabID.value)) {
+    activeTabID.value = ''
+  }
+}, { deep: true })
+
 onMounted(() => {
   themeObserver = new MutationObserver(() => {
     theme.value = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
@@ -237,9 +268,23 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .home-entry-grid {
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 320px));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   justify-content: center;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1023px) {
+  .home-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .home-entry-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
 }
 </style>
