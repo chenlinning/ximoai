@@ -135,7 +135,7 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     expect(wrapper.findAll('iframe')).toHaveLength(2)
   })
 
-  it('emphasizes the hovered entry card and softens the other cards', async () => {
+  it('builds a width-filling spotlight and restores the centered static rows', async () => {
     const wrapper = mount(XimoAIHomeWorkspace, {
       props: { tabs },
       global: {
@@ -149,14 +149,50 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
 
     const cards = wrapper.findAll('.home-entry-card')
     expect(cards).toHaveLength(2)
+    expect(wrapper.find('.home-entry-spotlight').exists()).toBe(false)
 
     await cards[0].trigger('mouseenter')
-    expect(cards[0].classes()).toContain('home-entry-card--active')
-    expect(cards[1].classes()).toContain('home-entry-card--dimmed')
+    await flushPromises()
 
-    await cards[0].trigger('mouseleave')
-    expect(cards[0].classes()).not.toContain('home-entry-card--active')
-    expect(cards[1].classes()).not.toContain('home-entry-card--dimmed')
+    expect(wrapper.get('.home-entry-spotlight').classes()).toContain('home-entry-spotlight--columns-2')
+    expect(wrapper.get('[data-home-tab-id="workbench"]').classes()).toContain('home-entry-card--active')
+    expect(wrapper.find('.home-entry-card--dimmed').exists()).toBe(false)
+
+    await wrapper.get('.home-entry-area').trigger('mouseleave')
+    await flushPromises()
+
+    expect(wrapper.find('.home-entry-spotlight').exists()).toBe(false)
+    expect(wrapper.findAll('.home-entry-row')).toHaveLength(1)
+    expect(wrapper.findAll('.home-entry-card')).toHaveLength(2)
+    wrapper.unmount()
+  })
+
+  it('moves the spotlight ahead of every remaining static row', async () => {
+    const manyTabs = Array.from({ length: 7 }, (_, index) => ({
+      id: `tab-${index}`,
+      label: `Tab ${index}`,
+      url: `https://tab-${index}.example/app`,
+      enabled: true,
+      workbench_sso: false,
+      sort_order: index
+    }))
+    const wrapper = mount(XimoAIHomeWorkspace, {
+      props: { tabs: manyTabs },
+      global: {
+        stubs: {
+          AppHeader: { template: '<header><slot name="left" /></header>' },
+          LoginGalaxyBackground: true,
+          Icon: true
+        }
+      }
+    })
+
+    await wrapper.get('[data-home-tab-id="tab-6"]').trigger('mouseenter')
+    await flushPromises()
+
+    expect(wrapper.get('.home-entry-area').element.firstElementChild?.classList)
+      .toContain('home-entry-spotlight')
+    expect(wrapper.get('.home-entry-spotlight').classes()).toContain('home-entry-spotlight--center')
     wrapper.unmount()
   })
 })

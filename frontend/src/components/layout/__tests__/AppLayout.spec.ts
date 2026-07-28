@@ -8,7 +8,6 @@ const testDirectory = dirname(fileURLToPath(import.meta.url))
 const layoutSource = readFileSync(resolve(testDirectory, '../AppLayout.vue'), 'utf8')
 const headerSource = readFileSync(resolve(testDirectory, '../AppHeader.vue'), 'utf8')
 const sidebarSource = readFileSync(resolve(testDirectory, '../AppSidebar.vue'), 'utf8')
-const homeWorkspaceSource = readFileSync(resolve(testDirectory, '../../../extensions/ximoai-home/XimoAIHomeWorkspace.vue'), 'utf8')
 const styleSource = readFileSync(resolve(testDirectory, '../../../style.css'), 'utf8')
 
 describe('AppLayout dark background', () => {
@@ -60,22 +59,6 @@ describe('AppHeader background', () => {
     expect(sidebarSource).not.toContain('.sidebar-home-button')
   })
 
-  it('limits home cards to three centered columns and wraps workspace tabs', () => {
-    expect(homeWorkspaceSource).toContain('display: flex;')
-    expect(homeWorkspaceSource).toContain('width: min(100%, 96rem);')
-    expect(homeWorkspaceSource).toContain('width: min(100%, 32rem);')
-    expect(homeWorkspaceSource).toContain('min-width: min(100%, 18rem);')
-    expect(homeWorkspaceSource).toContain('max-width: 32rem;')
-    expect(homeWorkspaceSource).toContain('calc((100% - 1.5rem) / 2)')
-    expect(homeWorkspaceSource).toContain('calc((100% - 3rem) / 3)')
-    expect(homeWorkspaceSource).toContain('justify-content: center;')
-    expect(homeWorkspaceSource).toContain('class="flex w-full flex-wrap items-center justify-center gap-1"')
-    expect(homeWorkspaceSource).toContain('aspect-[5/3]')
-    expect(homeWorkspaceSource).toContain('scale(1.4)')
-    expect(homeWorkspaceSource).toContain('scale(0.7)')
-    expect(homeWorkspaceSource).not.toContain('repeat(auto-fit')
-    expect(homeWorkspaceSource).not.toContain('w-max min-w-full items-center justify-center gap-1')
-  })
 })
 
 describe('Primary navigation emphasis', () => {
@@ -85,6 +68,5 @@ describe('Primary navigation emphasis', () => {
     expect(homeButtonBlock).toContain('@apply bg-primary-500 text-white shadow-sm transition-colors;')
     expect(homeButtonBlock).toContain('@apply hover:bg-primary-600 hover:text-white hover:shadow-md;')
     expect(homeButtonBlock).not.toMatch(/\bborder(?:-|\b)/)
-    expect(homeWorkspaceSource).toContain("? 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'")
   })
 })

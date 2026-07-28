@@ -22,62 +22,40 @@
             </h1>
           </div>
 
-          <div class="home-entry-grid">
-            <div
-              v-for="(tab, index) in tabs"
-              :key="tab.id"
-              class="home-entry-card group min-w-0 text-left"
-              :class="{
-                'home-entry-card--active': hoveredTabID === tab.id,
-                'home-entry-card--dimmed': hoveredTabID !== '' && hoveredTabID !== tab.id
-              }"
-              :style="{ animationDelay: `${index * 80}ms` }"
-              @mouseenter="hoveredTabID = tab.id"
-              @mouseleave="clearHoveredTab"
-            >
-              <div class="home-entry-media relative aspect-[5/3] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600">
-                <img
-                  v-if="tab.cover_url && coverType(tab.cover_url) === 'image'"
-                  :src="tab.cover_url"
-                  :alt="tab.label"
-                  class="h-full w-full object-contain"
-                />
-                <video
-                  v-else-if="tab.cover_url && coverType(tab.cover_url) === 'video'"
-                  :src="tab.cover_url"
-                  :aria-label="tab.label"
-                  class="h-full w-full object-contain"
-                  autoplay
-                  muted
-                  loop
-                  playsinline
-                />
-                <iframe
-                  v-else-if="tab.cover_url && coverType(tab.cover_url) === 'html'"
-                  :srcdoc="htmlCover(tab.cover_url)"
-                  :title="tab.label"
-                  class="home-entry-cover-frame h-full w-full border-0"
-                  :style="{ colorScheme: theme }"
-                  sandbox=""
-                />
-                <div
-                  v-else
-                  class="flex h-full items-center justify-center text-5xl font-semibold text-primary-600 dark:text-primary-300"
-                >
-                  {{ tab.label.slice(0, 1).toUpperCase() }}
-                </div>
-                <button
-                  type="button"
-                  class="absolute inset-0 z-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-                  @click="activateTab(tab.id)"
-                >
-                  <span class="sr-only">{{ tab.label }}</span>
-                </button>
-              </div>
-              <div class="home-entry-label mt-3 break-words text-center text-base font-semibold text-gray-900 dark:text-white">
-                {{ tab.label }}
-              </div>
-            </div>
+          <div
+            ref="homeEntryAreaRef"
+            class="home-entry-area"
+            :class="`home-entry-area--columns-${columnCount}`"
+            @mouseleave="clearHoveredTab"
+          >
+            <XimoAIHomeRows
+              v-if="!spotlightLayout"
+              :rows="homeRows"
+              :columns="columnCount"
+              :theme="theme"
+              @activate="activateTab"
+              @hover="focusHoveredTab"
+            />
+
+            <template v-else>
+              <XimoAIHomeSpotlight
+                :layout="spotlightLayout"
+                :columns="columnCount"
+                :theme="theme"
+                :style="spotlightStyle"
+                @activate="activateTab"
+                @hover="focusHoveredTab"
+              />
+
+              <XimoAIHomeRows
+                v-if="remainingRows.length"
+                :rows="remainingRows"
+                :columns="columnCount"
+                :theme="theme"
+                @activate="activateTab"
+                @hover="focusHoveredTab"
+              />
+            </template>
           </div>
         </div>
       </section>
@@ -143,7 +121,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { workbenchAPI, type XimoAIHomeTab } from '@/api'
 import LoginGalaxyBackground from '@/components/auth/LoginGalaxyBackground.vue'
@@ -151,13 +129,20 @@ import Icon from '@/components/icons/Icon.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
-import { decodeXimoAIHomeHTMLCover, resolveXimoAIHomeCoverType } from '@/utils/ximoaiHomeCover'
+import XimoAIHomeRows from './XimoAIHomeRows.vue'
+import XimoAIHomeSpotlight from './XimoAIHomeSpotlight.vue'
 import {
   addLoadedTab,
   buildPreferencesMessage,
   frameOrigin,
   isPreferencesReadyMessage
 } from './homeState'
+import {
+  buildHomeRows,
+  buildSpotlightLayout,
+  calculateSpotlightDimensions,
+  resolveHomeColumnCount
+} from './spotlightLayout'
 
 const props = defineProps<{ tabs: XimoAIHomeTab[] }>()
 const appStore = useAppStore()
@@ -171,12 +156,42 @@ const tabErrors = reactive<Record<string, string>>({})
 const frameRefs = new Map<string, HTMLIFrameElement>()
 const theme = ref<'light' | 'dark'>(document.documentElement.classList.contains('dark') ? 'dark' : 'light')
 const hoveredTabID = ref('')
+const homeEntryAreaRef = ref<HTMLElement | null>(null)
+const homeContainerWidth = ref(Math.min(Math.max(window.innerWidth - 48, 0), 1536))
 let themeObserver: MutationObserver | null = null
+let homeResizeObserver: ResizeObserver | null = null
+const layoutAnimations = new Map<string, Animation>()
 
 const siteName = computed(() => appStore.siteName || 'XimoAI')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
-const coverType = resolveXimoAIHomeCoverType
-const htmlCover = decodeXimoAIHomeHTMLCover
+const columnCount = computed(() => resolveHomeColumnCount(homeContainerWidth.value))
+const homeRows = computed(() => buildHomeRows(props.tabs, columnCount.value))
+const hoveredTabIndex = computed(() => props.tabs.findIndex((tab) => tab.id === hoveredTabID.value))
+const spotlightLayout = computed(() => hoveredTabIndex.value >= 0
+  ? buildSpotlightLayout(props.tabs, hoveredTabIndex.value, columnCount.value)
+  : null)
+const spotlightDimensions = computed(() => calculateSpotlightDimensions(
+  homeContainerWidth.value,
+  columnCount.value
+))
+const spotlightStyle = computed(() => ({
+  '--home-active-width': `${spotlightDimensions.value.activeWidth}px`,
+  '--home-companion-width': `${spotlightDimensions.value.companionWidth}px`,
+  '--home-companion-grid-width': `${spotlightDimensions.value.companionGridWidth}px`,
+  '--home-horizontal-gap': `${spotlightDimensions.value.horizontalGap}px`,
+  '--home-vertical-gap': `${spotlightDimensions.value.verticalGap}px`
+}))
+const remainingRows = computed(() => {
+  const layout = spotlightLayout.value
+  if (!layout) return []
+  const remainingIndexes = new Set(layout.remainder.map((entry) => entry.index))
+  return homeRows.value
+    .map((row) => ({
+      ...row,
+      items: row.items.filter((entry) => remainingIndexes.has(entry.index))
+    }))
+    .filter((row) => row.items.length > 0)
+})
 
 function setLoading(tabID: string, loading: boolean) {
   const next = new Set(loadingTabIDs.value)
@@ -209,8 +224,68 @@ function activateTab(tabID: string) {
   void ensureTabLoaded(tab)
 }
 
-function clearHoveredTab() {
+function measureHomeCards(): Map<string, DOMRect> {
+  const measurements = new Map<string, DOMRect>()
+  homeEntryAreaRef.value?.querySelectorAll<HTMLElement>('[data-home-tab-id]').forEach((element) => {
+    const tabID = element.dataset.homeTabId
+    if (tabID) measurements.set(tabID, element.getBoundingClientRect())
+  })
+  return measurements
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function animateHomeCards(previous: Map<string, DOMRect>) {
+  if (prefersReducedMotion()) return
+
+  homeEntryAreaRef.value?.querySelectorAll<HTMLElement>('[data-home-tab-id]').forEach((element) => {
+    const tabID = element.dataset.homeTabId
+    const before = tabID ? previous.get(tabID) : undefined
+    const after = element.getBoundingClientRect()
+    if (!tabID || !before || before.width <= 0 || before.height <= 0 || after.width <= 0 || after.height <= 0) return
+
+    layoutAnimations.get(tabID)?.cancel()
+    const animation = element.animate([
+      {
+        transformOrigin: 'top left',
+        transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width}, ${before.height / after.height})`
+      },
+      { transformOrigin: 'top left', transform: 'translate(0, 0) scale(1, 1)' }
+    ], {
+      duration: 560,
+      easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
+    })
+    layoutAnimations.set(tabID, animation)
+    const clearAnimation = () => {
+      if (layoutAnimations.get(tabID) === animation) layoutAnimations.delete(tabID)
+    }
+    animation.onfinish = clearAnimation
+    animation.oncancel = clearAnimation
+  })
+}
+
+async function focusHoveredTab(tabID: string) {
+  if (hoveredTabID.value === tabID) return
+  const previous = measureHomeCards()
+  hoveredTabID.value = tabID
+  await nextTick()
+  animateHomeCards(previous)
+}
+
+async function clearHoveredTab() {
+  if (!hoveredTabID.value) return
+  const previous = measureHomeCards()
   hoveredTabID.value = ''
+  await nextTick()
+  animateHomeCards(previous)
+}
+
+function updateHomeContainerWidth() {
+  const width = homeEntryAreaRef.value?.getBoundingClientRect().width || 0
+  if (width > 0) homeContainerWidth.value = width
 }
 
 function retryTab(tabID: string) {
@@ -260,6 +335,9 @@ watch(() => props.tabs, (nextTabs) => {
   if (activeTabID.value && !nextTabs.some((tab) => tab.id === activeTabID.value)) {
     activeTabID.value = ''
   }
+  if (hoveredTabID.value && !nextTabs.some((tab) => tab.id === hoveredTabID.value)) {
+    hoveredTabID.value = ''
+  }
 }, { deep: true })
 
 onMounted(() => {
@@ -267,133 +345,33 @@ onMounted(() => {
     theme.value = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
   })
   themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  updateHomeContainerWidth()
+  if (typeof ResizeObserver !== 'undefined' && homeEntryAreaRef.value) {
+    homeResizeObserver = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width || 0
+      if (width > 0) homeContainerWidth.value = width
+    })
+    homeResizeObserver.observe(homeEntryAreaRef.value)
+  }
   window.addEventListener('message', handleMessage)
 })
 
 onBeforeUnmount(() => {
   themeObserver?.disconnect()
+  homeResizeObserver?.disconnect()
+  layoutAnimations.forEach((animation) => animation.cancel())
+  layoutAnimations.clear()
   window.removeEventListener('message', handleMessage)
 })
 </script>
 
 <style scoped>
-.home-entry-grid {
-  display: flex;
+.home-entry-area {
   width: min(100%, 96rem);
   margin-inline: auto;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
 }
 
-.home-entry-card {
-  position: relative;
-  flex: 0 0 auto;
-  width: min(100%, 32rem);
-  min-width: min(100%, 18rem);
-  max-width: 32rem;
-  transform: translate3d(0, 0, 0) scale(1);
-  transform-origin: center;
-  opacity: 1;
-  filter: saturate(1);
-  transition:
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 300ms ease,
-    filter 300ms ease;
-  animation: home-entry-card-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.home-entry-media::after {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  content: '';
-  background: linear-gradient(
-    115deg,
-    transparent 20%,
-    rgb(var(--color-primary-500) / 0.2) 48%,
-    transparent 76%
-  );
-  opacity: 0;
-  transform: translateX(-120%);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .home-entry-card--active {
-    z-index: 2;
-    transform: translate3d(0, -0.75rem, 0) scale(1.4);
-  }
-
-  .home-entry-card--active .home-entry-media {
-    box-shadow:
-      0 1.5rem 2.5rem -1.5rem rgb(var(--color-primary-500) / 0.65),
-      0 0 0 1px rgb(var(--color-primary-500) / 0.35);
-  }
-
-  .home-entry-card--active .home-entry-media::after {
-    opacity: 1;
-    animation: home-entry-card-sheen 900ms ease-out;
-  }
-
-  .home-entry-card--dimmed {
-    transform: scale(0.7);
-    opacity: 0.58;
-    filter: saturate(0.65);
-  }
-}
-
-@keyframes home-entry-card-in {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 1.25rem, 0) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
-@keyframes home-entry-card-sheen {
-  from {
-    transform: translateX(-120%);
-  }
-  to {
-    transform: translateX(120%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .home-entry-card {
-    animation: none;
-    transition: opacity 150ms ease;
-  }
-
-  .home-entry-card--active {
-    transform: none;
-  }
-
-  .home-entry-card--active .home-entry-media::after {
-    animation: none;
-  }
-}
-
-@media (max-width: 639px) {
-  .home-entry-grid {
-    gap: 1rem;
-  }
-}
-
-@media (min-width: 40rem) {
-  .home-entry-card {
-    width: calc((100% - 1.5rem) / 2);
-  }
-}
-
-@media (min-width: 80rem) {
-  .home-entry-card {
-    width: calc((100% - 3rem) / 3);
-  }
-}
 </style>
