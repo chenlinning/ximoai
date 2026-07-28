@@ -16,7 +16,6 @@
           :theme="theme"
           :animation-delay="`${entry.index * 80}ms`"
           @activate="emit('activate', $event)"
-          @hover="emit('hover', $event)"
         />
       </div>
     </div>
@@ -26,7 +25,7 @@
 <script setup lang="ts">
 import type { XimoAIHomeTab } from '@/api'
 import XimoAIHomeCard from './XimoAIHomeCard.vue'
-import type { HomeColumnCount, HomeRow } from './spotlightLayout'
+import type { HomeColumnCount, HomeRow } from './homeLayout'
 
 defineProps<{
   rows: HomeRow<XimoAIHomeTab>[]
@@ -36,7 +35,6 @@ defineProps<{
 
 const emit = defineEmits<{
   activate: [tabID: string]
-  hover: [tabID: string]
 }>()
 </script>
 

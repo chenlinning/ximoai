@@ -25,37 +25,13 @@
           <div
             ref="homeEntryAreaRef"
             class="home-entry-area"
-            :class="`home-entry-area--columns-${columnCount}`"
-            @mouseleave="clearHoveredTab"
           >
             <XimoAIHomeRows
-              v-if="!spotlightLayout"
               :rows="homeRows"
               :columns="columnCount"
               :theme="theme"
               @activate="activateTab"
-              @hover="focusHoveredTab"
             />
-
-            <template v-else>
-              <XimoAIHomeSpotlight
-                :layout="spotlightLayout"
-                :columns="columnCount"
-                :theme="theme"
-                :style="spotlightStyle"
-                @activate="activateTab"
-                @hover="focusHoveredTab"
-              />
-
-              <XimoAIHomeRows
-                v-if="remainingRows.length"
-                :rows="remainingRows"
-                :columns="columnCount"
-                :theme="theme"
-                @activate="activateTab"
-                @hover="focusHoveredTab"
-              />
-            </template>
           </div>
         </div>
       </section>
@@ -121,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { workbenchAPI, type XimoAIHomeTab } from '@/api'
 import LoginGalaxyBackground from '@/components/auth/LoginGalaxyBackground.vue'
@@ -130,7 +106,6 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 import XimoAIHomeRows from './XimoAIHomeRows.vue'
-import XimoAIHomeSpotlight from './XimoAIHomeSpotlight.vue'
 import {
   addLoadedTab,
   buildPreferencesMessage,
@@ -139,10 +114,8 @@ import {
 } from './homeState'
 import {
   buildHomeRows,
-  buildSpotlightLayout,
-  calculateSpotlightDimensions,
   resolveHomeColumnCount
-} from './spotlightLayout'
+} from './homeLayout'
 
 const props = defineProps<{ tabs: XimoAIHomeTab[] }>()
 const appStore = useAppStore()
@@ -155,43 +128,15 @@ const frameURLs = reactive<Record<string, string>>({})
 const tabErrors = reactive<Record<string, string>>({})
 const frameRefs = new Map<string, HTMLIFrameElement>()
 const theme = ref<'light' | 'dark'>(document.documentElement.classList.contains('dark') ? 'dark' : 'light')
-const hoveredTabID = ref('')
 const homeEntryAreaRef = ref<HTMLElement | null>(null)
 const homeContainerWidth = ref(Math.min(Math.max(window.innerWidth - 48, 0), 1536))
 let themeObserver: MutationObserver | null = null
 let homeResizeObserver: ResizeObserver | null = null
-const layoutAnimations = new Map<string, Animation>()
 
 const siteName = computed(() => appStore.siteName || 'XimoAI')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const columnCount = computed(() => resolveHomeColumnCount(homeContainerWidth.value))
 const homeRows = computed(() => buildHomeRows(props.tabs, columnCount.value))
-const hoveredTabIndex = computed(() => props.tabs.findIndex((tab) => tab.id === hoveredTabID.value))
-const spotlightLayout = computed(() => hoveredTabIndex.value >= 0
-  ? buildSpotlightLayout(props.tabs, hoveredTabIndex.value, columnCount.value)
-  : null)
-const spotlightDimensions = computed(() => calculateSpotlightDimensions(
-  homeContainerWidth.value,
-  columnCount.value
-))
-const spotlightStyle = computed(() => ({
-  '--home-active-width': `${spotlightDimensions.value.activeWidth}px`,
-  '--home-companion-width': `${spotlightDimensions.value.companionWidth}px`,
-  '--home-companion-grid-width': `${spotlightDimensions.value.companionGridWidth}px`,
-  '--home-horizontal-gap': `${spotlightDimensions.value.horizontalGap}px`,
-  '--home-vertical-gap': `${spotlightDimensions.value.verticalGap}px`
-}))
-const remainingRows = computed(() => {
-  const layout = spotlightLayout.value
-  if (!layout) return []
-  const remainingIndexes = new Set(layout.remainder.map((entry) => entry.index))
-  return homeRows.value
-    .map((row) => ({
-      ...row,
-      items: row.items.filter((entry) => remainingIndexes.has(entry.index))
-    }))
-    .filter((row) => row.items.length > 0)
-})
 
 function setLoading(tabID: string, loading: boolean) {
   const next = new Set(loadingTabIDs.value)
@@ -222,65 +167,6 @@ function activateTab(tabID: string) {
   if (!tab) return
   activeTabID.value = tab.id
   void ensureTabLoaded(tab)
-}
-
-function measureHomeCards(): Map<string, DOMRect> {
-  const measurements = new Map<string, DOMRect>()
-  homeEntryAreaRef.value?.querySelectorAll<HTMLElement>('[data-home-tab-id]').forEach((element) => {
-    const tabID = element.dataset.homeTabId
-    if (tabID) measurements.set(tabID, element.getBoundingClientRect())
-  })
-  return measurements
-}
-
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function animateHomeCards(previous: Map<string, DOMRect>) {
-  if (prefersReducedMotion()) return
-
-  homeEntryAreaRef.value?.querySelectorAll<HTMLElement>('[data-home-tab-id]').forEach((element) => {
-    const tabID = element.dataset.homeTabId
-    const before = tabID ? previous.get(tabID) : undefined
-    const after = element.getBoundingClientRect()
-    if (!tabID || !before || before.width <= 0 || before.height <= 0 || after.width <= 0 || after.height <= 0) return
-
-    layoutAnimations.get(tabID)?.cancel()
-    const animation = element.animate([
-      {
-        transformOrigin: 'top left',
-        transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${before.width / after.width}, ${before.height / after.height})`
-      },
-      { transformOrigin: 'top left', transform: 'translate(0, 0) scale(1, 1)' }
-    ], {
-      duration: 560,
-      easing: 'cubic-bezier(0.22, 1, 0.36, 1)'
-    })
-    layoutAnimations.set(tabID, animation)
-    const clearAnimation = () => {
-      if (layoutAnimations.get(tabID) === animation) layoutAnimations.delete(tabID)
-    }
-    animation.onfinish = clearAnimation
-    animation.oncancel = clearAnimation
-  })
-}
-
-async function focusHoveredTab(tabID: string) {
-  if (hoveredTabID.value === tabID) return
-  const previous = measureHomeCards()
-  hoveredTabID.value = tabID
-  await nextTick()
-  animateHomeCards(previous)
-}
-
-async function clearHoveredTab() {
-  if (!hoveredTabID.value) return
-  const previous = measureHomeCards()
-  hoveredTabID.value = ''
-  await nextTick()
-  animateHomeCards(previous)
 }
 
 function updateHomeContainerWidth() {
@@ -335,9 +221,6 @@ watch(() => props.tabs, (nextTabs) => {
   if (activeTabID.value && !nextTabs.some((tab) => tab.id === activeTabID.value)) {
     activeTabID.value = ''
   }
-  if (hoveredTabID.value && !nextTabs.some((tab) => tab.id === hoveredTabID.value)) {
-    hoveredTabID.value = ''
-  }
 }, { deep: true })
 
 onMounted(() => {
@@ -359,8 +242,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   themeObserver?.disconnect()
   homeResizeObserver?.disconnect()
-  layoutAnimations.forEach((animation) => animation.cancel())
-  layoutAnimations.clear()
   window.removeEventListener('message', handleMessage)
 })
 </script>

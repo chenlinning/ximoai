@@ -135,7 +135,7 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     expect(wrapper.findAll('iframe')).toHaveLength(2)
   })
 
-  it('builds a width-filling spotlight and restores the centered static rows', async () => {
+  it('keeps the home cards in centered static rows', async () => {
     const wrapper = mount(XimoAIHomeWorkspace, {
       props: { tabs },
       global: {
@@ -149,25 +149,18 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
 
     const cards = wrapper.findAll('.home-entry-card')
     expect(cards).toHaveLength(2)
-    expect(wrapper.find('.home-entry-spotlight').exists()).toBe(false)
-
-    await cards[0].trigger('mouseenter')
-    await flushPromises()
-
-    expect(wrapper.get('.home-entry-spotlight').classes()).toContain('home-entry-spotlight--columns-2')
-    expect(wrapper.get('[data-home-tab-id="workbench"]').classes()).toContain('home-entry-card--active')
-    expect(wrapper.find('.home-entry-card--dimmed').exists()).toBe(false)
-
-    await wrapper.get('.home-entry-area').trigger('mouseleave')
-    await flushPromises()
-
-    expect(wrapper.find('.home-entry-spotlight').exists()).toBe(false)
     expect(wrapper.findAll('.home-entry-row')).toHaveLength(1)
-    expect(wrapper.findAll('.home-entry-card')).toHaveLength(2)
+    expect(wrapper.get('.home-entry-row').classes()).toContain('home-entry-row--primary')
+
+    await cards[0].find('button').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('.home-entry-card')).toHaveLength(0)
+    expect(wrapper.findAll('iframe')).toHaveLength(1)
     wrapper.unmount()
   })
 
-  it('moves the spotlight ahead of every remaining static row', async () => {
+  it('keeps later rows compact without creating hover layout state', () => {
     const manyTabs = Array.from({ length: 7 }, (_, index) => ({
       id: `tab-${index}`,
       label: `Tab ${index}`,
@@ -187,12 +180,9 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
       }
     })
 
-    await wrapper.get('[data-home-tab-id="tab-6"]').trigger('mouseenter')
-    await flushPromises()
-
-    expect(wrapper.get('.home-entry-area').element.firstElementChild?.classList)
-      .toContain('home-entry-spotlight')
-    expect(wrapper.get('.home-entry-spotlight').classes()).toContain('home-entry-spotlight--center')
+    expect(wrapper.findAll('.home-entry-row')).toHaveLength(4)
+    expect(wrapper.findAll('.home-entry-row--primary')).toHaveLength(1)
+    expect(wrapper.findAll('.home-entry-row--compact')).toHaveLength(3)
     wrapper.unmount()
   })
 })
