@@ -24,9 +24,16 @@
 
           <div class="home-entry-grid">
             <div
-              v-for="tab in tabs"
+              v-for="(tab, index) in tabs"
               :key="tab.id"
-              class="group min-w-0 text-left transition hover:-translate-y-1"
+              class="home-entry-card group min-w-0 text-left"
+              :class="{
+                'home-entry-card--active': hoveredTabID === tab.id,
+                'home-entry-card--dimmed': hoveredTabID !== '' && hoveredTabID !== tab.id
+              }"
+              :style="{ animationDelay: `${index * 80}ms` }"
+              @mouseenter="hoveredTabID = tab.id"
+              @mouseleave="clearHoveredTab"
             >
               <div class="home-entry-media relative aspect-[5/3] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600">
                 <img
@@ -83,8 +90,8 @@
         show-console-button
       >
         <template #left>
-          <div class="min-w-0 max-w-full overflow-x-auto">
-            <nav class="flex w-max min-w-full items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
+          <div class="min-w-0 max-w-full">
+            <nav class="flex flex-wrap items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
@@ -163,6 +170,7 @@ const frameURLs = reactive<Record<string, string>>({})
 const tabErrors = reactive<Record<string, string>>({})
 const frameRefs = new Map<string, HTMLIFrameElement>()
 const theme = ref<'light' | 'dark'>(document.documentElement.classList.contains('dark') ? 'dark' : 'light')
+const hoveredTabID = ref('')
 let themeObserver: MutationObserver | null = null
 
 const siteName = computed(() => appStore.siteName || 'XimoAI')
@@ -199,6 +207,10 @@ function activateTab(tabID: string) {
   if (!tab) return
   activeTabID.value = tab.id
   void ensureTabLoaded(tab)
+}
+
+function clearHoveredTab() {
+  hoveredTabID.value = ''
 }
 
 function retryTab(tabID: string) {
@@ -266,16 +278,98 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .home-entry-grid {
-  width: 100%;
+  width: min(100%, 78rem);
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 24rem));
   justify-content: center;
   gap: 1.5rem;
 }
 
-@media (max-width: 1023px) {
-  .home-entry-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.home-entry-card {
+  position: relative;
+  transform: translate3d(0, 0, 0) scale(1);
+  transform-origin: center;
+  opacity: 1;
+  filter: saturate(1);
+  transition:
+    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease,
+    filter 300ms ease;
+  animation: home-entry-card-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home-entry-media::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  content: '';
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgb(var(--color-primary-500) / 0.2) 48%,
+    transparent 76%
+  );
+  opacity: 0;
+  transform: translateX(-120%);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-entry-card--active {
+    z-index: 2;
+    transform: translate3d(0, -0.5rem, 0) scale(1.055);
+  }
+
+  .home-entry-card--active .home-entry-media {
+    box-shadow:
+      0 1.5rem 2.5rem -1.5rem rgb(var(--color-primary-500) / 0.65),
+      0 0 0 1px rgb(var(--color-primary-500) / 0.35);
+  }
+
+  .home-entry-card--active .home-entry-media::after {
+    opacity: 1;
+    animation: home-entry-card-sheen 900ms ease-out;
+  }
+
+  .home-entry-card--dimmed {
+    transform: scale(0.94);
+    opacity: 0.64;
+    filter: saturate(0.72);
+  }
+}
+
+@keyframes home-entry-card-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.25rem, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes home-entry-card-sheen {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-entry-card {
+    animation: none;
+    transition: opacity 150ms ease;
+  }
+
+  .home-entry-card--active {
+    transform: none;
+  }
+
+  .home-entry-card--active .home-entry-media::after {
+    animation: none;
   }
 }
 

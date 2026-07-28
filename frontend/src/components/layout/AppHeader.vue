@@ -114,7 +114,7 @@
         <div v-if="user" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
-            class="flex items-center rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
+            class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
             :aria-label="t('common.userMenu')"
           >
             <div class="relative">
@@ -132,13 +132,22 @@
               </div>
               <span
                 v-if="membershipSummary?.level"
-                class="absolute -bottom-1 left-1/2 max-w-16 -translate-x-1/2 truncate rounded-[3px] border border-white px-1 py-px text-[9px] font-semibold leading-none shadow-sm dark:border-dark-900"
+                class="absolute -bottom-1 left-1/2 max-w-14 -translate-x-1/2 truncate rounded-[2px] border border-white px-0.5 py-0 text-[8px] font-semibold leading-[10px] shadow-sm dark:border-dark-900"
                 :style="membershipBadgeStyle(currentMembershipColor)"
                 :title="currentMembershipName"
               >
                 {{ currentMembershipName }}
               </span>
             </div>
+            <div class="hidden text-left md:block">
+              <div class="text-sm font-medium text-gray-900 dark:text-white">
+                {{ displayName }}
+              </div>
+              <div class="text-xs capitalize text-gray-500 dark:text-dark-400">
+                {{ user.role }}
+              </div>
+            </div>
+            <Icon name="chevronDown" size="sm" class="hidden text-gray-400 md:block" />
           </button>
 
           <!-- Dropdown Menu -->
@@ -287,11 +296,11 @@
         <router-link
           v-if="props.showConsoleButton"
           :to="consolePath"
-          class="btn btn-primary btn-sm shrink-0"
+          class="btn btn-primary shrink-0 px-3 py-2 text-sm shadow-lg shadow-primary-500/30 sm:px-5 sm:py-2.5 sm:text-base lg:px-8 lg:py-3"
           :title="t('ximoaiHome.console')"
         >
           <Icon name="chart" size="sm" />
-          <span class="hidden xl:inline">{{ t('ximoaiHome.console') }}</span>
+          <span class="hidden sm:inline">{{ t('ximoaiHome.console') }}</span>
         </router-link>
       </div>
     </div>

@@ -25,13 +25,16 @@ describe('AppHeader background', () => {
     expect(headerSource).toContain("'bg-white sticky top-0 z-30 border-b border-gray-200/50 dark:bg-dark-900 dark:border-dark-700/50'")
   })
 
-  it('keeps the membership avatar trigger without adjacent user text', () => {
+  it('restores the native user trigger while retaining the membership frame', () => {
     const userTrigger = headerSource.match(/<button\s+@click="toggleDropdown"[\s\S]*?<\/button>/)?.[0]
 
     expect(userTrigger).toContain('membershipAvatarStyle(currentMembershipColor)')
     expect(userTrigger).toContain('membershipBadgeStyle(currentMembershipColor)')
-    expect(userTrigger).not.toContain('hidden text-left md:block')
-    expect(userTrigger).not.toContain('chevronDown')
+    expect(userTrigger).toContain('gap-2 rounded-xl p-1.5')
+    expect(userTrigger).toContain('hidden text-left md:block')
+    expect(userTrigger).toContain('chevronDown')
+    expect(userTrigger).toContain('max-w-14')
+    expect(userTrigger).toContain('px-0.5 py-0 text-[8px]')
   })
 
   it('shows the balance as plain model-plaza-colored text', () => {
@@ -43,6 +46,21 @@ describe('AppHeader background', () => {
     expect(balanceDisplay).not.toContain('bg-primary-50')
     expect(balanceDisplay).not.toContain('bg-amber-100')
   })
+
+  it('uses the larger primary style for the home console button', () => {
+    const consoleButton = headerSource.match(/<router-link\s+v-if="props\.showConsoleButton"[\s\S]*?<\/router-link>/)?.[0]
+
+    expect(consoleButton).toContain('px-3 py-2 text-sm')
+    expect(consoleButton).toContain('sm:px-5 sm:py-2.5 sm:text-base')
+    expect(consoleButton).toContain('shadow-lg shadow-primary-500/30')
+  })
+
+  it('centers home cards and wraps workspace tabs within the visible width', () => {
+    expect(homeWorkspaceSource).toContain('grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 24rem));')
+    expect(homeWorkspaceSource).toContain('justify-content: center;')
+    expect(homeWorkspaceSource).toContain('class="flex flex-wrap items-center justify-center gap-1"')
+    expect(homeWorkspaceSource).not.toContain('w-max min-w-full items-center justify-center gap-1')
+  })
 })
 
 describe('Primary navigation emphasis', () => {
@@ -52,6 +70,6 @@ describe('Primary navigation emphasis', () => {
     expect(homeButtonBlock).toContain('@apply bg-primary-500 text-white shadow-sm transition-colors;')
     expect(homeButtonBlock).toContain('@apply hover:bg-primary-600 hover:text-white hover:shadow-md;')
     expect(homeButtonBlock).not.toMatch(/\bborder(?:-|\b)/)
-    expect(homeWorkspaceSource).toContain("? 'bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'")
+    expect(homeWorkspaceSource).toContain("? 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'")
   })
 })

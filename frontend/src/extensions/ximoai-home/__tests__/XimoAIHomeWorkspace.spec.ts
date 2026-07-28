@@ -134,4 +134,29 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     expect(createSSOTicket).toHaveBeenCalledTimes(2)
     expect(wrapper.findAll('iframe')).toHaveLength(2)
   })
+
+  it('emphasizes the hovered entry card and softens the other cards', async () => {
+    const wrapper = mount(XimoAIHomeWorkspace, {
+      props: { tabs },
+      global: {
+        stubs: {
+          AppHeader: { template: '<header><slot name="left" /></header>' },
+          LoginGalaxyBackground: true,
+          Icon: true
+        }
+      }
+    })
+
+    const cards = wrapper.findAll('.home-entry-card')
+    expect(cards).toHaveLength(2)
+
+    await cards[0].trigger('mouseenter')
+    expect(cards[0].classes()).toContain('home-entry-card--active')
+    expect(cards[1].classes()).toContain('home-entry-card--dimmed')
+
+    await cards[0].trigger('mouseleave')
+    expect(cards[0].classes()).not.toContain('home-entry-card--active')
+    expect(cards[1].classes()).not.toContain('home-entry-card--dimmed')
+    wrapper.unmount()
+  })
 })
