@@ -352,8 +352,8 @@ function mountGalaxy() {
   applyGalaxyTheme()
 
   if (mouseInteraction) {
-    container.addEventListener('mousemove', handleMouseMove)
-    container.addEventListener('mouseleave', handleMouseLeave)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('blur', handleMouseLeave)
   }
 
   animationFrame = requestAnimationFrame(update)
@@ -368,9 +368,9 @@ onBeforeUnmount(() => {
   themeObserver?.disconnect()
   themeObserver = null
 
-  if (mouseInteraction && container) {
-    container.removeEventListener('mousemove', handleMouseMove)
-    container.removeEventListener('mouseleave', handleMouseLeave)
+  if (mouseInteraction) {
+    window.removeEventListener('mousemove', handleMouseMove)
+    window.removeEventListener('blur', handleMouseLeave)
   }
 
   const canvas = renderer?.gl.canvas

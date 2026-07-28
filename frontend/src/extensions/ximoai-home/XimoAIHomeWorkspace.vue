@@ -28,7 +28,7 @@
               :key="tab.id"
               class="group min-w-0 text-left transition hover:-translate-y-1"
             >
-              <div class="home-entry-media relative aspect-[16/9] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600">
+              <div class="home-entry-media relative aspect-[5/3] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600">
                 <img
                   v-if="tab.cover_url && coverType(tab.cover_url) === 'image'"
                   :src="tab.cover_url"

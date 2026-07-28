@@ -74,6 +74,7 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
 
     const entryMedia = wrapper.get('.home-entry-media')
     const entryCover = entryMedia.get('img')
+    expect(entryMedia.classes()).toContain('aspect-[5/3]')
     expect(entryCover.classes()).toContain('object-contain')
     expect(entryCover.classes()).not.toContain('object-cover')
     expect(entryMedia.find('.home-entry-label').exists()).toBe(false)
