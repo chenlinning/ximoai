@@ -29,6 +29,7 @@ const tabs = [
     id: 'workbench',
     label: 'Workbench',
     url: 'https://workbench.ximoai.cn/app',
+    cover_url: 'data:image/png;base64,AAAA',
     enabled: true,
     workbench_sso: true,
     sort_order: 0
@@ -70,6 +71,13 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
       if (!button) throw new Error(`Missing ${label} button:\n${wrapper.html()}`)
       return button
     }
+
+    const entryMedia = wrapper.get('.home-entry-media')
+    const entryCover = entryMedia.get('img')
+    expect(entryCover.classes()).toContain('object-contain')
+    expect(entryCover.classes()).not.toContain('object-cover')
+    expect(entryMedia.find('.home-entry-label').exists()).toBe(false)
+    expect(wrapper.get('.home-entry-label').text()).toBe('Workbench')
 
     await findButton('Workbench').trigger('click')
     await flushPromises()

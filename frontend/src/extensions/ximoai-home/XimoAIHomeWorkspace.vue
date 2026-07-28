@@ -9,7 +9,7 @@
       />
 
       <section class="relative z-10 flex min-h-screen items-center justify-center px-4 py-24 sm:px-6">
-        <div class="w-full max-w-7xl">
+        <div class="w-full">
           <div class="mb-8 text-center">
             <img
               v-if="siteLogo"
@@ -26,20 +26,20 @@
             <div
               v-for="tab in tabs"
               :key="tab.id"
-              class="group relative overflow-hidden rounded-lg border border-white/60 bg-white/90 text-left shadow-lg backdrop-blur transition hover:-translate-y-1 hover:border-primary-300 hover:shadow-xl dark:border-dark-700/80 dark:bg-dark-900/90 dark:hover:border-primary-600"
+              class="group min-w-0 text-left transition hover:-translate-y-1"
             >
-              <div class="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-dark-800">
+              <div class="home-entry-media relative aspect-[16/9] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600">
                 <img
                   v-if="tab.cover_url && coverType(tab.cover_url) === 'image'"
                   :src="tab.cover_url"
                   :alt="tab.label"
-                  class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                  class="h-full w-full object-contain"
                 />
                 <video
                   v-else-if="tab.cover_url && coverType(tab.cover_url) === 'video'"
                   :src="tab.cover_url"
                   :aria-label="tab.label"
-                  class="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                  class="h-full w-full object-contain"
                   autoplay
                   muted
                   loop
@@ -54,24 +54,21 @@
                 />
                 <div
                   v-else
-                  class="flex h-full items-center justify-center bg-primary-50 text-5xl font-semibold text-primary-600 dark:bg-primary-900/20 dark:text-primary-300"
+                  class="flex h-full items-center justify-center text-5xl font-semibold text-primary-600 dark:text-primary-300"
                 >
                   {{ tab.label.slice(0, 1).toUpperCase() }}
                 </div>
+                <button
+                  type="button"
+                  class="absolute inset-0 z-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+                  @click="activateTab(tab.id)"
+                >
+                  <span class="sr-only">{{ tab.label }}</span>
+                </button>
               </div>
-              <div class="flex h-14 items-center justify-between gap-3 px-4">
-                <span class="truncate text-base font-semibold text-gray-900 dark:text-white">
-                  {{ tab.label }}
-                </span>
-                <Icon name="chevronRight" size="sm" class="shrink-0 text-gray-400 group-hover:text-primary-500" />
+              <div class="home-entry-label mt-3 break-words text-center text-base font-semibold text-gray-900 dark:text-white">
+                {{ tab.label }}
               </div>
-              <button
-                type="button"
-                class="absolute inset-0 z-10 rounded-lg focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-                @click="activateTab(tab.id)"
-              >
-                <span class="sr-only">{{ tab.label }}</span>
-              </button>
             </div>
           </div>
         </div>
