@@ -11,6 +11,7 @@ import {
 const items = Array.from({ length: 8 }, (_, index) => ({ id: `tab-${index}` }))
 const testDirectory = dirname(fileURLToPath(import.meta.url))
 const rowsSource = readFileSync(resolve(testDirectory, '../XimoAIHomeRows.vue'), 'utf8')
+const workspaceSource = readFileSync(resolve(testDirectory, '../XimoAIHomeWorkspace.vue'), 'utf8')
 
 describe('XimoAI home static layout', () => {
   it('derives one, two, or three columns from the visible container width', () => {
@@ -47,5 +48,10 @@ describe('XimoAI home static layout', () => {
 
     expect(rows.every((row) => row.items.length <= 3)).toBe(true)
     expect(rows.every((row) => row.compact || row.index === 0)).toBe(true)
+  })
+
+  it('lets three cards fill the full visible entry width', () => {
+    expect(workspaceSource).toMatch(/\.home-entry-area\s*\{[\s\S]*?width:\s*100%;/)
+    expect(workspaceSource).not.toContain('width: min(100%, 96rem)')
   })
 })

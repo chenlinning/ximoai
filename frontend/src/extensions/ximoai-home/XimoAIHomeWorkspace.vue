@@ -248,7 +248,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .home-entry-area {
-  width: min(100%, 96rem);
+  width: 100%;
   margin-inline: auto;
   display: flex;
   flex-direction: column;
