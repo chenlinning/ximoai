@@ -46,12 +46,44 @@ const tabs = [
 
 describe('XimoAIHomeWorkspace multi-site SSO', () => {
   beforeEach(() => {
+    document.documentElement.classList.remove('dark')
     createSSOTicket.mockReset()
     createSSOTicket.mockImplementation(async (audience: string) => ({
       ticket: `ticket-${audience}`,
       expires_in: 60,
       entry_url: `${new URL(audience).origin}/sso/entry?ticket=test`
     }))
+  })
+
+  it('syncs HTML cover color scheme with the main theme', async () => {
+    const wrapper = mount(XimoAIHomeWorkspace, {
+      props: {
+        tabs: [{
+          id: 'html-cover',
+          label: 'HTML Cover',
+          url: 'https://cover.example/app',
+          cover_url: 'data:text/html;base64,PGRpdj5Db3ZlcjwvZGl2Pg==',
+          enabled: true,
+          sort_order: 0
+        }]
+      },
+      global: {
+        stubs: {
+          AppHeader: { template: '<header><slot name="left" /></header>' },
+          LoginGalaxyBackground: true,
+          Icon: true
+        }
+      }
+    })
+
+    const coverFrame = wrapper.get('.home-entry-cover-frame')
+    expect((coverFrame.element as HTMLIFrameElement).style.colorScheme).toBe('light')
+
+    document.documentElement.classList.add('dark')
+    await flushPromises()
+
+    expect((coverFrame.element as HTMLIFrameElement).style.colorScheme).toBe('dark')
+    wrapper.unmount()
   })
 
   it('loads each audience once and preserves both iframe sessions while switching', async () => {

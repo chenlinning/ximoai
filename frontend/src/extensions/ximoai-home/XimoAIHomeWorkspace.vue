@@ -49,7 +49,8 @@
                   v-else-if="tab.cover_url && coverType(tab.cover_url) === 'html'"
                   :srcdoc="htmlCover(tab.cover_url)"
                   :title="tab.label"
-                  class="h-full w-full border-0"
+                  class="home-entry-cover-frame h-full w-full border-0"
+                  :style="{ colorScheme: theme }"
                   sandbox=""
                 />
                 <div
