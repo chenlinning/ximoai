@@ -3,6 +3,7 @@ type MessageTree = Record<string, any>
 const zhPatch: MessageTree = {
   ximoaiHome: {
     entry: '\u8fd4\u56de\u9996\u9875',
+    home: '\u9996\u9875',
     tabs: '\u9996\u9875\u5bfc\u822a',
     console: '\u63a7\u5236\u53f0',
     theme: '\u5207\u6362\u4e3b\u9898',
@@ -433,6 +434,7 @@ const zhPatch: MessageTree = {
 const enPatch: MessageTree = {
   ximoaiHome: {
     entry: 'Back to home',
+    home: 'Home',
     tabs: 'Home navigation',
     console: 'Console',
     theme: 'Toggle theme',

@@ -47,25 +47,40 @@ describe('AppHeader background', () => {
     expect(balanceDisplay).not.toContain('bg-amber-100')
   })
 
-  it('uses the larger primary style for the home console button', () => {
+  it('moves the home entry to the far left of the header and matches the console size', () => {
+    const homeButton = headerSource.match(/<!-- Home Entry -->[\s\S]*?<\/router-link>/)?.[0]
     const consoleButton = headerSource.match(/<router-link\s+v-if="props\.showConsoleButton"[\s\S]*?<\/router-link>/)?.[0]
 
-    expect(consoleButton).toContain('px-3 py-2 text-sm')
-    expect(consoleButton).toContain('sm:px-5 sm:py-2.5 sm:text-base')
-    expect(consoleButton).toContain('shadow-lg shadow-primary-500/30')
+    expect(homeButton).toContain('to="/home"')
+    expect(homeButton).toContain('class="header-navigation-button"')
+    expect(homeButton).toContain('<Icon name="home" size="sm" />')
+    expect(consoleButton).toContain('class="header-navigation-button"')
+    expect(headerSource).toContain('@apply inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium;')
+    expect(sidebarSource).not.toContain('class="sidebar-home-button"')
+    expect(sidebarSource).not.toContain('.sidebar-home-button')
   })
 
-  it('centers home cards and wraps workspace tabs within the visible width', () => {
-    expect(homeWorkspaceSource).toContain('grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 24rem));')
+  it('limits home cards to three centered columns and wraps workspace tabs', () => {
+    expect(homeWorkspaceSource).toContain('display: flex;')
+    expect(homeWorkspaceSource).toContain('width: min(100%, 96rem);')
+    expect(homeWorkspaceSource).toContain('width: min(100%, 32rem);')
+    expect(homeWorkspaceSource).toContain('min-width: min(100%, 18rem);')
+    expect(homeWorkspaceSource).toContain('max-width: 32rem;')
+    expect(homeWorkspaceSource).toContain('calc((100% - 1.5rem) / 2)')
+    expect(homeWorkspaceSource).toContain('calc((100% - 3rem) / 3)')
     expect(homeWorkspaceSource).toContain('justify-content: center;')
-    expect(homeWorkspaceSource).toContain('class="flex flex-wrap items-center justify-center gap-1"')
+    expect(homeWorkspaceSource).toContain('class="flex w-full flex-wrap items-center justify-center gap-1"')
+    expect(homeWorkspaceSource).toContain('aspect-[5/3]')
+    expect(homeWorkspaceSource).toContain('scale(1.4)')
+    expect(homeWorkspaceSource).toContain('scale(0.7)')
+    expect(homeWorkspaceSource).not.toContain('repeat(auto-fit')
     expect(homeWorkspaceSource).not.toContain('w-max min-w-full items-center justify-center gap-1')
   })
 })
 
 describe('Primary navigation emphasis', () => {
   it('uses the standard primary button colors for home navigation', () => {
-    const homeButtonBlock = sidebarSource.match(/\.sidebar-home-button\s*\{[\s\S]*?\n\}/)?.[0]
+    const homeButtonBlock = headerSource.match(/\.header-navigation-button\s*\{[\s\S]*?\n\}/)?.[0]
 
     expect(homeButtonBlock).toContain('@apply bg-primary-500 text-white shadow-sm transition-colors;')
     expect(homeButtonBlock).toContain('@apply hover:bg-primary-600 hover:text-white hover:shadow-md;')

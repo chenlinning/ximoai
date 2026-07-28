@@ -90,8 +90,8 @@
         show-console-button
       >
         <template #left>
-          <div class="min-w-0 max-w-full">
-            <nav class="flex flex-wrap items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
+          <div class="w-full min-w-0 max-w-full">
+            <nav class="flex w-full flex-wrap items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
@@ -278,15 +278,21 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .home-entry-grid {
-  width: min(100%, 78rem);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 24rem));
+  display: flex;
+  width: min(100%, 96rem);
+  margin-inline: auto;
+  flex-wrap: wrap;
   justify-content: center;
+  align-items: flex-start;
   gap: 1.5rem;
 }
 
 .home-entry-card {
   position: relative;
+  flex: 0 0 auto;
+  width: min(100%, 32rem);
+  min-width: min(100%, 18rem);
+  max-width: 32rem;
   transform: translate3d(0, 0, 0) scale(1);
   transform-origin: center;
   opacity: 1;
@@ -317,7 +323,7 @@ onBeforeUnmount(() => {
 @media (hover: hover) and (pointer: fine) {
   .home-entry-card--active {
     z-index: 2;
-    transform: translate3d(0, -0.5rem, 0) scale(1.055);
+    transform: translate3d(0, -0.75rem, 0) scale(1.4);
   }
 
   .home-entry-card--active .home-entry-media {
@@ -332,9 +338,9 @@ onBeforeUnmount(() => {
   }
 
   .home-entry-card--dimmed {
-    transform: scale(0.94);
-    opacity: 0.64;
-    filter: saturate(0.72);
+    transform: scale(0.7);
+    opacity: 0.58;
+    filter: saturate(0.65);
   }
 }
 
@@ -375,8 +381,19 @@ onBeforeUnmount(() => {
 
 @media (max-width: 639px) {
   .home-entry-grid {
-    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+  }
+}
+
+@media (min-width: 40rem) {
+  .home-entry-card {
+    width: calc((100% - 1.5rem) / 2);
+  }
+}
+
+@media (min-width: 80rem) {
+  .home-entry-card {
+    width: calc((100% - 3rem) / 3);
   }
 }
 </style>

@@ -10,6 +10,17 @@
     >
       <!-- Left: Mobile Menu Toggle + Page Title -->
       <div v-if="props.variant === 'default'" class="flex shrink-0 items-center gap-2 sm:gap-4">
+        <!-- Home Entry -->
+        <router-link
+          to="/home"
+          class="header-navigation-button"
+          :title="t('ximoaiHome.entry')"
+          :aria-label="t('ximoaiHome.entry')"
+        >
+          <Icon name="home" size="sm" />
+          <span>{{ t('ximoaiHome.home') }}</span>
+        </router-link>
+
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
@@ -296,7 +307,7 @@
         <router-link
           v-if="props.showConsoleButton"
           :to="consolePath"
-          class="btn btn-primary shrink-0 px-3 py-2 text-sm shadow-lg shadow-primary-500/30 sm:px-5 sm:py-2.5 sm:text-base lg:px-8 lg:py-3"
+          class="header-navigation-button"
           :title="t('ximoaiHome.console')"
         >
           <Icon name="chart" size="sm" />
@@ -518,6 +529,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.header-navigation-button {
+  @apply inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium;
+  @apply bg-primary-500 text-white shadow-sm transition-colors;
+  @apply hover:bg-primary-600 hover:text-white hover:shadow-md;
+}
+
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;
