@@ -742,6 +742,7 @@ const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
 const flagModelPlaza = makeSidebarFlag(FeatureFlags.modelPlaza)
+const flagXimoAIModelPlazaEntry = makeSidebarFlag(FeatureFlags.ximoaiModelPlazaEntry)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
@@ -757,6 +758,7 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
       customModelPlaza: ModelPlazaIcon,
       downloadCenter: OrderListIcon,
       modelPlazaFeatureFlag: flagModelPlaza,
+      ximoAIModelPlazaEntryFeatureFlag: flagXimoAIModelPlazaEntry,
     }
   ).map(toNavItem))
   if (withDashboard) {

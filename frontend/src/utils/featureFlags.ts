@@ -109,6 +109,11 @@ export const FeatureFlags = {
     mode: 'opt-in',
     label: 'Model Plaza',
   }),
+  ximoaiModelPlazaEntry: defineFlag({
+    key: 'ximoai_model_plaza_entry_enabled',
+    mode: 'opt-out',
+    label: 'XimoAI Model Plaza sidebar entry',
+  }),
   payment: defineFlag({
     key: 'payment_enabled',
     mode: 'opt-out',

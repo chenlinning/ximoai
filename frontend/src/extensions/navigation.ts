@@ -12,6 +12,7 @@ export function ximoAIUserNavItems(
     customModelPlaza: unknown
     downloadCenter: unknown
     modelPlazaFeatureFlag?: () => boolean | undefined
+    ximoAIModelPlazaEntryFeatureFlag?: () => boolean | undefined
   }
 ): XimoAINavItem[] {
   return [
@@ -23,8 +24,9 @@ export function ximoAIUserNavItems(
     },
     {
       path: '/ximoai-model-plaza',
-      labelKey: 'nav.ximoaiModelPlaza',
+      labelKey: 'nav.modelPlaza',
       icon: icons.customModelPlaza,
+      featureFlag: icons.ximoAIModelPlazaEntryFeatureFlag,
     },
     {
       path: '/download-center',

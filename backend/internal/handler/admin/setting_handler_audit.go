@@ -537,6 +537,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.ModelPlazaDescription != after.ModelPlazaDescription {
 		changed = append(changed, "model_plaza_description")
 	}
+	if before.XimoAIModelPlazaEntryEnabled != after.XimoAIModelPlazaEntryEnabled {
+		changed = append(changed, "ximoai_model_plaza_entry_enabled")
+	}
 	if before.AffiliateEnabled != after.AffiliateEnabled {
 		changed = append(changed, "affiliate_enabled")
 	}

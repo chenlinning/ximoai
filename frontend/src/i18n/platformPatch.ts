@@ -14,6 +14,16 @@ const zhPatch: MessageTree = {
     hiddenInDownloadCenter: '\u4ece\u4e0b\u8f7d\u4e2d\u5fc3\u9690\u85cf',
   },
   admin: {
+    settings: {
+      features: {
+        ximoaiModelPlazaEntry: {
+          title: '定制模型广场入口',
+          description: '控制定制模型广场是否显示在侧边栏。',
+          enabled: '显示侧边栏入口',
+          enabledHint: '关闭后只隐藏入口，不影响页面直达或接口。',
+        },
+      },
+    },
     platforms: {
       title: '平台管理',
       description: '管理自定义上游平台，并选择对应的上游协议类型',
@@ -99,6 +109,16 @@ const enPatch: MessageTree = {
     hiddenInDownloadCenter: 'Hide from download center',
   },
   admin: {
+    settings: {
+      features: {
+        ximoaiModelPlazaEntry: {
+          title: 'Custom Model Plaza Entry',
+          description: 'Control whether the custom Model Plaza appears in the sidebar.',
+          enabled: 'Show sidebar entry',
+          enabledHint: 'Disabling this only hides the entry; direct page and API access remain available.',
+        },
+      },
+    },
     platforms: {
       title: 'Platform Management',
       description: 'Manage custom upstream platforms and choose their upstream protocol',

@@ -6524,6 +6524,8 @@
           </div>
         </div>
 
+        <XimoAIModelPlazaEntrySetting v-model="form.ximoai_model_plaza_entry_enabled" />
+
         <div class="card">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -8094,6 +8096,7 @@ import Toggle from "@/components/common/Toggle.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
 import XimoAIHomeTabsSettings from "@/extensions/ximoai-home/XimoAIHomeTabsSettings.vue";
+import XimoAIModelPlazaEntrySetting from "@/extensions/model-plaza/XimoAIModelPlazaEntrySetting.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
 import OpenAIFastPolicyUserSelector from "@/views/admin/settings/OpenAIFastPolicyUserSelector.vue";
@@ -9047,6 +9050,7 @@ const form = reactive<SettingsForm>({
   model_plaza_enabled: false,
   model_plaza_require_auth: false,
   model_plaza_description: '',
+  ximoai_model_plaza_entry_enabled: true,
   // Affiliate (邀请返利) feature switch
   affiliate_enabled: false,
   // Allow user view error requests
@@ -10596,6 +10600,7 @@ async function saveSettings() {
       model_plaza_enabled: form.model_plaza_enabled,
       model_plaza_require_auth: form.model_plaza_require_auth,
       model_plaza_description: form.model_plaza_description,
+      ximoai_model_plaza_entry_enabled: form.ximoai_model_plaza_entry_enabled,
       // Affiliate (邀请返利) feature switch
       affiliate_enabled: form.affiliate_enabled,
       allow_user_view_error_requests: form.allow_user_view_error_requests,

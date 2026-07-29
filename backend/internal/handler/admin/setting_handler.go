@@ -352,9 +352,10 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 
 		AvailableChannelsEnabled: settings.AvailableChannelsEnabled,
 
-		ModelPlazaEnabled:     settings.ModelPlazaEnabled,
-		ModelPlazaRequireAuth: settings.ModelPlazaRequireAuth,
-		ModelPlazaDescription: settings.ModelPlazaDescription,
+		ModelPlazaEnabled:            settings.ModelPlazaEnabled,
+		ModelPlazaRequireAuth:        settings.ModelPlazaRequireAuth,
+		ModelPlazaDescription:        settings.ModelPlazaDescription,
+		XimoAIModelPlazaEntryEnabled: settings.XimoAIModelPlazaEntryEnabled,
 
 		AffiliateEnabled: settings.AffiliateEnabled,
 

@@ -56,6 +56,7 @@ function createPublicSettings(overrides: Partial<PublicSettings> = {}): PublicSe
     available_channels_enabled: false,
     model_plaza_enabled: false,
     model_plaza_require_auth: false,
+    ximoai_model_plaza_entry_enabled: true,
     service_quota_enabled: false,
     affiliate_enabled: false,
     ...overrides,

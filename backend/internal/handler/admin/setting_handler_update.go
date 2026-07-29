@@ -315,9 +315,10 @@ type UpdateSettingsRequest struct {
 	AvailableChannelsEnabled *bool `json:"available_channels_enabled"`
 
 	// Model Plaza feature switches + description
-	ModelPlazaEnabled     *bool   `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth *bool   `json:"model_plaza_require_auth"`
-	ModelPlazaDescription *string `json:"model_plaza_description"`
+	ModelPlazaEnabled            *bool   `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth        *bool   `json:"model_plaza_require_auth"`
+	ModelPlazaDescription        *string `json:"model_plaza_description"`
+	XimoAIModelPlazaEntryEnabled *bool   `json:"ximoai_model_plaza_entry_enabled"`
 
 	// Affiliate (邀请返利) feature switch
 	AffiliateEnabled *bool `json:"affiliate_enabled"`
@@ -1710,6 +1711,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.ModelPlazaDescription
 		}(),
+		XimoAIModelPlazaEntryEnabled: func() bool {
+			if req.XimoAIModelPlazaEntryEnabled != nil {
+				return *req.XimoAIModelPlazaEntryEnabled
+			}
+			return previousSettings.XimoAIModelPlazaEntryEnabled
+		}(),
 		AffiliateEnabled: func() bool {
 			if req.AffiliateEnabled != nil {
 				return *req.AffiliateEnabled
@@ -2106,9 +2113,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 
 		AvailableChannelsEnabled: updatedSettings.AvailableChannelsEnabled,
 
-		ModelPlazaEnabled:     updatedSettings.ModelPlazaEnabled,
-		ModelPlazaRequireAuth: updatedSettings.ModelPlazaRequireAuth,
-		ModelPlazaDescription: updatedSettings.ModelPlazaDescription,
+		ModelPlazaEnabled:            updatedSettings.ModelPlazaEnabled,
+		ModelPlazaRequireAuth:        updatedSettings.ModelPlazaRequireAuth,
+		ModelPlazaDescription:        updatedSettings.ModelPlazaDescription,
+		XimoAIModelPlazaEntryEnabled: updatedSettings.XimoAIModelPlazaEntryEnabled,
 
 		AffiliateEnabled: updatedSettings.AffiliateEnabled,
 

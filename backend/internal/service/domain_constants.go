@@ -403,6 +403,9 @@ const (
 	// and the header entry is hidden. Defaults to false (opt-in feature).
 	SettingKeyModelPlazaEnabled = "model_plaza_enabled"
 
+	// SettingKeyXimoAIModelPlazaEntryEnabled controls only the custom Model Plaza sidebar entry.
+	SettingKeyXimoAIModelPlazaEntryEnabled = "ximoai_model_plaza_entry_enabled"
+
 	// SettingKeyModelPlazaRequireAuth controls whether the Model Plaza page requires a
 	// logged-in user. When false the page is public and anonymous visitors see only
 	// non-exclusive groups.
