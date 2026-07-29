@@ -7,13 +7,24 @@ export interface XimoAINavItem {
 }
 
 export function ximoAIUserNavItems(
-  icons: { modelPlaza: unknown; downloadCenter: unknown }
+  icons: {
+    modelPlaza: unknown
+    customModelPlaza: unknown
+    downloadCenter: unknown
+    modelPlazaFeatureFlag?: () => boolean | undefined
+  }
 ): XimoAINavItem[] {
   return [
     {
       path: '/model-plaza',
       labelKey: 'nav.modelPlaza',
       icon: icons.modelPlaza,
+      featureFlag: icons.modelPlazaFeatureFlag,
+    },
+    {
+      path: '/ximoai-model-plaza',
+      labelKey: 'nav.ximoaiModelPlaza',
+      icon: icons.customModelPlaza,
     },
     {
       path: '/download-center',

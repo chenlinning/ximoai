@@ -741,6 +741,7 @@ const ChevronDownIcon = {
 const flagChannelMonitor = makeSidebarFlag(FeatureFlags.channelMonitor)
 const flagPayment = makeSidebarFlag(FeatureFlags.payment)
 const flagAvailableChannels = makeSidebarFlag(FeatureFlags.availableChannels)
+const flagModelPlaza = makeSidebarFlag(FeatureFlags.modelPlaza)
 const flagAffiliate = makeSidebarFlag(FeatureFlags.affiliate)
 const flagRiskControl = makeSidebarFlag(FeatureFlags.riskControl)
 const flagOpsMonitoring = () => adminSettingsStore.opsMonitoringEnabled
@@ -751,7 +752,12 @@ const flagBatchImageAccess = () => canUseBatchImage.value
 function buildSelfNavItems(withDashboard: boolean): NavItem[] {
   const items: NavItem[] = []
   items.push(...ximoAIUserNavItems(
-    { modelPlaza: ModelPlazaIcon, downloadCenter: OrderListIcon }
+    {
+      modelPlaza: ModelPlazaIcon,
+      customModelPlaza: ModelPlazaIcon,
+      downloadCenter: OrderListIcon,
+      modelPlazaFeatureFlag: flagModelPlaza,
+    }
   ).map(toNavItem))
   if (withDashboard) {
     items.push({ path: '/dashboard', label: t('nav.dashboard'), icon: DashboardIcon })

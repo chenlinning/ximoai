@@ -2,6 +2,7 @@ type MessageTree = Record<string, any>
 
 const zhPatch: MessageTree = {
   nav: {
+    ximoaiModelPlaza: 'XimoAI 模型广场',
     platforms: '平台管理',
   },
   modelPlaza: {
@@ -86,6 +87,7 @@ const zhPatch: MessageTree = {
 
 const enPatch: MessageTree = {
   nav: {
+    ximoaiModelPlaza: 'XimoAI Model Plaza',
     platforms: 'Platforms',
   },
   modelPlaza: {
