@@ -223,6 +223,20 @@ func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, ac
 		return s.sendErrorAndEnd(c, "Account not found")
 	}
 
+	// Synthetic UI load-test accounts exercise the real SSE parsing and modal
+	// interactions, but intentionally do not send their placeholder credentials
+	// to an upstream provider.
+	if account.IsSyntheticUITest() {
+		testModelID := modelID
+		if testModelID == "" {
+			testModelID = claude.DefaultTestModel
+		}
+		s.sendEvent(c, TestEvent{Type: "test_start", Model: testModelID})
+		s.sendEvent(c, TestEvent{Type: "content", Text: "Synthetic Anthropic OAuth account is healthy and interactive."})
+		s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
+		return nil
+	}
+
 	// Route to platform-specific test method
 	if account.Platform == PlatformGrok {
 		return s.testGrokAccountConnection(c, account, modelID)

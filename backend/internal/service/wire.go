@@ -708,6 +708,7 @@ func ProvideMembershipExpiryService(membershipService *MembershipService) *Membe
 var ProviderSet = wire.NewSet(
 	// Core services
 	NewAuthService,
+	NewPasskeyService,
 	NewUserService,
 	ProvideAPIKeyService,
 	ProvideAPIKeyAuthCacheInvalidator,

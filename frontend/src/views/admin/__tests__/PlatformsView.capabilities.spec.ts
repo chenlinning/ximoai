@@ -27,4 +27,12 @@ describe('PlatformsView custom protocol capabilities', () => {
     expect(source).not.toContain('adminAPI.platforms.remove')
     expect(source).toContain('adminAPI.platforms.update')
   })
+
+  it('does not expose the internal native protocol enum as the platform label', () => {
+    const source = readFileSync(resolve('src/views/admin/PlatformsView.vue'), 'utf8')
+
+    expect(source).toContain('protocolLabel(platform.protocol, platform)')
+    expect(source).toContain("protocol === 'native'")
+    expect(source).toContain("t('admin.platforms.protocolNative')")
+  })
 })

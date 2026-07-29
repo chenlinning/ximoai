@@ -67,7 +67,7 @@
                   {{ platform.slug }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                  {{ protocolLabel(platform.protocol) }}
+                  {{ protocolLabel(platform.protocol, platform) }}
                 </td>
                 <td class="max-w-md truncate px-4 py-3 font-mono text-sm text-gray-500 dark:text-gray-400" :title="platform.base_url">
                   {{ platform.base_url || '-' }}
@@ -127,7 +127,7 @@
           <label class="input-label">{{ t('admin.platforms.protocol') }}</label>
           <input
             v-if="isProtocolDisabled"
-            :value="protocolLabel(form.protocol)"
+            :value="protocolLabel(form.protocol, editingPlatform)"
             class="input"
             disabled
           />
@@ -251,7 +251,12 @@ const loadPlatforms = async () => {
   }
 }
 
-const protocolLabel = (protocol: string) => {
+const protocolLabel = (protocol: string, platform?: Platform | null) => {
+  if (protocol === 'native') {
+    return platform?.display_name
+      ? `${platform.display_name} ${t('admin.platforms.protocolNative')}`
+      : t('admin.platforms.protocolNative')
+  }
   if (protocol === 'openai_compatible') return t('admin.platforms.protocolOpenAICompatible')
   if (protocol === 'anthropic') return t('admin.platforms.protocolAnthropic')
   if (protocol === 'gemini') return t('admin.platforms.protocolGemini')

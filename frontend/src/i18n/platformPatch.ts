@@ -54,6 +54,7 @@ const zhPatch: MessageTree = {
       protocolOpenAICompatible: 'OpenAI-compatible',
       protocolAnthropic: 'Anthropic',
       protocolGemini: 'Gemini',
+      protocolNative: '原生',
       actions: '操作',
     },
     channels: {
@@ -137,6 +138,7 @@ const enPatch: MessageTree = {
       protocolOpenAICompatible: 'OpenAI-compatible',
       protocolAnthropic: 'Anthropic',
       protocolGemini: 'Gemini',
+      protocolNative: 'Native',
       actions: 'Actions',
     },
     channels: {
