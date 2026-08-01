@@ -67,6 +67,7 @@ type Handlers struct {
 	Platform         *admin.PlatformHandler
 	Membership       *MembershipHandler
 	WorkbenchSSO     *WorkbenchSSOHandler
+	DesktopSession   *DesktopSessionHandler
 	ModelPlaza       *ModelPlazaHandler
 	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler

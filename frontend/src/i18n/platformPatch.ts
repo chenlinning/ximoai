@@ -1,6 +1,13 @@
 type MessageTree = Record<string, any>
 
 const zhPatch: MessageTree = {
+  desktopAuthorization: {
+    title: '\u684c\u9762\u7aef\u6388\u6743',
+    authorizing: '\u6b63\u5728\u9a8c\u8bc1\u767b\u5f55\u5e76\u5efa\u7acb\u8bbe\u5907\u4f1a\u8bdd...',
+    returning: '\u6388\u6743\u6210\u529f\uff0c\u6b63\u5728\u8fd4\u56de\u684c\u9762\u5e94\u7528...',
+    failed: '\u65e0\u6cd5\u5b8c\u6210\u684c\u9762\u7aef\u6388\u6743\u3002',
+    retry: '\u91cd\u8bd5',
+  },
   nav: {
     ximoaiModelPlaza: 'XimoAI 模型广场',
     platforms: '平台管理',
@@ -96,6 +103,13 @@ const zhPatch: MessageTree = {
 }
 
 const enPatch: MessageTree = {
+  desktopAuthorization: {
+    title: 'Desktop Authorization',
+    authorizing: 'Verifying your login and establishing the device session...',
+    returning: 'Authorization complete. Returning to the desktop app...',
+    failed: 'Desktop authorization could not be completed.',
+    retry: 'Retry',
+  },
   nav: {
     ximoaiModelPlaza: 'XimoAI Model Plaza',
     platforms: 'Platforms',

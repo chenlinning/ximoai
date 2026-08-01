@@ -130,6 +130,7 @@ func registerRoutes(
 	routes.RegisterAuthRoutes(v1, h, jwtAuth, auditLog, redisClient, settingService, panelRateLimiter)
 	routes.RegisterUserRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter)
 	routes.RegisterWorkbenchRoutes(v1, h, jwtAuth, redisClient)
+	routes.RegisterDesktopRoutes(v1, h, jwtAuth, redisClient)
 	routes.RegisterXimoAppDownloadRoutes(v1, jwtAuth, settingService)
 	routes.RegisterModelPlazaRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, auditLog, stepUpAuth, settingService, panelRateLimiter)

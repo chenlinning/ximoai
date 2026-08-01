@@ -2,6 +2,17 @@ import type { RouteRecordRaw } from 'vue-router'
 
 export const ximoAIRoutes: RouteRecordRaw[] = [
   {
+    path: '/desktop/authorize',
+    name: 'DesktopAuthorize',
+    component: () => import('@/extensions/desktop/DesktopAuthorizePage.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Desktop Authorization',
+      titleKey: 'desktopAuthorization.title'
+    }
+  },
+  {
     path: '/ximoai-model-plaza',
     name: 'XimoAIModelPlaza',
     component: () => import('@/extensions/model-plaza/ModelPlazaPage.vue'),

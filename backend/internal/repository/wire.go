@@ -126,6 +126,7 @@ var ProviderSet = wire.NewSet(
 	NewUpdateCache,
 	NewWorkbenchSSOTicketStore,
 	NewWorkbenchControlTokenStore,
+	NewDesktopSessionStore,
 	NewGeminiTokenCache,
 	NewImageTaskStore,
 	NewBatchImageQueue,

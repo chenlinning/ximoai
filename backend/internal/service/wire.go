@@ -765,6 +765,7 @@ var ProviderSet = wire.NewSet(
 	ProvideSettingService,
 	NewWorkbenchControlTokenService,
 	NewWorkbenchSSOService,
+	NewDesktopSessionService,
 	NewDataManagementService,
 	ProvideBackupService,
 	ProvideOpsSystemLogSink,
