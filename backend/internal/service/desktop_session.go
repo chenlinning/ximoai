@@ -720,7 +720,7 @@ func parseDesktopPublicJWK(jwk DesktopPublicJWK) (*ecdsa.PublicKey, string, erro
 		X:     new(big.Int).SetBytes(xBytes),
 		Y:     new(big.Int).SetBytes(yBytes),
 	}
-	if !publicKey.Curve.IsOnCurve(publicKey.X, publicKey.Y) {
+	if !publicKey.IsOnCurve(publicKey.X, publicKey.Y) {
 		return nil, "", fmt.Errorf("JWK point is not on P-256")
 	}
 	thumbprintPayload, err := json.Marshal(struct {
@@ -753,7 +753,7 @@ func verifyDesktopPKCE(verifier, challenge string) bool {
 		return false
 	}
 	for _, r := range verifier {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || strings.ContainsRune("-._~", r)) {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && !strings.ContainsRune("-._~", r) {
 			return false
 		}
 	}
