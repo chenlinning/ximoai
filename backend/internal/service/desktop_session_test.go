@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -389,4 +390,68 @@ func TestDesktopPublicJWKRejectsPrivateMaterial(t *testing.T) {
 	_, _, err := parseDesktopPublicJWK(jwk)
 	require.Error(t, err)
 	require.Contains(t, fmt.Sprint(err), "private")
+}
+
+func TestDesktopAuthorizationRedirectIssuesOneTimeCode(t *testing.T) {
+	svc, _, users := newDesktopSessionTestService(t)
+	deviceKey := generateDesktopTestKey(t)
+	verifier := strings.Repeat("v", 64)
+	challengeHash := sha256.Sum256([]byte(verifier))
+	challenge := base64.RawURLEncoding.EncodeToString(challengeHash[:])
+	jwkJSON, err := json.Marshal(desktopTestJWK(deviceKey))
+	require.NoError(t, err)
+
+	query := url.Values{}
+	query.Set("code_challenge", challenge)
+	query.Set("code_challenge_method", "S256")
+	query.Set("device_jwk", base64.RawURLEncoding.EncodeToString(jwkJSON))
+	query.Set("redirect_uri", "ximoai://desktop/callback")
+	query.Set("state", "oauth-state")
+
+	callbackURL, handled, err := svc.IssueAuthorizationCodeForRedirect(
+		context.Background(),
+		users.user.ID,
+		"/desktop/authorize?"+query.Encode(),
+	)
+	require.NoError(t, err)
+	require.True(t, handled)
+
+	callback, err := url.Parse(callbackURL)
+	require.NoError(t, err)
+	require.Equal(t, "ximoai", callback.Scheme)
+	require.Equal(t, "desktop", callback.Host)
+	require.Equal(t, "/callback", callback.Path)
+	require.Equal(t, "oauth-state", callback.Query().Get("state"))
+	code := callback.Query().Get("code")
+	require.NotEmpty(t, code)
+
+	target := DesktopDPoPTarget{Method: "POST", URLs: []string{"https://ximoai.cn/api/v1/desktop/token"}}
+	_, err = svc.ExchangeAuthorizationCode(context.Background(), DesktopCodeExchangeRequest{
+		Code: code, CodeVerifier: verifier, RedirectURI: "ximoai://desktop/callback",
+	}, signDesktopTestDPoP(t, deviceKey, desktopTestJWK(deviceKey), target.URLs[0], target.Method, "oauth-bridge", ""), target)
+	require.NoError(t, err)
+}
+
+func TestDesktopAuthorizationRedirectIgnoresNormalRedirectsAndRejectsMalformedDesktopRequests(t *testing.T) {
+	svc, _, users := newDesktopSessionTestService(t)
+
+	_, handled, err := svc.IssueAuthorizationCodeForRedirect(context.Background(), users.user.ID, "/dashboard")
+	require.NoError(t, err)
+	require.False(t, handled)
+
+	deviceKey := generateDesktopTestKey(t)
+	jwkJSON, err := json.Marshal(desktopTestJWK(deviceKey))
+	require.NoError(t, err)
+	query := url.Values{}
+	query.Set("code_challenge", "invalid")
+	query.Set("code_challenge_method", "S256")
+	query.Set("device_jwk", base64.RawURLEncoding.EncodeToString(jwkJSON))
+	query.Set("redirect_uri", "ximoai://desktop/callback")
+	_, handled, err = svc.IssueAuthorizationCodeForRedirect(
+		context.Background(),
+		users.user.ID,
+		"/desktop/authorize?"+query.Encode(),
+	)
+	require.True(t, handled)
+	require.Equal(t, "DESKTOP_PKCE_INVALID", infraerrors.Reason(err))
 }

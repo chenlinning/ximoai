@@ -156,6 +156,7 @@ import { buildApiUrl } from '@/api/url'
 import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 import {
   exchangePendingOAuthCompletion,
+  getDesktopAuthorizationCallback,
   persistOAuthTokenContext,
   type OAuthTokenResponse
 } from '@/api/auth'
@@ -273,6 +274,11 @@ function redirectProviderCallbackToBackend(provider: 'github' | 'google'): void 
 }
 
 async function finalizeTokenResponse(tokenResponse: OAuthTokenResponse, redirect: string) {
+  const desktopCallback = getDesktopAuthorizationCallback(tokenResponse)
+  if (desktopCallback) {
+    window.location.assign(desktopCallback)
+    return
+  }
   persistOAuthTokenContext(tokenResponse)
   await authStore.setToken(tokenResponse.access_token)
   if (typeof window !== 'undefined') {
@@ -292,6 +298,11 @@ async function resumePendingEmailOAuth() {
   try {
     const completion = await exchangePendingOAuthCompletion() as EmailOAuthPendingCompletion
     const completionRedirect = completion.redirect || DEFAULT_POST_AUTH_PATH
+    const desktopCallback = getDesktopAuthorizationCallback(completion)
+    if (desktopCallback) {
+      window.location.assign(desktopCallback)
+      return
+    }
     if (hasOAuthTokenResponse(completion)) {
       await finalizeTokenResponse(completion, completionRedirect)
       return

@@ -201,6 +201,7 @@ func ProvideHandlers(
 	_ *service.IdempotencyCleanupService,
 	_ *service.MembershipExpiryService,
 ) *Handlers {
+	authHandler.SetDesktopSessionService(desktopSessionHandler.DesktopService())
 	return &Handlers{
 		Auth:             authHandler,
 		User:             userHandler,

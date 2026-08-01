@@ -1689,7 +1689,7 @@ func (h *AuthHandler) bindPendingOAuthLogin(c *gin.Context, provider string) {
 	}
 
 	clearCookies()
-	writeOAuthTokenPairResponse(c, tokenPair)
+	h.writeDesktopAwareOAuthTokenPair(c, user.ID, session.RedirectTo, tokenPair)
 }
 
 func respondPendingOAuthBindingApplyError(c *gin.Context, err error) {
@@ -1879,7 +1879,7 @@ func (h *AuthHandler) createPendingOAuthAccount(c *gin.Context, provider string)
 	// createPendingOAuthAccount = 注册新账户，需要把钉钉昵称同步到 users.username 作为初始值
 	h.maybeSyncDingTalkAfterRegistration(c.Request.Context(), session, user.ID)
 	clearCookies()
-	writeOAuthTokenPairResponse(c, tokenPair)
+	h.writeDesktopAwareOAuthTokenPair(c, user.ID, session.RedirectTo, tokenPair)
 }
 
 // ExchangePendingOAuthCompletion redeems a pending OAuth browser session into a frontend-safe payload.
@@ -2022,17 +2022,28 @@ func (h *AuthHandler) ExchangePendingOAuthCompletion(c *gin.Context) {
 	}
 
 	if canIssueTokenPair {
-		tokenPair, err := h.authService.GenerateTokenPair(c.Request.Context(), loginUser, "")
-		if err != nil {
-			clearCookies()
-			response.InternalError(c, "Failed to generate token pair")
-			return
+		callbackURL, handled, bridgeErr := h.issueDesktopAuthorizationCallback(c, loginUser.ID, session.RedirectTo)
+		if handled {
+			if bridgeErr != nil {
+				clearCookies()
+				response.ErrorFrom(c, bridgeErr)
+				return
+			}
+			h.authService.RecordSuccessfulLogin(c.Request.Context(), loginUser.ID)
+			payload["desktop_callback_url"] = callbackURL
+		} else {
+			tokenPair, err := h.authService.GenerateTokenPair(c.Request.Context(), loginUser, "")
+			if err != nil {
+				clearCookies()
+				response.InternalError(c, "Failed to generate token pair")
+				return
+			}
+			h.authService.RecordSuccessfulLogin(c.Request.Context(), loginUser.ID)
+			payload["access_token"] = tokenPair.AccessToken
+			payload["refresh_token"] = tokenPair.RefreshToken
+			payload["expires_in"] = tokenPair.ExpiresIn
+			payload["token_type"] = "Bearer"
 		}
-		h.authService.RecordSuccessfulLogin(c.Request.Context(), loginUser.ID)
-		payload["access_token"] = tokenPair.AccessToken
-		payload["refresh_token"] = tokenPair.RefreshToken
-		payload["expires_in"] = tokenPair.ExpiresIn
-		payload["token_type"] = "Bearer"
 	}
 
 	clearCookies()

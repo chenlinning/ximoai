@@ -33,6 +33,7 @@ import PendingOAuthCreateAccountForm, {
 import { apiClient } from '@/api/client'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
+  getDesktopAuthorizationCallback,
   persistOAuthTokenContext,
   type PendingOAuthExchangeResponse
 } from '@/api/auth'
@@ -88,6 +89,12 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
     )
 
     const redirect = sanitizeRedirectPath(data.redirect || (route.query.redirect as string | undefined))
+
+    const desktopCallback = getDesktopAuthorizationCallback(data)
+    if (desktopCallback) {
+      window.location.assign(desktopCallback)
+      return
+    }
 
     if (data.access_token) {
       persistOAuthTokenContext(data)

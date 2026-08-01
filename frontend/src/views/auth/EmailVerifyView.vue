@@ -154,6 +154,7 @@ import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/TurnstileWidget.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
+  getDesktopAuthorizationCallback,
   persistOAuthTokenContext,
   getPublicSettings,
   isOAuthLoginCompletion,
@@ -203,10 +204,11 @@ type PendingAuthSessionSummary = {
 }
 type PendingOAuthCreateAccountResponse = {
   auth_result?: string
-  access_token: string
+  access_token?: string
   refresh_token?: string
   expires_in?: number
   token_type?: string
+  desktop_callback_url?: string
   provider?: string
   redirect?: string
 }
@@ -526,6 +528,11 @@ async function handleVerify(): Promise<void> {
         sessionStorage.removeItem('register_data')
         persistPendingOAuthSession(data.provider || pendingProvider.value, data.redirect)
         await router.push(resolvePendingOAuthCallbackRoute(data.provider || pendingProvider.value))
+        return
+      }
+      const desktopCallback = getDesktopAuthorizationCallback(data)
+      if (desktopCallback) {
+        window.location.assign(desktopCallback)
         return
       }
       if (!isOAuthLoginCompletion(data)) {

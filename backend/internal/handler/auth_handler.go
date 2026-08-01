@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"strings"
 	"sync"
 
@@ -27,9 +28,14 @@ type AuthHandler struct {
 	redeemService        *service.RedeemService
 	totpService          *service.TotpService
 	userAttributeService *service.UserAttributeService
+	desktopSession       *service.DesktopSessionService
 
 	dingTalkClientInstance *DingTalkClient
 	dingTalkClientMu       sync.Mutex
+}
+
+func (h *AuthHandler) SetDesktopSessionService(desktopSession *service.DesktopSessionService) {
+	h.desktopSession = desktopSession
 }
 
 // NewAuthHandler creates a new AuthHandler
@@ -337,13 +343,13 @@ func (h *AuthHandler) Login2FA(c *gin.Context) {
 		return
 	}
 
+	pendingOAuthRedirect := ""
 	if session.PendingOAuthBind != nil {
 		pendingSvc, err := h.pendingIdentityService()
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return
 		}
-
 		pendingSession, err := pendingSvc.GetBrowserSession(
 			c.Request.Context(),
 			session.PendingOAuthBind.PendingSessionToken,
@@ -353,6 +359,7 @@ func (h *AuthHandler) Login2FA(c *gin.Context) {
 			response.ErrorFrom(c, err)
 			return
 		}
+		pendingOAuthRedirect = pendingSession.RedirectTo
 
 		decision, err := h.ensurePendingOAuthAdoptionDecision(c, pendingSession.ID, oauthAdoptionDecisionRequest{})
 		if err != nil {
@@ -399,6 +406,19 @@ func (h *AuthHandler) Login2FA(c *gin.Context) {
 
 	if session.PendingOAuthBind == nil {
 		h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
+	}
+
+	if session.PendingOAuthBind != nil {
+		callbackURL, handled, err := h.issueDesktopAuthorizationCallback(c, user.ID, pendingOAuthRedirect)
+		if handled {
+			if err != nil {
+				response.ErrorFrom(c, err)
+				return
+			}
+			c.Header("Cache-Control", "no-store")
+			c.JSON(http.StatusOK, gin.H{"desktop_callback_url": callbackURL})
+			return
+		}
 	}
 
 	h.respondWithTokenPair(c, user)

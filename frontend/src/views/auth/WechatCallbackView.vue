@@ -329,6 +329,7 @@ import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 import {
   completeWeChatOAuthRegistration,
   exchangePendingOAuthCompletion,
+  getDesktopAuthorizationCallback,
   getAuthToken,
   hasExplicitWeChatOAuthCapabilities,
   getOAuthCompletionKind,
@@ -805,6 +806,11 @@ function isCreateAccountRecoveryError(error: unknown): boolean {
 }
 
 async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redirect: string) {
+  const desktopCallback = getDesktopAuthorizationCallback(completion)
+  if (desktopCallback) {
+    window.location.assign(desktopCallback)
+    return
+  }
   if (getOAuthCompletionKind(completion) === 'bind') {
     const bindRedirect = sanitizeRedirectPath(completion.redirect || '/profile')
     clearPendingAuthSession()
@@ -826,6 +832,11 @@ async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redi
 }
 
 async function finalizePendingAccountResponse(completion: PendingWeChatCompletion) {
+  const desktopCallback = getDesktopAuthorizationCallback(completion)
+  if (desktopCallback) {
+    window.location.assign(desktopCallback)
+    return
+  }
   applyAdoptionSuggestionState(completion)
   const redirect = sanitizeRedirectPath(completion.redirect || redirectTo.value)
 
@@ -964,6 +975,11 @@ async function handleSubmitTotpChallenge() {
       temp_token: totpTempToken.value,
       totp_code: code
     })
+    const desktopCallback = getDesktopAuthorizationCallback(completion)
+    if (desktopCallback) {
+      window.location.assign(desktopCallback)
+      return
+    }
     persistOAuthTokenContext(completion)
     await authStore.setToken(completion.access_token)
     clearAllAffiliateReferralCodes()

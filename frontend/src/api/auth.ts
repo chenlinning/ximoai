@@ -114,6 +114,10 @@ export async function login(credentials: LoginRequest): Promise<LoginResponse> {
 export async function login2FA(request: TotpLogin2FARequest): Promise<AuthResponse> {
   const { data } = await apiClient.post<AuthResponse>('/auth/login/2fa', request)
 
+  if (getDesktopAuthorizationCallback(data)) {
+    return data
+  }
+
   // Store token and user data
   setAuthToken(data.access_token)
   if (data.refresh_token) {
@@ -191,6 +195,28 @@ export interface OAuthTokenResponse {
   refresh_token?: string
   expires_in?: number
   token_type?: string
+  desktop_callback_url?: string
+}
+
+export function getDesktopAuthorizationCallback(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return null
+  const raw = (value as { desktop_callback_url?: unknown }).desktop_callback_url
+  if (typeof raw !== 'string' || !raw.trim()) return null
+
+  try {
+    const callback = new URL(raw)
+    if (callback.username || callback.password || callback.hash) return null
+    if (callback.protocol === 'ximoai:' && callback.hostname === 'desktop' && callback.pathname === '/callback') {
+      return callback.toString()
+    }
+    const loopbackHost = callback.hostname === '127.0.0.1' || callback.hostname === '::1' || callback.hostname === '[::1]'
+    if (callback.protocol === 'http:' && loopbackHost && callback.port && callback.pathname === '/callback') {
+      return callback.toString()
+    }
+  } catch {
+    return null
+  }
+  return null
 }
 
 export interface PendingOAuthBindLoginResponse extends Partial<OAuthTokenResponse> {

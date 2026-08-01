@@ -256,6 +256,7 @@ import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 import {
   completeOIDCOAuthRegistration,
   exchangePendingOAuthCompletion,
+  getDesktopAuthorizationCallback,
   getOAuthCompletionKind,
   getPublicSettings,
   isOAuthLoginCompletion,
@@ -595,6 +596,11 @@ function isCreateAccountRecoveryError(error: unknown): boolean {
 }
 
 async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redirect: string) {
+  const desktopCallback = getDesktopAuthorizationCallback(completion)
+  if (desktopCallback) {
+    window.location.assign(desktopCallback)
+    return
+  }
   if (getOAuthCompletionKind(completion) === 'bind') {
     const bindRedirect = sanitizeRedirectPath(completion.redirect || '/profile')
     clearPendingAuthSession()
@@ -616,6 +622,11 @@ async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redi
 }
 
 async function finalizePendingAccountResponse(completion: PendingOidcCompletion) {
+  const desktopCallback = getDesktopAuthorizationCallback(completion)
+  if (desktopCallback) {
+    window.location.assign(desktopCallback)
+    return
+  }
   applyAdoptionSuggestionState(completion)
   const redirect = sanitizeRedirectPath(completion.redirect || redirectTo.value)
 
@@ -754,6 +765,11 @@ async function handleSubmitTotpChallenge() {
       temp_token: totpTempToken.value,
       totp_code: code
     })
+    const desktopCallback = getDesktopAuthorizationCallback(completion)
+    if (desktopCallback) {
+      window.location.assign(desktopCallback)
+      return
+    }
     await authStore.setToken(completion.access_token)
     clearAllAffiliateReferralCodes()
     appStore.showSuccess(t('auth.loginSuccess'))

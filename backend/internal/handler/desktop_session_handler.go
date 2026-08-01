@@ -51,6 +51,14 @@ func NewDesktopSessionHandler(desktopService *service.DesktopSessionService) *De
 	return &DesktopSessionHandler{service: desktopService}
 }
 
+func (h *DesktopSessionHandler) DesktopService() *service.DesktopSessionService {
+	if h == nil {
+		return nil
+	}
+	desktopService, _ := h.service.(*service.DesktopSessionService)
+	return desktopService
+}
+
 func (h *DesktopSessionHandler) Authorize(c *gin.Context) {
 	subject, ok := servermiddleware.GetAuthSubjectFromContext(c)
 	if !ok || subject.UserID <= 0 {

@@ -252,6 +252,7 @@ export interface AuthResponse {
   refresh_token?: string  // New: Refresh Token for token renewal
   expires_in?: number     // New: Access Token expiry time in seconds
   token_type: string
+  desktop_callback_url?: string
   user: User & { run_mode?: 'standard' | 'simple' }
 }
 
