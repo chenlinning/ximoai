@@ -34,3 +34,27 @@ func TestDesktopAccessTokenCannotUseMainSiteOrWorkbenchControlEndpoints(t *testi
 		require.False(t, isWorkbenchControlRequestAllowed(claims, http.MethodGet, path), path)
 	}
 }
+
+func TestDesktopSSOBrokerCredentialCannotUseCatalogEndpoints(t *testing.T) {
+	claims := &service.JWTClaims{
+		UserID:    123,
+		SessionID: "desktop-session",
+		TokenUse:  service.DesktopSSOBrokerTokenUse,
+		Scopes:    []string{service.DesktopSSOBrokerScope},
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{service.DesktopSSOBrokerAudience},
+			Subject:  "123",
+			ID:       "desktop-sso-broker",
+		},
+	}
+
+	for _, path := range []string{
+		"/api/v1/keys",
+		"/api/v1/groups/available",
+		"/api/v1/groups/rates",
+		"/api/v1/platforms",
+		"/api/v1/channels/model-plaza",
+	} {
+		require.False(t, isWorkbenchControlRequestAllowed(claims, http.MethodGet, path), path)
+	}
+}

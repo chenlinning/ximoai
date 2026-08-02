@@ -33,7 +33,9 @@ const (
 type WorkbenchControlGrantStore interface {
 	StoreGrant(ctx context.Context, key string, payload []byte, ttl time.Duration) (bool, error)
 	ConsumeGrant(ctx context.Context, key, ssoAudience string) (string, bool, error)
+	ConsumeGrantForUser(ctx context.Context, key, ssoAudience string, userID int64) (string, bool, error)
 	RevokeGrant(ctx context.Context, key, ssoAudience string) (bool, error)
+	RevokeGrantForUser(ctx context.Context, key, ssoAudience string, userID int64) (bool, error)
 	Ping(ctx context.Context) error
 }
 
@@ -91,6 +93,17 @@ func (s *WorkbenchControlTokenService) Issue(ctx context.Context, userID int64, 
 }
 
 func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken, ssoAudience string) (*WorkbenchControlAuthorization, error) {
+	return s.refresh(ctx, refreshToken, ssoAudience, 0)
+}
+
+func (s *WorkbenchControlTokenService) RefreshForUser(ctx context.Context, refreshToken, ssoAudience string, userID int64) (*WorkbenchControlAuthorization, error) {
+	if userID <= 0 {
+		return nil, infraerrors.Unauthorized("WORKBENCH_CONTROL_REFRESH_INVALID", "refresh token is invalid or expired")
+	}
+	return s.refresh(ctx, refreshToken, ssoAudience, userID)
+}
+
+func (s *WorkbenchControlTokenService) refresh(ctx context.Context, refreshToken, ssoAudience string, expectedUserID int64) (*WorkbenchControlAuthorization, error) {
 	if err := s.ensureAvailable(ctx); err != nil {
 		return nil, err
 	}
@@ -98,7 +111,13 @@ func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken
 	if err != nil {
 		return nil, err
 	}
-	raw, ok, err := s.grantStore.ConsumeGrant(ctx, key, ssoAudience)
+	var raw string
+	var ok bool
+	if expectedUserID > 0 {
+		raw, ok, err = s.grantStore.ConsumeGrantForUser(ctx, key, ssoAudience, expectedUserID)
+	} else {
+		raw, ok, err = s.grantStore.ConsumeGrant(ctx, key, ssoAudience)
+	}
 	if err != nil {
 		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_REDIS_UNAVAILABLE", "workbench control token store is unavailable").WithCause(err)
 	}
@@ -125,6 +144,17 @@ func (s *WorkbenchControlTokenService) Refresh(ctx context.Context, refreshToken
 }
 
 func (s *WorkbenchControlTokenService) Revoke(ctx context.Context, refreshToken, ssoAudience string) error {
+	return s.revoke(ctx, refreshToken, ssoAudience, 0)
+}
+
+func (s *WorkbenchControlTokenService) RevokeForUser(ctx context.Context, refreshToken, ssoAudience string, userID int64) error {
+	if userID <= 0 {
+		return infraerrors.Unauthorized("WORKBENCH_CONTROL_REFRESH_INVALID", "refresh token is invalid or expired")
+	}
+	return s.revoke(ctx, refreshToken, ssoAudience, userID)
+}
+
+func (s *WorkbenchControlTokenService) revoke(ctx context.Context, refreshToken, ssoAudience string, expectedUserID int64) error {
 	if s == nil || s.grantStore == nil {
 		return infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
 	}
@@ -132,7 +162,12 @@ func (s *WorkbenchControlTokenService) Revoke(ctx context.Context, refreshToken,
 	if err != nil {
 		return err
 	}
-	revoked, err := s.grantStore.RevokeGrant(ctx, key, ssoAudience)
+	var revoked bool
+	if expectedUserID > 0 {
+		revoked, err = s.grantStore.RevokeGrantForUser(ctx, key, ssoAudience, expectedUserID)
+	} else {
+		revoked, err = s.grantStore.RevokeGrant(ctx, key, ssoAudience)
+	}
 	if err != nil {
 		return infraerrors.InternalServer("WORKBENCH_CONTROL_REDIS_UNAVAILABLE", "workbench control token store is unavailable").WithCause(err)
 	}

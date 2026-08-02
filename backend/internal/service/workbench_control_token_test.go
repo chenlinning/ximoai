@@ -47,6 +47,21 @@ func (s *workbenchControlGrantStoreStub) ConsumeGrant(_ context.Context, key, ss
 	return value, true, nil
 }
 
+func (s *workbenchControlGrantStoreStub) ConsumeGrantForUser(_ context.Context, key, ssoAudience string, userID int64) (string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.items[key]
+	if !ok {
+		return "", false, nil
+	}
+	var record workbenchControlRefreshRecord
+	if json.Unmarshal([]byte(value), &record) != nil || record.SSOAudience != ssoAudience || record.UserID != userID {
+		return "", false, nil
+	}
+	delete(s.items, key)
+	return value, true, nil
+}
+
 func (s *workbenchControlGrantStoreStub) RevokeGrant(_ context.Context, key, ssoAudience string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -56,6 +71,21 @@ func (s *workbenchControlGrantStoreStub) RevokeGrant(_ context.Context, key, sso
 	}
 	var record workbenchControlRefreshRecord
 	if json.Unmarshal([]byte(value), &record) != nil || record.SSOAudience != ssoAudience {
+		return false, nil
+	}
+	delete(s.items, key)
+	return true, nil
+}
+
+func (s *workbenchControlGrantStoreStub) RevokeGrantForUser(_ context.Context, key, ssoAudience string, userID int64) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.items[key]
+	if !ok {
+		return false, nil
+	}
+	var record workbenchControlRefreshRecord
+	if json.Unmarshal([]byte(value), &record) != nil || record.SSOAudience != ssoAudience || record.UserID != userID {
 		return false, nil
 	}
 	delete(s.items, key)

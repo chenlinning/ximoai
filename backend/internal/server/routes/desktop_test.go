@@ -18,7 +18,7 @@ func TestRegisterDesktopRoutesExposesOnlyUnifiedDesktopEndpoints(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	v1 := router.Group("/api/v1")
-	handlers := &handler.Handlers{DesktopSession: handler.NewDesktopSessionHandler(nil)}
+	handlers := &handler.Handlers{DesktopSession: handler.NewDesktopSessionHandler(nil, nil)}
 	RegisterDesktopRoutes(v1, handlers, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }), nil)
 
 	registered := map[string]string{}
@@ -28,6 +28,7 @@ func TestRegisterDesktopRoutesExposesOnlyUnifiedDesktopEndpoints(t *testing.T) {
 	require.Equal(t, http.MethodPost, registered["/api/v1/desktop/authorize"])
 	require.Equal(t, http.MethodPost, registered["/api/v1/desktop/token"])
 	require.Equal(t, http.MethodPost, registered["/api/v1/desktop/sso-ticket"])
+	require.Equal(t, http.MethodPost, registered["/api/v1/desktop/sso-broker-credential"])
 	require.Equal(t, http.MethodDelete, registered["/api/v1/desktop/session"])
 	require.Equal(t, http.MethodPost, registered["/api/v1/desktop/revoke"])
 	require.NotContains(t, registered, "/api/v1/desktop/audience")
@@ -45,7 +46,7 @@ func TestDesktopRoutesRateLimitFailCloseWhenRedisUnavailable(t *testing.T) {
 
 	router := gin.New()
 	v1 := router.Group("/api/v1")
-	RegisterDesktopRoutes(v1, &handler.Handlers{DesktopSession: handler.NewDesktopSessionHandler(nil)}, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }), redisClient)
+	RegisterDesktopRoutes(v1, &handler.Handlers{DesktopSession: handler.NewDesktopSessionHandler(nil, nil)}, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }), redisClient)
 
 	for _, tc := range []struct {
 		method string
@@ -54,6 +55,7 @@ func TestDesktopRoutesRateLimitFailCloseWhenRedisUnavailable(t *testing.T) {
 		{http.MethodPost, "/api/v1/desktop/authorize"},
 		{http.MethodPost, "/api/v1/desktop/token"},
 		{http.MethodPost, "/api/v1/desktop/sso-ticket"},
+		{http.MethodPost, "/api/v1/desktop/sso-broker-credential"},
 		{http.MethodDelete, "/api/v1/desktop/session"},
 		{http.MethodPost, "/api/v1/desktop/revoke"},
 	} {

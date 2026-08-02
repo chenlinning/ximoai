@@ -29,6 +29,11 @@ type desktopSessionAPI interface {
 
 type DesktopSessionHandler struct {
 	service desktopSessionAPI
+	broker  desktopSSOBrokerAPI
+}
+
+type desktopSSOBrokerAPI interface {
+	Issue(ctx context.Context, identity *service.DesktopIdentity, workbenchID string) (*service.DesktopSSOBrokerCredential, error)
 }
 
 type desktopTokenRequest struct {
@@ -47,8 +52,8 @@ type desktopRefreshRevokeRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func NewDesktopSessionHandler(desktopService *service.DesktopSessionService) *DesktopSessionHandler {
-	return &DesktopSessionHandler{service: desktopService}
+func NewDesktopSessionHandler(desktopService *service.DesktopSessionService, brokerService *service.DesktopSSOBrokerService) *DesktopSessionHandler {
+	return &DesktopSessionHandler{service: desktopService, broker: brokerService}
 }
 
 func (h *DesktopSessionHandler) DesktopService() *service.DesktopSessionService {
@@ -140,6 +145,36 @@ func (h *DesktopSessionHandler) SSOTicket(c *gin.Context) {
 		return
 	}
 	response.Success(c, ticket)
+}
+
+func (h *DesktopSessionHandler) SSOBrokerCredential(c *gin.Context) {
+	var req desktopWorkbenchTicketRequest
+	if !decodeDesktopJSON(c, &req) {
+		return
+	}
+	workbenchID := strings.TrimSpace(req.WorkbenchID)
+	if workbenchID == "" {
+		desktopInvalidRequest(c)
+		return
+	}
+	accessToken, ok := desktopDPoPAccessToken(c)
+	if !ok {
+		response.ErrorFrom(c, infraerrors.Unauthorized("DESKTOP_ACCESS_INVALID", "DPoP access token is required"))
+		return
+	}
+	identity, err := h.service.AuthenticateAccess(c.Request.Context(), accessToken, strings.TrimSpace(c.GetHeader("DPoP")), desktopRequestTarget(c))
+	if response.ErrorFrom(c, err) {
+		return
+	}
+	if h.broker == nil {
+		response.ErrorFrom(c, infraerrors.InternalServer("DESKTOP_SSO_BROKER_UNAVAILABLE", "desktop sso broker is unavailable"))
+		return
+	}
+	credential, err := h.broker.Issue(c.Request.Context(), identity, workbenchID)
+	if response.ErrorFrom(c, err) {
+		return
+	}
+	response.Success(c, credential)
 }
 
 func (h *DesktopSessionHandler) RevokeSession(c *gin.Context) {

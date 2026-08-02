@@ -77,6 +77,47 @@ the same audience-specific Bearer credential and this JSON body:
 Refresh grants are bound to that audience in Redis. A different child cannot
 refresh or revoke the grant. A successful revoke returns HTTP 204.
 
+## Desktop SSO Broker Credential
+
+The desktop shell does not receive an audience-derived server credential. It
+authenticates its existing device-bound Desktop Session and requests a short-
+lived broker credential instead:
+
+```http
+POST /api/v1/desktop/sso-broker-credential
+Authorization: DPoP <desktop_access_token>
+DPoP: <device proof>
+Content-Type: application/json
+
+{"workbench_id":"image"}
+```
+
+The server resolves the configured Workbench audience from `workbench_id` and
+returns a five-minute Bearer credential bound to the user, parent Desktop
+Session, device key thumbprint, and Workbench ID. The client cannot submit an
+audience or URL.
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "credential": "...",
+    "token_type": "Bearer",
+    "expires_in": 300,
+    "workbench_id": "image",
+    "audience": "https://image.ximoai.cn"
+  }
+}
+```
+
+The existing ticket validation, control-token refresh, and control-token
+revocation endpoints accept either their existing audience-derived Bearer
+credential or this broker credential. Broker-authorized operations revalidate
+the parent Desktop Session and current Workbench permission, and may consume
+only tickets or refresh grants belonging to the same user. Revoking the parent
+Desktop Session immediately invalidates outstanding broker credentials.
+
 ## Model Calls
 
 Catalog reads do not proxy generation requests. Workbench selects a user API

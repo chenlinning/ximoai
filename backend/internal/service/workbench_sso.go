@@ -25,6 +25,7 @@ const workbenchSSOSecretContext = "ximoai-workbench-sso-audience:"
 type WorkbenchSSOTicketStore interface {
 	StoreTicket(ctx context.Context, key string, payload []byte, ttl time.Duration) (bool, error)
 	ConsumeTicket(ctx context.Context, key string) (string, bool, error)
+	ConsumeTicketForUser(ctx context.Context, key string, userID int64) (string, bool, error)
 	Ping(ctx context.Context) error
 }
 
@@ -163,6 +164,17 @@ func (s *WorkbenchSSOService) IssueTicket(ctx context.Context, userID int64, aud
 }
 
 func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audience string) (*WorkbenchSSOValidation, error) {
+	return s.validateTicket(ctx, ticket, audience, 0)
+}
+
+func (s *WorkbenchSSOService) ValidateTicketForUser(ctx context.Context, ticket, audience string, userID int64) (*WorkbenchSSOValidation, error) {
+	if userID <= 0 {
+		return nil, infraerrors.Unauthorized("WORKBENCH_SSO_TICKET_INVALID", "ticket is invalid or expired")
+	}
+	return s.validateTicket(ctx, ticket, audience, userID)
+}
+
+func (s *WorkbenchSSOService) validateTicket(ctx context.Context, ticket, audience string, expectedUserID int64) (*WorkbenchSSOValidation, error) {
 	normalizedAudience, err := s.validateAudience(ctx, audience)
 	if err != nil {
 		return nil, err
@@ -174,7 +186,14 @@ func (s *WorkbenchSSOService) ValidateTicket(ctx context.Context, ticket, audien
 		return nil, err
 	}
 
-	raw, ok, err := s.ticketStore.ConsumeTicket(ctx, workbenchSSOTicketKey(ticket))
+	key := workbenchSSOTicketKey(ticket)
+	var raw string
+	var ok bool
+	if expectedUserID > 0 {
+		raw, ok, err = s.ticketStore.ConsumeTicketForUser(ctx, key, expectedUserID)
+	} else {
+		raw, ok, err = s.ticketStore.ConsumeTicket(ctx, key)
+	}
 	if err != nil {
 		return nil, infraerrors.InternalServer("WORKBENCH_SSO_REDIS_UNAVAILABLE", "workbench sso ticket store is unavailable").WithCause(err)
 	}
@@ -232,6 +251,13 @@ func (s *WorkbenchSSOService) requireDiamondMembershipForAudience(ctx context.Co
 	if !requiresDiamond {
 		return nil
 	}
+	return s.requireDiamondMembership(ctx, userID)
+}
+
+func (s *WorkbenchSSOService) requireDiamondMembership(ctx context.Context, userID int64) error {
+	if s == nil || s.membershipGetter == nil {
+		return infraerrors.InternalServer("WORKBENCH_SSO_MEMBERSHIP_UNAVAILABLE", "workbench membership check is unavailable")
+	}
 	summary, err := s.membershipGetter.GetUserMembership(ctx, userID)
 	if err != nil {
 		return infraerrors.InternalServer("WORKBENCH_SSO_MEMBERSHIP_UNAVAILABLE", "workbench membership check is unavailable").WithCause(err)
@@ -253,6 +279,17 @@ func (s *WorkbenchSSOService) RefreshControlToken(ctx context.Context, refreshTo
 	return s.controlTokens.Refresh(ctx, refreshToken, normalizedAudience)
 }
 
+func (s *WorkbenchSSOService) RefreshControlTokenForUser(ctx context.Context, refreshToken, audience string, userID int64) (*WorkbenchControlAuthorization, error) {
+	if s == nil || s.controlTokens == nil {
+		return nil, infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
+	}
+	normalizedAudience, err := s.validateAudience(ctx, audience)
+	if err != nil {
+		return nil, err
+	}
+	return s.controlTokens.RefreshForUser(ctx, refreshToken, normalizedAudience, userID)
+}
+
 func (s *WorkbenchSSOService) RevokeControlToken(ctx context.Context, refreshToken, audience string) error {
 	if s == nil || s.controlTokens == nil {
 		return infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
@@ -262,6 +299,17 @@ func (s *WorkbenchSSOService) RevokeControlToken(ctx context.Context, refreshTok
 		return err
 	}
 	return s.controlTokens.Revoke(ctx, refreshToken, normalizedAudience)
+}
+
+func (s *WorkbenchSSOService) RevokeControlTokenForUser(ctx context.Context, refreshToken, audience string, userID int64) error {
+	if s == nil || s.controlTokens == nil {
+		return infraerrors.InternalServer("WORKBENCH_CONTROL_UNAVAILABLE", "workbench control authorization is unavailable")
+	}
+	normalizedAudience, err := s.validateAudience(ctx, audience)
+	if err != nil {
+		return err
+	}
+	return s.controlTokens.RevokeForUser(ctx, refreshToken, normalizedAudience, userID)
 }
 
 func (s *WorkbenchSSOService) AuthorizeAudience(ctx context.Context, audience, actualSecret string) bool {

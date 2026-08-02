@@ -372,12 +372,24 @@ func (s *DesktopSessionService) AuthenticateAccess(ctx context.Context, accessTo
 	if err := s.verifyDPoP(ctx, dpopProof, target, claims.Confirmation.JKT, accessToken); err != nil {
 		return nil, err
 	}
-	sessionKey := desktopSessionKey(claims.SessionID)
+	return s.validateIdentity(ctx, &DesktopIdentity{
+		UserID: claims.UserID, SessionID: claims.SessionID, TokenVersion: claims.TokenVersion, JKT: claims.Confirmation.JKT,
+	})
+}
+
+func (s *DesktopSessionService) validateIdentity(ctx context.Context, identity *DesktopIdentity) (*DesktopIdentity, error) {
+	if identity == nil || identity.UserID <= 0 || strings.TrimSpace(identity.SessionID) == "" || strings.TrimSpace(identity.JKT) == "" {
+		return nil, infraerrors.Unauthorized("DESKTOP_SESSION_INVALID", "desktop session is invalid or revoked")
+	}
+	if err := s.ensureAvailable(ctx); err != nil {
+		return nil, err
+	}
+	sessionKey := desktopSessionKey(identity.SessionID)
 	session, err := s.loadSession(ctx, sessionKey)
 	if err != nil {
 		return nil, err
 	}
-	if session.UserID != claims.UserID || session.TokenVersion != claims.TokenVersion || session.JKT != claims.Confirmation.JKT || session.SessionID != claims.SessionID {
+	if session.UserID != identity.UserID || session.TokenVersion != identity.TokenVersion || session.JKT != identity.JKT || session.SessionID != identity.SessionID {
 		return nil, infraerrors.Unauthorized("DESKTOP_SESSION_INVALID", "desktop session is invalid or revoked")
 	}
 	if !s.currentTime().Before(time.Unix(session.ExpiresAt, 0)) {

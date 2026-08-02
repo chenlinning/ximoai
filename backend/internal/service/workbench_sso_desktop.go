@@ -8,16 +8,24 @@ import (
 )
 
 func (s *WorkbenchSSOService) IssueTicketForWorkbenchID(ctx context.Context, userID int64, workbenchID string) (*WorkbenchSSOTicket, error) {
+	audience, err := s.ResolveWorkbenchForUser(ctx, userID, workbenchID)
+	if err != nil {
+		return nil, err
+	}
+	return s.IssueTicket(ctx, userID, audience)
+}
+
+func (s *WorkbenchSSOService) ResolveWorkbenchForUser(ctx context.Context, userID int64, workbenchID string) (string, error) {
 	if s == nil || s.settingService == nil {
-		return nil, infraerrors.InternalServer("WORKBENCH_SSO_NOT_CONFIGURED", "workbench sso is not configured")
+		return "", infraerrors.InternalServer("WORKBENCH_SSO_NOT_CONFIGURED", "workbench sso is not configured")
 	}
 	workbenchID = strings.TrimSpace(workbenchID)
 	if workbenchID == "" {
-		return nil, infraerrors.BadRequest("WORKBENCH_ID_REQUIRED", "workbench_id is required")
+		return "", infraerrors.BadRequest("WORKBENCH_ID_REQUIRED", "workbench_id is required")
 	}
 	tabs, err := s.settingService.GetXimoAIHomeTabs(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	for _, tab := range tabs {
 		if tab.ID != workbenchID {
@@ -26,7 +34,16 @@ func (s *WorkbenchSSOService) IssueTicketForWorkbenchID(ctx context.Context, use
 		if !tab.Enabled || !tab.WorkbenchSSO {
 			break
 		}
-		return s.IssueTicket(ctx, userID, tab.URL)
+		audience := normalizeWorkbenchAudience(tab.URL)
+		if audience == "" {
+			break
+		}
+		if tab.DiamondOnly {
+			if err := s.requireDiamondMembership(ctx, userID); err != nil {
+				return "", err
+			}
+		}
+		return audience, nil
 	}
-	return nil, infraerrors.Forbidden("WORKBENCH_SSO_FORBIDDEN", "workbench is unavailable")
+	return "", infraerrors.Forbidden("WORKBENCH_SSO_FORBIDDEN", "workbench is unavailable")
 }

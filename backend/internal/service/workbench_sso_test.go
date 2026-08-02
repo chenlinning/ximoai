@@ -83,6 +83,22 @@ func (s *workbenchTestTicketStore) ConsumeTicket(_ context.Context, key string) 
 	return item.value, true, nil
 }
 
+func (s *workbenchTestTicketStore) ConsumeTicketForUser(_ context.Context, key string, userID int64) (string, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	item, ok := s.items[key]
+	if !ok || !s.now.Before(item.expiresAt) {
+		delete(s.items, key)
+		return "", false, nil
+	}
+	var record workbenchTicketRecord
+	if json.Unmarshal([]byte(item.value), &record) != nil || record.UserID != userID {
+		return "", false, nil
+	}
+	delete(s.items, key)
+	return item.value, true, nil
+}
+
 func (s *workbenchTestTicketStore) Ping(context.Context) error {
 	return nil
 }

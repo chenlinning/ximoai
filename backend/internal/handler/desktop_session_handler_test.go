@@ -25,6 +25,20 @@ type desktopSessionHandlerServiceStub struct {
 	workbenchID     string
 }
 
+type desktopSSOBrokerHandlerStub struct {
+	identity    *service.DesktopIdentity
+	workbenchID string
+}
+
+func (s *desktopSSOBrokerHandlerStub) Issue(_ context.Context, identity *service.DesktopIdentity, workbenchID string) (*service.DesktopSSOBrokerCredential, error) {
+	s.identity = identity
+	s.workbenchID = workbenchID
+	return &service.DesktopSSOBrokerCredential{
+		Credential: "broker-credential", TokenType: "Bearer", ExpiresIn: 300,
+		WorkbenchID: workbenchID, Audience: "https://image.ximoai.cn",
+	}, nil
+}
+
 func (s *desktopSessionHandlerServiceStub) CreateAuthorizationCode(_ context.Context, userID int64, req service.DesktopAuthorizationRequest) (*service.DesktopAuthorizationGrant, error) {
 	s.authorizeUserID = userID
 	s.authorizeReq = req
@@ -88,10 +102,12 @@ func TestDesktopSessionHandlerAuthorizeUsesExistingLoginAndStrictJSON(t *testing
 
 func TestDesktopSessionHandlerTokenAndTicketUseDPoP(t *testing.T) {
 	stub := &desktopSessionHandlerServiceStub{}
-	h := &DesktopSessionHandler{service: stub}
+	broker := &desktopSSOBrokerHandlerStub{}
+	h := &DesktopSessionHandler{service: stub, broker: broker}
 	router := gin.New()
 	router.POST("/api/v1/desktop/token", h.Token)
 	router.POST("/api/v1/desktop/sso-ticket", h.SSOTicket)
+	router.POST("/api/v1/desktop/sso-broker-credential", h.SSOBrokerCredential)
 
 	headers := map[string]string{"DPoP": "proof", "X-Forwarded-Proto": "https"}
 	w := desktopHandlerRequest(t, router, http.MethodPost, "/api/v1/desktop/token", `{"grant_type":"authorization_code","code":"dca_code","code_verifier":"verifier","redirect_uri":"ximoai://desktop/callback"}`, headers)
@@ -110,6 +126,17 @@ func TestDesktopSessionHandlerTokenAndTicketUseDPoP(t *testing.T) {
 	headers["Authorization"] = "Bearer desktop-access"
 	w = desktopHandlerRequest(t, router, http.MethodPost, "/api/v1/desktop/sso-ticket", `{"workbench_id":"image"}`, headers)
 	require.Equal(t, http.StatusUnauthorized, w.Code)
+
+	headers["Authorization"] = "DPoP desktop-access"
+	w = desktopHandlerRequest(t, router, http.MethodPost, "/api/v1/desktop/sso-broker-credential", `{"workbench_id":"image"}`, headers)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "desktop-access", stub.accessToken)
+	require.Equal(t, "image", broker.workbenchID)
+	require.Equal(t, int64(42), broker.identity.UserID)
+	require.Contains(t, w.Body.String(), "broker-credential")
+
+	w = desktopHandlerRequest(t, router, http.MethodPost, "/api/v1/desktop/sso-broker-credential", `{"workbench_id":"image","audience":"https://evil.example"}`, headers)
+	require.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestDesktopSessionHandlerRefreshAndRevocation(t *testing.T) {

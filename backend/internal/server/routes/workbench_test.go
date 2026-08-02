@@ -19,7 +19,7 @@ func TestRegisterWorkbenchRoutesUsesScopedControlTokenLifecycle(t *testing.T) {
 	router := gin.New()
 	v1 := router.Group("/api/v1")
 	handlers := &handler.Handlers{
-		WorkbenchSSO: handler.NewWorkbenchSSOHandler(nil),
+		WorkbenchSSO: handler.NewWorkbenchSSOHandler(nil, nil),
 	}
 	RegisterWorkbenchRoutes(v1, handlers, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }), nil)
 
@@ -45,7 +45,7 @@ func TestWorkbenchInternalRoutesRateLimitFailCloseWhenRedisUnavailable(t *testin
 
 	router := gin.New()
 	v1 := router.Group("/api/v1")
-	RegisterWorkbenchRoutes(v1, &handler.Handlers{WorkbenchSSO: handler.NewWorkbenchSSOHandler(nil)}, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }), redisClient)
+	RegisterWorkbenchRoutes(v1, &handler.Handlers{WorkbenchSSO: handler.NewWorkbenchSSOHandler(nil, nil)}, middleware.JWTAuthMiddleware(func(c *gin.Context) { c.Next() }), redisClient)
 
 	for _, path := range []string{
 		"/api/v1/workbench/sso-ticket/validate",

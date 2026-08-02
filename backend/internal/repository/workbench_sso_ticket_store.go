@@ -22,6 +22,19 @@ redis.call("DEL", KEYS[1])
 return value
 `)
 
+var consumeWorkbenchSSOTicketForUserScript = redis.NewScript(`
+local value = redis.call("GET", KEYS[1])
+if not value then
+	return false
+end
+local ok, record = pcall(cjson.decode, value)
+if not ok or tonumber(record["user_id"]) ~= tonumber(ARGV[1]) then
+	return false
+end
+redis.call("DEL", KEYS[1])
+return value
+`)
+
 func NewWorkbenchSSOTicketStore(rdb *redis.Client) service.WorkbenchSSOTicketStore {
 	return &workbenchSSOTicketStore{rdb: rdb}
 }
@@ -38,6 +51,23 @@ func (s *workbenchSSOTicketStore) ConsumeTicket(ctx context.Context, key string)
 		return "", false, redis.Nil
 	}
 	raw, err := consumeWorkbenchSSOTicketScript.Run(ctx, s.rdb, []string{key}).Result()
+	if err == redis.Nil {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if raw == nil || raw == false {
+		return "", false, nil
+	}
+	return fmt.Sprint(raw), true, nil
+}
+
+func (s *workbenchSSOTicketStore) ConsumeTicketForUser(ctx context.Context, key string, userID int64) (string, bool, error) {
+	if s == nil || s.rdb == nil {
+		return "", false, redis.Nil
+	}
+	raw, err := consumeWorkbenchSSOTicketForUserScript.Run(ctx, s.rdb, []string{key}, userID).Result()
 	if err == redis.Nil {
 		return "", false, nil
 	}

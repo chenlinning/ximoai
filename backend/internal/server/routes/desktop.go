@@ -19,6 +19,7 @@ func RegisterDesktopRoutes(v1 *gin.RouterGroup, h *handler.Handlers, jwtAuth mid
 	{
 		desktop.POST("/token", limit, h.DesktopSession.Token)
 		desktop.POST("/sso-ticket", limit, h.DesktopSession.SSOTicket)
+		desktop.POST("/sso-broker-credential", limit, h.DesktopSession.SSOBrokerCredential)
 		desktop.DELETE("/session", limit, h.DesktopSession.RevokeSession)
 		desktop.POST("/revoke", limit, h.DesktopSession.RevokeRefresh)
 	}
