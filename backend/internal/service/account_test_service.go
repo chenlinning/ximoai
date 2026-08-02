@@ -1334,12 +1334,13 @@ func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Cont
 	}
 
 	action := "generateContent"
-	alt := ""
 	if stream {
 		action = "streamGenerateContent"
-		alt = "?alt=sse"
 	}
-	fullURL := fmt.Sprintf("%s/v1beta/models/%s:%s%s", strings.TrimRight(normalizedBaseURL, "/"), modelID, action, alt)
+	fullURL, err := buildGeminiAIStudioModelActionURL(normalizedBaseURL, modelID, action, stream)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, bytes.NewReader(payload))
 	if err != nil {
@@ -1375,12 +1376,13 @@ func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Conte
 			return nil, err
 		}
 		action := "generateContent"
-		alt := ""
 		if stream {
 			action = "streamGenerateContent"
-			alt = "?alt=sse"
 		}
-		fullURL := fmt.Sprintf("%s/v1beta/models/%s:%s%s", strings.TrimRight(normalizedBaseURL, "/"), modelID, action, alt)
+		fullURL, err := buildGeminiAIStudioModelActionURL(normalizedBaseURL, modelID, action, stream)
+		if err != nil {
+			return nil, err
+		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, bytes.NewReader(payload))
 		if err != nil {

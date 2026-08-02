@@ -98,6 +98,7 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 	switchCount := 0
 	failedAccountIDs := make(map[int64]struct{})
 	sameAccountRetryCount := make(map[int64]int)
+	profitVetoCount := 0
 	var lastFailoverErr *service.UpstreamFailoverError
 
 	for {
@@ -144,8 +145,15 @@ func (h *OpenAIGatewayHandler) Audio(c *gin.Context) {
 		setOpsSelectedAccount(c, account.ID, account.Platform)
 		scheduledModel := account.GetMappedModel(routingModel)
 
-		accountReleaseFunc, acquired := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, false, &streamStarted, reqLog)
-		if !acquired {
+		accountReleaseFunc, slotResult := h.acquireResponsesAccountSlot(c, apiKey.GroupID, sessionHash, selection, false, &streamStarted, reqLog)
+		if slotResult == openAISlotAcquireProfitVetoed {
+			if !recordOpenAIProfitVeto(failedAccountIDs, account.ID, &profitVetoCount) {
+				h.handleOpenAIProfitVetoExhausted(c, streamStarted, reqLog, profitVetoCount)
+				return
+			}
+			continue
+		}
+		if slotResult != openAISlotAcquireOK {
 			return
 		}
 
