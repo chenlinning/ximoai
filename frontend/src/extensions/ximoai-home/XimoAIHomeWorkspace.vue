@@ -4,7 +4,11 @@
     :class="{ 'home-workspace-shell': activeTabID }"
   >
     <template v-if="!activeTabID">
-      <LoginGalaxyBackground class="fixed inset-0 z-0" :max-fps="30" />
+      <LoginGalaxyBackground
+        fixed
+        class="inset-0 z-0"
+        :max-fps="30"
+      />
       <AppHeader
         variant="floating"
         show-theme-toggle

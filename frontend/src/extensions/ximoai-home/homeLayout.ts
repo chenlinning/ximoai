@@ -28,7 +28,7 @@ export function buildHomeRows<T>(items: readonly T[], columns: HomeColumnCount):
     const index = rows.length
     rows.push({
       index,
-      compact: index > 0,
+      compact: columns > 1 && index > 0,
       items: indexedItems.slice(offset, offset + columns)
     })
   }

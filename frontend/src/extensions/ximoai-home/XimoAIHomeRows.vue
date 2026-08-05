@@ -79,7 +79,4 @@ const emit = defineEmits<{
   width: min(100%, 24.5rem);
 }
 
-.home-entry-grid--columns-1 .home-entry-row--compact .home-entry-card-slot {
-  width: min(80%, 19.6rem);
-}
 </style>

@@ -43,6 +43,13 @@ describe('XimoAI home static layout', () => {
     expect(rows.flatMap((row) => row.items.map((entry) => entry.index))).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
   })
 
+  it('keeps every mobile single-column card at the full primary size', () => {
+    const rows = buildHomeRows(items.slice(0, 4), 1)
+
+    expect(rows.map((row) => row.items.length)).toEqual([1, 1, 1, 1])
+    expect(rows.map((row) => row.compact)).toEqual([false, false, false, false])
+  })
+
   it('keeps every row centered and limits each row to three cards', () => {
     const rows = buildHomeRows(items, 3)
 
@@ -56,6 +63,6 @@ describe('XimoAI home static layout', () => {
   })
 
   it('keeps the animated background while using the balanced home frame rate', () => {
-    expect(workspaceSource).toMatch(/<LoginGalaxyBackground[\s\S]*?:max-fps="30"/)
+    expect(workspaceSource).toMatch(/<LoginGalaxyBackground\s+fixed[\s\S]*?:max-fps="30"/)
   })
 })

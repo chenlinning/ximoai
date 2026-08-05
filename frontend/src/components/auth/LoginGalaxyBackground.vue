@@ -1,5 +1,10 @@
 <template>
-  <div ref="containerRef" class="login-galaxy-background" aria-hidden="true"></div>
+  <div
+    ref="containerRef"
+    class="login-galaxy-background"
+    :class="{ 'login-galaxy-background--fixed': props.fixed }"
+    aria-hidden="true"
+  ></div>
 </template>
 
 <script setup lang="ts">
@@ -7,8 +12,10 @@ import { Color, Mesh, Program, Renderer, Triangle } from 'ogl'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = withDefaults(defineProps<{
+  fixed?: boolean
   maxFps?: number
 }>(), {
+  fixed: false,
   maxFps: 0
 })
 
@@ -404,6 +411,10 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow: hidden;
   background: var(--login-galaxy-background, rgb(var(--color-accent-50)));
+}
+
+.login-galaxy-background--fixed {
+  position: fixed;
 }
 
 :deep(.login-galaxy-canvas) {

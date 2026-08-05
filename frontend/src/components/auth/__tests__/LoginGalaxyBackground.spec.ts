@@ -67,6 +67,16 @@ describe('LoginGalaxyBackground', () => {
     expect(removeEventListener).toHaveBeenCalledWith('mousemove', expect.any(Function))
   })
 
+  it('uses fixed positioning only when requested by a full-page host', () => {
+    const defaultWrapper = mount(LoginGalaxyBackground)
+    expect(defaultWrapper.get('.login-galaxy-background').classes()).not.toContain('login-galaxy-background--fixed')
+    defaultWrapper.unmount()
+
+    const fixedWrapper = mount(LoginGalaxyBackground, { props: { fixed: true } })
+    expect(fixedWrapper.get('.login-galaxy-background').classes()).toContain('login-galaxy-background--fixed')
+    fixedWrapper.unmount()
+  })
+
   it('limits GPU rendering cadence and skips rendering while the page is hidden', () => {
     const callbacks: FrameRequestCallback[] = []
     vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
