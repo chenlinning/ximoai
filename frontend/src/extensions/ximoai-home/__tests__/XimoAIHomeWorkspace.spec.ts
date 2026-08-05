@@ -115,6 +115,9 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     await findButton('Workbench').trigger('click')
     await flushPromises()
     expect(createSSOTicket).toHaveBeenCalledWith('https://workbench.ximoai.cn/app')
+    expect(wrapper.get('.home-workspace-tabs-scroll').classes()).toContain('overflow-x-auto')
+    expect(wrapper.get('.home-workspace-tabs').classes()).toContain('flex-nowrap')
+    expect(wrapper.get('.home-workspace-tabs').classes()).not.toContain('flex-wrap')
     expect(findButton('Workbench').classes()).toContain('border-primary-500')
     expect(findButton('Novel').classes()).toContain('border-gray-300')
     expect(wrapper.findAll('iframe').map((frame) => frame.attributes('src'))).toEqual([

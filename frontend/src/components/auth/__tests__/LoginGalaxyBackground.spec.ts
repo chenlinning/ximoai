@@ -2,6 +2,8 @@ import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginGalaxyBackground from '../LoginGalaxyBackground.vue'
 
+const renderGalaxy = vi.hoisted(() => vi.fn())
+
 vi.mock('ogl', () => {
   class Renderer {
     gl: Record<string, any>
@@ -20,7 +22,9 @@ vi.mock('ogl', () => {
     }
 
     setSize() {}
-    render() {}
+    render() {
+      renderGalaxy()
+    }
   }
 
   class Program {
@@ -42,6 +46,7 @@ vi.mock('ogl', () => {
 
 describe('LoginGalaxyBackground', () => {
   beforeEach(() => {
+    renderGalaxy.mockReset()
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
@@ -60,5 +65,31 @@ describe('LoginGalaxyBackground', () => {
     expect(addEventListener).toHaveBeenCalledWith('mousemove', expect.any(Function))
     wrapper.unmount()
     expect(removeEventListener).toHaveBeenCalledWith('mousemove', expect.any(Function))
+  })
+
+  it('limits GPU rendering cadence and skips rendering while the page is hidden', () => {
+    const callbacks: FrameRequestCallback[] = []
+    vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
+      callbacks.push(callback)
+      return callbacks.length
+    }))
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(false)
+
+    const wrapper = mount(LoginGalaxyBackground, { props: { maxFps: 30 } })
+
+    callbacks.shift()!(0)
+    expect(renderGalaxy).toHaveBeenCalledTimes(1)
+
+    callbacks.shift()!(16)
+    expect(renderGalaxy).toHaveBeenCalledTimes(1)
+
+    callbacks.shift()!(34)
+    expect(renderGalaxy).toHaveBeenCalledTimes(2)
+
+    hidden.mockReturnValue(true)
+    callbacks.shift()!(68)
+    expect(renderGalaxy).toHaveBeenCalledTimes(2)
+
+    wrapper.unmount()
   })
 })

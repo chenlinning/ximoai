@@ -1,7 +1,7 @@
 <template>
   <main class="relative flex min-h-screen flex-col overflow-x-hidden bg-gray-50 dark:bg-dark-950">
     <template v-if="!activeTabID">
-      <LoginGalaxyBackground class="fixed inset-0 z-0" />
+      <LoginGalaxyBackground class="fixed inset-0 z-0" :max-fps="30" />
       <AppHeader
         variant="floating"
         show-theme-toggle
@@ -44,13 +44,13 @@
         show-console-button
       >
         <template #left>
-          <div class="w-full min-w-0 max-w-full">
-            <nav class="flex w-full flex-wrap items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
+          <div class="home-workspace-tabs-scroll w-full min-w-0 max-w-full overflow-x-auto">
+            <nav class="home-workspace-tabs flex w-max min-w-full flex-nowrap items-center justify-center gap-1" :aria-label="t('ximoaiHome.tabs')">
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
                 type="button"
-                class="shrink-0 rounded-md border px-3 py-2 text-sm font-medium transition-colors"
+                class="shrink-0 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:py-2 sm:text-sm"
                 :class="activeTabID === tab.id
                   ? 'border-primary-500 bg-primary-500 text-white shadow-sm hover:bg-primary-600 hover:shadow-md'
                   : 'border-gray-300 text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:border-dark-600 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'"
@@ -253,6 +253,15 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.home-workspace-tabs-scroll {
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.home-workspace-tabs-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 </style>

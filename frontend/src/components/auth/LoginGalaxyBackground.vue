@@ -6,6 +6,12 @@
 import { Color, Mesh, Program, Renderer, Triangle } from 'ogl'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
+const props = withDefaults(defineProps<{
+  maxFps?: number
+}>(), {
+  maxFps: 0
+})
+
 const containerRef = ref<HTMLDivElement | null>(null)
 
 const focal = [0.5, 0.5]
@@ -24,6 +30,7 @@ let renderer: Renderer | null = null
 let program: Program | null = null
 let mesh: Mesh | null = null
 let animationFrame = 0
+let lastRenderTime = Number.NEGATIVE_INFINITY
 let themeObserver: MutationObserver | null = null
 
 const targetMousePos = { x: 0.5, y: 0.5 }
@@ -263,6 +270,10 @@ function resize() {
 function update(time: number) {
   animationFrame = requestAnimationFrame(update)
   if (!renderer || !program || !mesh) return
+
+  const minimumFrameInterval = props.maxFps > 0 ? 1000 / props.maxFps : 0
+  if (document.hidden || time - lastRenderTime < minimumFrameInterval) return
+  lastRenderTime = time
 
   if (!disableAnimation) {
     program.uniforms.uTime.value = time * 0.001
