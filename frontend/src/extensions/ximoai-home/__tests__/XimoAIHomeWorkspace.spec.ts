@@ -138,6 +138,47 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     expect(wrapper.findAll('iframe')).toHaveLength(2)
   })
 
+  it('replaces a consumed SSO entry URL with the stable configured URL after the child is ready', async () => {
+    const wrapper = mount(XimoAIHomeWorkspace, {
+      attachTo: document.body,
+      props: { tabs: [tabs[0]] },
+      global: {
+        stubs: {
+          AppHeader: { template: '<header><slot name="left" /></header>' },
+          LoginGalaxyBackground: true,
+          Icon: true
+        }
+      }
+    })
+
+    await wrapper.get('.home-entry-card button').trigger('click')
+    await flushPromises()
+
+    const frame = wrapper.get('iframe')
+    expect(frame.attributes('src')).toContain('/sso/entry?ticket=test')
+    expect(wrapper.get('main').classes()).toContain('home-workspace-shell')
+    expect(wrapper.get('section').classes()).toContain('overflow-hidden')
+    expect(frame.classes()).toEqual(expect.arrayContaining(['absolute', 'inset-0', 'block', 'h-full', 'w-full']))
+
+    const readyEvent = new MessageEvent('message', {
+      origin: 'https://workbench.ximoai.cn',
+      data: {
+        source: 'ximoai-embedded',
+        version: 1,
+        type: 'preferences:ready'
+      }
+    })
+    Object.defineProperty(readyEvent, 'source', { value: frame.element.contentWindow })
+    expect(readyEvent.origin).toBe('https://workbench.ximoai.cn')
+    expect(readyEvent.source).toBe(frame.element.contentWindow)
+    window.dispatchEvent(readyEvent)
+    await flushPromises()
+
+    expect(wrapper.get('iframe').attributes('src')).toBe('https://workbench.ximoai.cn/app')
+    expect(createSSOTicket).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
   it('keeps the home cards in centered static rows', async () => {
     const wrapper = mount(XimoAIHomeWorkspace, {
       props: { tabs },

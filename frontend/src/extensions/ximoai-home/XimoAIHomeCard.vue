@@ -3,7 +3,10 @@
     class="home-entry-card group min-w-0 text-left"
     :style="{ animationDelay }"
   >
-    <div class="home-entry-media relative aspect-[5/3] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600">
+    <div
+      ref="mediaRef"
+      class="home-entry-media relative aspect-[5/3] overflow-hidden rounded-lg border border-white/60 shadow-lg transition group-hover:border-primary-300 group-hover:shadow-xl dark:border-dark-700/80 dark:group-hover:border-primary-600"
+    >
       <img
         v-if="tab.cover_url && coverType(tab.cover_url) === 'image'"
         :src="tab.cover_url"
@@ -24,8 +27,8 @@
         v-else-if="tab.cover_url && coverType(tab.cover_url) === 'html'"
         :srcdoc="htmlCover(tab.cover_url)"
         :title="tab.label"
-        class="home-entry-cover-frame h-full w-full border-0"
-        :style="{ colorScheme: theme }"
+        class="home-entry-cover-frame absolute left-0 top-0 border-0"
+        :style="htmlCoverStyle"
         sandbox=""
       />
       <div
@@ -49,10 +52,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { XimoAIHomeTab } from '@/api'
 import { decodeXimoAIHomeHTMLCover, resolveXimoAIHomeCoverType } from '@/utils/ximoaiHomeCover'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   tab: XimoAIHomeTab
   theme: 'light' | 'dark'
   animationDelay?: string
@@ -66,6 +70,40 @@ const emit = defineEmits<{
 
 const coverType = resolveXimoAIHomeCoverType
 const htmlCover = decodeXimoAIHomeHTMLCover
+const HTML_COVER_WIDTH = 1200
+const HTML_COVER_HEIGHT = 720
+const mediaRef = ref<HTMLElement | null>(null)
+const htmlCoverScale = ref(1)
+let mediaResizeObserver: ResizeObserver | null = null
+
+const htmlCoverStyle = computed(() => ({
+  width: `${HTML_COVER_WIDTH}px`,
+  height: `${HTML_COVER_HEIGHT}px`,
+  transform: `scale(${htmlCoverScale.value})`,
+  transformOrigin: 'top left',
+  colorScheme: props.theme
+}))
+
+function updateHTMLCoverScale(width: number) {
+  if (width > 0) htmlCoverScale.value = width / HTML_COVER_WIDTH
+}
+
+onMounted(() => {
+  const media = mediaRef.value
+  if (!media || !props.tab.cover_url || coverType(props.tab.cover_url) !== 'html') return
+
+  updateHTMLCoverScale(media.getBoundingClientRect().width)
+  if (typeof ResizeObserver !== 'undefined') {
+    mediaResizeObserver = new ResizeObserver((entries) => {
+      updateHTMLCoverScale(entries[0]?.contentRect.width || 0)
+    })
+    mediaResizeObserver.observe(media)
+  }
+})
+
+onBeforeUnmount(() => {
+  mediaResizeObserver?.disconnect()
+})
 </script>
 
 <style scoped>

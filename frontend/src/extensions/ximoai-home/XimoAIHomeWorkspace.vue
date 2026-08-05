@@ -1,5 +1,8 @@
 <template>
-  <main class="relative flex min-h-screen flex-col overflow-x-hidden bg-gray-50 dark:bg-dark-950">
+  <main
+    class="relative flex min-h-screen flex-col overflow-x-hidden bg-gray-50 dark:bg-dark-950"
+    :class="{ 'home-workspace-shell': activeTabID }"
+  >
     <template v-if="!activeTabID">
       <LoginGalaxyBackground class="fixed inset-0 z-0" :max-fps="30" />
       <AppHeader
@@ -63,7 +66,7 @@
         </template>
       </AppHeader>
 
-      <section class="relative min-h-0 flex-1 bg-white dark:bg-dark-950">
+      <section class="relative min-h-0 flex-1 overflow-hidden bg-white dark:bg-dark-950">
         <div
           v-for="tab in tabs"
           v-show="activeTabID === tab.id"
@@ -85,7 +88,7 @@
             :ref="(element) => setFrameRef(tab.id, element)"
             :src="frameURLs[tab.id]"
             :title="tab.label"
-            class="h-full w-full border-0"
+            class="absolute inset-0 block h-full w-full border-0"
             allow="clipboard-read; clipboard-write; fullscreen"
             allowfullscreen
             @load="handleFrameLoad(tab.id)"
@@ -209,6 +212,10 @@ function handleMessage(event: MessageEvent) {
   for (const tab of props.tabs) {
     const frameWindow = frameRefs.get(tab.id)?.contentWindow
     if (frameWindow && isPreferencesReadyMessage(event, tab.url, frameWindow)) {
+      if (tab.workbench_sso && frameURLs[tab.id] !== tab.url) {
+        frameURLs[tab.id] = tab.url
+        return
+      }
       postPreferences(tab)
       return
     }
@@ -247,6 +254,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.home-workspace-shell {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@supports (height: 100dvh) {
+  .home-workspace-shell {
+    height: 100dvh;
+  }
+}
+
 .home-entry-area {
   width: 100%;
   margin-inline: auto;
