@@ -176,6 +176,13 @@ func TestAdminService_CompositeModelsListCandidatesIncludeConcreteAccountMapping
 			},
 			{
 				ID:       3,
+				Platform: PlatformOpenAIAudio,
+				Credentials: map[string]any{
+					"model_mapping": map[string]any{"audio-custom": "gpt-4o-audio-preview"},
+				},
+			},
+			{
+				ID:       4,
 				Platform: "acme-openai",
 				Credentials: map[string]any{
 					"model_mapping": map[string]any{"acme-custom": "acme-reasoning"},
@@ -195,7 +202,8 @@ func TestAdminService_CompositeModelsListCandidatesIncludeConcreteAccountMapping
 	require.NoError(t, err)
 	require.Contains(t, candidates, "gpt-custom")
 	require.Contains(t, candidates, "gemini-custom")
-	require.Contains(t, candidates, "acme-custom")
+	require.Contains(t, candidates, "audio-custom")
+	require.NotContains(t, candidates, "acme-custom")
 	require.Contains(t, candidates, "gpt-5.5")
 	require.Contains(t, candidates, "gemini-2.5-flash")
 }

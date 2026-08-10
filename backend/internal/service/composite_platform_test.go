@@ -58,3 +58,24 @@ func TestCompositeGroupSchedulerHasAllCanonicalPlatformBuckets(t *testing.T) {
 		require.Contains(t, seen, platform)
 	}
 }
+
+func TestIsConcreteRequestPlatformAllowsOnlyBuiltins(t *testing.T) {
+	allowed := []string{
+		PlatformAnthropic,
+		PlatformOpenAI,
+		PlatformGemini,
+		PlatformAntigravity,
+		PlatformGrok,
+		PlatformGrokVideo,
+		PlatformOpenAIAudio,
+		PlatformKlingAudio,
+		PlatformVolcengineAgentPlan,
+	}
+	for _, platform := range allowed {
+		require.True(t, isConcreteRequestPlatform(platform), platform)
+	}
+
+	for _, platform := range []string{"", PlatformComposite, "unknown-platform"} {
+		require.False(t, isConcreteRequestPlatform(platform), platform)
+	}
+}

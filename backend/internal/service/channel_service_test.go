@@ -2064,18 +2064,18 @@ func TestCompositeChannelLookupUsesResolvedTargetPlatform(t *testing.T) {
 	require.Equal(t, "claude-sonnet-4-5", anthropicResult.MappedModel)
 }
 
-func TestCompositeChannelLookupUsesResolvedCustomPlatform(t *testing.T) {
-	const customPlatform = "acme-openai"
+func TestCompositeChannelLookupUsesResolvedBuiltinPlatform(t *testing.T) {
+	const builtinPlatform = PlatformOpenAIAudio
 	channel := Channel{
 		ID:       1,
 		Status:   StatusActive,
 		GroupIDs: []int64{99},
 		ModelPricing: []ChannelModelPricing{
-			{Platform: customPlatform, Models: []string{"acme-*"}},
+			{Platform: builtinPlatform, Models: []string{"audio-*"}},
 		},
 		ModelMapping: map[string]map[string]string{
-			customPlatform: {
-				"public-acme": "acme-reasoning",
+			builtinPlatform: {
+				"public-audio": "audio-upstream",
 			},
 		},
 	}
@@ -2083,11 +2083,11 @@ func TestCompositeChannelLookupUsesResolvedCustomPlatform(t *testing.T) {
 	svc := &ChannelService{}
 	svc.cache.Store(cache)
 
-	ctx := WithResolvedTargetPlatform(context.Background(), customPlatform)
-	require.NotNil(t, svc.GetChannelModelPricing(ctx, 99, "acme-reasoning"))
-	result := svc.ResolveChannelMapping(ctx, 99, "public-acme")
+	ctx := WithResolvedTargetPlatform(context.Background(), builtinPlatform)
+	require.NotNil(t, svc.GetChannelModelPricing(ctx, 99, "audio-upstream"))
+	result := svc.ResolveChannelMapping(ctx, 99, "public-audio")
 	require.True(t, result.Mapped)
-	require.Equal(t, "acme-reasoning", result.MappedModel)
+	require.Equal(t, "audio-upstream", result.MappedModel)
 }
 
 // ===========================================================================

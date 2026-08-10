@@ -178,6 +178,11 @@ func (s *GatewayService) resolveCompositeRouteDecision(ctx context.Context, grou
 }
 
 func isConcreteRequestPlatform(platform string) bool {
-	platform = NormalizePlatformSlug(platform)
-	return platform != "" && platform != PlatformComposite
+	switch NormalizePlatformSlug(platform) {
+	case PlatformAnthropic, PlatformOpenAI, PlatformGemini, PlatformAntigravity, PlatformGrok,
+		PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio, PlatformVolcengineAgentPlan:
+		return true
+	default:
+		return false
+	}
 }
