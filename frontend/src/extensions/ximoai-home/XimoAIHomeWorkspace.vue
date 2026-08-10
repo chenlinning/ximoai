@@ -8,6 +8,7 @@
         fixed
         class="inset-0 z-0"
         :max-fps="30"
+        :render-scale="0.75"
       />
       <AppHeader
         variant="floating"

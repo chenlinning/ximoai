@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginGalaxyBackground from '../LoginGalaxyBackground.vue'
 
 const renderGalaxy = vi.hoisted(() => vi.fn())
+const createRenderer = vi.hoisted(() => vi.fn())
 
 vi.mock('ogl', () => {
   class Renderer {
     gl: Record<string, any>
 
-    constructor() {
+    constructor(options?: unknown) {
+      createRenderer(options)
       this.gl = {
         canvas: document.createElement('canvas'),
         enable: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock('ogl', () => {
 describe('LoginGalaxyBackground', () => {
   beforeEach(() => {
     renderGalaxy.mockReset()
+    createRenderer.mockReset()
     vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1))
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
@@ -100,6 +103,29 @@ describe('LoginGalaxyBackground', () => {
     callbacks.shift()!(68)
     expect(renderGalaxy).toHaveBeenCalledTimes(2)
 
+    wrapper.unmount()
+  })
+
+  it('reuses cached pointer bounds instead of forcing layout on every mouse move', () => {
+    const getBoundingClientRect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      width: 1200,
+      height: 800
+    } as DOMRect)
+
+    const wrapper = mount(LoginGalaxyBackground)
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 200, clientY: 100 }))
+    window.dispatchEvent(new MouseEvent('mousemove', { clientX: 300, clientY: 200 }))
+
+    expect(getBoundingClientRect).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('supports a lower render scale without reducing animation cadence', () => {
+    const wrapper = mount(LoginGalaxyBackground, { props: { renderScale: 0.75 } })
+
+    expect(createRenderer).toHaveBeenCalledWith(expect.objectContaining({ dpr: 0.75 }))
     wrapper.unmount()
   })
 })

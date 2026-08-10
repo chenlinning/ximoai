@@ -64,5 +64,6 @@ describe('XimoAI home static layout', () => {
 
   it('keeps the animated background while using the balanced home frame rate', () => {
     expect(workspaceSource).toMatch(/<LoginGalaxyBackground\s+fixed[\s\S]*?:max-fps="30"/)
+    expect(workspaceSource).toMatch(/<LoginGalaxyBackground\s+fixed[\s\S]*?:render-scale="0\.75"/)
   })
 })

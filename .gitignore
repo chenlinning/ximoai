@@ -152,3 +152,6 @@ aicodex
 output/
 tools/go1.26.3/
 tools/go1.26.3.windows-amd64.zip
+
+# Vitest / Vite cache at repo root
+.vite/

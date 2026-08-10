@@ -57,7 +57,7 @@ func (s *PlatformService) List(ctx context.Context, includeDisabled bool) ([]Pla
 		if !platforms[i].Builtin {
 			continue
 		}
-		platforms[i].Capabilities = normalizeStringSet(platforms[i].Capabilities)
+		platforms[i].Capabilities = normalizePlatformStringSet(platforms[i].Capabilities)
 		builtin = append(builtin, platforms[i])
 	}
 	sortPlatforms(builtin)
@@ -85,7 +85,7 @@ func (s *PlatformService) GetBySlug(ctx context.Context, slug string) (*Platform
 	if platform == nil || !platform.Builtin {
 		return nil, ErrPlatformNotFound
 	}
-	platform.Capabilities = normalizeStringSet(platform.Capabilities)
+	platform.Capabilities = normalizePlatformStringSet(platform.Capabilities)
 	return platform, nil
 }
 
@@ -211,8 +211,8 @@ func normalizePlatformInput(input Platform, updating bool) (*Platform, error) {
 	input.DisplayName = strings.TrimSpace(input.DisplayName)
 	input.BaseURL = strings.TrimRight(strings.TrimSpace(input.BaseURL), "/")
 	input.Color = strings.TrimSpace(input.Color)
-	input.AuthModes = normalizeStringSet(input.AuthModes)
-	input.Capabilities = normalizeStringSet(input.Capabilities)
+	input.AuthModes = normalizePlatformStringSet(input.AuthModes)
+	input.Capabilities = normalizePlatformStringSet(input.Capabilities)
 	input.Capabilities = ensureRequiredPlatformCapabilities(input.Kind, input.Capabilities)
 
 	if !platformSlugPattern.MatchString(input.Slug) {
@@ -289,7 +289,7 @@ func ensureRequiredPlatformCapabilities(kind string, capabilities []string) []st
 			capabilities = append(capabilities, capability)
 		}
 	}
-	return normalizeStringSet(capabilities)
+	return normalizePlatformStringSet(capabilities)
 }
 
 func defaultCustomPlatformColor(slug string) string {
@@ -306,7 +306,7 @@ func defaultCustomPlatformColor(slug string) string {
 	return customPlatformDefaultColors[hash%len(customPlatformDefaultColors)]
 }
 
-func normalizeStringSet(values []string) []string {
+func normalizePlatformStringSet(values []string) []string {
 	seen := make(map[string]struct{}, len(values))
 	out := make([]string, 0, len(values))
 	for _, value := range values {

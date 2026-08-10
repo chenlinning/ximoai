@@ -22,6 +22,7 @@
         muted
         loop
         playsinline
+        preload="metadata"
       />
       <iframe
         v-else-if="tab.cover_url && coverType(tab.cover_url) === 'html'"
@@ -29,6 +30,7 @@
         :title="tab.label"
         class="home-entry-cover-frame absolute left-0 top-0 border-0"
         :style="htmlCoverStyle"
+        loading="lazy"
         sandbox=""
       />
       <div

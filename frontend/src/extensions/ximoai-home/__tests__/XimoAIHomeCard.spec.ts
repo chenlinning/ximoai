@@ -43,6 +43,7 @@ describe('XimoAIHomeCard HTML covers', () => {
     expect(frame.style.height).toBe('720px')
     expect(frame.style.transform).toBe('scale(0.25)')
     expect(frame.style.colorScheme).toBe('dark')
+    expect(wrapper.get('.home-entry-cover-frame').attributes('loading')).toBe('lazy')
     wrapper.unmount()
   })
 })

@@ -14,9 +14,11 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 const props = withDefaults(defineProps<{
   fixed?: boolean
   maxFps?: number
+  renderScale?: number
 }>(), {
   fixed: false,
-  maxFps: 0
+  maxFps: 0,
+  renderScale: 1
 })
 
 const containerRef = ref<HTMLDivElement | null>(null)
@@ -39,6 +41,7 @@ let mesh: Mesh | null = null
 let animationFrame = 0
 let lastRenderTime = Number.NEGATIVE_INFINITY
 let themeObserver: MutationObserver | null = null
+let pointerBounds: DOMRect | null = null
 
 const targetMousePos = { x: 0.5, y: 0.5 }
 const smoothMousePos = { x: 0.5, y: 0.5 }
@@ -267,7 +270,9 @@ function resize() {
   const container = containerRef.value
   if (!container || !renderer) return
 
-  renderer.setSize(container.offsetWidth, container.offsetHeight)
+  const rect = container.getBoundingClientRect()
+  pointerBounds = rect.width > 0 && rect.height > 0 ? rect : null
+  renderer.setSize(rect.width || container.offsetWidth, rect.height || container.offsetHeight)
   if (program) {
     const canvas = renderer.gl.canvas
     program.uniforms.uResolution.value = new Color(canvas.width, canvas.height, canvas.width / canvas.height)
@@ -300,10 +305,8 @@ function update(time: number) {
 }
 
 function handleMouseMove(event: MouseEvent) {
-  const container = containerRef.value
-  if (!container) return
-
-  const rect = container.getBoundingClientRect()
+  const rect = pointerBounds
+  if (!rect) return
   targetMousePos.x = (event.clientX - rect.left) / rect.width
   targetMousePos.y = 1.0 - (event.clientY - rect.top) / rect.height
   targetMouseActive = 1.0
@@ -319,7 +322,8 @@ function mountGalaxy() {
 
   renderer = new Renderer({
     alpha: transparent,
-    premultipliedAlpha: false
+    premultipliedAlpha: false,
+    dpr: Math.min(Math.max(props.renderScale, 0.25), 2)
   })
 
   const gl = renderer.gl
@@ -400,6 +404,7 @@ onBeforeUnmount(() => {
   renderer = null
   program = null
   mesh = null
+  pointerBounds = null
 })
 </script>
 

@@ -12,7 +12,7 @@ const {
   getUsageSummary,
   getCapacitySummary,
   getLiveCapability,
-  listPlatforms,
+	listPlatforms,
   showSuccess,
   showError
 } = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ const {
   getUsageSummary: vi.fn(),
   getCapacitySummary: vi.fn(),
   getLiveCapability: vi.fn(),
-  listPlatforms: vi.fn(),
+	listPlatforms: vi.fn(),
   showSuccess: vi.fn(),
   showError: vi.fn()
 }))
@@ -175,7 +175,7 @@ describe('GroupsView duplicate action', () => {
       getUsageSummary,
       getCapacitySummary,
       getLiveCapability,
-      listPlatforms,
+		listPlatforms,
       showSuccess,
       showError
     ]) {
@@ -199,7 +199,7 @@ describe('GroupsView duplicate action', () => {
     getUsageSummary.mockResolvedValue([])
     getCapacitySummary.mockResolvedValue([])
     getLiveCapability.mockResolvedValue({ supported: false })
-    listPlatforms.mockResolvedValue([])
+	listPlatforms.mockResolvedValue([])
   })
 
   afterEach(() => {
