@@ -87,4 +87,21 @@ func TestSettingHandler_GetXimoAIPublicHomeCoverServesImmutableSandboxedAsset(t 
 	require.Equal(t, "same-origin", recorder.Header().Get("Cross-Origin-Resource-Policy"))
 	require.Contains(t, recorder.Header().Get("Content-Security-Policy"), "sandbox")
 	require.NotEmpty(t, recorder.Header().Get("ETag"))
+
+	weakRecorder := httptest.NewRecorder()
+	weakContext, _ := gin.CreateTestContext(weakRecorder)
+	weakContext.Params = c.Params
+	weakContext.Request = httptest.NewRequest(http.MethodGet, publicTabs[0].CoverURL, nil)
+	weakETag := "W/" + recorder.Header().Get("ETag")
+	weakContext.Request.Header.Set("If-None-Match", weakETag)
+	require.Equal(t, weakETag, weakContext.GetHeader("If-None-Match"))
+	require.True(t, ximoAIPublicAssetETagMatches(weakETag, recorder.Header().Get("ETag")))
+
+	h.GetXimoAIPublicHomeCover(weakContext)
+	weakContext.Writer.WriteHeaderNow()
+
+	require.Equal(t, http.StatusNotModified, weakRecorder.Code)
+	require.Empty(t, weakRecorder.Body.Bytes())
+	require.Equal(t, recorder.Header().Get("ETag"), weakRecorder.Header().Get("ETag"))
+	require.Equal(t, "public, max-age=31536000, immutable", weakRecorder.Header().Get("Cache-Control"))
 }

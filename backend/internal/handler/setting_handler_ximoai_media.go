@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/response"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -23,10 +24,6 @@ func (h *SettingHandler) GetXimoAIPublicHomeCover(c *gin.Context) {
 }
 
 func serveXimoAIPublicAsset(c *gin.Context, asset *service.XimoAIPublicAsset) {
-	if c.GetHeader("If-None-Match") == asset.ETag {
-		c.Status(http.StatusNotModified)
-		return
-	}
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	c.Header("Cross-Origin-Resource-Policy", "same-origin")
 	c.Header("Content-Security-Policy", ximoAIPublicAssetCSP)
@@ -34,5 +31,20 @@ func serveXimoAIPublicAsset(c *gin.Context, asset *service.XimoAIPublicAsset) {
 	if asset.ContentType == "text/html" || asset.ContentType == "application/xhtml+xml" {
 		c.Header("X-Frame-Options", "SAMEORIGIN")
 	}
+	if ximoAIPublicAssetETagMatches(c.GetHeader("If-None-Match"), asset.ETag) {
+		c.Status(http.StatusNotModified)
+		return
+	}
 	c.Data(http.StatusOK, asset.ContentType, asset.Content)
+}
+
+func ximoAIPublicAssetETagMatches(header, etag string) bool {
+	target := strings.TrimPrefix(strings.TrimSpace(etag), "W/")
+	for _, raw := range strings.Split(header, ",") {
+		candidate := strings.TrimSpace(raw)
+		if candidate == "*" || strings.TrimPrefix(candidate, "W/") == target {
+			return true
+		}
+	}
+	return false
 }
