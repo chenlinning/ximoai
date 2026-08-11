@@ -184,10 +184,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { membershipAPI, type MembershipGroup, type MembershipSummary } from '@/api/membership'
+import type { MembershipGroup, MembershipSummary } from '@/api/membership'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import MembershipLevelMark from '@/components/membership/MembershipLevelMark.vue'
 import { useAppStore } from '@/stores/app'
+import { useMembershipStore } from '@/stores/membership'
 import { formatDateTime } from '@/utils/format'
 import {
   membershipBadgeStyle,
@@ -196,9 +197,10 @@ import {
 } from '@/utils/membershipStyle'
 
 const appStore = useAppStore()
+const membershipStore = useMembershipStore()
 const { t } = useI18n()
 const loading = ref(false)
-const summary = ref<MembershipSummary | null>(null)
+const summary = computed<MembershipSummary | null>(() => membershipStore.summary)
 const membershipLevels = computed(() => summary.value?.levels ?? [])
 const groups = computed(() => summary.value?.groups ?? [])
 const managedKeys = computed(() => summary.value?.managed_keys ?? [])
@@ -220,7 +222,7 @@ const disabledReasonText = (reason: string) => {
 const loadMembership = async () => {
   loading.value = true
   try {
-    summary.value = await membershipAPI.getCurrent()
+    await membershipStore.fetch()
   } catch (error) {
     appStore.showError(t('membership.loadFailed'))
   } finally {

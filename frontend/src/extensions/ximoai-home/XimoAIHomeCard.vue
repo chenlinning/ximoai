@@ -12,9 +12,11 @@
         :src="tab.cover_url"
         :alt="tab.label"
         class="h-full w-full object-contain"
+        loading="lazy"
+        decoding="async"
       />
       <video
-        v-else-if="tab.cover_url && coverType(tab.cover_url) === 'video'"
+        v-else-if="richCoverVisible && tab.cover_url && coverType(tab.cover_url) === 'video'"
         :src="tab.cover_url"
         :aria-label="tab.label"
         class="h-full w-full object-contain"
@@ -25,8 +27,9 @@
         preload="metadata"
       />
       <iframe
-        v-else-if="tab.cover_url && coverType(tab.cover_url) === 'html'"
-        :srcdoc="htmlCover(tab.cover_url)"
+        v-else-if="richCoverVisible && tab.cover_url && coverType(tab.cover_url) === 'html'"
+        :src="htmlCoverSource"
+        :srcdoc="htmlCoverDocument || undefined"
         :title="tab.label"
         class="home-entry-cover-frame absolute left-0 top-0 border-0"
         :style="htmlCoverStyle"
@@ -71,12 +74,16 @@ const emit = defineEmits<{
 }>()
 
 const coverType = resolveXimoAIHomeCoverType
-const htmlCover = decodeXimoAIHomeHTMLCover
 const HTML_COVER_WIDTH = 1200
 const HTML_COVER_HEIGHT = 720
 const mediaRef = ref<HTMLElement | null>(null)
 const htmlCoverScale = ref(1)
+const richCoverVisible = ref(typeof IntersectionObserver === 'undefined')
 let mediaResizeObserver: ResizeObserver | null = null
+let mediaIntersectionObserver: IntersectionObserver | null = null
+
+const htmlCoverDocument = computed(() => decodeXimoAIHomeHTMLCover(props.tab.cover_url || ''))
+const htmlCoverSource = computed(() => htmlCoverDocument.value ? undefined : props.tab.cover_url)
 
 const htmlCoverStyle = computed(() => ({
   width: `${HTML_COVER_WIDTH}px`,
@@ -92,7 +99,19 @@ function updateHTMLCoverScale(width: number) {
 
 onMounted(() => {
   const media = mediaRef.value
-  if (!media || !props.tab.cover_url || coverType(props.tab.cover_url) !== 'html') return
+  if (!media || !props.tab.cover_url) return
+
+  const type = coverType(props.tab.cover_url)
+  if ((type === 'html' || type === 'video') && typeof IntersectionObserver !== 'undefined') {
+    mediaIntersectionObserver = new IntersectionObserver((entries) => {
+      richCoverVisible.value = entries.some((entry) => entry.isIntersecting)
+    }, { rootMargin: '25% 0px' })
+    mediaIntersectionObserver.observe(media)
+  } else {
+    richCoverVisible.value = true
+  }
+
+  if (type !== 'html') return
 
   updateHTMLCoverScale(media.getBoundingClientRect().width)
   if (typeof ResizeObserver !== 'undefined') {
@@ -105,6 +124,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   mediaResizeObserver?.disconnect()
+  mediaIntersectionObserver?.disconnect()
 })
 </script>
 

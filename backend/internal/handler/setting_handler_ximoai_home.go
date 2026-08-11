@@ -20,5 +20,5 @@ func (h *SettingHandler) GetXimoAIHomeTabs(c *gin.Context) {
 			enabled = append(enabled, tab)
 		}
 	}
-	response.Success(c, enabled)
+	response.Success(c, service.XimoAIPublicHomeTabs(enabled))
 }

@@ -1138,7 +1138,7 @@
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 
 const { t } = useI18n()
-import { keysAPI, authAPI, usageAPI, userGroupsAPI, membershipAPI } from '@/api'
+import { keysAPI, authAPI, usageAPI, userGroupsAPI } from '@/api'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import DataTable from '@/components/common/DataTable.vue'
@@ -1155,6 +1155,7 @@ import TablePageLayout from '@/components/layout/TablePageLayout.vue'
 	import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 	import type { ApiKey, Group, PublicSettings, SubscriptionType, GroupPlatform, UpdateApiKeyRequest } from '@/types'
 import type { MembershipSummary } from '@/api/membership'
+import { useMembershipStore } from '@/stores/membership'
 import type { Column } from '@/components/common/types'
 import type { BatchApiKeyUsageStats } from '@/api/usage'
 import { formatDateTime } from '@/utils/format'
@@ -1186,6 +1187,7 @@ interface GroupOption {
 }
 
 const appStore = useAppStore()
+const membershipStore = useMembershipStore()
 const onboardingStore = useOnboardingStore()
 const { copyToClipboard: clipboardCopy } = useClipboard()
 
@@ -1291,7 +1293,7 @@ const now = ref(new Date())
 let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
 const userGroupRates = ref<Record<number, number>>({})
-const membershipSummary = ref<MembershipSummary | null>(null)
+const membershipSummary = computed(() => membershipStore.summary)
 
 const pagination = ref({
   page: 1,
@@ -1570,7 +1572,7 @@ const loadPublicSettings = async () => {
 
 const loadMembershipSummary = async () => {
   try {
-    membershipSummary.value = await membershipAPI.getCurrent()
+    await membershipStore.fetch()
   } catch (error) {
     console.error('Failed to load membership summary:', error)
   }

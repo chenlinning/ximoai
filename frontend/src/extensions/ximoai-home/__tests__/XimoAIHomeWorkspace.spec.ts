@@ -46,6 +46,7 @@ const tabs = [
 
 describe('XimoAIHomeWorkspace multi-site SSO', () => {
   beforeEach(() => {
+    vi.stubGlobal('IntersectionObserver', undefined)
     document.documentElement.classList.remove('dark')
     createSSOTicket.mockReset()
     createSSOTicket.mockImplementation(async (audience: string) => ({

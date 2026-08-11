@@ -805,6 +805,12 @@ func (s *SettingService) GetFrameSrcOrigins(ctx context.Context) ([]string, erro
 	if err != nil {
 		return nil, err
 	}
+	if XimoAIHomeTabsUsePublicHTMLAssets(homeTabs) {
+		if _, exists := seen["'self'"]; !exists {
+			seen["'self'"] = struct{}{}
+			origins = append(origins, "'self'")
+		}
+	}
 	for _, origin := range XimoAIHomeTabFrameOrigins(homeTabs) {
 		addOrigin(origin)
 	}

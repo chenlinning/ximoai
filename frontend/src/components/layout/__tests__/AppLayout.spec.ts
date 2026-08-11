@@ -59,6 +59,11 @@ describe('AppHeader background', () => {
     expect(sidebarSource).not.toContain('.sidebar-home-button')
   })
 
+  it('reuses the shared membership store across custom views', () => {
+    expect(headerSource).toContain('useMembershipStore')
+    expect(headerSource).toContain('membershipStore.fetch(force)')
+  })
+
 })
 
 describe('Primary navigation emphasis', () => {

@@ -7,8 +7,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ximoaiHomeAPI, type XimoAIHomeTab } from '@/api'
-import { membershipAPI, type MembershipSummary } from '@/api/membership'
-import { useAppStore, useAuthStore } from '@/stores'
+import { useAppStore, useAuthStore, useMembershipStore } from '@/stores'
 import HomeView from '@/views/HomeView.vue'
 import XimoAIHomeWorkspace from './XimoAIHomeWorkspace.vue'
 import { resolveXimoAIHomeMode } from './homeState'
@@ -16,26 +15,22 @@ import { onMembershipUpdated } from '@/utils/membershipEvents'
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
+const membershipStore = useMembershipStore()
 const tabs = ref<XimoAIHomeTab[]>([])
-const membershipSummary = ref<MembershipSummary | null>(null)
 const tabsLoaded = ref(false)
 let stopMembershipUpdatedListener: (() => void) | null = null
 
-const isDiamondMember = computed(() => membershipSummary.value?.level?.code?.toLowerCase() === 'diamond')
+const isDiamondMember = computed(() => membershipStore.summary?.level?.code?.toLowerCase() === 'diamond')
 
 const enabledTabs = computed(() => tabs.value
   .filter((tab) => tab.enabled && (!tab.diamond_only || isDiamondMember.value))
   .sort((left, right) => left.sort_order - right.sort_order))
 
-async function loadMembership() {
-  if (!authStore.isAuthenticated) {
-    membershipSummary.value = null
-    return
-  }
+async function loadMembership(force = false) {
   try {
-    membershipSummary.value = await membershipAPI.getCurrent()
+    await membershipStore.fetch(force)
   } catch {
-    membershipSummary.value = null
+    // Membership is optional for non-exclusive tabs.
   }
 }
 
@@ -59,10 +54,10 @@ onMounted(async () => {
   } finally {
     tabsLoaded.value = true
   }
-  stopMembershipUpdatedListener = onMembershipUpdated(loadMembership)
+  stopMembershipUpdatedListener = onMembershipUpdated(() => loadMembership(true))
 })
 
-watch(() => authStore.isAuthenticated, loadMembership)
+watch(() => authStore.user?.id, () => loadMembership())
 
 onBeforeUnmount(() => {
   stopMembershipUpdatedListener?.()

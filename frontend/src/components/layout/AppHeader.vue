@@ -332,7 +332,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
+import { useAppStore, useAuthStore, useMembershipStore, useOnboardingStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
 import { formatDateTime } from '@/utils/format'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
@@ -340,7 +340,6 @@ import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMi
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
 import MembershipLevelMark from '@/components/membership/MembershipLevelMark.vue'
-import { membershipAPI, type MembershipSummary } from '@/api/membership'
 import { onMembershipUpdated } from '@/utils/membershipEvents'
 import {
   membershipAvatarStyle,
@@ -368,6 +367,7 @@ const route = useRoute()
 const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
+const membershipStore = useMembershipStore()
 const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
 
@@ -381,7 +381,7 @@ const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
-const membershipSummary = ref<MembershipSummary | null>(null)
+const membershipSummary = computed(() => membershipStore.summary)
 const currentMembershipColor = computed(() => fixedMembershipLevelColor(
   membershipSummary.value?.level?.code,
   membershipSummary.value?.level?.color
@@ -472,15 +472,11 @@ function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
 }
 
-async function loadMembershipSummary() {
-  if (!user.value) {
-    membershipSummary.value = null
-    return
-  }
+async function loadMembershipSummary(force = false) {
   try {
-    membershipSummary.value = await membershipAPI.getCurrent()
+    await membershipStore.fetch(force)
   } catch {
-    membershipSummary.value = null
+    // Keep the last successful summary when a refresh fails.
   }
 }
 
@@ -523,7 +519,7 @@ onMounted(() => {
     })
     themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
   }
-  stopMembershipUpdatedListener = onMembershipUpdated(loadMembershipSummary)
+  stopMembershipUpdatedListener = onMembershipUpdated(() => loadMembershipSummary(true))
   loadMembershipSummary()
 })
 

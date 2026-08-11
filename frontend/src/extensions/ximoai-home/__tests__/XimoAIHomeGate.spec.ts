@@ -3,8 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import XimoAIHomeGate from '../XimoAIHomeGate.vue'
 
 const listHomeTabs = vi.hoisted(() => vi.fn())
-const getCurrentMembership = vi.hoisted(() => vi.fn())
-const authStore = vi.hoisted(() => ({ isAuthenticated: true }))
+const authStore = vi.hoisted(() => ({ isAuthenticated: true, user: { id: 1 } }))
+const membershipStore = vi.hoisted(() => ({
+  summary: null as { level: { code: string } } | null,
+  fetch: vi.fn()
+}))
 const appStore = vi.hoisted(() => ({
   publicSettingsLoaded: true,
   cachedPublicSettings: { home_content: '' }
@@ -14,13 +17,10 @@ vi.mock('@/api', () => ({
   ximoaiHomeAPI: { list: listHomeTabs },
 }))
 
-vi.mock('@/api/membership', () => ({
-  membershipAPI: { getCurrent: getCurrentMembership }
-}))
-
 vi.mock('@/stores', () => ({
   useAppStore: () => appStore,
-  useAuthStore: () => authStore
+  useAuthStore: () => authStore,
+  useMembershipStore: () => membershipStore
 }))
 
 describe('XimoAIHomeGate membership visibility', () => {
@@ -33,7 +33,9 @@ describe('XimoAIHomeGate membership visibility', () => {
       { id: 'diamond', label: 'Diamond', url: 'https://diamond.example', enabled: true, diamond_only: true, sort_order: 1 },
       { id: 'disabled', label: 'Disabled', url: 'https://disabled.example', enabled: false, diamond_only: true, sort_order: 2 }
     ])
-    getCurrentMembership.mockResolvedValue({ level: { code: 'platinum' } })
+    membershipStore.summary = { level: { code: 'platinum' } }
+    membershipStore.fetch.mockReset()
+    membershipStore.fetch.mockResolvedValue(membershipStore.summary)
   })
 
   function mountGate() {
@@ -43,7 +45,7 @@ describe('XimoAIHomeGate membership visibility', () => {
           HomeView: { template: '<div data-testid="home" />' },
           XimoAIHomeWorkspace: {
             props: { tabs: { type: Array, required: true } },
-            template: '<div data-testid="workspace">{{ tabs.map((tab) => tab.label).join(",") }}</div>'
+            template: `<div data-testid="workspace">{{ tabs.map((tab) => tab.label).join(',') }}</div>`
           }
         }
       }
@@ -58,7 +60,8 @@ describe('XimoAIHomeGate membership visibility', () => {
   })
 
   it('shows diamond-only tabs to diamond members', async () => {
-    getCurrentMembership.mockResolvedValue({ level: { code: 'diamond' } })
+    membershipStore.summary = { level: { code: 'diamond' } }
+    membershipStore.fetch.mockResolvedValue(membershipStore.summary)
     const wrapper = mountGate()
     await flushPromises()
 
