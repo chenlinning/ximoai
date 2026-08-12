@@ -3,7 +3,7 @@ name: Docker Image
 on:
   push:
     branches:
-      - 'deploy/v*'
+      - main
   workflow_dispatch:
     inputs:
       image:
