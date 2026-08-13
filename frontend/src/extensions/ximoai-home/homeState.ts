@@ -18,6 +18,16 @@ export interface XimoAIPreferencesMessage {
   }
 }
 
+export function resolveDefaultXimoAIHomeTab<T extends { url: string }>(tabs: readonly T[]): T | undefined {
+  return tabs.find((tab) => {
+    try {
+      return new URL(tab.url).hostname.toLowerCase() === 'agent.ximoai.cn'
+    } catch {
+      return false
+    }
+  }) || tabs[0]
+}
+
 export function resolveXimoAIHomeMode(input: HomeModeInput): XimoAIHomeMode {
   if (!input.settingsLoaded) return 'loading'
   if (input.homeContent.trim()) return 'legacy'

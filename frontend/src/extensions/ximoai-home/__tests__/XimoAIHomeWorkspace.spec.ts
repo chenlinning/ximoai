@@ -44,6 +44,19 @@ const tabs = [
   }
 ]
 
+const tabsWithAgent = [
+  tabs[0],
+  {
+    id: 'agent-random-id',
+    label: 'Agent工作台',
+    url: 'https://agent.ximoai.cn/',
+    enabled: true,
+    workbench_sso: true,
+    sort_order: 1
+  },
+  { ...tabs[1], sort_order: 2 }
+]
+
 describe('XimoAIHomeWorkspace multi-site SSO', () => {
   beforeEach(() => {
     vi.stubGlobal('IntersectionObserver', undefined)
@@ -56,35 +69,25 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     }))
   })
 
-  it('syncs HTML cover color scheme with the main theme', async () => {
+  it('opens the agent workspace immediately without rendering the card landing page', async () => {
     const wrapper = mount(XimoAIHomeWorkspace, {
-      props: {
-        tabs: [{
-          id: 'html-cover',
-          label: 'HTML Cover',
-          url: 'https://cover.example/app',
-          cover_url: 'data:text/html;base64,PGRpdj5Db3ZlcjwvZGl2Pg==',
-          enabled: true,
-          sort_order: 0
-        }]
-      },
+      props: { tabs: tabsWithAgent },
       global: {
         stubs: {
           AppHeader: { template: '<header><slot name="left" /></header>' },
-          LoginGalaxyBackground: true,
           Icon: true
         }
       }
     })
 
-    const coverFrame = wrapper.get('.home-entry-cover-frame')
-    expect((coverFrame.element as HTMLIFrameElement).style.colorScheme).toBe('light')
-
-    document.documentElement.classList.add('dark')
     await flushPromises()
 
-    expect((coverFrame.element as HTMLIFrameElement).style.colorScheme).toBe('dark')
-    wrapper.unmount()
+    expect(createSSOTicket).toHaveBeenCalledTimes(1)
+    expect(createSSOTicket).toHaveBeenCalledWith('https://agent.ximoai.cn/')
+    expect(wrapper.find('.home-entry-card').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'LoginGalaxyBackground' }).exists()).toBe(false)
+    expect(wrapper.get('iframe').attributes('title')).toBe('Agent工作台')
+    expect(wrapper.get('main').classes()).toContain('home-workspace-shell')
   })
 
   it('loads each audience once and preserves both iframe sessions while switching', async () => {
@@ -93,7 +96,6 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
       global: {
         stubs: {
           AppHeader: { template: '<header><slot name="left" /></header>' },
-          LoginGalaxyBackground: true,
           Icon: true
         }
       }
@@ -105,15 +107,6 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
       return button
     }
 
-    const entryMedia = wrapper.get('.home-entry-media')
-    const entryCover = entryMedia.get('img')
-    expect(entryMedia.classes()).toContain('aspect-[5/3]')
-    expect(entryCover.classes()).toContain('object-contain')
-    expect(entryCover.classes()).not.toContain('object-cover')
-    expect(entryMedia.find('.home-entry-label').exists()).toBe(false)
-    expect(wrapper.get('.home-entry-label').text()).toBe('Workbench')
-
-    await findButton('Workbench').trigger('click')
     await flushPromises()
     expect(createSSOTicket).toHaveBeenCalledWith('https://workbench.ximoai.cn/app')
     expect(wrapper.get('.home-workspace-tabs-scroll').classes()).toContain('overflow-x-auto')
@@ -146,13 +139,11 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
       global: {
         stubs: {
           AppHeader: { template: '<header><slot name="left" /></header>' },
-          LoginGalaxyBackground: true,
           Icon: true
         }
       }
     })
 
-    await wrapper.get('.home-entry-card button').trigger('click')
     await flushPromises()
 
     const frame = wrapper.get('iframe')
@@ -180,54 +171,22 @@ describe('XimoAIHomeWorkspace multi-site SSO', () => {
     wrapper.unmount()
   })
 
-  it('keeps the home cards in centered static rows', async () => {
+  it('falls back to the first visible workspace when agent is unavailable', async () => {
     const wrapper = mount(XimoAIHomeWorkspace, {
       props: { tabs },
       global: {
         stubs: {
           AppHeader: { template: '<header><slot name="left" /></header>' },
-          LoginGalaxyBackground: true,
           Icon: true
         }
       }
     })
 
-    const cards = wrapper.findAll('.home-entry-card')
-    expect(cards).toHaveLength(2)
-    expect(wrapper.findAll('.home-entry-row')).toHaveLength(1)
-    expect(wrapper.get('.home-entry-row').classes()).toContain('home-entry-row--primary')
-
-    await cards[0].find('button').trigger('click')
     await flushPromises()
 
-    expect(wrapper.findAll('.home-entry-card')).toHaveLength(0)
+    expect(createSSOTicket).toHaveBeenCalledTimes(1)
+    expect(createSSOTicket).toHaveBeenCalledWith('https://workbench.ximoai.cn/app')
     expect(wrapper.findAll('iframe')).toHaveLength(1)
-    wrapper.unmount()
-  })
-
-  it('keeps later rows compact without creating hover layout state', () => {
-    const manyTabs = Array.from({ length: 7 }, (_, index) => ({
-      id: `tab-${index}`,
-      label: `Tab ${index}`,
-      url: `https://tab-${index}.example/app`,
-      enabled: true,
-      workbench_sso: false,
-      sort_order: index
-    }))
-    const wrapper = mount(XimoAIHomeWorkspace, {
-      props: { tabs: manyTabs },
-      global: {
-        stubs: {
-          AppHeader: { template: '<header><slot name="left" /></header>' },
-          LoginGalaxyBackground: true,
-          Icon: true
-        }
-      }
-    })
-
-    expect(wrapper.findAll('.home-entry-row')).toHaveLength(4)
-    expect(wrapper.findAll('.home-entry-row--primary')).toHaveLength(1)
-    expect(wrapper.findAll('.home-entry-row--compact')).toHaveLength(3)
     wrapper.unmount()
   })
 })

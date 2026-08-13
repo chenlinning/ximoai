@@ -3,6 +3,7 @@ import {
   addLoadedTab,
   buildPreferencesMessage,
   isPreferencesReadyMessage,
+  resolveDefaultXimoAIHomeTab,
   resolveXimoAIHomeMode
 } from '../homeState'
 
@@ -23,6 +24,17 @@ describe('XimoAI home state', () => {
 
     expect([...second]).toEqual(['docs', 'workbench'])
     expect([...first]).toEqual(['docs'])
+  })
+
+  it('selects the agent workspace by URL and falls back to the first visible tab', () => {
+    const tabs = [
+      { id: 'docs', url: 'https://docs.ximoai.cn/' },
+      { id: 'agent', url: 'https://agent.ximoai.cn/workspace' }
+    ]
+
+    expect(resolveDefaultXimoAIHomeTab(tabs)?.id).toBe('agent')
+    expect(resolveDefaultXimoAIHomeTab(tabs.slice(0, 1))?.id).toBe('docs')
+    expect(resolveDefaultXimoAIHomeTab([])).toBeUndefined()
   })
 
   it('only accepts ready messages from the exact configured iframe', () => {
