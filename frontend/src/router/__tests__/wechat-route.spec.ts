@@ -62,3 +62,13 @@ describe('router WeChat OAuth route', () => {
     expect(route?.meta.title).toBe('WeChat Payment Callback')
   })
 })
+
+describe('router XimoAI home route', () => {
+  it('requires authentication before mounting the custom home gate', async () => {
+    const { default: router } = await import('@/router')
+    const route = router.getRoutes().find((record) => record.name === 'Home')
+
+    expect(route?.path).toBe('/home')
+    expect(route?.meta.requiresAuth).toBe(true)
+  })
+})

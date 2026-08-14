@@ -317,6 +317,8 @@
         <router-link
           v-if="props.showConsoleButton"
           :to="consolePath"
+          target="_blank"
+          rel="noopener noreferrer"
           class="header-navigation-button"
           :title="t('ximoaiHome.console')"
         >

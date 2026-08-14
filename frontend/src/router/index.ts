@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
     name: 'Home',
     component: () => import('@/extensions/ximoai-home/XimoAIHomeGate.vue'),
     meta: {
-      requiresAuth: false,
+      requiresAuth: true,
       title: 'Home'
     }
   },

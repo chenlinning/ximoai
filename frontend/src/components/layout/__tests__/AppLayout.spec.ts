@@ -54,6 +54,8 @@ describe('AppHeader background', () => {
     expect(homeButton).toContain('class="header-navigation-button"')
     expect(homeButton).toContain('<Icon name="home" size="sm" />')
     expect(consoleButton).toContain('class="header-navigation-button"')
+    expect(consoleButton).toContain('target="_blank"')
+    expect(consoleButton).toContain('rel="noopener noreferrer"')
     expect(headerSource).toContain('@apply inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium;')
     expect(sidebarSource).not.toContain('class="sidebar-home-button"')
     expect(sidebarSource).not.toContain('.sidebar-home-button')
