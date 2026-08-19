@@ -75,7 +75,14 @@ func TestIsConcreteRequestPlatformAllowsOnlyBuiltins(t *testing.T) {
 		require.True(t, isConcreteRequestPlatform(platform), platform)
 	}
 
-	for _, platform := range []string{"", PlatformComposite, "unknown-platform"} {
+	for _, platform := range []string{
+		"",
+		PlatformComposite,
+		PlatformKimi,
+		PlatformZhipu,
+		PlatformDeepseek,
+		"unknown-platform",
+	} {
 		require.False(t, isConcreteRequestPlatform(platform), platform)
 	}
 }

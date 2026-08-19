@@ -12,9 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 回归分组平台枚举:kimi/zhipu/deepseek 必须能通过 Create/Update 的 binding 校验
-// （历史 bug:调度/路由链路已支持 CN 平台分组,但 oneof 白名单漏加三平台,导致
-// 平台分组无法创建、CN 账号"无可用分组"）;非法值仍须被拒。
+// Platform binding only checks the JSON shape. The service validates and
+// normalizes platform slugs against the runtime registry.
 func bindGroupPlatformJSON(t *testing.T, target any, body string) error {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -47,37 +46,35 @@ func TestGroupPlatformBinding_AllowedPlatforms(t *testing.T) {
 	}
 }
 
-func TestGroupPlatformBinding_RejectsInvalidPlatforms(t *testing.T) {
-	invalid := []string{
-		"moonshot", // 厂商别名,不是平台标识
-		"Kimi",     // 大小写敏感
-		"openai ",  // 尾随空格
+func TestGroupPlatformBinding_DefersPlatformValidationToService(t *testing.T) {
+	platforms := []string{
+		"moonshot",
+		"Kimi",
+		"openai ",
 		"glm",
 		"bogus",
 	}
-	for _, platform := range invalid {
+	for _, platform := range platforms {
 		t.Run("create_"+platform, func(t *testing.T) {
 			var req CreateGroupRequest
 			body := fmt.Sprintf(`{"name":"g","platform":%q}`, platform)
-			require.Error(t, bindGroupPlatformJSON(t, &req, body),
-				"platform %q 应被 CreateGroupRequest 拒绝", platform)
+			require.NoError(t, bindGroupPlatformJSON(t, &req, body))
+			require.Equal(t, platform, req.Platform)
 		})
 		t.Run("update_"+platform, func(t *testing.T) {
 			var req UpdateGroupRequest
 			body := fmt.Sprintf(`{"platform":%q}`, platform)
-			require.Error(t, bindGroupPlatformJSON(t, &req, body),
-				"platform %q 应被 UpdateGroupRequest 拒绝", platform)
+			require.NoError(t, bindGroupPlatformJSON(t, &req, body))
+			require.Equal(t, platform, req.Platform)
 		})
 	}
 }
 
-// 守住 composite 路由目标不放行 CN:CN 平台不可作为 composite 路由目标
-// （DetectModelPlatform/isConcreteRequestPlatform 均无 CN 分支,放行即打开半实现路径）。
-func TestCompositeRouteTargetPlatform_StillExcludesCNProviders(t *testing.T) {
+func TestCompositeRouteBinding_DefersPlatformValidationToService(t *testing.T) {
 	for _, platform := range []string{"kimi", "zhipu", "deepseek"} {
 		var req CompositeRouteRequest
 		body := fmt.Sprintf(`{"public_model":"m","target_platform":%q}`, platform)
-		require.Error(t, bindGroupPlatformJSON(t, &req, body),
-			"composite target_platform %q 应保持被拒", platform)
+		require.NoError(t, bindGroupPlatformJSON(t, &req, body))
+		require.Equal(t, platform, req.TargetPlatform)
 	}
 }
