@@ -1568,9 +1568,9 @@
             </div>
           </div>
         </div>
-        <!-- OpenAI Live 开关（仅 openai 平台） -->
+        <!-- Codex Live 开关（OpenAI 与 Composite 平台） -->
         <div
-          v-if="createForm.platform === 'openai'"
+          v-if="supportsLivePlatform(createForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -3290,9 +3290,9 @@
             </div>
           </div>
         </div>
-        <!-- OpenAI Live 开关（仅 openai 平台） -->
+        <!-- Codex Live 开关（OpenAI 与 Composite 平台） -->
         <div
-          v-if="editForm.platform === 'openai'"
+          v-if="supportsLivePlatform(editForm.platform)"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -4416,6 +4416,7 @@ import PricingEntryCard from "@/components/admin/channel/PricingEntryCard.vue";
 import type { PricingFormEntry } from "@/components/admin/channel/types";
 import {
   apiIntervalsToForm,
+  createDefaultTimePricingForm,
   formIntervalsToAPI,
   mTokToPerToken,
   perTokenToMTok,
@@ -4481,6 +4482,9 @@ import {
   videoModelPriceFamilyRows,
 } from "./groupsVideoModelPricing";
 
+const supportsLivePlatform = (platform: string): boolean =>
+  platform === "openai" || platform === "composite";
+
 const emptyGroupPricing = (): PricingFormEntry => ({
   models: [],
   billing_mode: "token",
@@ -4492,6 +4496,7 @@ const emptyGroupPricing = (): PricingFormEntry => ({
   image_output_price: null,
   per_request_price: null,
   intervals: [],
+  time_pricing: createDefaultTimePricingForm(),
 });
 
 const addGroupPricing = (entries: PricingFormEntry[]) =>
@@ -4511,6 +4516,7 @@ const groupPricingFromAPI = (
     image_output_price: perTokenToMTok(entry.image_output_price),
     per_request_price: entry.per_request_price,
     intervals: apiIntervalsToForm(entry.intervals || []),
+    time_pricing: createDefaultTimePricingForm(),
   }));
 
 const groupPricingToAPI = (
@@ -4534,6 +4540,7 @@ const groupPricingToAPI = (
         entry.billing_mode === "token"
           ? []
           : formIntervalsToAPI(entry.intervals || []),
+      time_pricing: null,
     }));
 
 const { t } = useI18n();
@@ -4731,9 +4738,14 @@ const platformFilterOptions = computed(() => [
   ...platformOptions.value,
 ]);
 
+const compositeRoutePlatforms = new Set([
+  "anthropic", "openai", "gemini", "antigravity", "grok",
+  "grok-video", "openai-audio", "kling_audio", "volcengine-agent-plan",
+]);
+
 const compositeRoutePlatformOptions = computed(() =>
   platforms.value
-    .filter((platform) => platform.enabled && platform.slug !== "composite")
+    .filter((platform) => platform.enabled && compositeRoutePlatforms.has(platform.slug))
     .map((platform) => ({
       value: platform.slug,
       label: platform.display_name,
@@ -6651,6 +6663,8 @@ watch(
     }
     if (!isOpenAICompatibleGroupPlatform(newVal)) {
       resetMessagesDispatchFormState(createForm);
+    }
+    if (!supportsLivePlatform(newVal)) {
       createForm.allow_live = false;
     }
     if (!isProfitControlPlatform(newVal)) {
@@ -6699,6 +6713,8 @@ watch(
     }
     if (!isOpenAICompatibleGroupPlatform(newVal)) {
       resetMessagesDispatchFormState(editForm);
+    }
+    if (!supportsLivePlatform(newVal)) {
       editForm.allow_live = false;
     }
     if (!isProfitControlPlatform(newVal)) {
@@ -6749,8 +6765,10 @@ watch(
     }
     if (!isOpenAICompatibleGroupPlatform(newVal)) {
       editForm.allow_messages_dispatch = false
-      editForm.allow_live = false
       editForm.default_mapped_model = ''
+    }
+    if (!supportsLivePlatform(newVal)) {
+      editForm.allow_live = false
     }
   }
 )

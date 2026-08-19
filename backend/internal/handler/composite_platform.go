@@ -49,7 +49,8 @@ func compositeOpenAICompatibleTargetAllowed(c *gin.Context, apiKey *service.APIK
 	}
 	platform = service.NormalizePlatformSlug(platform)
 	switch platform {
-	case service.PlatformOpenAI, service.PlatformGrok:
+	case service.PlatformOpenAI, service.PlatformGrok,
+		service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
 		return true
 	case service.PlatformAnthropic, service.PlatformGemini, service.PlatformAntigravity,
 		service.PlatformComposite, service.PlatformGrokVideo, service.PlatformOpenAIAudio,

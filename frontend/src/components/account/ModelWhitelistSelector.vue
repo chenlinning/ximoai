@@ -205,7 +205,16 @@ const normalizedPlatforms = computed(() => {
   )
 })
 
-const upstreamSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity', 'grok'])
+const upstreamSyncPlatforms = new Set([
+  'anthropic',
+  'openai',
+  'gemini',
+  'antigravity',
+  'grok',
+  'kimi',
+  'zhipu',
+  'deepseek'
+])
 const upstreamSyncProtocols = new Set(['anthropic', 'openai', 'openai_compatible', 'gemini'])
 const canSyncUpstream = computed(() => {
   if (props.syncUpstreamModels) return props.canSyncUpstream !== false

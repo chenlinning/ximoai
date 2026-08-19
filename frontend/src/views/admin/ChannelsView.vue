@@ -448,6 +448,7 @@
                   :key="idx"
                   :entry="entry"
                   :platform="section.platform"
+                  enable-time-pricing
                   @update="updatePricingEntry(sIdx, idx, $event)"
                   @remove="removePricingEntry(sIdx, idx)"
                 />
@@ -633,7 +634,7 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import { adminAPI } from '@/api/admin'
 import type { Channel, ChannelModelPricing, CreateChannelRequest, UpdateChannelRequest, AccountStatsPricingRule } from '@/api/admin/channels'
 import type { PricingFormEntry } from '@/components/admin/channel/types'
-import { perTokenToMTok, apiIntervalsToForm, findModelConflict, pricingFormEntryToAPI, validateIntervals } from '@/components/admin/channel/types'
+import { apiIntervalsToForm, apiTimePricingToForm, createDefaultTimePricingForm, findModelConflict, perTokenToMTok, pricingFormEntryToAPI, validateIntervals, validateTimePricing } from '@/components/admin/channel/types'
 import type { AdminGroup, Platform } from '@/types'
 import type { Column } from '@/components/common/types'
 import {
@@ -770,7 +771,7 @@ const form = reactive({
 let abortController: AbortController | null = null
 
 // ── Platform config ──
-const builtinPlatformOrder = ['anthropic', 'openai', 'gemini', 'antigravity', 'grok']
+const builtinPlatformOrder = ['anthropic', 'openai', 'gemini', 'antigravity', 'grok', 'kimi', 'zhipu', 'deepseek']
 const platformOrder = computed<string[]>(() => {
   const seen = new Set<string>()
   const ordered: string[] = []
@@ -790,6 +791,10 @@ const platformOrder = computed<string[]>(() => {
   form.platforms.forEach(section => push(section.platform))
   return ordered
 })
+const compositePlatforms = [
+  'anthropic', 'openai', 'gemini', 'antigravity', 'grok',
+  'grok-video', 'openai-audio', 'kling_audio', 'volcengine-agent-plan',
+]
 
 // ── Helpers ──
 function formatDate(value: string): string {
@@ -836,7 +841,9 @@ function togglePlatform(platform: string) {
 }
 
 function getGroupsForPlatform(platform: string): AdminGroup[] {
-  return allGroups.value.filter(g => g.platform === platform || g.platform === 'composite')
+  return allGroups.value.filter(
+    g => g.platform === platform || (g.platform === 'composite' && compositePlatforms.includes(platform))
+  )
 }
 
 // ── Group helpers ──
@@ -895,7 +902,8 @@ function addPricingEntry(sectionIdx: number) {
     image_input_price: null,
     image_output_price: null,
     per_request_price: null,
-    intervals: []
+    intervals: [],
+    time_pricing: createDefaultTimePricingForm()
   })
 }
 
@@ -928,7 +936,8 @@ async function syncLatestModels(sectionIdx: number) {
       image_input_price: null,
       image_output_price: null,
       per_request_price: null,
-      intervals: []
+      intervals: [],
+      time_pricing: createDefaultTimePricingForm()
     })
     appStore.showSuccess(t('admin.channels.form.syncModelsSuccess', { count: newModels.length }))
   } catch (error) {
@@ -993,7 +1002,8 @@ function addRulePricingEntry(sectionIdx: number, ruleIndex: number) {
     image_input_price: null,
     image_output_price: null,
     per_request_price: null,
-    intervals: []
+    intervals: [],
+    time_pricing: createDefaultTimePricingForm()
   })
 }
 
@@ -1200,7 +1210,7 @@ function apiToForm(channel: Channel): PlatformSection[] {
   for (const gid of channel.group_ids || []) {
     const p = groupPlatformMap.get(gid)
     if (p === 'composite') {
-      platformOrder.value.forEach(platform => activePlatforms.add(platform))
+      compositePlatforms.forEach(platform => activePlatforms.add(platform))
     } else if (p) {
       activePlatforms.add(p)
     }
@@ -1223,7 +1233,8 @@ function apiToForm(channel: Channel): PlatformSection[] {
 
     const groupIds = (channel.group_ids || []).filter(gid => {
       const groupPlatform = groupPlatformMap.get(gid)
-      return groupPlatform === platform || groupPlatform === 'composite'
+      return groupPlatform === platform ||
+        (groupPlatform === 'composite' && compositePlatforms.includes(platform))
     })
     const mapping = (channel.model_mapping || {})[platform] || {}
     const pricing = (channel.model_pricing || [])
@@ -1238,7 +1249,8 @@ function apiToForm(channel: Channel): PlatformSection[] {
         image_input_price: perTokenToMTok(p.image_input_price),
         image_output_price: perTokenToMTok(p.image_output_price),
         per_request_price: p.per_request_price,
-        intervals: apiIntervalsToForm(p.intervals || [])
+        intervals: apiIntervalsToForm(p.intervals || []),
+        time_pricing: apiTimePricingToForm(p.time_pricing)
       } as PricingFormEntry))
 
     // Read web_search_emulation from features_config
@@ -1427,7 +1439,8 @@ function distributeRulesToPlatforms(apiRules: AccountStatsPricingRule[]) {
         image_input_price: perTokenToMTok(p.image_input_price),
         image_output_price: perTokenToMTok(p.image_output_price),
         per_request_price: p.per_request_price,
-        intervals: apiIntervalsToForm(p.intervals || [])
+        intervals: apiIntervalsToForm(p.intervals || []),
+        time_pricing: createDefaultTimePricingForm()
       } as PricingFormEntry))
     }
     section.account_stats_pricing_rules.push(formRule)
@@ -1544,6 +1557,20 @@ async function handleSubmit() {
         const platformLabel = displayPlatformName(section.platform)
         const modelLabel = entry.models.join(', ') || t('admin.channels.form.unnamed')
         appStore.showError(`${platformLabel} - ${modelLabel}: ${intervalErr}`)
+        activeTab.value = section.platform
+        return
+      }
+    }
+  }
+
+  // 校验时间段定价，并切换到对应平台便于修正
+  for (const section of form.platforms.filter(s => s.enabled)) {
+    for (const entry of section.model_pricing) {
+      const timePricingError = validateTimePricing(entry.time_pricing, t)
+      if (timePricingError) {
+        const platformLabel = t('admin.groups.platforms.' + section.platform, section.platform)
+        const modelLabel = entry.models.join(', ') || t('admin.channels.form.unnamed')
+        appStore.showError(`${platformLabel} - ${modelLabel}: ${timePricingError}`)
         activeTab.value = section.platform
         return
       }

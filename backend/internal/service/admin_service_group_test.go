@@ -5,8 +5,10 @@ package service
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
+	infraerrors "github.com/Wei-Shaw/sub2api/internal/pkg/errors"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
 	"github.com/stretchr/testify/require"
 )
@@ -195,6 +197,61 @@ func (s *platformRepoStubForAdmin) Update(_ context.Context, _ *Platform) error 
 
 func (s *platformRepoStubForAdmin) Rename(_ context.Context, _ string, _ *Platform) error {
 	panic("unexpected Rename call")
+}
+
+func TestAdminService_CreateGroup_RejectsTimePricing(t *testing.T) {
+	repo := &groupRepoStubForAdmin{createID: 51}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	_, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:           "time-pricing-group",
+		Platform:       PlatformOpenAI,
+		RateMultiplier: 1,
+		ModelPricing: []ChannelModelPricing{{
+			Platform:    PlatformOpenAI,
+			Models:      []string{"gpt-5"},
+			BillingMode: BillingModeToken,
+			TimePricing: validTimePricingForTest(),
+		}},
+	})
+
+	require.Error(t, err)
+	appErr := infraerrors.FromError(err)
+	require.Equal(t, int32(http.StatusBadRequest), appErr.Code)
+	require.Equal(t, "GROUP_MODEL_TIME_PRICING_UNSUPPORTED", appErr.Reason)
+	require.Nil(t, repo.created)
+}
+
+func TestAdminService_UpdateGroup_RejectsTimePricing(t *testing.T) {
+	existing := &Group{ID: 1, Name: "existing", Platform: PlatformOpenAI, Status: StatusActive}
+	repo := &groupRepoStubForAdmin{getByID: existing}
+	svc := &adminServiceImpl{groupRepo: repo}
+	pricing := []ChannelModelPricing{{
+		Platform:    PlatformOpenAI,
+		Models:      []string{"gpt-5"},
+		BillingMode: BillingModeToken,
+		TimePricing: validTimePricingForTest(),
+	}}
+
+	_, err := svc.UpdateGroup(context.Background(), existing.ID, &UpdateGroupInput{ModelPricing: &pricing})
+
+	require.Error(t, err)
+	appErr := infraerrors.FromError(err)
+	require.Equal(t, int32(http.StatusBadRequest), appErr.Code)
+	require.Equal(t, "GROUP_MODEL_TIME_PRICING_UNSUPPORTED", appErr.Reason)
+	require.Nil(t, repo.updated)
+}
+
+func TestNormalizeGroupModelPricing_NormalizesEmptyTimePricing(t *testing.T) {
+	pricing, err := normalizeGroupModelPricing(PlatformOpenAI, []ChannelModelPricing{{
+		Models:      []string{"gpt-5"},
+		BillingMode: BillingModeToken,
+		TimePricing: &ChannelTimePricing{Timezone: "Asia/Shanghai"},
+	}})
+
+	require.NoError(t, err)
+	require.Len(t, pricing, 1)
+	require.Nil(t, pricing[0].TimePricing)
 }
 
 type compositeRouteRepoStubForAdmin struct {
@@ -1130,6 +1187,44 @@ func TestAdminService_NormalizeXimoAIBuiltinPlatformCredentials(t *testing.T) {
 	require.Equal(t, PlatformKindOpenAIAudio, openAIAudioCredentials[PlatformKindCredentialKey])
 	require.Equal(t, PlatformProtocolGemini, openAIAudioCredentials["platform_protocol"])
 	require.NotContains(t, openAIAudioCredentials, "base_url")
+}
+
+func TestAdminService_CreateCompositeGroupPreservesLive(t *testing.T) {
+	repo := &groupRepoStubForAdmin{}
+	svc := &adminServiceImpl{groupRepo: repo}
+
+	group, err := svc.CreateGroup(context.Background(), &CreateGroupInput{
+		Name:           "composite-group",
+		Platform:       PlatformComposite,
+		RateMultiplier: 1.0,
+		AllowLive:      true,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.NotNil(t, repo.created)
+	require.True(t, repo.created.AllowLive)
+}
+
+func TestAdminService_UpdateCompositeGroupPreservesLive(t *testing.T) {
+	existingGroup := &Group{
+		ID:       1,
+		Name:     "composite-group",
+		Platform: PlatformComposite,
+		Status:   StatusActive,
+	}
+	repo := &groupRepoStubForAdmin{getByID: existingGroup}
+	svc := &adminServiceImpl{groupRepo: repo}
+	allowLive := true
+
+	group, err := svc.UpdateGroup(context.Background(), existingGroup.ID, &UpdateGroupInput{
+		AllowLive: &allowLive,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, group)
+	require.NotNil(t, repo.updated)
+	require.True(t, repo.updated.AllowLive)
 }
 
 func TestAdminService_UpdateGroup_ClearsMessagesDispatchFieldsWhenPlatformChangesAwayFromOpenAI(t *testing.T) {

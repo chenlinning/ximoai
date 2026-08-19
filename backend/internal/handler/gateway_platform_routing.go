@@ -9,7 +9,8 @@ import (
 func (h *GatewayHandler) IsOpenAICompatiblePlatform(ctx context.Context, platform string) bool {
 	platform = service.NormalizePlatformSlug(platform)
 	switch platform {
-	case service.PlatformOpenAI, service.PlatformGrok:
+	case service.PlatformOpenAI, service.PlatformGrok,
+		service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
 		return true
 	}
 	registered := h.registeredPlatform(ctx, platform)
@@ -55,7 +56,7 @@ func (h *GatewayHandler) registeredPlatform(ctx context.Context, platform string
 
 func (h *GatewayHandler) IsOpenAIAPIKeyProtocolPlatform(ctx context.Context, platform string) bool {
 	platform = service.NormalizePlatformSlug(platform)
-	if platform == service.PlatformOpenAI {
+	if platform == service.PlatformOpenAI || service.IsCNProvider(platform) {
 		return true
 	}
 	if platform == "" || h == nil || h.platformService == nil {
