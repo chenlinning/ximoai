@@ -21,7 +21,7 @@ func (a *Account) GetAnthropicAPIKeyAuthScheme() string {
 	if a == nil || a.Type != AccountTypeAPIKey {
 		return AnthropicAPIKeyAuthSchemeXAPIKey
 	}
-	if !a.UsesAnthropicAPIKeyProtocol() && !(a.IsCNProvider() && a.IsAnthropicProtocol()) {
+	if !a.UsesAnthropicAPIKeyProtocol() && (!a.IsCNProvider() || !a.IsAnthropicProtocol()) {
 		return AnthropicAPIKeyAuthSchemeXAPIKey
 	}
 
