@@ -50,7 +50,6 @@ type GatewayHandler struct {
 	usageRecordWorkerPool     *service.UsageRecordWorkerPool
 	errorPassthroughService   *service.ErrorPassthroughService
 	contentModerationService  *service.ContentModerationService
-	platformService           *service.PlatformService
 	securityAuditCoordinator  *securityaudit.Coordinator
 	concurrencyHelper         *ConcurrencyHelper
 	userMsgQueueHelper        *UserMsgQueueHelper
@@ -74,7 +73,6 @@ func NewGatewayHandler(
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	contentModerationService *service.ContentModerationService,
-	platformService *service.PlatformService,
 	userMsgQueueService *service.UserMessageQueueService,
 	cfg *config.Config,
 	settingService *service.SettingService,
@@ -110,7 +108,6 @@ func NewGatewayHandler(
 		usageRecordWorkerPool:     usageRecordWorkerPool,
 		errorPassthroughService:   errorPassthroughService,
 		contentModerationService:  contentModerationService,
-		platformService:           platformService,
 		concurrencyHelper:         NewConcurrencyHelper(concurrencyService, SSEPingFormatClaude, pingInterval),
 		userMsgQueueHelper:        umqHelper,
 		maxAccountSwitches:        maxAccountSwitches,
@@ -1105,12 +1102,8 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 
 	// Prefer channel-facing model aliases; fall back to the upstream account list.
 	availableModels := h.gatewayService.GetXimoAIAvailableModels(c.Request.Context(), groupID, platform)
-	modelsFallbackPlatform := platform
-	emptyModelsFallback := false
-	if len(availableModels) == 0 && h.platformService != nil {
-		modelsFallbackPlatform = h.platformService.XimoAIModelsFallbackPlatform(c.Request.Context(), platform)
-		emptyModelsFallback = h.platformService.XimoAIModelsUseEmptyFallback(c.Request.Context(), platform)
-	}
+	modelsFallbackPlatform := service.XimoAIModelsFallbackPlatform(platform)
+	emptyModelsFallback := service.XimoAIModelsUseEmptyFallback(platform)
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
 		fallbackModels := defaultModelIDsForPlatform(modelsFallbackPlatform)
 		if emptyModelsFallback {
@@ -1459,15 +1452,8 @@ func cloneAPIKeyWithGroup(apiKey *service.APIKey, group *service.Group) *service
 	return &cloned
 }
 
-func (h *GatewayHandler) isGeminiProtocolPlatform(ctx context.Context, platform string) bool {
-	platform = service.NormalizePlatformSlug(platform)
-	if platform == service.PlatformGemini {
-		return true
-	}
-	if platform == "" || h == nil || h.platformService == nil {
-		return false
-	}
-	return h.platformService.IsGeminiCompatible(ctx, platform)
+func (h *GatewayHandler) isGeminiProtocolPlatform(_ context.Context, platform string) bool {
+	return service.NormalizePlatformSlug(platform) == service.PlatformGemini
 }
 
 // Usage handles getting account balance and usage statistics for CC Switch integration

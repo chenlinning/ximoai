@@ -11,11 +11,11 @@ import (
 
 func TestBuildModelPlazaMetadataReturnsCompactPublicContract(t *testing.T) {
 	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
-		Platform:     "custom-openai",
+		Platform:     service.PlatformOpenAI,
 		Kind:         "",
-		Protocol:     service.PlatformProtocolOpenAICompatible,
+		Protocol:     "openai_compatible",
 		Model:        "custom-model",
-		Capabilities: []string{service.PlatformCapabilityResponses},
+		Capabilities: []string{"responses"},
 		BillingModes: []string{string(service.BillingModeToken)},
 	}, nil, false)
 
@@ -25,10 +25,10 @@ func TestBuildModelPlazaMetadataReturnsCompactPublicContract(t *testing.T) {
 	require.Nil(t, details.Editor)
 }
 
-func TestAutomaticMetadataUsesActualUpstreamModelForCustomPlatform(t *testing.T) {
+func TestAutomaticMetadataUsesActualUpstreamModelForFixedPlatform(t *testing.T) {
 	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
-		Platform:         "custom-openai-compatible",
-		Protocol:         service.PlatformProtocolOpenAICompatible,
+		Platform:         service.PlatformOpenAI,
+		Protocol:         "openai_compatible",
 		Model:            "ximo-gpt",
 		RecognitionModel: "gpt-5",
 	}, nil, false)
@@ -43,7 +43,7 @@ func TestAutomaticMetadataUsesActualUpstreamModelForCustomPlatform(t *testing.T)
 func TestModelPlazaKeepsRecognitionNameOutOfPublicModelJSON(t *testing.T) {
 	model := userSupportedModel{
 		Name:            "ximo-gpt",
-		Platform:        "custom-openai-compatible",
+		Platform:        service.PlatformOpenAI,
 		recognitionName: "gpt-5",
 	}
 	raw, err := json.Marshal(model)
@@ -54,11 +54,11 @@ func TestModelPlazaKeepsRecognitionNameOutOfPublicModelJSON(t *testing.T) {
 
 func TestModelPlazaModelJSONContainsOnlyPublicCatalogFields(t *testing.T) {
 	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
-		Platform: "custom-openai", Protocol: service.PlatformProtocolOpenAICompatible, Model: "custom-model",
-		Capabilities: []string{service.PlatformCapabilityResponses}, BillingModes: []string{string(service.BillingModeToken)},
+		Platform: service.PlatformOpenAI, Protocol: "openai", Model: "custom-model",
+		Capabilities: []string{"responses"}, BillingModes: []string{string(service.BillingModeToken)},
 	}, nil, false)
 	model := userSupportedModel{
-		Name: "custom-model", Platform: "custom-openai", Brand: details.Brand, Pricing: &userSupportedModelPricing{BillingMode: string(service.BillingModeToken)},
+		Name: "custom-model", Platform: service.PlatformOpenAI, Brand: details.Brand, Pricing: &userSupportedModelPricing{BillingMode: string(service.BillingModeToken)},
 		Types: details.Types, InvocationModes: details.InvocationModes,
 	}
 	raw, err := json.Marshal(model)
@@ -79,7 +79,7 @@ func TestModelPlazaModelJSONContainsOnlyPublicCatalogFields(t *testing.T) {
 }
 
 func TestAvailableChannelModelJSONOmitsUnsetModelPlazaBrand(t *testing.T) {
-	raw, err := json.Marshal(userSupportedModel{Name: "custom-model", Platform: "custom-openai"})
+	raw, err := json.Marshal(userSupportedModel{Name: "custom-model", Platform: service.PlatformOpenAI})
 	require.NoError(t, err)
 	require.NotContains(t, string(raw), `"brand"`)
 	require.NotContains(t, string(raw), `"brand_editor"`)
@@ -92,12 +92,12 @@ func TestBuildModelPlazaMetadataUsesAdministratorOverridesAndCompleteOptions(t *
 	levels := []string{"low", "high"}
 	thinking := true
 	saved := &service.ModelMetadataOverride{
-		Platform: "custom-openai", Model: "image-model", Brand: &brand, Types: &types, InvocationModes: &modes,
+		Platform: service.PlatformOpenAI, Model: "image-model", Brand: &brand, Types: &types, InvocationModes: &modes,
 		ReasoningLevels: &levels, ThinkingSupported: &thinking,
 	}
 	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
-		Platform: saved.Platform, Protocol: service.PlatformProtocolOpenAICompatible, Model: saved.Model,
-		Capabilities: []string{service.PlatformCapabilityImages},
+		Platform: saved.Platform, Protocol: "openai", Model: saved.Model,
+		Capabilities: []string{"images"},
 		BillingModes: []string{string(service.BillingModeImage)},
 	}, saved, true)
 
@@ -116,7 +116,7 @@ func TestAutomaticVolcengineSpeechMetadataCoversEveryVoiceMode(t *testing.T) {
 	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
 		Platform: service.PlatformVolcengineAgentPlan,
 		Kind:     service.PlatformKindVolcengineAgentPlan,
-		Protocol: service.PlatformProtocolNative,
+		Protocol: "native",
 		Model:    service.VolcengineAgentPlanTTSModel,
 	}, nil, false)
 

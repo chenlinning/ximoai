@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
@@ -64,7 +63,7 @@ func TestSanitizeGroupMessagesDispatchFields_ClearsNonOpenAIPlatform(t *testing.
 		},
 	}
 
-	sanitizeGroupMessagesDispatchFields(context.Background(), nil, group)
+	sanitizeGroupMessagesDispatchFields(group)
 
 	require.False(t, group.AllowMessagesDispatch)
 	require.Empty(t, group.DefaultMappedModel)

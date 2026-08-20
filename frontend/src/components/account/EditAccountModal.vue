@@ -2773,7 +2773,6 @@ import type {
   CheckMixedChannelResponse,
   OpenAICompactMode,
   OpenAIResponsesMode,
-  Platform,
   OpenAIEndpointCapability,
   OllamaCloudUsageState
 } from '@/types'
@@ -2810,11 +2809,10 @@ import {
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
 import {
-  isCustomAnthropicAccount,
-  isCustomOpenAICompatibleAccount,
   requiresXimoAIAPIKeyBaseURL,
   resolveXimoAIPlatformKind
 } from '@/components/account/ximoaiAPIKeyPlatform'
+import { fixedPlatforms } from '@/extensions/platforms/fixedPlatforms'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { VERTEX_LOCATION_OPTIONS } from '@/constants/account'
@@ -2853,15 +2851,7 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
-const platforms = ref<Platform[]>([])
-
-const loadPlatforms = async () => {
-  try {
-    platforms.value = await adminAPI.platforms.list(true)
-  } catch {
-    platforms.value = []
-  }
-}
+const platforms = ref([...fixedPlatforms])
 
 const selectedPlatform = computed(() =>
   platforms.value.find((platform) => platform.slug === props.account?.platform)
@@ -2883,25 +2873,16 @@ const hasOfficialOpenAISettings = computed(() =>
   isOfficialOpenAI.value && isOpenAISettingsAccountType(props.account?.type)
 )
 
-const isCustomOpenAIAPIKeyAccount = computed(() =>
-  isCustomOpenAICompatibleAccount(props.account, selectedPlatform.value)
-)
-
-const isCustomAnthropicAPIKeyAccount = computed(() =>
-  isCustomAnthropicAccount(props.account, selectedPlatform.value)
-)
-
 const hasOpenAIProtocolSettings = computed(() =>
-  hasOfficialOpenAISettings.value || isCustomOpenAIAPIKeyAccount.value
+  hasOfficialOpenAISettings.value
 )
 
 const hasOpenAIAPIKeySettings = computed(() =>
-  props.account?.type === 'apikey' && (isOfficialOpenAI.value || isCustomOpenAIAPIKeyAccount.value)
+  props.account?.type === 'apikey' && isOfficialOpenAI.value
 )
 
 const hasAnthropicAPIKeySettings = computed(() =>
-  props.account?.type === 'apikey' &&
-  (props.account.platform === 'anthropic' || isCustomAnthropicAPIKeyAccount.value)
+  props.account?.type === 'apikey' && props.account.platform === 'anthropic'
 )
 
 const hasOfficialOpenAIOAuthLikeSettings = computed(() =>
@@ -2909,9 +2890,7 @@ const hasOfficialOpenAIOAuthLikeSettings = computed(() =>
 )
 
 const selectedProtocol = computed(() =>
-  selectedPlatform.value?.protocol || String(
-    (props.account?.credentials as Record<string, unknown> | undefined)?.platform_protocol || ''
-  )
+  selectedPlatform.value?.protocol || ''
 )
 
 const selectedXimoAIPlatformKind = computed(() =>
@@ -2932,14 +2911,12 @@ const isOpenAICompatibleAPIKeyPlatform = computed(() =>
   || props.account?.platform === 'grok'
 )
 
-const upstreamModelSyncPlatforms = new Set(['anthropic', 'openai', 'gemini', 'antigravity'])
-const upstreamModelSyncProtocols = new Set(['anthropic', 'openai', 'openai_compatible', 'gemini'])
+const upstreamModelSyncPlatforms = new Set([
+  'anthropic', 'openai', 'gemini', 'antigravity',
+  'grok-video', 'openai-audio', 'kling_audio',
+])
 const canSyncUpstreamModels = computed(() => {
-  if (!props.account?.id) return false
-  if (upstreamModelSyncPlatforms.has(props.account.platform)) return true
-
-  const platform = selectedPlatform.value
-  return Boolean(platform?.enabled && upstreamModelSyncProtocols.has(platform.protocol))
+  return Boolean(props.account?.id && upstreamModelSyncPlatforms.has(props.account.platform))
 })
 
 const apiKeyBaseUrlDefault = computed(() => {
@@ -3162,9 +3139,7 @@ const headerOverrideRows = ref<HeaderOverrideRow[]>([])
 const headerOverrideCapable = computed(
   () => !!props.account && isHeaderOverrideCapable(
     props.account.platform,
-    props.account.type,
-    selectedProtocol.value,
-    selectedPlatform.value?.builtin
+    props.account.type
   )
 )
 
@@ -3876,9 +3851,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   headerOverrideRows.value = []
   if (newAccount.credentials && isHeaderOverrideCapable(
     newAccount.platform,
-    newAccount.type,
-    selectedProtocol.value,
-    selectedPlatform.value?.builtin
+    newAccount.type
   )) {
     const overrideCreds = newAccount.credentials as Record<string, unknown>
     headerOverrideEnabled.value = overrideCreds[HEADER_OVERRIDE_ENABLED_CREDENTIAL_KEY] === true
@@ -4026,7 +3999,6 @@ watch(
       return
     }
     if (!wasShow || newAccount !== previousAccount) {
-      loadPlatforms()
       syncFormFromAccount(newAccount)
       loadTLSProfiles()
     }
@@ -4663,9 +4635,7 @@ const handleSubmit = async () => {
       // Add header override if enabled (anthropic/openai/grok apikey)
       if (isHeaderOverrideCapable(
         props.account.platform,
-        'apikey',
-        selectedProtocol.value,
-        selectedPlatform.value?.builtin
+        'apikey'
       )) {
         if (headerOverrideEnabled.value) {
           const headerError = validateHeaderOverrideRows(headerOverrideRows.value)

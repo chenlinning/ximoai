@@ -29,7 +29,6 @@ import { usePreviewUpstreamModelsSync } from '../usePreviewUpstreamModelsSync'
 const PreviewHarness = defineComponent({
   props: {
     platform: { type: String, required: true },
-    protocol: { type: String, required: true },
     authScheme: { type: String, default: '' }
   },
   setup(props) {
@@ -38,7 +37,6 @@ const PreviewHarness = defineComponent({
     const { previewSyncUpstreamModels } = usePreviewUpstreamModelsSync({
       platform: ref(props.platform),
       accountType: ref('apikey'),
-      selectedProtocol: ref(props.protocol),
       platformEnabled: ref(true),
       apiKey,
       baseUrl,
@@ -56,22 +54,21 @@ describe('usePreviewUpstreamModelsSync', () => {
   })
 
   it.each([
-    ['acme-openai', 'openai_compatible'],
-    ['acme-anthropic', 'anthropic'],
-    ['acme-gemini', 'gemini']
-  ])('sends the configured protocol for %s previews', async (platform, protocol) => {
-    const wrapper = mount(PreviewHarness, { props: { platform, protocol } })
+    'openai',
+    'anthropic',
+    'gemini',
+    'openai-audio',
+  ])('uses the fixed protocol selected by platform %s', async (platform) => {
+    const wrapper = mount(PreviewHarness, { props: { platform } })
 
     await wrapper.get('button').trigger('click')
 
     expect(syncPreviewMock).toHaveBeenCalledWith({
       platform,
       type: 'apikey',
-      protocol,
       credentials: {
         base_url: 'https://api.example.com/v1',
-        api_key: 'test-key',
-        platform_protocol: protocol
+        api_key: 'test-key'
       }
     })
   })
@@ -79,8 +76,7 @@ describe('usePreviewUpstreamModelsSync', () => {
   it('forwards the selected Anthropic bearer auth scheme to the preview account', async () => {
     const wrapper = mount(PreviewHarness, {
       props: {
-        platform: 'acme-anthropic',
-        protocol: 'anthropic',
+        platform: 'anthropic',
         authScheme: 'authorization_bearer'
       }
     })

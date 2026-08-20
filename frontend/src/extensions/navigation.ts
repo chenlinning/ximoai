@@ -36,13 +36,8 @@ export function ximoAIUserNavItems(
   ]
 }
 
-export function ximoAIAdminNavItems(icons: { platform: unknown; application: unknown }): XimoAINavItem[] {
+export function ximoAIAdminNavItems(icons: { application: unknown }): XimoAINavItem[] {
   return [
-    {
-      path: '/admin/platforms',
-      labelKey: 'nav.platforms',
-      icon: icons.platform,
-    },
     {
       path: '/admin/ximoapp-update',
       labelKey: 'ximoappUpdate.nav',

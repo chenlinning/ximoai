@@ -99,13 +99,12 @@ func TestGetXimoAIAvailableModels_FallsBackWithoutPlatformMapping(t *testing.T) 
 	require.Equal(t, []string{"account-model"}, models)
 }
 
-func TestGetXimoAIAvailableModels_UsesVolcengineRuntimeKindForNativeGroup(t *testing.T) {
+func TestGetXimoAIAvailableModels_UsesFixedVolcenginePlatform(t *testing.T) {
 	groupID := int64(43)
 	accountRepo := &ximoAIModelsAccountRepoStub{accounts: []Account{{
 		ID:       1,
-		Platform: "legacy-volcengine-slug",
+		Platform: PlatformVolcengineAgentPlan,
 		Credentials: map[string]any{
-			PlatformKindCredentialKey: PlatformKindVolcengineAgentPlan,
 			"model_mapping": map[string]any{
 				"doubao-seed-tts-2.0": "seed-tts-2.0",
 			},
@@ -118,26 +117,6 @@ func TestGetXimoAIAvailableModels_UsesVolcengineRuntimeKindForNativeGroup(t *tes
 	require.Equal(t, []string{"doubao-seed-tts-2.0"}, models)
 }
 
-type ximoAIModelsPlatformRepoStub struct {
-	PlatformRepository
-	platform Platform
-}
-
-func (s *ximoAIModelsPlatformRepoStub) GetBySlug(_ context.Context, slug string) (*Platform, error) {
-	if NormalizePlatformSlug(slug) != s.platform.Slug {
-		return nil, ErrPlatformNotFound
-	}
-	platform := s.platform
-	return &platform, nil
-}
-
 func TestXimoAIModelsFallbackPlatform_LeavesBuiltinPlatformUnchanged(t *testing.T) {
-	svc := NewPlatformService(&ximoAIModelsPlatformRepoStub{platform: Platform{
-		Slug:     PlatformGrokVideo,
-		Protocol: PlatformProtocolOpenAICompatible,
-		Enabled:  true,
-		Builtin:  true,
-	}})
-
-	require.Equal(t, PlatformGrokVideo, svc.XimoAIModelsFallbackPlatform(context.Background(), PlatformGrokVideo))
+	require.Equal(t, PlatformGrokVideo, XimoAIModelsFallbackPlatform(PlatformGrokVideo))
 }

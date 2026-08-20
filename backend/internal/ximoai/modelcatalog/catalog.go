@@ -115,8 +115,8 @@ func Lookup(platform, model string) (ModelRecord, bool) {
 		return ModelRecord{}, false
 	}
 
-	// Custom platforms may reuse a verified official model by exact upstream
-	// model ID. Ambiguous IDs are intentionally rejected instead of guessed.
+	// Other fixed-compatible platform aliases may reuse a verified official
+	// model by exact upstream ID. Ambiguous IDs are rejected instead of guessed.
 	var match *ModelRecord
 	for _, record := range registry.Models {
 		if strings.ToLower(record.Model) != model || !isVerifiedRecord(record) {

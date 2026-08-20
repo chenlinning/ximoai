@@ -21,10 +21,10 @@ func TestRegistryIsAuditedAndLoads(t *testing.T) {
 	}
 }
 
-func TestLookupCustomPlatformUsesUniqueUpstreamModelID(t *testing.T) {
-	record, ok := Lookup("custom-openai-compatible", "gpt-5")
+func TestLookupCompatibleAliasUsesUniqueUpstreamModelID(t *testing.T) {
+	record, ok := Lookup("compatible-alias", "gpt-5")
 	if !ok {
-		t.Fatal("custom platform did not match gpt-5")
+		t.Fatal("compatible alias did not match gpt-5")
 	}
 	if record.Platform != "openai" || record.Brand != "OpenAI" {
 		t.Fatalf("unexpected match: %#v", record)
@@ -62,9 +62,9 @@ func TestVolcengineAgentPlanRegistryIncludesProviderModelIDs(t *testing.T) {
 }
 
 func TestPublicMetadataDoesNotExposeInternalAccessProfile(t *testing.T) {
-	metadata, ok := PublicMetadataFor("custom-openai-compatible", "gpt-5")
+	metadata, ok := PublicMetadataFor("compatible-alias", "gpt-5")
 	if !ok {
-		t.Fatal("custom platform did not match gpt-5")
+		t.Fatal("compatible alias did not match gpt-5")
 	}
 	raw, err := json.Marshal(metadata)
 	if err != nil {
@@ -79,17 +79,17 @@ func TestPublicMetadataDoesNotExposeInternalAccessProfile(t *testing.T) {
 }
 
 func TestPublicMetadataSeparatesReasoningLevelsFromThinkingToggle(t *testing.T) {
-	metadata, ok := PublicMetadataFor("custom-openai-compatible", "kimi-k2.6")
+	metadata, ok := PublicMetadataFor("kimi", "kimi-k2.6")
 	if !ok {
-		t.Fatal("custom platform did not match kimi-k2.6")
+		t.Fatal("kimi platform did not match kimi-k2.6")
 	}
 	if len(metadata.ReasoningLevels) != 0 || !metadata.ThinkingSupported {
 		t.Fatalf("kimi-k2.6 should expose only thinking support: %#v", metadata)
 	}
 
-	metadata, ok = PublicMetadataFor("custom-openai-compatible", "kimi-k3")
+	metadata, ok = PublicMetadataFor("kimi", "kimi-k3")
 	if !ok {
-		t.Fatal("custom platform did not match kimi-k3")
+		t.Fatal("kimi platform did not match kimi-k3")
 	}
 	if len(metadata.ReasoningLevels) != 3 || metadata.ThinkingSupported {
 		t.Fatalf("kimi-k3 should expose reasoning levels only: %#v", metadata)

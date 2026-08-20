@@ -33,7 +33,6 @@ import channelMonitorTemplateAPI from './channelMonitorTemplate'
 import adminPaymentAPI from './payment'
 import affiliatesAPI from './affiliates'
 import riskControlAPI from './riskControl'
-import platformsAPI from './platforms'
 import adminComplianceAPI from './compliance'
 import membershipsAPI from './memberships'
 import ximodeskUpdateAPI from './ximodeskUpdate'
@@ -73,7 +72,6 @@ export const adminAPI = {
   payment: adminPaymentAPI,
   affiliates: affiliatesAPI,
   riskControl: riskControlAPI,
-  platforms: platformsAPI,
   compliance: adminComplianceAPI,
   memberships: membershipsAPI,
   ximodeskUpdate: ximodeskUpdateAPI,
@@ -111,7 +109,6 @@ export {
   adminPaymentAPI,
   affiliatesAPI,
   riskControlAPI,
-  platformsAPI,
   adminComplianceAPI,
   membershipsAPI,
   ximodeskUpdateAPI,

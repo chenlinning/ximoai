@@ -121,9 +121,6 @@ func (s *adminServiceImpl) CreateCompositeRoute(ctx context.Context, groupID int
 	if err != nil {
 		return nil, err
 	}
-	if err := s.platformRegistry().ValidatePlatformSlug(ctx, route.TargetPlatform); err != nil {
-		return nil, err
-	}
 	if err := s.compositeRouteRepo.Create(ctx, route); err != nil {
 		return nil, err
 	}
@@ -144,9 +141,6 @@ func (s *adminServiceImpl) UpdateCompositeRoute(ctx context.Context, groupID, ro
 	}
 	route, err := compositeRouteFromInput(groupID, input)
 	if err != nil {
-		return nil, err
-	}
-	if err := s.platformRegistry().ValidatePlatformSlug(ctx, route.TargetPlatform); err != nil {
 		return nil, err
 	}
 	route.ID = routeID
@@ -282,11 +276,6 @@ func defaultAllowImageGenerationForPlatform(platform string) bool {
 	}
 }
 
-func defaultAllowImageGenerationForPlatformDefinition(platform string, definition *Platform) bool {
-	return defaultAllowImageGenerationForPlatform(platform) ||
-		(definition != nil && definition.IsVolcengineAgentPlan())
-}
-
 func compositeDefaultModelsListCandidateIDs() []string {
 	seen := make(map[string]struct{})
 	ids := make([]string, 0)
@@ -323,13 +312,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		return nil, errors.New("rate_multiplier must be > 0")
 	}
 
-	platform := NormalizePlatformSlug(input.Platform)
-	if platform == "" {
-		platform = PlatformAnthropic
-	}
-	if err := s.validatePlatformForGroup(ctx, platform); err != nil {
-		return nil, err
-	}
+	platform := NormalizeGroupPlatform(input.Platform)
 	modelPricing, err := normalizeGroupModelPricing(platform, input.ModelPricing)
 	if err != nil {
 		return nil, err
@@ -446,8 +429,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		mcpXMLInject = *input.MCPXMLInject
 	}
 
-	platformDefinition, _ := s.platformRegistry().GetBySlug(ctx, platform)
-	allowImageGeneration := input.AllowImageGeneration || defaultAllowImageGenerationForPlatformDefinition(platform, platformDefinition)
+	allowImageGeneration := input.AllowImageGeneration || defaultAllowImageGenerationForPlatform(platform)
 	allowBatchImageGeneration := input.AllowBatchImageGeneration && allowImageGeneration && platform == PlatformGemini
 
 	// 如果指定了复制账号的源分组，先获取账号 ID 列表
@@ -539,7 +521,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		MaxReasoningEffort:              maxReasoningEffort,
 		ReasoningEffortMappings:         reasoningEffortMappings,
 	}
-	sanitizeGroupMessagesDispatchFields(ctx, s.platformRegistry(), group)
+	sanitizeGroupMessagesDispatchFields(group)
 	if group.Platform != PlatformOpenAI && group.Platform != PlatformComposite {
 		group.AllowLive = false
 	}
@@ -681,11 +663,7 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 		group.Description = *input.Description
 	}
 	if input.Platform != "" {
-		platform := NormalizePlatformSlug(input.Platform)
-		if err := s.validatePlatformForGroup(ctx, platform); err != nil {
-			return nil, err
-		}
-		group.Platform = platform
+		group.Platform = input.Platform
 	}
 	if input.RateMultiplier != nil {
 		if *input.RateMultiplier <= 0 {
@@ -923,7 +901,7 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 		}
 		group.ReasoningEffortMappings = reasoningEffortMappings
 	}
-	sanitizeGroupMessagesDispatchFields(ctx, s.platformRegistry(), group)
+	sanitizeGroupMessagesDispatchFields(group)
 	if group.Platform != PlatformOpenAI && group.Platform != PlatformComposite {
 		group.AllowLive = false
 	}
@@ -1017,73 +995,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	}
 
 	return group, nil
-}
-
-func (s *adminServiceImpl) platformRegistry() *PlatformService {
-	if s != nil && s.platformService != nil {
-		return s.platformService
-	}
-	return NewPlatformService(nil)
-}
-
-func (s *adminServiceImpl) validatePlatformForGroup(ctx context.Context, platform string) error {
-	platform = NormalizePlatformSlug(platform)
-	if platform == "" {
-		return ErrPlatformInvalid
-	}
-	if platform == PlatformComposite {
-		return nil
-	}
-	return s.platformRegistry().ValidatePlatformSlug(ctx, platform)
-}
-
-func (s *adminServiceImpl) validateAccountPlatformInput(ctx context.Context, platform, accountType string) error {
-	platform = NormalizePlatformSlug(platform)
-	accountType = strings.TrimSpace(accountType)
-	if platform == "" {
-		return infraerrors.BadRequest("INVALID_ACCOUNT_PLATFORM", "platform is required")
-	}
-	if accountType == "" {
-		return infraerrors.BadRequest("INVALID_ACCOUNT_TYPE", "account type is required")
-	}
-	return s.platformRegistry().ValidateAccountPlatform(ctx, platform, accountType)
-}
-
-func (s *adminServiceImpl) normalizeAccountCredentialsForPlatform(ctx context.Context, platformSlug, accountType string, credentials map[string]any) (map[string]any, error) {
-	if credentials == nil {
-		credentials = map[string]any{}
-	}
-	platform, err := s.platformRegistry().GetBySlug(ctx, platformSlug)
-	if err != nil {
-		return nil, err
-	}
-	if accountType == AccountTypeAPIKey && platform.RuntimeKind() != "" {
-		credentials[PlatformKindCredentialKey] = platform.RuntimeKind()
-		credentials["platform_protocol"] = platform.Protocol
-	}
-	if accountType == AccountTypeAPIKey && platform.RequiresAPIKeyBaseURL() {
-		if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
-			credentials["base_url"] = platform.BaseURL
-		}
-		if strings.TrimSpace(accountCredentialString(credentials, "base_url")) == "" {
-			return nil, infraerrors.BadRequest("CUSTOM_PLATFORM_BASE_URL_REQUIRED", "base_url is required for this platform")
-		}
-	}
-	return credentials, nil
-}
-
-func accountCredentialString(credentials map[string]any, key string) string {
-	if len(credentials) == 0 {
-		return ""
-	}
-	value, ok := credentials[key]
-	if !ok || value == nil {
-		return ""
-	}
-	if s, ok := value.(string); ok {
-		return s
-	}
-	return fmt.Sprint(value)
 }
 
 func normalizeGroupModelPricing(platform string, pricing []ChannelModelPricing) ([]ChannelModelPricing, error) {

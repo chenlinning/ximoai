@@ -635,7 +635,7 @@ import { adminAPI } from '@/api/admin'
 import type { Channel, ChannelModelPricing, CreateChannelRequest, UpdateChannelRequest, AccountStatsPricingRule } from '@/api/admin/channels'
 import type { PricingFormEntry } from '@/components/admin/channel/types'
 import { apiIntervalsToForm, apiTimePricingToForm, createDefaultTimePricingForm, findModelConflict, perTokenToMTok, pricingFormEntryToAPI, validateIntervals, validateTimePricing } from '@/components/admin/channel/types'
-import type { AdminGroup, Platform } from '@/types'
+import type { AdminGroup, GroupPlatform } from '@/types'
 import type { Column } from '@/components/common/types'
 import {
   platformBadgeLightClass,
@@ -658,6 +658,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import PricingEntryCard from '@/components/admin/channel/PricingEntryCard.vue'
 import { getPersistedPageSize } from '@/composables/usePersistedPageSize'
 import { useKeyedDebouncedSearch } from '@/composables/useKeyedDebouncedSearch'
+import { fixedPlatforms } from '@/extensions/platforms/fixedPlatforms'
 
 const { t } = useI18n()
 const appStore = useAppStore()
@@ -684,7 +685,7 @@ interface FormPricingRule {
 
 // ── Platform Section type ──
 interface PlatformSection {
-  platform: string
+  platform: GroupPlatform
   enabled: boolean
   collapsed: boolean
   group_ids: number[]
@@ -751,8 +752,7 @@ const activeTab = ref<string>('basic')
 // Groups
 const allGroups = ref<AdminGroup[]>([])
 const groupsLoading = ref(false)
-const platforms = ref<Platform[]>([])
-const platformsLoading = ref(false)
+const platforms = fixedPlatforms
 
 // All channels for group-conflict detection (independent of current page)
 const allChannelsForConflict = ref<Channel[]>([])
@@ -771,27 +771,8 @@ const form = reactive({
 let abortController: AbortController | null = null
 
 // ── Platform config ──
-const builtinPlatformOrder = ['anthropic', 'openai', 'gemini', 'antigravity', 'grok', 'kimi', 'zhipu', 'deepseek']
-const platformOrder = computed<string[]>(() => {
-  const seen = new Set<string>()
-  const ordered: string[] = []
-  const push = (platform?: string) => {
-    if (!platform || seen.has(platform)) return
-    seen.add(platform)
-    ordered.push(platform)
-  }
-  builtinPlatformOrder.forEach(push)
-  platforms.value.forEach(platform => push(platform.slug))
-  allGroups.value.forEach(group => push(group.platform))
-  channels.value.forEach(channel => {
-    const modelPricing = channel.model_pricing || []
-    modelPricing.forEach(pricing => push(pricing.platform))
-    Object.keys(channel.model_mapping || {}).forEach(push)
-  })
-  form.platforms.forEach(section => push(section.platform))
-  return ordered
-})
-const compositePlatforms = [
+const platformOrder = fixedPlatforms.map((platform) => platform.slug) as GroupPlatform[]
+const compositePlatforms: GroupPlatform[] = [
   'anthropic', 'openai', 'gemini', 'antigravity', 'grok',
   'grok-video', 'openai-audio', 'kling_audio', 'volcengine-agent-plan',
 ]
@@ -806,14 +787,14 @@ function formatDate(value: string): string {
 const activePlatforms = computed(() => form.platforms.filter(s => s.enabled).map(s => s.platform))
 
 function displayPlatformName(platform: string): string {
-  return platformDisplayName(platforms.value, platform)
+  return platformDisplayName(platforms, platform)
 }
 
 function displayPlatformColor(platform: string): string {
-  return platformDisplayColor(platforms.value, platform)
+  return platformDisplayColor(platforms, platform)
 }
 
-function addPlatformSection(platform: string) {
+function addPlatformSection(platform: GroupPlatform) {
   form.platforms.push({
     platform,
     enabled: true,
@@ -828,7 +809,7 @@ function addPlatformSection(platform: string) {
   })
 }
 
-function togglePlatform(platform: string) {
+function togglePlatform(platform: GroupPlatform) {
   const section = form.platforms.find(s => s.platform === platform)
   if (section) {
     section.enabled = !section.enabled
@@ -840,7 +821,7 @@ function togglePlatform(platform: string) {
   }
 }
 
-function getGroupsForPlatform(platform: string): AdminGroup[] {
+function getGroupsForPlatform(platform: GroupPlatform): AdminGroup[] {
   return allGroups.value.filter(
     g => g.platform === platform || (g.platform === 'composite' && compositePlatforms.includes(platform))
   )
@@ -1057,17 +1038,6 @@ function onRuleAccountSearchFocus(platform: string, ruleIndex: number) {
   }
 }
 
-async function loadPlatforms() {
-  platformsLoading.value = true
-  try {
-    platforms.value = await adminAPI.platforms.list(true)
-  } catch (error) {
-    console.error('Error loading platforms:', error)
-  } finally {
-    platformsLoading.value = false
-  }
-}
-
 function selectRuleAccount(
   rule: { account_ids: number[] },
   account: SimpleAccount,
@@ -1225,8 +1195,7 @@ function apiToForm(channel: Channel): PlatformSection[] {
   // Build sections in platform order
   const sections: PlatformSection[] = []
   const orderedPlatforms = [
-    ...platformOrder.value,
-    ...[...activePlatforms].filter(platform => !platformOrder.value.includes(platform)),
+    ...platformOrder,
   ]
   for (const platform of orderedPlatforms) {
     if (!activePlatforms.has(platform)) continue
@@ -1374,7 +1343,7 @@ function resetForm() {
 async function openCreateDialog() {
   editingChannel.value = null
   resetForm()
-  await Promise.all([loadPlatforms(), loadGroups(), loadAllChannelsForConflict()])
+  await Promise.all([loadGroups(), loadAllChannelsForConflict()])
   showDialog.value = true
 }
 
@@ -1387,7 +1356,7 @@ async function openEditDialog(channel: Channel) {
   form.billing_model_source = channel.billing_model_source || 'channel_mapped'
   form.apply_pricing_to_account_stats = channel.apply_pricing_to_account_stats || false
   // Must load groups first so apiToForm can map groupID → platform
-  await Promise.all([loadPlatforms(), loadGroups(), loadAllChannelsForConflict()])
+  await Promise.all([loadGroups(), loadAllChannelsForConflict()])
   form.platforms = apiToForm(channel)
 
   // Distribute channel-level rules into per-platform sections
@@ -1663,7 +1632,6 @@ async function confirmDelete() {
 
 // ── Lifecycle ──
 onMounted(() => {
-  loadPlatforms()
   loadChannels()
   loadGroups()
   loadWebSearchGlobalState()

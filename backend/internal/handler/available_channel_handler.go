@@ -20,10 +20,9 @@ import (
 //  4. 字段白名单：仅返回用户需要的字段（省略 BillingModelSource / RestrictModels
 //     / 内部 ID / Status 等管理字段）。
 type AvailableChannelHandler struct {
-	channelService  *service.ChannelService
-	apiKeyService   *service.APIKeyService
-	settingService  *service.SettingService
-	platformService *service.PlatformService
+	channelService *service.ChannelService
+	apiKeyService  *service.APIKeyService
+	settingService *service.SettingService
 }
 
 // NewAvailableChannelHandler 创建用户侧可用渠道 handler。
@@ -31,13 +30,11 @@ func NewAvailableChannelHandler(
 	channelService *service.ChannelService,
 	apiKeyService *service.APIKeyService,
 	settingService *service.SettingService,
-	platformService *service.PlatformService,
 ) *AvailableChannelHandler {
 	return &AvailableChannelHandler{
-		channelService:  channelService,
-		apiKeyService:   apiKeyService,
-		settingService:  settingService,
-		platformService: platformService,
+		channelService: channelService,
+		apiKeyService:  apiKeyService,
+		settingService: settingService,
 	}
 }
 

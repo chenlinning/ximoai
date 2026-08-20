@@ -25,18 +25,6 @@ export const ximoAIRoutes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/platforms',
-    name: 'AdminPlatforms',
-    component: () => import('@/views/admin/PlatformsView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: true,
-      title: 'Platform Management',
-      titleKey: 'admin.platforms.title',
-      descriptionKey: 'admin.platforms.description'
-    }
-  },
-  {
     path: '/download-center',
     name: 'DownloadCenter',
     component: () => import('@/extensions/ximoapp/DownloadCenterPage.vue'),

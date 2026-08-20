@@ -321,7 +321,7 @@
         </div>
       </div>
 
-      <div v-if="isCustomAPIKeyOnlyPlatform">
+      <div v-if="isAPIKeyOnlyPlatform">
         <label class="input-label">{{ t('admin.accounts.accountType') }}</label>
         <div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2" data-tour="account-form-type">
           <button
@@ -1629,7 +1629,7 @@
 
         <!-- Header Override Section (anthropic/openai apikey only) -->
         <div
-          v-if="isHeaderOverrideCapable(form.platform, 'apikey', selectedProtocol, selectedPlatform?.builtin)"
+          v-if="isHeaderOverrideCapable(form.platform, 'apikey')"
           class="border-t border-gray-200 pt-4 dark:border-dark-600"
         >
           <div class="mb-3 flex items-center justify-between">
@@ -3694,7 +3694,6 @@ import type {
   CodexSessionImportMessage,
   OpenAICompactMode,
   OpenAIResponsesMode,
-  Platform,
   OpenAIEndpointCapability
 } from '@/types'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -3723,9 +3722,6 @@ import {
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
 import {
-  isCustomAnthropicPlatform,
-  isCustomGeminiPlatform,
-  isCustomOpenAICompatiblePlatform,
   requiresXimoAIAPIKeyBaseURL,
   resolveXimoAIPlatformKind
 } from '@/components/account/ximoaiAPIKeyPlatform'
@@ -3742,6 +3738,7 @@ import {
   type OpenAIWSMode
 } from '@/utils/openaiWsMode'
 import { platformButtonStyle } from '@/utils/platformColors'
+import { fixedPlatforms } from '@/extensions/platforms/fixedPlatforms'
 import OAuthAuthorizationFlow from './OAuthAuthorizationFlow.vue'
 
 // Type for exposed OAuthAuthorizationFlow component
@@ -3776,8 +3773,6 @@ const baseUrlHint = computed(() => {
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
   if (form.platform === 'grok') return ''
   if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.baseUrlHint')
-  if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
-  if (form.platform === 'openai') return t('admin.accounts.openai.baseUrlHint')
   if (form.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
 })
@@ -3786,8 +3781,6 @@ const apiKeyHint = computed(() => {
   if (isOfficialOpenAI.value) return t('admin.accounts.openai.apiKeyHint')
   if (form.platform === 'grok') return ''
   if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.apiKeyHint')
-  if (selectedProtocol.value === 'gemini' || form.platform === 'gemini') return t('admin.accounts.gemini.apiKeyHint')
-  if (form.platform === 'openai') return t('admin.accounts.openai.apiKeyHint')
   if (form.platform === 'gemini') return t('admin.accounts.gemini.apiKeyHint')
   return t('admin.accounts.apiKeyHint')
 })
@@ -3806,143 +3799,10 @@ const emit = defineEmits<{
 
 const appStore = useAppStore()
 
-const fallbackPlatforms: Platform[] = [
-  {
-    slug: 'anthropic',
-    display_name: 'Anthropic',
-    protocol: 'native',
-    base_url: '',
-    auth_modes: ['oauth', 'setup-token', 'apikey', 'bedrock'],
-    capabilities: ['messages'],
-    color: '#D97706',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'openai',
-    display_name: 'OpenAI',
-    protocol: 'openai',
-    base_url: 'https://api.openai.com',
-    auth_modes: ['oauth', 'apikey'],
-    capabilities: ['responses', 'chat_completions', 'images', 'audio', 'realtime', 'codex'],
-    color: '#10A37F',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'gemini',
-    display_name: 'Gemini',
-    protocol: 'native',
-    base_url: '',
-    auth_modes: ['oauth', 'apikey', 'service_account'],
-    capabilities: ['messages', 'native_gemini'],
-    color: '#4285F4',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'antigravity',
-    display_name: 'Antigravity',
-    protocol: 'native',
-    base_url: '',
-    auth_modes: ['oauth', 'upstream', 'apikey'],
-    capabilities: ['messages', 'native_gemini'],
-    color: '#7C3AED',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'grok',
-    display_name: 'Grok',
-    protocol: 'openai_compatible',
-    base_url: '',
-    auth_modes: ['oauth', 'apikey'],
-    capabilities: ['responses', 'chat_completions', 'videos'],
-    color: '#111827',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'grok-video',
-    kind: 'grok_video',
-    display_name: 'Grok-video',
-    protocol: 'openai_compatible',
-    base_url: '',
-    auth_modes: ['apikey'],
-    capabilities: ['videos'],
-    color: '#111827',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'openai-audio',
-    kind: 'openai_audio',
-    display_name: 'OpenAI Audio',
-    protocol: 'openai_compatible',
-    base_url: '',
-    auth_modes: ['apikey'],
-    capabilities: ['chat_completions', 'audio'],
-    color: '#0F766E',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'kling_audio',
-    kind: 'kling_audio',
-    display_name: '可灵 Audio',
-    protocol: 'openai_compatible',
-    base_url: '',
-    auth_modes: ['apikey'],
-    capabilities: ['audio'],
-    color: '#0EA5E9',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  },
-  {
-    slug: 'volcengine-agent-plan',
-    kind: 'volcengine_agent_plan',
-    display_name: 'Volcengine Agent Plan',
-    protocol: 'native',
-    base_url: 'https://ark.cn-beijing.volces.com/api/plan/v3',
-    auth_modes: ['apikey'],
-    capabilities: ['images', 'audio'],
-    color: '#E5484D',
-    enabled: true,
-    builtin: true,
-    created_at: '',
-    updated_at: ''
-  }
-]
-
-const platforms = ref<Platform[]>([...fallbackPlatforms])
-const platformOptions = computed(() => platforms.value.filter((platform) => platform.enabled))
-
-const loadPlatforms = async () => {
-  try {
-    const items = await adminAPI.platforms.list(false)
-    if (items.length > 0) {
-      platforms.value = items
-    }
-  } catch {
-    platforms.value = [...fallbackPlatforms]
-  }
-}
+const platforms = ref([...fixedPlatforms])
+const platformOptions = computed(() => platforms.value.filter((platform) =>
+  platform.enabled && !['kimi', 'zhipu', 'deepseek'].includes(platform.slug)
+))
 
 // OAuth composables
 const oauth = useAccountOAuth() // For Anthropic OAuth
@@ -4493,24 +4353,12 @@ const isOfficialOpenAI = computed(() =>
     : form.platform === 'openai'
 )
 
-const isCustomOpenAIAPIKeyPlatform = computed(() =>
-  isCustomOpenAICompatiblePlatform(selectedPlatform.value)
-)
-
-const isCustomAnthropicAPIKeyPlatform = computed(() =>
-  isCustomAnthropicPlatform(selectedPlatform.value)
-)
-
-const isCustomGeminiAPIKeyPlatform = computed(() =>
-  isCustomGeminiPlatform(selectedPlatform.value)
-)
-
 const hasAnthropicProtocolSettings = computed(() =>
-  form.platform === 'anthropic' || isCustomAnthropicAPIKeyPlatform.value
+  form.platform === 'anthropic'
 )
 
 const hasOpenAIProtocolSettings = computed(() =>
-  isOfficialOpenAI.value || isCustomOpenAIAPIKeyPlatform.value
+  isOfficialOpenAI.value
 )
 
 const hasOpenAIAPIKeySettings = computed(() =>
@@ -4543,14 +4391,14 @@ const isOpenAICompatibleAPIKeyPlatform = computed(() =>
   || form.platform === 'grok'
 )
 
-const isCustomAPIKeyOnlyPlatform = computed(() =>
+const isAPIKeyOnlyPlatform = computed(() =>
   !!selectedPlatform.value
   && selectedPlatform.value.auth_modes.length > 0
   && selectedPlatform.value.auth_modes.every(mode => mode === 'apikey')
 )
 
 const isSelectedGeminiProtocol = computed(() =>
-  form.platform === 'gemini' || isCustomGeminiAPIKeyPlatform.value
+  form.platform === 'gemini'
 )
 
 const apiKeyBaseUrlDefault = computed(() => {
@@ -4590,7 +4438,6 @@ const {
 } = usePreviewUpstreamModelsSync({
   platform: computed(() => form.platform),
   accountType: computed(() => form.type),
-  selectedProtocol,
   platformEnabled: computed(() => Boolean(selectedPlatform.value?.enabled)),
   apiKey: apiKeyValue,
   baseUrl: apiKeyBaseUrl,
@@ -4611,7 +4458,7 @@ const selectPlatform = (slug: string) => {
 
 // Helper to check if current type needs OAuth flow
 const isOAuthFlow = computed(() => {
-  if (isCustomAPIKeyOnlyPlatform.value) {
+  if (isAPIKeyOnlyPlatform.value) {
     return false
   }
   // Antigravity upstream 类型不需要 OAuth 流程
@@ -4660,7 +4507,6 @@ watch(
   () => props.show,
   (newVal) => {
     if (newVal) {
-      loadPlatforms()
       // Load TLS fingerprint profiles
       adminAPI.tlsFingerprintProfiles.list()
         .then(profiles => { tlsFingerprintProfiles.value = profiles.map(p => ({ id: p.id, name: p.name })) })
@@ -4689,7 +4535,7 @@ watch(
 watch(
   [accountCategory, addMethod, antigravityAccountType, () => form.platform],
   ([category, method, agType]) => {
-    if (isCustomAPIKeyOnlyPlatform.value) {
+    if (isAPIKeyOnlyPlatform.value) {
       form.type = 'apikey'
       if (accountCategory.value !== 'apikey') {
         accountCategory.value = 'apikey'
@@ -4727,7 +4573,7 @@ watch(
     // Clear model-related settings
     allowedModels.value = []
     modelMappings.value = []
-    if (isCustomAPIKeyOnlyPlatform.value) {
+    if (isAPIKeyOnlyPlatform.value) {
       accountCategory.value = 'apikey'
       addMethod.value = 'oauth'
     }
@@ -5679,7 +5525,7 @@ const handleSubmit = async () => {
   }
 
   // Add header override if enabled (anthropic/openai/grok apikey)
-  if (isHeaderOverrideCapable(form.platform, 'apikey', selectedProtocol.value, selectedPlatform.value?.builtin)) {
+  if (isHeaderOverrideCapable(form.platform, 'apikey')) {
     if (headerOverrideEnabled.value) {
       const headerError = validateHeaderOverrideRows(headerOverrideRows.value)
       if (headerError) {

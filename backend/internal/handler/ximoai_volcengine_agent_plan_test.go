@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -85,19 +84,6 @@ func TestParseVolcengineAgentPlanRequestUsesOfficialResourceIDForWebSocketAudio(
 			require.Equal(t, "doubao-user-visible-model", model)
 		})
 	}
-}
-
-func TestVolcengineAgentPlanPlatformRecognizesLegacyNativeDefinition(t *testing.T) {
-	legacyNative := &GatewayHandler{platformService: service.NewPlatformService(&ximoAIModelsPlatformRepoStub{
-		platform: service.Platform{
-			Slug:     "volcengine",
-			Protocol: service.PlatformProtocolNative,
-			BaseURL:  service.PlatformDefaultBaseURLVolcengineAgentPlan,
-			Enabled:  true,
-			Builtin:  true,
-		},
-	})}
-	require.True(t, legacyNative.IsVolcengineAgentPlanPlatform(context.Background(), "volcengine"))
 }
 
 func TestWriteVolcengineAgentPlanErrorPreservesSafeUpstreamHeaders(t *testing.T) {

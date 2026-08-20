@@ -462,21 +462,6 @@ func buildAccountForCreate(input *CreateAccountInput, accountExtra map[string]an
 }
 
 func (s *adminServiceImpl) CreateAccount(ctx context.Context, input *CreateAccountInput) (*Account, error) {
-	platformSlug := NormalizePlatformSlug(input.Platform)
-	accountType := strings.TrimSpace(input.Type)
-	if err := s.validateAccountPlatformInput(ctx, platformSlug, accountType); err != nil {
-		return nil, err
-	}
-	credentials, err := s.normalizeAccountCredentialsForPlatform(ctx, platformSlug, accountType, input.Credentials)
-	if err != nil {
-		return nil, err
-	}
-	normalizedInput := *input
-	normalizedInput.Platform = platformSlug
-	normalizedInput.Type = accountType
-	normalizedInput.Credentials = credentials
-	input = &normalizedInput
-
 	accountExtra, err := normalizeOpenAILongContextBillingExtra(input.Platform, input.Extra)
 	if err != nil {
 		return nil, err
@@ -630,14 +615,6 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 	}
 	// Extra 使用 map：需要区分“未提供(nil)”与“显式清空({})”。
 	// 关闭配额限制时前端会删除 quota_* 键并提交 extra:{}，此时也必须落库。
-	if err := s.validateAccountPlatformInput(ctx, account.Platform, account.Type); err != nil {
-		return nil, err
-	}
-	if normalizedCredentials, err := s.normalizeAccountCredentialsForPlatform(ctx, account.Platform, account.Type, account.Credentials); err != nil {
-		return nil, err
-	} else {
-		account.Credentials = normalizedCredentials
-	}
 	requestedProbeEnabledUpdate := input.ProbeEnabled
 	requestedRateSyncEnabledUpdate := input.RateSyncEnabled
 	if input.Extra != nil {

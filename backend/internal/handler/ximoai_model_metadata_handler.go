@@ -28,7 +28,7 @@ type deleteModelMetadataRequest struct {
 }
 
 func (h *AvailableChannelHandler) SaveModelPlazaMetadata(c *gin.Context) {
-	if h == nil || h.settingService == nil || h.platformService == nil {
+	if h == nil || h.settingService == nil {
 		response.ErrorFrom(c, infraerrors.ServiceUnavailable("MODEL_METADATA_UNAVAILABLE", "model metadata settings are unavailable"))
 		return
 	}
@@ -51,7 +51,7 @@ func (h *AvailableChannelHandler) SaveModelPlazaMetadata(c *gin.Context) {
 		response.ErrorFrom(c, infraerrors.BadRequest("MODEL_METADATA_REQUEST_INVALID", "platform and model are required"))
 		return
 	}
-	if _, err := h.platformService.GetBySlug(c.Request.Context(), override.Platform); err != nil {
+	if _, ok := ximoAIModelPlazaPlatformFor(override.Platform); !ok {
 		response.ErrorFrom(c, infraerrors.BadRequest("MODEL_METADATA_PLATFORM_INVALID", "platform is unavailable"))
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -67,39 +68,10 @@ func setupSyncUpstreamModelsRouter(adminSvc service.AdminService, upstream servi
 		upstream,
 		&config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 		nil,
-		nil,
 	)
 	handler := NewAccountHandler(adminSvc, nil, nil, nil, nil, nil, nil, nil, accountTestSvc, nil, nil, nil, nil, nil)
 	router.POST("/api/v1/admin/accounts/:id/models/sync-upstream", handler.SyncUpstreamModels)
 	return router
-}
-
-type availableModelsPlatformRepo struct {
-	platforms map[string]service.Platform
-}
-
-func (r *availableModelsPlatformRepo) List(_ context.Context, _ bool) ([]service.Platform, error) {
-	out := make([]service.Platform, 0, len(r.platforms))
-	for _, platform := range r.platforms {
-		out = append(out, platform)
-	}
-	return out, nil
-}
-
-func (r *availableModelsPlatformRepo) GetBySlug(_ context.Context, slug string) (*service.Platform, error) {
-	platform, ok := r.platforms[service.NormalizePlatformSlug(slug)]
-	if !ok {
-		return nil, service.ErrPlatformNotFound
-	}
-	return &platform, nil
-}
-
-func (r *availableModelsPlatformRepo) Update(_ context.Context, _ *service.Platform) error {
-	return nil
-}
-
-func (r *availableModelsPlatformRepo) Rename(_ context.Context, _ string, _ *service.Platform) error {
-	return nil
 }
 
 func TestAccountHandlerGetAvailableModels_GrokUsesXAIModels(t *testing.T) {
@@ -318,26 +290,69 @@ func TestAccountHandlerGetAvailableModels_OpenAISparkShadowReturnsMappingModels(
 	}, ids, "shadow available models should be derived from model_mapping")
 }
 
-func TestAccountHandlerGetAvailableModels_CustomPlatformWithoutMappingReturnsEmpty(t *testing.T) {
+func TestAccountHandlerGetAvailableModels_XimoAIBuiltinPlatformsUseExplicitMappings(t *testing.T) {
+	platforms := []string{
+		service.PlatformGrokVideo,
+		service.PlatformOpenAIAudio,
+		service.PlatformKlingAudio,
+		service.PlatformVolcengineAgentPlan,
+	}
+
+	for i, platform := range platforms {
+		t.Run(platform, func(t *testing.T) {
+			accountID := int64(100 + i)
+			svc := &availableModelsAdminService{
+				stubAdminService: newStubAdminService(),
+				account: service.Account{
+					ID:       accountID,
+					Name:     platform,
+					Platform: platform,
+					Type:     service.AccountTypeAPIKey,
+					Status:   service.StatusActive,
+					Credentials: map[string]any{
+						"model_mapping": map[string]any{
+							"public-model": "upstream-model",
+						},
+					},
+				},
+			}
+			router := setupAvailableModelsRouter(svc)
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/"+strconv.FormatInt(accountID, 10)+"/models", nil)
+			router.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			var resp struct {
+				Data []struct {
+					ID string `json:"id"`
+				} `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+			require.Len(t, resp.Data, 1)
+			require.Equal(t, "public-model", resp.Data[0].ID)
+		})
+	}
+}
+
+func TestAccountHandlerGetAvailableModels_XimoAIBuiltinPlatformWithoutMappingIsEmpty(t *testing.T) {
 	svc := &availableModelsAdminService{
 		stubAdminService: newStubAdminService(),
 		account: service.Account{
-			ID:          46,
-			Name:        "custom-openai-compatible",
-			Platform:    "mengfactory",
-			Type:        service.AccountTypeAPIKey,
-			Status:      service.StatusActive,
-			Credentials: map[string]any{},
+			ID:       120,
+			Name:     "openai-audio-without-mapping",
+			Platform: service.PlatformOpenAIAudio,
+			Type:     service.AccountTypeAPIKey,
+			Status:   service.StatusActive,
 		},
 	}
 	router := setupAvailableModelsRouter(svc)
 
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/46/models", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/120/models", nil)
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-
 	var resp struct {
 		Data []struct {
 			ID string `json:"id"`
@@ -345,46 +360,6 @@ func TestAccountHandlerGetAvailableModels_CustomPlatformWithoutMappingReturnsEmp
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Empty(t, resp.Data)
-}
-
-func TestAccountHandlerGetAvailableModels_CustomPlatformUsesExplicitMapping(t *testing.T) {
-	svc := &availableModelsAdminService{
-		stubAdminService: newStubAdminService(),
-		account: service.Account{
-			ID:       47,
-			Name:     "custom-openai-compatible",
-			Platform: "mengfactory",
-			Type:     service.AccountTypeAPIKey,
-			Status:   service.StatusActive,
-			Credentials: map[string]any{
-				"model_mapping": map[string]any{
-					"vendor-audio": "vendor-audio",
-					"vendor-video": "vendor-video",
-				},
-			},
-		},
-	}
-	router := setupAvailableModelsRouter(svc)
-
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/accounts/47/models", nil)
-	router.ServeHTTP(rec, req)
-
-	require.Equal(t, http.StatusOK, rec.Code)
-
-	var resp struct {
-		Data []struct {
-			ID          string `json:"id"`
-			DisplayName string `json:"display_name"`
-		} `json:"data"`
-	}
-	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-	require.Len(t, resp.Data, 2)
-	ids := []string{resp.Data[0].ID, resp.Data[1].ID}
-	require.ElementsMatch(t, []string{"vendor-audio", "vendor-video"}, ids)
-	for _, model := range resp.Data {
-		require.Equal(t, model.ID, model.DisplayName)
-	}
 }
 
 func TestAccountHandlerSyncUpstreamModels_ConfigErrorReturnsBadRequest(t *testing.T) {

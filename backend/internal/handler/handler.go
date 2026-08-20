@@ -40,7 +40,6 @@ type AdminHandlers struct {
 	PromptAudit            *securityaudit.PromptAdminHandler
 	Payment                *admin.PaymentHandler
 	Affiliate              *admin.AffiliateHandler
-	Platform               *admin.PlatformHandler
 	Compliance             *admin.ComplianceHandler
 	Membership             *admin.MembershipHandler
 	AuditLog               *admin.AuditLogHandler
@@ -66,7 +65,6 @@ type Handlers struct {
 	Payment          *PaymentHandler
 	PaymentWebhook   *PaymentWebhookHandler
 	AvailableChannel *AvailableChannelHandler
-	Platform         *admin.PlatformHandler
 	Membership       *MembershipHandler
 	WorkbenchSSO     *WorkbenchSSOHandler
 	DesktopSession   *DesktopSessionHandler

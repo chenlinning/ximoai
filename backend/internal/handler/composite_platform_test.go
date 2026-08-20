@@ -37,7 +37,7 @@ func TestOpenAICompatibleTextTargetAllowsCompositeGrokModel(t *testing.T) {
 	}
 }
 
-func TestCompositeOpenAICompatibleTargetAllowsExplicitCustomPlatform(t *testing.T) {
+func TestCompositeOpenAICompatibleTargetRejectsUnknownPlatform(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Request = httptest.NewRequest("POST", "/v1/images/generations", nil)
@@ -49,7 +49,7 @@ func TestCompositeOpenAICompatibleTargetAllowsExplicitCustomPlatform(t *testing.
 	}))
 	apiKey := &service.APIKey{Group: &service.Group{Platform: service.PlatformComposite}}
 
-	require.True(t, compositeOpenAICompatibleTargetAllowed(c, apiKey, "public-image"))
+	require.False(t, compositeOpenAICompatibleTargetAllowed(c, apiKey, "public-image"))
 }
 
 func TestCompositeOpenAICompatibleTargetRejectsExplicitNativePlatform(t *testing.T) {

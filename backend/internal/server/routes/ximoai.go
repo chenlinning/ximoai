@@ -12,21 +12,10 @@ import (
 func registerXimoAIAdminRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 	admin.PUT("/model-plaza/metadata", h.AvailableChannel.SaveModelPlazaMetadata)
 	admin.DELETE("/model-plaza/metadata", h.AvailableChannel.DeleteModelPlazaMetadata)
-
-	platforms := admin.Group("/platforms")
-	{
-		platforms.GET("", h.Admin.Platform.List)
-		platforms.PUT("/:slug", h.Admin.Platform.Update)
-	}
 }
 
 func registerXimoAIUserRoutes(authenticated *gin.RouterGroup, h *handler.Handlers) {
 	authenticated.GET("/channels/model-plaza", h.AvailableChannel.ModelPlaza)
-
-	platforms := authenticated.Group("/platforms")
-	{
-		platforms.GET("", h.Platform.ListPublic)
-	}
 }
 
 type ximoAIGatewayContext struct {

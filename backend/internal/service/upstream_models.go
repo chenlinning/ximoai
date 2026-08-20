@@ -137,7 +137,7 @@ func (s *AccountTestService) buildUpstreamModelsRequest(ctx context.Context, acc
 		return s.buildAntigravityAPIKeyModelsRequest(ctx, account)
 	case account.IsGrok():
 		return s.buildGrokUpstreamModelsRequest(ctx, account)
-	case account.IsOpenAI() || account.IsCNProvider():
+	case account.IsOpenAI() || account.IsCNProvider() || isXimoAIOpenAICompatibleAccount(account):
 		// 国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）复用 OpenAI /v1/models 探测。
 		return s.buildOpenAIUpstreamModelsRequest(ctx, account)
 	case account.IsGemini():
@@ -145,35 +145,21 @@ func (s *AccountTestService) buildUpstreamModelsRequest(ctx context.Context, acc
 	case account.IsAnthropic():
 		return s.buildAnthropicUpstreamModelsRequest(ctx, account)
 	default:
-		return s.buildCustomPlatformUpstreamModelsRequest(ctx, account)
+		return nil, newUpstreamModelSyncUnsupportedError(
+			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), nil,
+		)
 	}
 }
 
-func (s *AccountTestService) buildCustomPlatformUpstreamModelsRequest(ctx context.Context, account *Account) (*http.Request, error) {
-	if s.platformService == nil {
-		return nil, newUpstreamModelSyncUnsupportedError(
-			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), nil,
-		)
+func isXimoAIOpenAICompatibleAccount(account *Account) bool {
+	if account == nil || account.Type != AccountTypeAPIKey {
+		return false
 	}
-	platform, err := s.platformService.GetBySlug(ctx, account.Platform)
-	if err != nil || platform == nil || !platform.Enabled {
-		return nil, newUpstreamModelSyncUnsupportedError(
-			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), err,
-		)
-	}
-	account = ximoAICustomPlatformPreviewAccount(account, platform)
-
-	switch {
-	case platform.IsOpenAICompatible():
-		return s.buildOpenAIUpstreamModelsRequest(ctx, account)
-	case platform.IsGeminiCompatible():
-		return s.buildGeminiUpstreamModelsRequest(ctx, account)
-	case platform.IsAnthropicCompatible():
-		return s.buildAnthropicUpstreamModelsRequest(ctx, account)
+	switch NormalizePlatformSlug(account.Platform) {
+	case PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:
+		return true
 	default:
-		return nil, newUpstreamModelSyncUnsupportedError(
-			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), nil,
-		)
+		return false
 	}
 }
 

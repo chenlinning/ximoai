@@ -23,19 +23,19 @@ function platform(input: Partial<Platform>): Platform {
 }
 
 describe('XimoAI built-in platform runtime kind', () => {
-  it('uses the immutable platform kind after a platform rename', () => {
-    const renamed = platform({ slug: 'video-provider', kind: 'grok_video' })
+  it('uses the fixed platform slug', () => {
+    const video = platform({ slug: 'grok-video', kind: 'grok_video' })
 
-    expect(resolveXimoAIPlatformKind(renamed)).toBe('grok_video')
+    expect(resolveXimoAIPlatformKind(video)).toBe('grok_video')
   })
 
-  it('uses the persisted account kind when platform metadata is unavailable', () => {
+  it('does not accept a persisted kind for an unknown platform', () => {
     const account = {
       platform: 'renamed-kling',
       credentials: { platform_kind: 'kling_audio' }
     } as Account
 
-    expect(resolveXimoAIPlatformKind(undefined, account)).toBe('kling_audio')
+    expect(resolveXimoAIPlatformKind(undefined, account)).toBe('')
   })
 
   it('keeps compatibility with accounts created before runtime kinds existed', () => {
@@ -45,10 +45,10 @@ describe('XimoAI built-in platform runtime kind', () => {
   })
 
   it('requires an explicit base URL only for providers without a safe default', () => {
-    expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'grok_video' }))).toBe(true)
-    expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'kling_audio' }))).toBe(true)
-    expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'openai_audio' }))).toBe(false)
-    expect(requiresXimoAIAPIKeyBaseURL(platform({ kind: 'volcengine_agent_plan' }))).toBe(false)
+    expect(requiresXimoAIAPIKeyBaseURL(platform({ slug: 'grok-video' }))).toBe(true)
+    expect(requiresXimoAIAPIKeyBaseURL(platform({ slug: 'kling_audio' }))).toBe(true)
+    expect(requiresXimoAIAPIKeyBaseURL(platform({ slug: 'openai-audio' }))).toBe(false)
+    expect(requiresXimoAIAPIKeyBaseURL(platform({ slug: 'volcengine-agent-plan' }))).toBe(false)
   })
 
   it('recognizes the Volcengine Agent Plan runtime kind', () => {

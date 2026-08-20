@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestXimoAIOpenAICompatibleRequestPlatformPreservesCustomGroup(t *testing.T) {
+func TestXimoAIOpenAICompatibleRequestPlatformPreservesFixedBuiltinGroup(t *testing.T) {
 	tests := []struct {
 		name     string
 		apiKey   *service.APIKey
@@ -22,7 +22,10 @@ func TestXimoAIOpenAICompatibleRequestPlatformPreservesCustomGroup(t *testing.T)
 		{name: "official anthropic keeps fallback", apiKey: &service.APIKey{Group: &service.Group{Platform: service.PlatformAnthropic}}, expected: service.PlatformOpenAI},
 		{name: "official gemini keeps fallback", apiKey: &service.APIKey{Group: &service.Group{Platform: service.PlatformGemini}}, expected: service.PlatformOpenAI},
 		{name: "official antigravity keeps fallback", apiKey: &service.APIKey{Group: &service.Group{Platform: service.PlatformAntigravity}}, expected: service.PlatformOpenAI},
-		{name: "custom openai compatible", apiKey: &service.APIKey{Group: &service.Group{Platform: "volcengine"}}, expected: "volcengine"},
+		{name: "grok video", apiKey: &service.APIKey{Group: &service.Group{Platform: service.PlatformGrokVideo}}, expected: service.PlatformGrokVideo},
+		{name: "openai audio", apiKey: &service.APIKey{Group: &service.Group{Platform: service.PlatformOpenAIAudio}}, expected: service.PlatformOpenAIAudio},
+		{name: "kling audio", apiKey: &service.APIKey{Group: &service.Group{Platform: service.PlatformKlingAudio}}, expected: service.PlatformKlingAudio},
+		{name: "unknown platform falls back", apiKey: &service.APIKey{Group: &service.Group{Platform: "volcengine"}}, expected: service.PlatformOpenAI},
 	}
 
 	for _, tt := range tests {

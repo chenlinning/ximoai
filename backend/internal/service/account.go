@@ -1312,27 +1312,18 @@ func (a *Account) IsOpenAICompatibleCustomAPIKey() bool {
 		return false
 	}
 	switch NormalizePlatformSlug(a.Platform) {
-	case "", PlatformOpenAI, PlatformAnthropic, PlatformGemini, PlatformAntigravity, PlatformGrok,
-		PlatformKimi, PlatformZhipu, PlatformDeepseek:
+	case PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:
+		return true
+	default:
 		return false
 	}
-
-	protocol := strings.ToLower(strings.TrimSpace(a.GetCredential("platform_protocol")))
-	if protocol != "" {
-		return protocol == PlatformProtocolOpenAI || protocol == PlatformProtocolOpenAICompatible
-	}
-
-	return true
 }
 
 func (a *Account) IsGeminiCompatibleAPIKey() bool {
 	if a == nil || a.Type != AccountTypeAPIKey {
 		return false
 	}
-	if NormalizePlatformSlug(a.Platform) == PlatformGemini {
-		return true
-	}
-	return strings.EqualFold(strings.TrimSpace(a.GetCredential("platform_protocol")), PlatformProtocolGemini)
+	return NormalizePlatformSlug(a.Platform) == PlatformGemini
 }
 
 func (a *Account) GetOpenAIBaseURL() string {

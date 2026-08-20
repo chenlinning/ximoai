@@ -12,9 +12,9 @@ func (h *GatewayHandler) IsOpenAICompatiblePlatform(ctx context.Context, platfor
 	case service.PlatformOpenAI, service.PlatformGrok,
 		service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
 		return true
+	default:
+		return false
 	}
-	registered := h.registeredPlatform(ctx, platform)
-	return registered != nil && !service.IsXimoAIMediaPlatformKind(registered.RuntimeKind()) && registered.IsOpenAICompatible()
 }
 
 func (h *GatewayHandler) IsOpenAIChatCompletionsPlatform(ctx context.Context, platform string) bool {
@@ -25,14 +25,7 @@ func (h *GatewayHandler) IsOpenAIChatCompletionsPlatform(ctx context.Context, pl
 }
 
 func (h *GatewayHandler) XimoAIPlatformKind(ctx context.Context, platform string) string {
-	platform = service.NormalizePlatformSlug(platform)
-	if registered := h.registeredPlatform(ctx, platform); registered != nil {
-		if registered.IsVolcengineAgentPlan() {
-			return service.PlatformKindVolcengineAgentPlan
-		}
-		return registered.RuntimeKind()
-	}
-	return service.XimoAIPlatformKindFromLegacySlug(platform)
+	return service.XimoAIPlatformKindFromSlug(platform)
 }
 
 func (h *GatewayHandler) IsVolcengineAgentPlanPlatform(ctx context.Context, platform string) bool {
@@ -43,59 +36,17 @@ func (h *GatewayHandler) IsXimoAIMediaPlatform(ctx context.Context, platform str
 	return service.IsXimoAIMediaPlatformKind(h.XimoAIPlatformKind(ctx, platform))
 }
 
-func (h *GatewayHandler) registeredPlatform(ctx context.Context, platform string) *service.Platform {
-	if platform == "" || h == nil || h.platformService == nil {
-		return nil
-	}
-	registered, err := h.platformService.GetBySlug(ctx, platform)
-	if err != nil || registered == nil || !registered.Enabled {
-		return nil
-	}
-	return registered
-}
-
 func (h *GatewayHandler) IsOpenAIAPIKeyProtocolPlatform(ctx context.Context, platform string) bool {
 	platform = service.NormalizePlatformSlug(platform)
-	if platform == service.PlatformOpenAI || service.IsCNProvider(platform) {
-		return true
-	}
-	if platform == "" || h == nil || h.platformService == nil {
-		return false
-	}
-	registered := h.registeredPlatform(ctx, platform)
-	if registered == nil || service.IsXimoAIMediaPlatformKind(registered.RuntimeKind()) {
-		return false
-	}
-	return registered.Protocol == service.PlatformProtocolOpenAI ||
-		(!registered.Builtin && registered.Protocol == service.PlatformProtocolOpenAICompatible)
+	return platform == service.PlatformOpenAI || service.IsCNProvider(platform)
 }
 
 func (h *GatewayHandler) IsOpenAIImagesPlatform(ctx context.Context, platform string) bool {
-	platform = service.NormalizePlatformSlug(platform)
-	if platform == service.PlatformOpenAI {
-		return true
-	}
-	registered := h.registeredPlatform(ctx, platform)
-	if registered == nil || service.IsXimoAIMediaPlatformKind(registered.RuntimeKind()) {
-		return false
-	}
-	return (registered.Protocol == service.PlatformProtocolOpenAI ||
-		(!registered.Builtin && registered.Protocol == service.PlatformProtocolOpenAICompatible)) &&
-		registered.SupportsCapability(service.PlatformCapabilityImages)
+	return service.NormalizePlatformSlug(platform) == service.PlatformOpenAI
 }
 
 func (h *GatewayHandler) IsOpenAIAudioPlatform(ctx context.Context, platform string) bool {
-	platform = service.NormalizePlatformSlug(platform)
-	if platform == service.PlatformOpenAI {
-		return true
-	}
-	registered := h.registeredPlatform(ctx, platform)
-	if registered == nil || service.IsXimoAIMediaPlatformKind(registered.RuntimeKind()) {
-		return false
-	}
-	return (registered.Protocol == service.PlatformProtocolOpenAI ||
-		(!registered.Builtin && registered.Protocol == service.PlatformProtocolOpenAICompatible)) &&
-		registered.SupportsCapability(service.PlatformCapabilityAudio)
+	return service.NormalizePlatformSlug(platform) == service.PlatformOpenAI
 }
 
 func (h *GatewayHandler) isGeminiProtocolAccount(account *service.Account) bool {

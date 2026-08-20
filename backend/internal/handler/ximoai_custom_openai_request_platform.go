@@ -8,10 +8,9 @@ func ximoAICustomOpenAIRequestPlatform(apiKey *service.APIKey) string {
 	}
 	platform := service.NormalizePlatformSlug(apiKey.Group.Platform)
 	switch platform {
-	case "", service.PlatformOpenAI, service.PlatformGrok, service.PlatformAnthropic,
-		service.PlatformGemini, service.PlatformAntigravity:
-		return ""
-	default:
+	case service.PlatformGrokVideo, service.PlatformOpenAIAudio, service.PlatformKlingAudio:
 		return platform
+	default:
+		return ""
 	}
 }

@@ -34,14 +34,14 @@ describe('ModelPlazaPage compact metadata', () => {
     vi.clearAllMocks()
     mocks.channels.mockResolvedValue([{
       name: 'Default channel', description: '', platforms: [{
-        platform: 'custom-openai', display_name: 'Custom OpenAI', color: '#10a37f', protocol: 'openai_compatible',
+        platform: 'openai', display_name: 'OpenAI', color: '#10a37f', protocol: 'openai',
         groups: [{
-          id: 1, name: 'Default', platform: 'custom-openai', subscription_type: 'standard',
+          id: 1, name: 'Default', platform: 'openai', subscription_type: 'standard',
           rate_multiplier: 1, peak_rate_enabled: false, peak_start: '', peak_end: '',
           peak_rate_multiplier: 1, is_exclusive: false
         }],
         supported_models: [{
-          name: 'custom-model', platform: 'custom-openai', brand: 'OpenAI',
+          name: 'custom-model', platform: 'openai', brand: 'OpenAI',
           types: ['conversation'], invocation_modes: ['sync', 'stream'],
           metadata_editor: {
             automatic: { brand: 'Other', types: ['conversation'], invocation_modes: ['sync', 'stream'] },
@@ -57,7 +57,7 @@ describe('ModelPlazaPage compact metadata', () => {
             image_output_price: null, per_request_price: null, intervals: []
           }
         }, {
-          name: 'image-model', platform: 'custom-openai', brand: 'Google',
+          name: 'image-model', platform: 'openai', brand: 'Google',
           types: ['image'], invocation_modes: ['sync', 'async'],
           pricing: {
             billing_mode: 'image', input_price: null, output_price: null,
@@ -84,7 +84,7 @@ describe('ModelPlazaPage compact metadata', () => {
   it('renders brand, type, and invocation mode as compact card badges', async () => {
     const wrapper = mountPage()
     await flushPromises()
-    const card = wrapper.get('[data-model-key="custom-openai:custom-model"]')
+    const card = wrapper.get('[data-model-key="openai:custom-model"]')
 
     expect(card.get('[data-model-brand-chip="OpenAI"]').exists()).toBe(true)
     expect(card.get('[data-model-type-chip="conversation"]').exists()).toBe(true)
@@ -103,8 +103,8 @@ describe('ModelPlazaPage compact metadata', () => {
     await wrapper.get('[data-model-category="conversation"]').trigger('click')
     await wrapper.get('[data-model-mode="stream"]').trigger('click')
 
-    expect(wrapper.find('[data-model-key="custom-openai:custom-model"]').exists()).toBe(true)
-    expect(wrapper.find('[data-model-key="custom-openai:image-model"]').exists()).toBe(false)
+    expect(wrapper.find('[data-model-key="openai:custom-model"]').exists()).toBe(true)
+    expect(wrapper.find('[data-model-key="openai:image-model"]').exists()).toBe(false)
     expect(wrapper.find('[data-model-mode="async"]').exists()).toBe(true)
   })
 
@@ -112,10 +112,10 @@ describe('ModelPlazaPage compact metadata', () => {
     const wrapper = mountPage()
     await flushPromises()
 
-    await wrapper.get('[data-model-metadata-edit="custom-openai:custom-model"]').trigger('click')
+    await wrapper.get('[data-model-metadata-edit="openai:custom-model"]').trigger('click')
     await wrapper.get('[data-testid="metadata-dialog"]').trigger('click')
 
-    const card = wrapper.get('[data-model-key="custom-openai:custom-model"]')
+    const card = wrapper.get('[data-model-key="openai:custom-model"]')
     expect(card.text()).toContain('XimoAI Lab')
     expect(card.find('[data-model-type-chip="video"]').exists()).toBe(true)
     expect(card.find('[data-model-mode-chip="async"]').exists()).toBe(true)

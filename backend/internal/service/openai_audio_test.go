@@ -41,8 +41,8 @@ func TestOpenAIGatewayService_ForwardAudioPreservesRequest(t *testing.T) {
 	}
 	account := &Account{
 		ID:          77,
-		Name:        "custom-openai",
-		Platform:    "acme",
+		Name:        "openai-audio",
+		Platform:    PlatformOpenAIAudio,
 		Type:        AccountTypeAPIKey,
 		Concurrency: 1,
 		Credentials: map[string]any{

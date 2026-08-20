@@ -33,7 +33,6 @@ func TestWorkbenchControlTokenUsesExactReadOnlyNativeEndpointAllowlist(t *testin
 		"/api/v1/keys",
 		"/api/v1/groups/available",
 		"/api/v1/groups/rates",
-		"/api/v1/platforms",
 		"/api/v1/channels/model-plaza",
 	} {
 		require.True(t, isWorkbenchControlRequestAllowed(claims, http.MethodGet, path), path)

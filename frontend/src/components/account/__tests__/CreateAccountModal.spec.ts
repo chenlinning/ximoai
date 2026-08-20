@@ -7,13 +7,11 @@ const {
   probeUpstreamBillingMock,
   importCodexSessionMock,
   createOpenAICodexPATMock,
-  listPlatformsMock,
 } = vi.hoisted(() => ({
   createAccountMock: vi.fn(),
   probeUpstreamBillingMock: vi.fn(),
   importCodexSessionMock: vi.fn(),
   createOpenAICodexPATMock: vi.fn(),
-  listPlatformsMock: vi.fn(),
 }))
 
 vi.mock('@/stores/app', () => ({
@@ -43,9 +41,6 @@ vi.mock('@/api/admin', () => ({
     },
     tlsFingerprintProfiles: {
       list: vi.fn().mockResolvedValue([]),
-    },
-    platforms: {
-      list: listPlatformsMock,
     },
   },
 }))
@@ -163,121 +158,21 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
       warnings: [],
     })
     createOpenAICodexPATMock.mockReset().mockResolvedValue({})
-    listPlatformsMock.mockReset().mockResolvedValue([])
   })
 
-  it('reuses the OpenAI API key profile for a custom OpenAI-compatible platform', async () => {
-    listPlatformsMock.mockResolvedValue([
-      {
-        slug: 'acme-openai',
-        display_name: 'Acme OpenAI',
-        protocol: 'openai_compatible',
-        base_url: 'https://api.acme.example/v1',
-        auth_modes: ['apikey'],
-        capabilities: ['responses', 'chat_completions'],
-        color: '#0f766e',
-        enabled: true,
-        builtin: false,
-        created_at: '',
-        updated_at: '',
-      },
-    ])
-    createAccountMock.mockResolvedValue({ id: 51, platform: 'acme-openai', type: 'apikey' })
+  it('shows upstream providers once and includes every fixed XimoAI platform', () => {
+    const wrapper = mountModal()
+    const buttonLabels = wrapper.findAll('button').map((button) => button.text().trim())
 
-    const wrapper = mountModal(false)
-    await wrapper.setProps({ show: true })
-    await flushPromises()
-    await selectButtonByText(wrapper, 'Acme OpenAI')
-
-    expect(wrapper.find('[data-testid="openai-long-context-billing-toggle"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="openai-responses-mode-select"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="upstream-billing-auto-probe"]').exists()).toBe(true)
-    expect(wrapper.text()).toContain('admin.accounts.openai.compactMode')
-    expect(wrapper.text()).not.toContain('admin.accounts.types.chatgptOauth')
-
-    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Acme account')
-    await wrapper.get('input[type="password"]').setValue('sk-acme')
-    await wrapper.get('[data-testid="openai-endpoint-capability-embeddings"]').trigger('change')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-
-    expect(createAccountMock).toHaveBeenCalledTimes(1)
-    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
-      platform: 'acme-openai',
-      type: 'apikey',
-      upstream_billing_probe_enabled: true,
-      credentials: {
-        api_key: 'sk-acme',
-        base_url: 'https://api.acme.example/v1',
-        openai_capabilities: ['chat_completions'],
-      },
-      extra: {
-        openai_long_context_billing_enabled: false,
-      },
-    })
-    expect(probeUpstreamBillingMock).toHaveBeenCalledWith(51)
-  })
-
-  it('requires a base URL for a renamed Grok-video platform regardless of its editable protocol', async () => {
-    listPlatformsMock.mockResolvedValue([{
-      slug: 'video-provider',
-      kind: 'grok_video',
-      display_name: 'Video Provider',
-      protocol: 'gemini',
-      base_url: '',
-      auth_modes: ['apikey'],
-      capabilities: ['videos'],
-      color: '#111827',
-      enabled: true,
-      builtin: true,
-      created_at: '',
-      updated_at: '',
-    }])
-    createAccountMock.mockResolvedValue({ id: 54, platform: 'video-provider', type: 'apikey' })
-
-    const wrapper = mountModal(false)
-    await wrapper.setProps({ show: true })
-    await flushPromises()
-    await selectButtonByText(wrapper, 'Video Provider')
-
-    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Video account')
-    await wrapper.get('input[type="password"]').setValue('sk-video')
-    const baseURLInput = wrapper.get('input[placeholder="https://api.example.com/v1"]')
-    expect(baseURLInput.attributes('required')).toBeDefined()
-
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-    expect(createAccountMock).not.toHaveBeenCalled()
-
-    await baseURLInput.setValue('https://video.example/v1')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-
-    expect(createAccountMock).toHaveBeenCalledWith(expect.objectContaining({
-      platform: 'video-provider',
-      type: 'apikey',
-      credentials: expect.objectContaining({
-        api_key: 'sk-video',
-        base_url: 'https://video.example/v1',
-      }),
-    }))
+    for (const platform of ['Kimi', 'Zhipu GLM', 'DeepSeek']) {
+      expect(buttonLabels.filter((label) => label === platform)).toHaveLength(1)
+    }
+    for (const platform of ['Grok Video', 'OpenAI Audio', 'Kling Audio', 'Volcengine Agent Plan']) {
+      expect(buttonLabels).toContain(platform)
+    }
   })
 
   it('creates a Volcengine Agent Plan account with API key only', async () => {
-    listPlatformsMock.mockResolvedValue([{
-      slug: 'volcengine-agent-plan',
-      kind: 'volcengine_agent_plan',
-      display_name: 'Volcengine Agent Plan',
-      protocol: 'native',
-      base_url: 'https://ark.cn-beijing.volces.com/api/plan/v3',
-      auth_modes: ['apikey'],
-      capabilities: ['images', 'audio'],
-      color: '#E5484D',
-      enabled: true,
-      builtin: true,
-      created_at: '',
-      updated_at: '',
-    }])
     createAccountMock.mockResolvedValue({ id: 55, platform: 'volcengine-agent-plan', type: 'apikey' })
 
     const wrapper = mountModal(false)
@@ -297,88 +192,6 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
       credentials: expect.objectContaining({ api_key: 'volc-agent-key' }),
     }))
     expect(createAccountMock.mock.calls[0]?.[0]?.credentials).not.toHaveProperty('base_url')
-  })
-
-  it('reuses Anthropic API key settings for a custom Anthropic platform', async () => {
-    listPlatformsMock.mockResolvedValue([{
-      slug: 'acme-anthropic',
-      display_name: 'Acme Anthropic',
-      protocol: 'anthropic',
-      base_url: 'https://anthropic.acme.example',
-      auth_modes: ['apikey'],
-      capabilities: ['messages'],
-      color: '#0f766e',
-      enabled: true,
-      builtin: false,
-      created_at: '',
-      updated_at: '',
-    }])
-    createAccountMock.mockResolvedValue({ id: 52, platform: 'acme-anthropic', type: 'apikey' })
-
-    const wrapper = mountModal(false)
-    await wrapper.setProps({ show: true })
-    await flushPromises()
-    await selectButtonByText(wrapper, 'Acme Anthropic')
-
-    expect(wrapper.text()).toContain('admin.accounts.anthropic.apiKeyPassthrough')
-    expect(wrapper.text()).toContain('admin.accounts.anthropic.apiKeyAuthScheme')
-
-    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Acme Anthropic account')
-    await wrapper.get('input[type="password"]').setValue('sk-ant-acme')
-    await wrapper.get('[data-testid="anthropic-passthrough-toggle"]').trigger('click')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-
-    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
-      platform: 'acme-anthropic',
-      type: 'apikey',
-      credentials: {
-        api_key: 'sk-ant-acme',
-        base_url: 'https://anthropic.acme.example',
-      },
-      extra: {
-        anthropic_passthrough: true,
-      },
-    })
-  })
-
-  it('reuses Gemini API key settings for a custom Gemini platform', async () => {
-    listPlatformsMock.mockResolvedValue([{
-      slug: 'acme-gemini',
-      display_name: 'Acme Gemini',
-      protocol: 'gemini',
-      base_url: 'https://gemini.acme.example',
-      auth_modes: ['apikey'],
-      capabilities: ['native_gemini'],
-      color: '#0f766e',
-      enabled: true,
-      builtin: false,
-      created_at: '',
-      updated_at: '',
-    }])
-    createAccountMock.mockResolvedValue({ id: 53, platform: 'acme-gemini', type: 'apikey' })
-
-    const wrapper = mountModal(false)
-    await wrapper.setProps({ show: true })
-    await flushPromises()
-    await selectButtonByText(wrapper, 'Acme Gemini')
-
-    expect(wrapper.text()).toContain('admin.accounts.gemini.tier.label')
-
-    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Acme Gemini account')
-    await wrapper.get('input[type="password"]').setValue('AIza-acme')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-
-    expect(createAccountMock.mock.calls[0]?.[0]).toMatchObject({
-      platform: 'acme-gemini',
-      type: 'apikey',
-      credentials: {
-        api_key: 'AIza-acme',
-        base_url: 'https://gemini.acme.example',
-        tier_id: 'aistudio_free',
-      },
-    })
   })
 
   it('sends false explicitly for normal OpenAI account creation by default', async () => {

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
@@ -113,23 +112,11 @@ func (g *Group) ResolveMessagesDispatchModel(requestedModel string) string {
 	}
 }
 
-func sanitizeGroupMessagesDispatchFields(ctx context.Context, platformService *PlatformService, g *Group) {
-	if g == nil || isOpenAICompatibleGroupPlatform(ctx, platformService, g.Platform) {
+func sanitizeGroupMessagesDispatchFields(g *Group) {
+	if g == nil || g.Platform == PlatformOpenAI {
 		return
 	}
 	g.AllowMessagesDispatch = false
 	g.DefaultMappedModel = ""
 	g.MessagesDispatchModelConfig = OpenAIMessagesDispatchModelConfig{}
-}
-
-func isOpenAICompatibleGroupPlatform(ctx context.Context, platformService *PlatformService, platformSlug string) bool {
-	platformSlug = NormalizePlatformSlug(platformSlug)
-	if platformSlug == PlatformOpenAI {
-		return true
-	}
-	if platformService == nil {
-		return false
-	}
-	platform, err := platformService.GetBySlug(ctx, platformSlug)
-	return err == nil && platform != nil && platform.Enabled && platform.IsOpenAICompatible()
 }

@@ -352,7 +352,7 @@ import { Icon } from '@/components/icons'
 import { useClipboard } from '@/composables/useClipboard'
 import { buildApiUrl } from '@/api/client'
 import { adminAPI } from '@/api/admin'
-import type { Account, ClaudeModel, Platform } from '@/types'
+import type { Account, ClaudeModel } from '@/types'
 
 const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
@@ -408,15 +408,12 @@ const generatedVideos = ref<PreviewVideo[]>([])
 const testMode = ref<'default' | 'compact'>('default')
 const testType = ref<AccountTestType>('auto')
 const activeTestType = ref<AccountTestType>('text')
-const platformProtocols = ref<Record<string, string>>({})
+const openAICompatiblePlatforms = new Set([
+  'openai', 'grok', 'kimi', 'zhipu', 'deepseek',
+  'grok-video', 'openai-audio', 'kling_audio',
+])
 const isOpenAIAccount = computed(() => {
-  if (!props.account) return false
-  if (props.account.platform === 'openai') return true
-  const protocol = platformProtocols.value[props.account.platform]
-  if (protocol) {
-    return protocol === 'openai' || protocol === 'openai_compatible'
-  }
-  return props.account.type === 'apikey' && !['anthropic', 'gemini', 'antigravity'].includes(props.account.platform)
+  return Boolean(props.account && openAICompatiblePlatforms.has(props.account.platform))
 })
 const openAITestModeOptions = computed(() => [
   { value: 'default', label: t('admin.accounts.openai.testModeDefault') },
@@ -503,7 +500,6 @@ watch(
       testMode.value = 'default'
       testType.value = 'auto'
       resetState()
-      await loadPlatformProtocols()
       await loadAvailableModels()
     } else {
       abortStream()
@@ -522,19 +518,6 @@ watch([selectedModelId, testType], () => {
     videoPrompt.value = 'A tiny test video of a sunrise over mountains.'
   }
 })
-
-const loadPlatformProtocols = async () => {
-  if (Object.keys(platformProtocols.value).length > 0) return
-  try {
-    const platforms = await adminAPI.platforms.list(true)
-    platformProtocols.value = platforms.reduce<Record<string, string>>((acc, platform: Platform) => {
-      acc[platform.slug] = platform.protocol
-      return acc
-    }, {})
-  } catch (error) {
-    console.error('Failed to load platform protocols:', error)
-  }
-}
 
 const loadAvailableModels = async () => {
   if (!props.account) return

@@ -1,20 +1,15 @@
 package service
 
 import (
-	"context"
 	"testing"
 
-	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
-func TestXimoAIGrokVideoRuntimeKindSurvivesPlatformRename(t *testing.T) {
+func TestXimoAIGrokVideoRuntimeKindUsesFixedPlatform(t *testing.T) {
 	account := &Account{
-		Platform: "video-provider-renamed",
+		Platform: PlatformGrokVideo,
 		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			PlatformKindCredentialKey: PlatformKindGrokVideo,
-		},
 	}
 
 	require.True(t, account.IsGrokVideo())
@@ -25,20 +20,14 @@ func TestXimoAIGrokVideoRuntimeKindSurvivesPlatformRename(t *testing.T) {
 	require.False(t, account.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityChatCompletions))
 }
 
-func TestXimoAIAudioRuntimeKindsSurvivePlatformRename(t *testing.T) {
+func TestXimoAIAudioRuntimeKindsUseFixedPlatforms(t *testing.T) {
 	openAIAudio := &Account{
-		Platform: "audio-provider-renamed",
+		Platform: PlatformOpenAIAudio,
 		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			PlatformKindCredentialKey: PlatformKindOpenAIAudio,
-		},
 	}
 	klingAudio := &Account{
-		Platform: "kling-provider-renamed",
+		Platform: PlatformKlingAudio,
 		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			PlatformKindCredentialKey: PlatformKindKlingAudio,
-		},
 	}
 
 	require.True(t, openAIAudio.IsOpenAIAudio())
@@ -48,10 +37,10 @@ func TestXimoAIAudioRuntimeKindsSurvivePlatformRename(t *testing.T) {
 }
 
 func TestXimoAIBuiltinPlatformsRequireExpectedBaseURLs(t *testing.T) {
-	require.True(t, (Platform{Kind: PlatformKindGrokVideo}).RequiresAPIKeyBaseURL())
-	require.True(t, (Platform{Kind: PlatformKindKlingAudio}).RequiresAPIKeyBaseURL())
-	require.False(t, (Platform{Kind: PlatformKindOpenAIAudio}).RequiresAPIKeyBaseURL())
-	require.False(t, (Platform{Kind: PlatformKindVolcengineAgentPlan}).RequiresAPIKeyBaseURL())
+	require.True(t, XimoAIPlatformRequiresAPIKeyBaseURL(PlatformGrokVideo))
+	require.True(t, XimoAIPlatformRequiresAPIKeyBaseURL(PlatformKlingAudio))
+	require.False(t, XimoAIPlatformRequiresAPIKeyBaseURL(PlatformOpenAIAudio))
+	require.False(t, XimoAIPlatformRequiresAPIKeyBaseURL(PlatformVolcengineAgentPlan))
 }
 
 func TestXimoAIVolcengineAgentPlanRuntimeKind(t *testing.T) {
@@ -64,26 +53,6 @@ func TestXimoAIVolcengineAgentPlanRuntimeKind(t *testing.T) {
 	require.True(t, IsXimoAIMediaPlatformKind(account.PlatformRuntimeKind()))
 }
 
-func TestXimoAIVolcengineAgentPlanDefinitionSupportsLegacyNativePlatform(t *testing.T) {
-	legacyNative := Platform{
-		Slug:     "volcengine",
-		Protocol: PlatformProtocolNative,
-		BaseURL:  PlatformDefaultBaseURLVolcengineAgentPlan,
-		Enabled:  true,
-		Builtin:  true,
-	}
-	customOpenAI := Platform{
-		Slug:     "volcengine",
-		Protocol: PlatformProtocolOpenAICompatible,
-		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
-		Enabled:  true,
-	}
-
-	require.True(t, legacyNative.IsVolcengineAgentPlan())
-	require.Equal(t, PlatformKindVolcengineAgentPlan, legacyNative.RuntimeKind())
-	require.False(t, customOpenAI.IsVolcengineAgentPlan())
-}
-
 func TestVolcengineAgentPlanDefaultModelsList(t *testing.T) {
 	require.Equal(t, []string{
 		VolcengineAgentPlanSeedreamModel,
@@ -94,62 +63,9 @@ func TestVolcengineAgentPlanDefaultModelsList(t *testing.T) {
 
 func TestVolcengineAgentPlanDefaultsImageGenerationEnabled(t *testing.T) {
 	require.True(t, defaultAllowImageGenerationForPlatform(PlatformVolcengineAgentPlan))
-	require.True(t, defaultAllowImageGenerationForPlatformDefinition("volcengine", &Platform{
-		Slug:     "volcengine",
-		Protocol: PlatformProtocolNative,
-		BaseURL:  PlatformDefaultBaseURLVolcengineAgentPlan,
-	}))
-	require.False(t, defaultAllowImageGenerationForPlatformDefinition("volcengine", &Platform{
-		Slug:     "volcengine",
-		Protocol: PlatformProtocolOpenAICompatible,
-		BaseURL:  "https://ark.cn-beijing.volces.com/api/v3",
-	}))
 }
 
-func TestVolcengineAgentPlanSchedulerPlatformIsDiscoveredFromActiveAccount(t *testing.T) {
-	accounts := schedulerSnapshotAccountRepo{accounts: []Account{{
-		ID:          1,
-		Platform:    PlatformVolcengineAgentPlan,
-		Status:      StatusActive,
-		Schedulable: true,
-	}}}
-	svc := &SchedulerSnapshotService{accountRepo: accounts}
-
-	platforms := svc.defaultSchedulerPlatforms(context.Background())
+func TestVolcengineAgentPlanIsAFixedSchedulerPlatform(t *testing.T) {
+	platforms := schedulerSnapshotPlatforms()
 	require.Contains(t, platforms, PlatformVolcengineAgentPlan)
-}
-
-func TestXimoAIGrokVideoRuntimeKindIsSelectedBySchedulerAfterRename(t *testing.T) {
-	resetOpenAIAdvancedSchedulerSettingCacheForTest()
-
-	const platform = "video-provider-renamed"
-	groupID := int64(9016)
-	account := Account{
-		ID:          916,
-		Platform:    platform,
-		Type:        AccountTypeAPIKey,
-		Status:      StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{PlatformKindCredentialKey: PlatformKindGrokVideo},
-	}
-	cfg := &config.Config{}
-	cfg.Gateway.Scheduling.LoadBatchEnabled = false
-	svc := &OpenAIGatewayService{
-		accountRepo:        schedulerTestOpenAIAccountRepo{accounts: []Account{account}},
-		cache:              &schedulerTestGatewayCache{},
-		cfg:                cfg,
-		concurrencyService: NewConcurrencyService(schedulerTestConcurrencyCache{}),
-	}
-
-	selection, _, err := svc.SelectAccountWithSchedulerForCapability(
-		context.Background(), &groupID, "", "", "grok-imagine-video", nil,
-		OpenAIUpstreamTransportHTTPSSE, OpenAIEndpointCapabilityGrokMediaGeneration,
-		false, false, false, platform,
-	)
-
-	require.NoError(t, err)
-	require.NotNil(t, selection)
-	require.NotNil(t, selection.Account)
-	require.Equal(t, account.ID, selection.Account.ID)
 }

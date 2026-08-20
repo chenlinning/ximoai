@@ -44,7 +44,6 @@ func ProvideAdminHandlers(
 	promptAuditHandler *securityaudit.PromptAdminHandler,
 	paymentHandler *admin.PaymentHandler,
 	affiliateHandler *admin.AffiliateHandler,
-	platformHandler *admin.PlatformHandler,
 	complianceHandler *admin.ComplianceHandler,
 	membershipHandler *admin.MembershipHandler,
 	auditLogHandler *admin.AuditLogHandler,
@@ -87,7 +86,6 @@ func ProvideAdminHandlers(
 		PromptAudit:            promptAuditHandler,
 		Payment:                paymentHandler,
 		Affiliate:              affiliateHandler,
-		Platform:               platformHandler,
 		Compliance:             complianceHandler,
 		Membership:             membershipHandler,
 		AuditLog:               auditLogHandler,
@@ -107,7 +105,6 @@ func ProvideGatewayHandler(
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	contentModerationService *service.ContentModerationService,
-	platformService *service.PlatformService,
 	userMsgQueueService *service.UserMessageQueueService,
 	cfg *config.Config,
 	settingService *service.SettingService,
@@ -115,7 +112,7 @@ func ProvideGatewayHandler(
 ) *GatewayHandler {
 	h := NewGatewayHandler(gatewayService, openAIGatewayService, geminiCompatService, antigravityGatewayService,
 		userService, concurrencyService, billingCacheService, usageService, apiKeyService, usageRecordWorkerPool,
-		errorPassthroughService, contentModerationService, platformService, userMsgQueueService, cfg, settingService)
+		errorPassthroughService, contentModerationService, userMsgQueueService, cfg, settingService)
 	h.securityAuditCoordinator = coordinator
 	return h
 }
@@ -197,7 +194,6 @@ func ProvideHandlers(
 	membershipHandler *MembershipHandler,
 	workbenchSSOHandler *WorkbenchSSOHandler,
 	desktopSessionHandler *DesktopSessionHandler,
-	platformHandler *admin.PlatformHandler,
 	modelPlazaHandler *ModelPlazaHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
@@ -228,7 +224,6 @@ func ProvideHandlers(
 		Membership:       membershipHandler,
 		WorkbenchSSO:     workbenchSSOHandler,
 		DesktopSession:   desktopSessionHandler,
-		Platform:         platformHandler,
 		ModelPlaza:       modelPlazaHandler,
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
@@ -295,7 +290,6 @@ var ProviderSet = wire.NewSet(
 	admin.NewContentModerationHandler,
 	admin.NewPaymentHandler,
 	admin.NewAffiliateHandler,
-	admin.NewPlatformHandler,
 	admin.NewComplianceHandler,
 	admin.NewMembershipHandler,
 	admin.NewAuditLogHandler,

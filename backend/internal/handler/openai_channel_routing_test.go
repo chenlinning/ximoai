@@ -48,26 +48,26 @@ func TestOpenAIResolvedRoutingModelUsesCompositeThenChannelMapping(t *testing.T)
 	require.Equal(t, "gpt-image-2-custom", routingModel)
 }
 
-func TestOpenAICompatibleRequestPlatformPreservesCompositeCustomPlatform(t *testing.T) {
+func TestOpenAICompatibleRequestPlatformPreservesFixedBuiltinPlatform(t *testing.T) {
 	ctx := service.WithCompositeRouteDecision(context.Background(), service.CompositeRouteDecision{
 		Matched:        true,
-		TargetPlatform: "acme-openai",
+		TargetPlatform: service.PlatformOpenAIAudio,
 		PublicModel:    "public-chat",
-		UpstreamModel:  "acme-chat-v2",
+		UpstreamModel:  "gpt-4o-audio-preview",
 	})
 
-	require.Equal(t, "acme-openai", openAICompatibleRequestPlatform(ctx, nil))
+	require.Equal(t, service.PlatformOpenAIAudio, openAICompatibleRequestPlatform(ctx, nil))
 }
 
-func TestResolveOpenAICompositeRouteContextUsesExplicitCustomRoute(t *testing.T) {
+func TestResolveOpenAICompositeRouteContextUsesExplicitFixedRoute(t *testing.T) {
 	resolver := service.NewCompositeRouteResolver(openAICompositeRouteRepoStub{routes: []service.CompositeModelRoute{
 		{
 			ID:             1,
 			GroupID:        9,
-			PublicModel:    "public-acme",
+			PublicModel:    "public-openai",
 			MatchType:      service.CompositeRouteMatchExact,
-			TargetPlatform: "acme-openai",
-			UpstreamModel:  "acme-reasoning",
+			TargetPlatform: service.PlatformOpenAI,
+			UpstreamModel:  "gpt-5",
 			Endpoint:       service.CompositeRouteEndpointResponses,
 			Enabled:        true,
 		},
@@ -78,17 +78,17 @@ func TestResolveOpenAICompositeRouteContextUsesExplicitCustomRoute(t *testing.T)
 	ctx, err := h.resolveCompositeRouteContext(
 		context.Background(),
 		apiKey,
-		"public-acme",
+		"public-openai",
 		service.CompositeRouteEndpointResponses,
 	)
 
 	require.NoError(t, err)
 	platform, ok := service.ResolvedTargetPlatformFromContext(ctx)
 	require.True(t, ok)
-	require.Equal(t, "acme-openai", platform)
+	require.Equal(t, service.PlatformOpenAI, platform)
 	model, ok := service.ResolvedUpstreamModelFromContext(ctx)
 	require.True(t, ok)
-	require.Equal(t, "acme-reasoning", model)
+	require.Equal(t, "gpt-5", model)
 }
 
 func TestOpenAIRoutedBodyRewritesCompositeModelWithoutChannelMapping(t *testing.T) {
@@ -98,11 +98,11 @@ func TestOpenAIRoutedBodyRewritesCompositeModelWithoutChannelMapping(t *testing.
 	require.JSONEq(t, `{"model":"gpt-image-2","input":"draw"}`, string(got))
 }
 
-func TestOpenAIResponsesRequiredCapabilityRequiresResponsesForCustomImagePlatform(t *testing.T) {
+func TestOpenAIResponsesRequiredCapabilityRequiresResponsesForNonGrokImagePlatform(t *testing.T) {
 	require.Equal(
 		t,
 		service.OpenAIEndpointCapabilityResponses,
-		openAIResponsesRequiredCapability(true, "custom-openai"),
+		openAIResponsesRequiredCapability(true, service.PlatformOpenAI),
 	)
 	require.Equal(
 		t,
@@ -114,6 +114,5 @@ func TestOpenAIResponsesRequiredCapabilityRequiresResponsesForCustomImagePlatfor
 func TestValidateOpenAIImageRoutingModelUsesFinalPlatform(t *testing.T) {
 	require.NoError(t, validateOpenAIImageRoutingModel(service.PlatformOpenAI, "gpt-image-2"))
 	require.Error(t, validateOpenAIImageRoutingModel(service.PlatformOpenAI, "draw-pro"))
-	require.NoError(t, validateOpenAIImageRoutingModel("custom-openai", "flux-1.1-pro"))
-	require.Error(t, validateOpenAIImageRoutingModel("custom-openai", ""))
+	require.Error(t, validateOpenAIImageRoutingModel(service.PlatformOpenAI, ""))
 }

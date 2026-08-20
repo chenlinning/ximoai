@@ -13,7 +13,6 @@ import (
 type SyncUpstreamModelsPreviewRequest struct {
 	Platform    string         `json:"platform" binding:"required"`
 	Type        string         `json:"type" binding:"required,oneof=apikey upstream"`
-	Protocol    string         `json:"protocol"`
 	Credentials map[string]any `json:"credentials"`
 	Extra       map[string]any `json:"extra"`
 	BaseURL     string         `json:"base_url"`

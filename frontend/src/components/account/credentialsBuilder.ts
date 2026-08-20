@@ -1,8 +1,3 @@
-import {
-  isCustomAnthropicDescriptor,
-  isCustomOpenAICompatibleDescriptor
-} from './ximoaiAPIKeyPlatform'
-
 export function applyInterceptWarmup(
   credentials: Record<string, unknown>,
   enabled: boolean,
@@ -41,22 +36,14 @@ export interface HeaderOverrideRow {
 }
 
 /** 请求头覆写资格（与后端 IsHeaderOverrideEligible 保持一致） */
-export function isHeaderOverrideCapable(
-  platform: string,
-  type: string,
-  protocol?: string,
-  builtin?: boolean
-): boolean {
+export function isHeaderOverrideCapable(platform: string, type: string): boolean {
   if (platform === 'anthropic' || platform === 'openai') {
     return type === 'apikey'
   }
   if (platform === 'grok') {
     return type === 'apikey' || type === 'oauth'
   }
-  return type === 'apikey' && (
-    isCustomOpenAICompatibleDescriptor(platform, protocol, builtin) ||
-    isCustomAnthropicDescriptor(platform, protocol, builtin)
-  )
+  return false
 }
 
 /** 禁止覆写的请求头（与后端 headerOverrideBlockedNames 保持一致） */

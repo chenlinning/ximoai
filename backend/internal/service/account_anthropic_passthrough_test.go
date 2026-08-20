@@ -60,19 +60,6 @@ func TestAccount_IsAnthropicAPIKeyPassthroughEnabled(t *testing.T) {
 		require.False(t, openai.IsAnthropicAPIKeyPassthroughEnabled())
 	})
 
-	t.Run("custom Anthropic API key follows stored platform protocol", func(t *testing.T) {
-		account := &Account{
-			Platform: "acme-anthropic",
-			Type:     AccountTypeAPIKey,
-			Credentials: map[string]any{
-				"platform_protocol": PlatformProtocolAnthropic,
-			},
-			Extra: map[string]any{
-				"anthropic_passthrough": true,
-			},
-		}
-		require.True(t, account.IsAnthropicAPIKeyPassthroughEnabled())
-	})
 }
 
 func TestAccount_GetAnthropicAPIKeyAuthScheme(t *testing.T) {
@@ -121,20 +108,6 @@ func TestAccount_GetAnthropicAPIKeyAuthScheme(t *testing.T) {
 				},
 			},
 			want: AnthropicAPIKeyAuthSchemeXAPIKey,
-		},
-		{
-			name: "custom Anthropic API key supports explicit bearer",
-			account: &Account{
-				Platform: "acme-anthropic",
-				Type:     AccountTypeAPIKey,
-				Credentials: map[string]any{
-					"platform_protocol": PlatformProtocolAnthropic,
-				},
-				Extra: map[string]any{
-					"anthropic_apikey_auth_scheme": AnthropicAPIKeyAuthSchemeAuthorizationBearer,
-				},
-			},
-			want: AnthropicAPIKeyAuthSchemeAuthorizationBearer,
 		},
 	}
 

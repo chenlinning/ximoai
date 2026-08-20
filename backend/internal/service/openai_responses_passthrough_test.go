@@ -54,8 +54,8 @@ func TestOpenAIGatewayService_ForwardOpenAIResponsesPassthroughGET(t *testing.T)
 	}
 	account := &Account{
 		ID:          88,
-		Name:        "custom-openai",
-		Platform:    "acme",
+		Name:        "openai-apikey",
+		Platform:    PlatformOpenAI,
 		Type:        AccountTypeAPIKey,
 		Concurrency: 1,
 		Credentials: map[string]any{
@@ -100,8 +100,8 @@ func TestOpenAIGatewayService_ForwardOpenAIResponsesPassthroughPOSTCancel(t *tes
 	}
 	account := &Account{
 		ID:          89,
-		Name:        "custom-openai",
-		Platform:    "acme",
+		Name:        "openai-apikey",
+		Platform:    PlatformOpenAI,
 		Type:        AccountTypeAPIKey,
 		Concurrency: 1,
 		Credentials: map[string]any{

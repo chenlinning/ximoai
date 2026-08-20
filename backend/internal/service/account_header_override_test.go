@@ -42,11 +42,6 @@ func TestIsHeaderOverrideEligible(t *testing.T) {
 		})
 	}
 
-	customAnthropic := headerOverrideTestAccount("acme-anthropic", AccountTypeAPIKey, map[string]any{
-		"platform_protocol": PlatformProtocolAnthropic,
-	})
-	require.True(t, customAnthropic.IsHeaderOverrideEligible())
-
 	var nilAccount *Account
 	require.False(t, nilAccount.IsHeaderOverrideEligible())
 	require.False(t, nilAccount.IsHeaderOverrideEnabled())

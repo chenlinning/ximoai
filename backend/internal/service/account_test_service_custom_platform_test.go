@@ -36,25 +36,10 @@ func TestAccountTestService_TestAccountConnection_XimoAIOpenAICompatibleUsesOpen
 		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
 		Body:       io.NopCloser(strings.NewReader("data: {\"type\":\"response.output_text.delta\",\"delta\":\"ok\"}\n\ndata: {\"type\":\"response.completed\"}\n\n")),
 	}}
-	platformService := NewPlatformService(&platformRepoStubForPlatformService{
-		platforms: map[string]Platform{
-			PlatformOpenAIAudio: {
-				Slug:        PlatformOpenAIAudio,
-				Kind:        PlatformKindOpenAIAudio,
-				DisplayName: "OpenAI Audio",
-				Protocol:    PlatformProtocolOpenAICompatible,
-				BaseURL:     "https://api.acme.test/v1",
-				AuthModes:   []string{AccountTypeAPIKey},
-				Enabled:     true,
-				Builtin:     true,
-			},
-		},
-	})
 	svc := &AccountTestService{
-		accountRepo:     repo,
-		httpUpstream:    upstream,
-		cfg:             &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
-		platformService: platformService,
+		accountRepo:  repo,
+		httpUpstream: upstream,
+		cfg:          &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
 	}
 
 	rec := httptest.NewRecorder()
@@ -67,61 +52,5 @@ func TestAccountTestService_TestAccountConnection_XimoAIOpenAICompatibleUsesOpen
 	require.Equal(t, "https://api.acme.test/v1/responses", upstream.lastReq.URL.String())
 	require.Equal(t, "Bearer sk-acme", upstream.lastReq.Header.Get("Authorization"))
 	require.Equal(t, "gpt-4.1", gjson.GetBytes(upstream.lastBody, "model").String())
-	require.Contains(t, rec.Body.String(), `"type":"test_complete"`)
-}
-
-func TestAccountTestService_TestAccountConnection_XimoAIGeminiCompatibleUsesGeminiPath(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	account := Account{
-		ID:          11,
-		Name:        "kling-audio",
-		Platform:    PlatformKlingAudio,
-		Type:        AccountTypeAPIKey,
-		Status:      StatusActive,
-		Schedulable: true,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":           "gemini-key",
-			"base_url":          "https://gemini.acme.test",
-			"platform_protocol": PlatformProtocolGemini,
-		},
-	}
-	repo := stubOpenAIAccountRepo{accounts: []Account{account}}
-	upstream := &httpUpstreamRecorder{resp: &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
-		Body:       io.NopCloser(strings.NewReader("data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\"}]}\n\n")),
-	}}
-	platformService := NewPlatformService(&platformRepoStubForPlatformService{
-		platforms: map[string]Platform{
-			PlatformKlingAudio: {
-				Slug:        PlatformKlingAudio,
-				Kind:        PlatformKindKlingAudio,
-				DisplayName: "Kling Audio",
-				Protocol:    PlatformProtocolGemini,
-				BaseURL:     "https://gemini.acme.test",
-				AuthModes:   []string{AccountTypeAPIKey},
-				Enabled:     true,
-				Builtin:     true,
-			},
-		},
-	})
-	svc := &AccountTestService{
-		accountRepo:     repo,
-		httpUpstream:    upstream,
-		cfg:             &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{Enabled: false}}},
-		platformService: platformService,
-	}
-
-	rec := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(rec)
-	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/admin/accounts/11/test", bytes.NewReader(nil))
-
-	err := svc.TestAccountConnection(c, account.ID, "gemini-2.5-pro", "", AccountTestModeDefault)
-	require.NoError(t, err)
-
-	require.Equal(t, "https://gemini.acme.test/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse", upstream.lastReq.URL.String())
-	require.Equal(t, "gemini-key", upstream.lastReq.Header.Get("x-goog-api-key"))
 	require.Contains(t, rec.Body.String(), `"type":"test_complete"`)
 }

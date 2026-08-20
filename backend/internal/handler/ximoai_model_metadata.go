@@ -8,6 +8,17 @@ import (
 )
 
 const (
+	modelCapabilityResponses       = "responses"
+	modelCapabilityChatCompletions = "chat_completions"
+	modelCapabilityEmbeddings      = "embeddings"
+	modelCapabilityImages          = "images"
+	modelCapabilityVideos          = "videos"
+	modelCapabilityAudio           = "audio"
+	modelCapabilityMessages        = "messages"
+	modelCapabilityNativeGemini    = "native_gemini"
+)
+
+const (
 	modelTypeConversation = service.ModelTypeConversation
 	modelTypeEmbedding    = service.ModelTypeEmbedding
 	modelTypeImage        = service.ModelTypeImage
@@ -171,8 +182,8 @@ func resolveAutomaticModelMetadata(input modelMetadataResolutionInput) modelMeta
 	for _, billingMode := range input.BillingModes {
 		switch billingMode {
 		case string(service.BillingModeToken):
-			if containsModelMetadataValue(input.Capabilities, service.PlatformCapabilityEmbeddings) &&
-				!containsAnyModelMetadataValue(input.Capabilities, service.PlatformCapabilityResponses, service.PlatformCapabilityChatCompletions, service.PlatformCapabilityMessages, service.PlatformCapabilityNativeGemini) {
+			if containsModelMetadataValue(input.Capabilities, modelCapabilityEmbeddings) &&
+				!containsAnyModelMetadataValue(input.Capabilities, modelCapabilityResponses, modelCapabilityChatCompletions, modelCapabilityMessages, modelCapabilityNativeGemini) {
 				appendModelMetadata(&metadata, modelTypeEmbedding, modelInvocationSync)
 			} else {
 				appendModelMetadata(&metadata, modelTypeConversation, modelInvocationSync, modelInvocationStream)
@@ -194,9 +205,9 @@ func resolveAutomaticModelMetadata(input modelMetadataResolutionInput) modelMeta
 func resolvePerRequestModelMetadata(metadata *modelMetadataValues, capabilities []string) {
 	mediaCapabilities := make([]string, 0, 3)
 	for _, capability := range []string{
-		service.PlatformCapabilityImages,
-		service.PlatformCapabilityVideos,
-		service.PlatformCapabilityAudio,
+		modelCapabilityImages,
+		modelCapabilityVideos,
+		modelCapabilityAudio,
 	} {
 		if containsModelMetadataValue(capabilities, capability) {
 			mediaCapabilities = append(mediaCapabilities, capability)
@@ -206,19 +217,19 @@ func resolvePerRequestModelMetadata(metadata *modelMetadataValues, capabilities 
 		return
 	}
 	switch mediaCapabilities[0] {
-	case service.PlatformCapabilityVideos:
+	case modelCapabilityVideos:
 		appendModelMetadata(metadata, modelTypeVideo, modelInvocationAsync)
-	case service.PlatformCapabilityImages:
+	case modelCapabilityImages:
 		appendModelMetadata(metadata, modelTypeImage, modelInvocationSync, modelInvocationAsync)
-	case service.PlatformCapabilityAudio:
+	case modelCapabilityAudio:
 		appendModelMetadata(metadata, modelTypeTTS, modelInvocationSync)
 	}
 }
 
 func resolveCapabilityOnlyModelMetadata(metadata *modelMetadataValues, capabilities []string) {
-	if containsAnyModelMetadataValue(capabilities, service.PlatformCapabilityResponses, service.PlatformCapabilityChatCompletions, service.PlatformCapabilityMessages, service.PlatformCapabilityNativeGemini) {
+	if containsAnyModelMetadataValue(capabilities, modelCapabilityResponses, modelCapabilityChatCompletions, modelCapabilityMessages, modelCapabilityNativeGemini) {
 		appendModelMetadata(metadata, modelTypeConversation, modelInvocationSync, modelInvocationStream)
-	} else if containsModelMetadataValue(capabilities, service.PlatformCapabilityEmbeddings) {
+	} else if containsModelMetadataValue(capabilities, modelCapabilityEmbeddings) {
 		appendModelMetadata(metadata, modelTypeEmbedding, modelInvocationSync)
 	}
 }
@@ -243,7 +254,7 @@ func normalizeModelMetadataResolutionInput(input modelMetadataResolutionInput) m
 	input.Platform = strings.ToLower(strings.TrimSpace(input.Platform))
 	input.Kind = strings.ToLower(strings.TrimSpace(input.Kind))
 	if input.Kind == "" {
-		input.Kind = service.XimoAIPlatformKindFromLegacySlug(input.Platform)
+		input.Kind = service.XimoAIPlatformKindFromSlug(input.Platform)
 	}
 	input.Protocol = strings.ToLower(strings.TrimSpace(input.Protocol))
 	input.Model = strings.TrimSpace(input.Model)

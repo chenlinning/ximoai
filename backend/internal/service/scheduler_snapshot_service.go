@@ -710,14 +710,14 @@ func (s *SchedulerSnapshotService) reconcileGroupLifecycle(ctx context.Context, 
 			}
 		}
 	}
-	markGroupLifecycleSeen(seen, groupID, plan.tasks)
+	markGroupLifecycleSeen(seen, groupID)
 	return nil
 }
 
 // 生命周期决策必须在所有者安全的租约内读取 fresh 且完整的分组权威状态。
 // active 仅 Reopen canonical bucket；missing/inactive 同时 Retire canonical 与已登记历史 bucket；
 // group event 路径只有在权威决策和后续重建全部成功后才会标记 seen。
-func (s *SchedulerSnapshotService) prepareGroupLifecycle(ctx context.Context, groupID int64, knownHistorical []SchedulerBucket, canonicalOverride ...[]SchedulerBucket) (plan schedulerGroupLifecyclePlan, retErr error) {
+func (s *SchedulerSnapshotService) prepareGroupLifecycle(ctx context.Context, groupID int64, knownHistorical []SchedulerBucket) (plan schedulerGroupLifecyclePlan, retErr error) {
 	if groupID <= 0 || s.isRunModeSimple() {
 		return schedulerGroupLifecyclePlan{}, nil
 	}
@@ -751,19 +751,8 @@ func (s *SchedulerSnapshotService) prepareGroupLifecycle(ctx context.Context, gr
 	}
 
 	plan = schedulerGroupLifecyclePlan{active: !missing && group.IsActive()}
-	buckets := schedulerBucketsForGroup(groupID)
-	if len(canonicalOverride) > 0 {
-		buckets = canonicalOverride[0]
-	} else if plan.active {
-		activeAccounts, err := s.listActiveSchedulerAccounts(lifecycleCtx)
-		if err != nil {
-			return schedulerGroupLifecyclePlan{}, err
-		}
-		platforms := schedulerPlatformsForGroupAccounts(groupID, activeAccounts)
-		platforms = appendSchedulerPlatform(platforms, group.Platform)
-		buckets = schedulerBucketsForPlatforms(groupID, platforms)
-	}
 	if plan.active {
+		buckets := schedulerBucketsForGroup(groupID)
 		plan.tasks = make([]schedulerBucketWriteTask, 0, len(buckets))
 		for _, bucket := range buckets {
 			token, err := s.cache.ReopenBucket(lifecycleCtx, bucket)
@@ -780,6 +769,7 @@ func (s *SchedulerSnapshotService) prepareGroupLifecycle(ctx context.Context, gr
 				return schedulerGroupLifecyclePlan{}, err
 			}
 		}
+		buckets := schedulerBucketsForGroup(groupID)
 		for _, bucket := range registered {
 			if bucket.GroupID == groupID {
 				buckets = append(buckets, bucket)
@@ -807,13 +797,13 @@ func (s *SchedulerSnapshotService) releaseGroupLifecycleLease(lease SchedulerGro
 	return s.cache.ReleaseGroupLifecycleLease(releaseCtx, lease)
 }
 
-func markGroupLifecycleSeen(seen map[batchSeenKey]struct{}, groupID int64, tasks []schedulerBucketWriteTask) {
+func markGroupLifecycleSeen(seen map[batchSeenKey]struct{}, groupID int64) {
 	if seen == nil {
 		return
 	}
 	seen[batchSeenKey{groupID: groupID, lifecycle: true}] = struct{}{}
-	for _, task := range tasks {
-		seen[batchSeenKey{groupID: groupID, platform: task.bucket.Platform}] = struct{}{}
+	for _, platform := range schedulerSnapshotPlatforms() {
+		seen[batchSeenKey{groupID: groupID, platform: platform}] = struct{}{}
 	}
 }
 
@@ -834,8 +824,18 @@ func (s *SchedulerSnapshotService) rebuildByAccount(ctx context.Context, account
 	return s.rebuildBuckets(ctx, buckets, reason)
 }
 
-func schedulerSnapshotPlatforms() [5]string {
-	return [5]string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok}
+func schedulerSnapshotPlatforms() [9]string {
+	return [9]string{
+		PlatformAnthropic,
+		PlatformGemini,
+		PlatformOpenAI,
+		PlatformAntigravity,
+		PlatformGrok,
+		PlatformGrokVideo,
+		PlatformOpenAIAudio,
+		PlatformKlingAudio,
+		PlatformVolcengineAgentPlan,
+	}
 }
 
 // 生命周期辅助函数有意排除 group0；full rebuild 构造 group0 canonical 集时必须显式调用 canonical helper。
@@ -843,11 +843,12 @@ func schedulerBucketsForGroup(groupID int64) []SchedulerBucket {
 	if groupID <= 0 {
 		return nil
 	}
-	return schedulerBucketsForPlatforms(groupID, builtinSchedulerPlatforms())
+	return schedulerCanonicalBuckets(groupID)
 }
 
-func schedulerBucketsForPlatforms(groupID int64, platforms []string) []SchedulerBucket {
-	buckets := make([]SchedulerBucket, 0, len(platforms)*2)
+func schedulerCanonicalBuckets(groupID int64) []SchedulerBucket {
+	platforms := schedulerSnapshotPlatforms()
+	buckets := make([]SchedulerBucket, 0, len(platforms)*2+2)
 	for _, platform := range platforms {
 		buckets = append(buckets,
 			SchedulerBucket{GroupID: groupID, Platform: platform, Mode: SchedulerModeSingle},
@@ -865,8 +866,8 @@ func (s *SchedulerSnapshotService) rebuildByGroupIDs(ctx context.Context, groupI
 	if len(groupIDs) == 0 {
 		return nil
 	}
-	platforms := s.schedulerPlatformsForGroupIDs(ctx, groupIDs)
-	buckets := make([]SchedulerBucket, 0, len(groupIDs)*len(platforms)*2)
+	platforms := schedulerSnapshotPlatforms()
+	buckets := make([]SchedulerBucket, 0, len(groupIDs)*(len(platforms)*2+2))
 	for _, platform := range platforms {
 		buckets = append(buckets, s.bucketsForPlatform(platform, groupIDs, seen)...)
 	}
@@ -1053,14 +1054,9 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 		return err
 	}
 	registered = dedupeBuckets(registered)
-	activeAccounts, err := s.listActiveSchedulerAccounts(ctx)
-	if err != nil {
-		return err
-	}
-	canonicalPlatforms := schedulerPlatformsForAccounts(activeAccounts)
 
 	if s.isRunModeSimple() {
-		canonical := schedulerBucketsForPlatforms(0, canonicalPlatforms)
+		canonical := schedulerCanonicalBuckets(0)
 		captured, err := s.captureFullRebuildCanonicalTasks(ctx, canonical)
 		if err != nil {
 			return err
@@ -1083,7 +1079,7 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 		registeredByGroup[bucket.GroupID] = append(registeredByGroup[bucket.GroupID], bucket)
 	}
 
-	groupZeroCanonical := schedulerBucketsForPlatforms(0, canonicalPlatforms)
+	groupZeroCanonical := schedulerCanonicalBuckets(0)
 	capturedTasks, err := s.captureFullRebuildCanonicalTasks(ctx, groupZeroCanonical)
 	if err != nil {
 		return err
@@ -1097,7 +1093,7 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 
 	reopenedTasks := make([]schedulerBucketWriteTask, 0)
 	for _, groupID := range activeGroupIDs {
-		canonical := schedulerBucketsForPlatforms(groupID, schedulerPlatformsForGroupAccounts(groupID, activeAccounts))
+		canonical := schedulerBucketsForGroup(groupID)
 		canonicalTasks, captureErr := s.captureFullRebuildCanonicalTasks(ctx, canonical)
 		if captureErr == nil {
 			capturedTasks = append(capturedTasks, canonicalTasks...)
@@ -1115,7 +1111,7 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 		if knownHistorical == nil {
 			knownHistorical = []SchedulerBucket{}
 		}
-		plan, err := s.prepareGroupLifecycle(ctx, groupID, knownHistorical, canonical)
+		plan, err := s.prepareGroupLifecycle(ctx, groupID, knownHistorical)
 		if err != nil {
 			return err
 		}
@@ -1137,25 +1133,17 @@ func (s *SchedulerSnapshotService) rebuildFullSnapshot(ctx context.Context, reas
 	sort.Slice(staleGroupIDs, func(i, j int) bool { return staleGroupIDs[i] < staleGroupIDs[j] })
 
 	for _, groupID := range staleGroupIDs {
-		canonical := schedulerBucketsForPlatforms(groupID, schedulerPlatformsForGroupAccounts(groupID, activeAccounts))
-		plan, err := s.prepareGroupLifecycle(ctx, groupID, registeredByGroup[groupID], canonical)
+		plan, err := s.prepareGroupLifecycle(ctx, groupID, registeredByGroup[groupID])
 		if err != nil {
 			return err
 		}
 		if plan.active {
 			reopenedTasks = append(reopenedTasks, plan.tasks...)
-			ordinaryBuckets = appendBucketsExcept(ordinaryBuckets, registeredByGroup[groupID], canonical)
+			ordinaryBuckets = appendBucketsExcept(ordinaryBuckets, registeredByGroup[groupID], schedulerBucketsForGroup(groupID))
 		}
 	}
 
 	return s.prepareAndRebuildFullSnapshot(ctx, capturedTasks, reopenedTasks, ordinaryBuckets, reason)
-}
-
-func (s *SchedulerSnapshotService) listActiveSchedulerAccounts(ctx context.Context) ([]Account, error) {
-	if s == nil || s.accountRepo == nil {
-		return nil, nil
-	}
-	return s.accountRepo.ListActive(ctx)
 }
 
 func (s *SchedulerSnapshotService) listActiveSchedulerGroupIDs(ctx context.Context) ([]int64, error) {
@@ -1650,122 +1638,6 @@ func (s *SchedulerSnapshotService) fullRebuildInterval() time.Duration {
 	return time.Duration(sec) * time.Second
 }
 
-func (s *SchedulerSnapshotService) defaultBuckets(ctx context.Context) ([]SchedulerBucket, error) {
-	buckets := make([]SchedulerBucket, 0)
-	platforms := s.defaultSchedulerPlatforms(ctx)
-	for _, platform := range platforms {
-		buckets = append(buckets, SchedulerBucket{GroupID: 0, Platform: platform, Mode: SchedulerModeSingle})
-		buckets = append(buckets, SchedulerBucket{GroupID: 0, Platform: platform, Mode: SchedulerModeForced})
-		if platform == PlatformAnthropic || platform == PlatformGemini {
-			buckets = append(buckets, SchedulerBucket{GroupID: 0, Platform: platform, Mode: SchedulerModeMixed})
-		}
-	}
-
-	if s.isRunModeSimple() || s.groupRepo == nil {
-		return dedupeBuckets(buckets), nil
-	}
-
-	groups, err := s.groupRepo.ListActive(ctx)
-	if err != nil {
-		return dedupeBuckets(buckets), nil
-	}
-	for _, group := range groups {
-		if group.Platform == "" {
-			continue
-		}
-		buckets = append(buckets, SchedulerBucket{GroupID: group.ID, Platform: group.Platform, Mode: SchedulerModeSingle})
-		buckets = append(buckets, SchedulerBucket{GroupID: group.ID, Platform: group.Platform, Mode: SchedulerModeForced})
-		if group.Platform == PlatformAnthropic || group.Platform == PlatformGemini {
-			buckets = append(buckets, SchedulerBucket{GroupID: group.ID, Platform: group.Platform, Mode: SchedulerModeMixed})
-		}
-	}
-	return dedupeBuckets(buckets), nil
-}
-
-func builtinSchedulerPlatforms() []string {
-	return []string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio}
-}
-
-func (s *SchedulerSnapshotService) defaultSchedulerPlatforms(ctx context.Context) []string {
-	if s != nil && s.accountRepo != nil {
-		if accounts, err := s.accountRepo.ListActive(ctx); err == nil {
-			return schedulerPlatformsForAccounts(accounts)
-		}
-	}
-	return builtinSchedulerPlatforms()
-}
-
-func schedulerPlatformsForAccounts(accounts []Account) []string {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
-	for _, account := range accounts {
-		platforms = appendSchedulerPlatform(platforms, account.Platform)
-	}
-	return platforms
-}
-
-func schedulerPlatformsForGroupAccounts(groupID int64, accounts []Account) []string {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
-	for _, account := range accounts {
-		if schedulerAccountBelongsToGroup(account, groupID) {
-			platforms = appendSchedulerPlatform(platforms, account.Platform)
-		}
-	}
-	return platforms
-}
-
-func (s *SchedulerSnapshotService) schedulerPlatformsForGroupIDs(ctx context.Context, groupIDs []int64) []string {
-	platforms := append([]string(nil), builtinSchedulerPlatforms()...)
-	if s == nil {
-		return platforms
-	}
-	var activeAccounts []Account
-	if s.accountRepo != nil {
-		activeAccounts, _ = s.accountRepo.ListActive(ctx)
-	}
-	for _, groupID := range groupIDs {
-		if groupID <= 0 {
-			continue
-		}
-		if s.groupRepo != nil {
-			if group, err := s.groupRepo.GetByIDLite(ctx, groupID); err == nil && group != nil {
-				platforms = appendSchedulerPlatform(platforms, group.Platform)
-			}
-		}
-		for _, account := range activeAccounts {
-			if schedulerAccountBelongsToGroup(account, groupID) {
-				platforms = appendSchedulerPlatform(platforms, account.Platform)
-			}
-		}
-	}
-	return platforms
-}
-
-func schedulerAccountBelongsToGroup(account Account, groupID int64) bool {
-	for _, id := range account.GroupIDs {
-		if id == groupID {
-			return true
-		}
-	}
-	for _, group := range account.AccountGroups {
-		if group.GroupID == groupID {
-			return true
-		}
-	}
-	return false
-}
-
-func appendSchedulerPlatform(platforms []string, platform string) []string {
-	platform = NormalizePlatformSlug(platform)
-	if platform == "" {
-		return platforms
-	}
-	for _, existing := range platforms {
-		if existing == platform {
-			return platforms
-		}
-	}
-	return append(platforms, platform)
-}
 func dedupeBuckets(in []SchedulerBucket) []SchedulerBucket {
 	seen := make(map[string]struct{}, len(in))
 	out := make([]SchedulerBucket, 0, len(in))

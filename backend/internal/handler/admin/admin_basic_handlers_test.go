@@ -211,21 +211,6 @@ func TestGroupHandlerEndpoints(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "gpt-5")
 
 	body, _ = json.Marshal(map[string]any{
-		"public_model":    "router/acme",
-		"match_type":      "exact",
-		"target_platform": "acme-openai",
-		"upstream_model":  "acme-reasoning",
-		"endpoint":        "responses",
-		"enabled":         true,
-	})
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/api/v1/admin/groups/2/composite-routes", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(rec, req)
-	require.Equal(t, http.StatusCreated, rec.Code)
-	require.Contains(t, rec.Body.String(), "acme-openai")
-
-	body, _ = json.Marshal(map[string]any{
 		"public_model":    "openrouter/gpt-5",
 		"target_platform": "openai",
 		"upstream_model":  "gpt-5",

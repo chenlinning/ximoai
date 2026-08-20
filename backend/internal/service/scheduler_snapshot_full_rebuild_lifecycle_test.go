@@ -183,13 +183,8 @@ type fullRebuildAccountRepo struct {
 
 	mu          sync.Mutex
 	calls       []fullRebuildAccountCall
-	active      []Account
 	beforeFirst func()
 	once        sync.Once
-}
-
-func (r *fullRebuildAccountRepo) ListActive(context.Context) ([]Account, error) {
-	return append([]Account(nil), r.active...), nil
 }
 
 func (r *fullRebuildAccountRepo) record(groupID int64, platform string) ([]Account, error) {
@@ -264,27 +259,6 @@ func newFullRebuildLifecycleService(
 	runMode string,
 ) *SchedulerSnapshotService {
 	return NewSchedulerSnapshotService(cache, outbox, accounts, groups, &config.Config{RunMode: runMode})
-}
-
-func TestSchedulerFullRebuildIncludesDynamicPlatformsFromEmptyRegistry(t *testing.T) {
-	const customPlatform = "acme-openai"
-	cache := newFullRebuildLifecycleCache()
-	accounts := &fullRebuildAccountRepo{active: []Account{{
-		ID:          1,
-		Platform:    customPlatform,
-		Status:      StatusActive,
-		Schedulable: true,
-	}}}
-	svc := newFullRebuildLifecycleService(cache, nil, accounts, nil, config.RunModeSimple)
-
-	require.NoError(t, svc.rebuildFullSnapshot(context.Background(), "test"))
-	for _, platform := range []string{customPlatform, PlatformOpenAIAudio} {
-		for _, mode := range []string{SchedulerModeSingle, SchedulerModeForced} {
-			bucket := SchedulerBucket{GroupID: 0, Platform: platform, Mode: mode}
-			_, published := cache.counts(bucket)
-			require.Equal(t, 1, published, bucket.String())
-		}
-	}
 }
 
 func TestSchedulerFullRebuildActiveTombstoneDoesNotBlockFollowingGroupEvent(t *testing.T) {
@@ -394,7 +368,7 @@ func TestSchedulerFullRebuildFreshActivePreparesEveryTokenBeforeFirstDB(t *testi
 		held, reopenCount := cache.leaseHeldAndTokenCount()
 		require.False(t, held)
 		require.Equal(t, len(schedulerBucketsForGroup(groupID)), reopenCount)
-		require.Equal(t, len(schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms()))+1, capturesAtFirstDB, "C(0) and the historical bucket must be captured before DB")
+		require.Equal(t, len(schedulerCanonicalBuckets(0))+1, capturesAtFirstDB, "C(0) and the historical bucket must be captured before DB")
 	}
 	svc := newFullRebuildLifecycleService(cache, nil, accounts, groups, config.RunModeStandard)
 
@@ -424,7 +398,7 @@ func TestSchedulerFullRebuildOrdinaryCaptureErrorReturnsBeforeFirstDB(t *testing
 
 	err := svc.rebuildFullSnapshot(context.Background(), "test")
 	require.ErrorIs(t, err, wantErr)
-	require.Equal(t, len(schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms()))+2, cache.captureAttemptCount(), "all canonical and ordinary captures must be attempted before returning")
+	require.Equal(t, len(schedulerCanonicalBuckets(0))+2, cache.captureAttemptCount(), "all canonical and ordinary captures must be attempted before returning")
 	require.Zero(t, accounts.callCount())
 	require.Zero(t, cache.totalSetAttempts())
 }
@@ -656,7 +630,7 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 
 	svc.pollOutbox()
 	require.Zero(t, cache.currentWatermark())
-	_, groupZeroPublished := cache.counts(schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms())[0])
+	_, groupZeroPublished := cache.counts(schedulerCanonicalBuckets(0)[0])
 	require.Equal(t, 1, groupZeroPublished, "ordinary tasks must still run when one strict Reopen task is busy")
 	require.Equal(t, 2*builtinSchedulerAccountQueryCount(), accounts.callCount())
 
@@ -672,7 +646,7 @@ func TestSchedulerFullRebuildFreshReopenLockBusyRetriesWithoutBlockingOrdinaryTa
 }
 
 func TestSchedulerFullRebuildOrdinaryLockBusyKeepsExistingSkipSemantics(t *testing.T) {
-	busyBucket := schedulerBucketsForPlatforms(0, builtinSchedulerPlatforms())[0]
+	busyBucket := schedulerCanonicalBuckets(0)[0]
 	cache := newFullRebuildLifecycleCache()
 	cache.lockBusyOnce[busyBucket.String()] = true
 	groups := &fullRebuildLifecycleGroupRepo{fresh: make(map[int64]*Group), freshErr: make(map[int64]error)}

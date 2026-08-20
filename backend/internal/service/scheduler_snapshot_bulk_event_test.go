@@ -27,16 +27,6 @@ func (r *bulkEventAccountRepo) GetByIDs(context.Context, []int64) ([]*Account, e
 	return append([]*Account(nil), r.accounts...), nil
 }
 
-func (r *bulkEventAccountRepo) ListActive(context.Context) ([]Account, error) {
-	accounts := make([]Account, 0, len(r.accounts))
-	for _, account := range r.accounts {
-		if account != nil {
-			accounts = append(accounts, *account)
-		}
-	}
-	return accounts, nil
-}
-
 type bulkEventSnapshotCache struct {
 	*batchSnapshotCache
 
@@ -201,7 +191,8 @@ func TestSchedulerBulkAccountEventMissingAccountFallsBackToAllPlatforms(t *testi
 	err := svc.handleBulkAccountEvent(context.Background(), bulkEventPayload([]int64{3, 4}, []int64{31}), make(map[batchSeenKey]struct{}))
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, schedulerBucketsForTest([]int64{31, 32}, builtinSchedulerPlatforms()...), cache.capturedBuckets())
+	platforms := schedulerSnapshotPlatforms()
+	require.ElementsMatch(t, schedulerBucketsForTest([]int64{31, 32}, platforms[:]...), cache.capturedBuckets())
 	set, deleted := cache.accountWrites()
 	require.Equal(t, []int64{3}, set)
 	require.Equal(t, []int64{4}, deleted)
@@ -215,5 +206,6 @@ func TestSchedulerBulkAccountEventUnknownPlatformFallsBackToAllPlatforms(t *test
 	err := svc.handleBulkAccountEvent(context.Background(), bulkEventPayload([]int64{5}, []int64{41}), make(map[batchSeenKey]struct{}))
 
 	require.NoError(t, err)
-	require.ElementsMatch(t, schedulerBucketsForTest([]int64{41, 42}, builtinSchedulerPlatforms()...), cache.capturedBuckets())
+	platforms := schedulerSnapshotPlatforms()
+	require.ElementsMatch(t, schedulerBucketsForTest([]int64{41, 42}, platforms[:]...), cache.capturedBuckets())
 }

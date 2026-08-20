@@ -117,47 +117,6 @@ func TestGeminiForwardAsChatCompletions_OAuthRoutesToGeminiAndReturnsChatFormat(
 	require.Equal(t, float64(10), usage["total_tokens"])
 }
 
-func TestGeminiForwardAsChatCompletions_CustomAPIKeyUsesConfiguredGeminiUpstream(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	upstreamBody := `{"candidates":[{"content":{"parts":[{"text":"hello from custom gemini"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":4,"candidatesTokenCount":2}}`
-	httpStub := &geminiCompatHTTPUpstreamStub{response: &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     http.Header{"Content-Type": []string{"application/json"}},
-		Body:       io.NopCloser(strings.NewReader(upstreamBody)),
-	}}
-	svc := &GeminiMessagesCompatService{
-		httpUpstream: httpStub,
-		cfg: &config.Config{Security: config.SecurityConfig{URLAllowlist: config.URLAllowlistConfig{
-			Enabled: false,
-		}}},
-	}
-	account := &Account{
-		ID:          102,
-		Platform:    "acme-gemini",
-		Type:        AccountTypeAPIKey,
-		Concurrency: 1,
-		Credentials: map[string]any{
-			"api_key":           "gemini-custom-key",
-			"base_url":          "https://gemini.acme.test",
-			"platform_protocol": PlatformProtocolGemini,
-		},
-	}
-
-	rec := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(rec)
-	body := []byte(`{"model":"gemini-custom","messages":[{"role":"user","content":"hi"}]}`)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
-
-	result, err := svc.ForwardAsChatCompletions(context.Background(), c, account, body)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.Equal(t, "https://gemini.acme.test/v1beta/models/gemini-custom:generateContent", httpStub.lastReq.URL.String())
-	require.Equal(t, "gemini-custom-key", httpStub.lastReq.Header.Get("x-goog-api-key"))
-	require.Empty(t, httpStub.lastReq.Header.Get("Authorization"))
-	require.Contains(t, rec.Body.String(), "hello from custom gemini")
-}
-
 func TestGeminiForwardAsChatCompletions_StreamsOpenAIChunksFromGeminiSSE(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

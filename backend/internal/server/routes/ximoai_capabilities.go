@@ -12,7 +12,7 @@ func ximoAIPlatformKind(c *gin.Context, gateway *handler.GatewayHandler) string 
 	if gateway != nil {
 		return gateway.XimoAIPlatformKind(c.Request.Context(), platform)
 	}
-	return service.XimoAIPlatformKindFromLegacySlug(platform)
+	return service.XimoAIPlatformKindFromSlug(platform)
 }
 
 func isGrokVideoGatewayPlatform(c *gin.Context, gateway *handler.GatewayHandler) bool {

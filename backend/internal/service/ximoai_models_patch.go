@@ -84,30 +84,16 @@ func ximoAIChannelMappedModelIDs(channel *Channel, platform string) ([]string, b
 	return models, true
 }
 
-func (s *PlatformService) XimoAIModelsFallbackPlatform(ctx context.Context, slug string) string {
+func XimoAIModelsFallbackPlatform(slug string) string {
 	slug = NormalizePlatformSlug(slug)
-	if s == nil || slug == "" {
-		return slug
-	}
-	platform, err := s.GetBySlug(ctx, slug)
-	if err != nil || platform == nil || !platform.Enabled {
-		return slug
-	}
-	if platform.IsVolcengineAgentPlan() {
+	if slug == PlatformVolcengineAgentPlan {
 		return PlatformVolcengineAgentPlan
 	}
 	return slug
 }
 
-func (s *PlatformService) XimoAIModelsUseEmptyFallback(ctx context.Context, slug string) bool {
-	if s == nil {
-		return false
-	}
-	platform, err := s.GetBySlug(ctx, NormalizePlatformSlug(slug))
-	if err != nil || platform == nil || !platform.Enabled {
-		return false
-	}
-	switch platform.RuntimeKind() {
+func XimoAIModelsUseEmptyFallback(slug string) bool {
+	switch XimoAIPlatformKindFromSlug(slug) {
 	case PlatformKindGrokVideo, PlatformKindOpenAIAudio, PlatformKindKlingAudio:
 		return true
 	default:

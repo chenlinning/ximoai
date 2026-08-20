@@ -2713,10 +2713,9 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 		return
 	}
 
-	// Custom platforms should not fall back to built-in Claude defaults. Their
-	// selectable models come from explicit mapping, usually after upstream sync.
-	if isCustomPlatformAccount(account) {
-		response.Success(c, buildCustomPlatformAvailableModels(account.GetModelMapping()))
+	// XimoAI media platforms only expose explicitly mapped upstream models.
+	if isXimoAIBuiltinMediaAccount(account) {
+		response.Success(c, buildXimoAIBuiltinAvailableModels(account.GetModelMapping()))
 		return
 	}
 
@@ -2761,19 +2760,19 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 	response.Success(c, models)
 }
 
-func isCustomPlatformAccount(account *service.Account) bool {
+func isXimoAIBuiltinMediaAccount(account *service.Account) bool {
 	if account == nil {
 		return false
 	}
 	switch service.NormalizePlatformSlug(account.Platform) {
-	case "", service.PlatformAnthropic, service.PlatformOpenAI, service.PlatformGemini, service.PlatformAntigravity, service.PlatformGrok:
-		return false
-	default:
+	case service.PlatformGrokVideo, service.PlatformOpenAIAudio, service.PlatformKlingAudio, service.PlatformVolcengineAgentPlan:
 		return true
+	default:
+		return false
 	}
 }
 
-func buildCustomPlatformAvailableModels(mapping map[string]string) []openai.Model {
+func buildXimoAIBuiltinAvailableModels(mapping map[string]string) []openai.Model {
 	if len(mapping) == 0 {
 		return []openai.Model{}
 	}

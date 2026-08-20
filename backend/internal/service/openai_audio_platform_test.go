@@ -10,17 +10,18 @@ func TestOpenAIAudioCustomAPIKeySupportsChatOnly(t *testing.T) {
 	account := &Account{
 		Platform: PlatformOpenAIAudio,
 		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"platform_protocol": PlatformProtocolOpenAICompatible,
-		},
 	}
 
 	require.True(t, account.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityChatCompletions))
 	require.False(t, account.SupportsOpenAIEndpointCapability(OpenAIEndpointCapabilityEmbeddings))
 }
 
-func TestBuiltinSchedulerPlatformsIncludesOpenAIAudio(t *testing.T) {
-	require.Contains(t, builtinSchedulerPlatforms(), PlatformOpenAIAudio)
+func TestSchedulerPlatformsIncludeXimoAIBuiltins(t *testing.T) {
+	platforms := schedulerSnapshotPlatforms()
+	require.Contains(t, platforms, PlatformGrokVideo)
+	require.Contains(t, platforms, PlatformOpenAIAudio)
+	require.Contains(t, platforms, PlatformKlingAudio)
+	require.Contains(t, platforms, PlatformVolcengineAgentPlan)
 }
 
 func TestOpenAIAudioAlwaysUsesRawChatCompletions(t *testing.T) {

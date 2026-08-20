@@ -173,7 +173,6 @@ type AccountTestService struct {
 	cfg                       *config.Config
 	settingService            *SettingService
 	tlsFPProfileService       *TLSFingerprintProfileService
-	platformService           *PlatformService
 	agentIdentityTaskMu       sync.Mutex
 	agentIdentityWS           agentIdentityWSConnectionInvalidator
 	// grokWSDialer is optional; realtime account tests use the default OpenAI-style
@@ -197,7 +196,6 @@ func NewAccountTestService(
 	httpUpstream HTTPUpstream,
 	cfg *config.Config,
 	tlsFPProfileService *TLSFingerprintProfileService,
-	platformService *PlatformService,
 ) *AccountTestService {
 	return &AccountTestService{
 		accountRepo:               accountRepo,
@@ -208,7 +206,6 @@ func NewAccountTestService(
 		httpUpstream:              httpUpstream,
 		cfg:                       cfg,
 		tlsFPProfileService:       tlsFPProfileService,
-		platformService:           platformService,
 	}
 }
 
@@ -365,48 +362,28 @@ func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, ac
 	return s.testClaudeAccountConnection(c, account, modelID)
 }
 
-func (s *AccountTestService) isVolcengineAgentPlanAccount(ctx context.Context, account *Account) bool {
-	if account == nil {
-		return false
-	}
-	if account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan {
-		return true
-	}
-	if s == nil || s.platformService == nil {
-		return false
-	}
-	platform, err := s.platformService.GetBySlug(ctx, account.Platform)
-	return err == nil && platform != nil && platform.IsVolcengineAgentPlan()
+func (s *AccountTestService) isVolcengineAgentPlanAccount(_ context.Context, account *Account) bool {
+	return account != nil && account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan
 }
 
-func (s *AccountTestService) isOpenAIProtocolAccount(ctx context.Context, account *Account) bool {
+func (s *AccountTestService) isOpenAIProtocolAccount(_ context.Context, account *Account) bool {
 	if account == nil {
 		return false
 	}
-	if account.IsOpenAI() {
-		return true
+	switch NormalizePlatformSlug(account.Platform) {
+	case PlatformOpenAI, PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:
+		return account.Type == AccountTypeAPIKey || account.IsOpenAI()
+	default:
+		return false
 	}
-	return s != nil && s.platformService != nil && s.platformService.IsOpenAICompatible(ctx, account.Platform)
 }
 
-func (s *AccountTestService) isGeminiProtocolAccount(ctx context.Context, account *Account) bool {
-	if account == nil {
-		return false
-	}
-	if account.IsGemini() {
-		return true
-	}
-	return s != nil && s.platformService != nil && s.platformService.IsGeminiCompatible(ctx, account.Platform)
+func (s *AccountTestService) isGeminiProtocolAccount(_ context.Context, account *Account) bool {
+	return account != nil && account.IsGemini()
 }
 
-func (s *AccountTestService) isAnthropicProtocolAccount(ctx context.Context, account *Account) bool {
-	if account == nil {
-		return false
-	}
-	if account.IsAnthropic() {
-		return true
-	}
-	return s != nil && s.platformService != nil && s.platformService.IsAnthropicCompatible(ctx, account.Platform)
+func (s *AccountTestService) isAnthropicProtocolAccount(_ context.Context, account *Account) bool {
+	return account != nil && account.IsAnthropic()
 }
 
 func (s *AccountTestService) testCNProviderChatCompletionsConnection(c *gin.Context, account *Account, modelID string, prompt string) error {

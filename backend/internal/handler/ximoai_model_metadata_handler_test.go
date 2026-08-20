@@ -73,8 +73,7 @@ func TestModelPlazaMetadataHandlerSavesPartialOverridesAndResets(t *testing.T) {
 	repo := &modelMetadataHandlerSettingRepoStub{values: map[string]string{}}
 	settingService := service.NewSettingService(repo, nil)
 	h := &AvailableChannelHandler{
-		settingService:  settingService,
-		platformService: service.NewPlatformService(nil),
+		settingService: settingService,
 	}
 
 	saved := runModelMetadataHandlerRequest(t, http.MethodPut,
@@ -109,8 +108,7 @@ func TestModelPlazaMetadataHandlerRejectsUnknownOptions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	repo := &modelMetadataHandlerSettingRepoStub{values: map[string]string{}}
 	h := &AvailableChannelHandler{
-		settingService:  service.NewSettingService(repo, nil),
-		platformService: service.NewPlatformService(nil),
+		settingService: service.NewSettingService(repo, nil),
 	}
 
 	result := runModelMetadataHandlerRequest(t, http.MethodPut,

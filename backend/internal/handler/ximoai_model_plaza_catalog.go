@@ -20,7 +20,7 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 	channels []userAvailableChannel,
 	isAdmin bool,
 ) error {
-	if h == nil || h.apiKeyService == nil || h.settingService == nil || h.platformService == nil {
+	if h == nil || h.apiKeyService == nil || h.settingService == nil {
 		return fmt.Errorf("model plaza catalog services are unavailable")
 	}
 
@@ -28,21 +28,12 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 	if err != nil {
 		return err
 	}
-	platforms, err := h.platformService.List(ctx, true)
-	if err != nil {
-		return err
-	}
-	platformIndex := make(map[string]service.Platform, len(platforms))
-	for _, platform := range platforms {
-		platformIndex[platform.Slug] = platform
-	}
-
 	targets := make([]modelPlazaMetadataTarget, 0)
 	lookups := make([]service.ModelMetadataOverride, 0)
 	for channelIndex := range channels {
 		for sectionIndex := range channels[channelIndex].Platforms {
 			section := &channels[channelIndex].Platforms[sectionIndex]
-			platform, ok := platformIndex[section.Platform]
+			platform, ok := ximoAIModelPlazaPlatformFor(section.Platform)
 			if !ok {
 				return fmt.Errorf("model plaza platform %q is unavailable", section.Platform)
 			}
@@ -62,7 +53,7 @@ func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 				}
 				input := modelMetadataResolutionInput{
 					Platform:         section.Platform,
-					Kind:             platform.RuntimeKind(),
+					Kind:             platform.Kind,
 					Protocol:         platform.Protocol,
 					Model:            model.Name,
 					RecognitionModel: model.recognitionName,

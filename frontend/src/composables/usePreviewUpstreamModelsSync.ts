@@ -8,7 +8,6 @@ type MaybeReadonlyRef<T> = Ref<T> | ComputedRef<T>
 interface UsePreviewUpstreamModelsSyncOptions {
   platform: MaybeReadonlyRef<string>
   accountType: MaybeReadonlyRef<string>
-  selectedProtocol: MaybeReadonlyRef<string>
   platformEnabled: MaybeReadonlyRef<boolean>
   apiKey: Ref<string>
   baseUrl: Ref<string>
@@ -16,15 +15,10 @@ interface UsePreviewUpstreamModelsSyncOptions {
   anthropicAPIKeyAuthScheme?: MaybeReadonlyRef<string>
 }
 
-const previewSyncProtocols = new Set(['openai', 'openai_compatible', 'anthropic', 'gemini'])
-
-function previewProtocol(platform: string, selectedProtocol: string): string {
-  if (previewSyncProtocols.has(selectedProtocol)) return selectedProtocol
-  if (platform === 'openai') return 'openai'
-  if (platform === 'anthropic') return 'anthropic'
-  if (platform === 'gemini') return 'gemini'
-  return ''
-}
+const previewSyncPlatforms = new Set([
+  'anthropic', 'openai', 'gemini', 'kimi', 'zhipu', 'deepseek',
+  'grok-video', 'openai-audio', 'kling_audio',
+])
 
 export function usePreviewUpstreamModelsSync(options: UsePreviewUpstreamModelsSyncOptions) {
   const { t } = useI18n()
@@ -33,9 +27,8 @@ export function usePreviewUpstreamModelsSync(options: UsePreviewUpstreamModelsSy
 
   const canPreviewSyncUpstreamModels = computed(() =>
     options.accountType.value === 'apikey' &&
-    options.platform.value !== 'antigravity' &&
     options.platformEnabled.value &&
-    previewSyncProtocols.has(previewProtocol(options.platform.value, options.selectedProtocol.value))
+    previewSyncPlatforms.has(options.platform.value)
   )
 
   const clearPreviewSyncedUpstreamModels = () => {
@@ -50,18 +43,15 @@ export function usePreviewUpstreamModelsSync(options: UsePreviewUpstreamModelsSy
     }
 
     const baseUrl = options.baseUrl.value.trim() || options.baseUrlFallback.value
-    const protocol = previewProtocol(options.platform.value, options.selectedProtocol.value)
-    const extra = protocol === 'anthropic' && options.anthropicAPIKeyAuthScheme?.value === 'authorization_bearer'
+    const extra = options.platform.value === 'anthropic' && options.anthropicAPIKeyAuthScheme?.value === 'authorization_bearer'
       ? { anthropic_apikey_auth_scheme: 'authorization_bearer' }
       : undefined
     const result = await adminAPI.accounts.syncUpstreamModelsPreview({
       platform: options.platform.value,
       type: 'apikey',
-      protocol,
       credentials: {
         base_url: baseUrl,
-        api_key: apiKey,
-        platform_protocol: protocol
+        api_key: apiKey
       },
       ...(extra ? { extra } : {})
     })

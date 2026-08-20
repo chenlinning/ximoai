@@ -250,81 +250,25 @@ func TestBuildUpstreamModelsRequestsForAPIKeyAccounts(t *testing.T) {
 func TestBuildUpstreamModelsRequestUsesXimoAIBuiltinPlatformProtocol(t *testing.T) {
 	t.Parallel()
 
-	platformService := NewPlatformService(&platformRepoStubForPlatformService{
-		platforms: map[string]Platform{
-			PlatformGrokVideo: {
-				Slug:        PlatformGrokVideo,
-				Kind:        PlatformKindGrokVideo,
-				DisplayName: "Grok-video",
-				Protocol:    PlatformProtocolOpenAICompatible,
-				BaseURL:     "https://openai.example.com/v1",
-				AuthModes:   []string{AccountTypeAPIKey},
-				Enabled:     true,
-				Builtin:     true,
-			},
-			PlatformOpenAIAudio: {
-				Slug:        PlatformOpenAIAudio,
-				Kind:        PlatformKindOpenAIAudio,
-				DisplayName: "OpenAI Audio",
-				Protocol:    PlatformProtocolGemini,
-				BaseURL:     "https://gemini.example.com/v1beta",
-				AuthModes:   []string{AccountTypeAPIKey},
-				Enabled:     true,
-				Builtin:     true,
-			},
-			PlatformKlingAudio: {
-				Slug:        PlatformKlingAudio,
-				Kind:        PlatformKindKlingAudio,
-				DisplayName: "Kling Audio",
-				Protocol:    PlatformProtocolAnthropic,
-				BaseURL:     "https://anthropic.example.com/v1",
-				AuthModes:   []string{AccountTypeAPIKey},
-				Enabled:     true,
-				Builtin:     true,
-			},
-		},
-	})
 	svc := &AccountTestService{
-		cfg:             upstreamModelSyncTestConfig(),
-		platformService: platformService,
+		cfg: upstreamModelSyncTestConfig(),
 	}
-	ctx := context.Background()
 
-	openAIReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
-		Platform: PlatformGrokVideo,
-		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "openai-key",
-			"base_url": "https://openai.example.com/v1",
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "https://openai.example.com/v1/models", openAIReq.URL.String())
-	require.Equal(t, "Bearer openai-key", openAIReq.Header.Get("Authorization"))
-
-	geminiReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
-		Platform: PlatformOpenAIAudio,
-		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "gemini-key",
-			"base_url": "https://gemini.example.com/v1beta",
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "https://gemini.example.com/v1beta/models", geminiReq.URL.String())
-	require.Equal(t, "gemini-key", geminiReq.Header.Get("x-goog-api-key"))
-
-	anthropicReq, err := svc.buildUpstreamModelsRequest(ctx, &Account{
-		Platform: PlatformKlingAudio,
-		Type:     AccountTypeAPIKey,
-		Credentials: map[string]any{
-			"api_key":  "anthropic-key",
-			"base_url": "https://anthropic.example.com/v1",
-		},
-	})
-	require.NoError(t, err)
-	require.Equal(t, "https://anthropic.example.com/v1/models", anthropicReq.URL.String())
-	require.Equal(t, "anthropic-key", anthropicReq.Header.Get("x-api-key"))
+	for _, platform := range []string{PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio} {
+		t.Run(platform, func(t *testing.T) {
+			req, err := svc.buildUpstreamModelsRequest(context.Background(), &Account{
+				Platform: platform,
+				Type:     AccountTypeAPIKey,
+				Credentials: map[string]any{
+					"api_key":  "openai-key",
+					"base_url": "https://openai.example.com/v1",
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, "https://openai.example.com/v1/models", req.URL.String())
+			require.Equal(t, "Bearer openai-key", req.Header.Get("Authorization"))
+		})
+	}
 }
 
 func TestBuildUpstreamModelsRequestSupportsGrokOAuth(t *testing.T) {

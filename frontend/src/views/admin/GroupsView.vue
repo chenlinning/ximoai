@@ -140,10 +140,10 @@
                 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
                 platformBadgeLightClass(value),
               ]"
-              :style="platformBadgeStyle(platformDisplayColor(platforms, value))"
+              :style="platformBadgeStyle(platformDisplayColor(fixedPlatforms, value))"
             >
               <PlatformIcon :platform="value" size="xs" />
-              {{ platformDisplayName(platforms, value) }}
+              {{ platformDisplayName(fixedPlatforms, value) }}
             </span>
           </template>
 
@@ -866,7 +866,7 @@
 
         <!-- 图片生成计费配置 -->
         <div
-          v-if="supportsImagePricingPlatform(createForm.platform) || isOpenAICompatibleGroupPlatform(createForm.platform)"
+          v-if="supportsImagePricingPlatform(createForm.platform)"
           class="border-t pt-4"
         >
           <label
@@ -1603,7 +1603,7 @@
 
         <!-- OpenAI Messages 调度配置（仅 openai 平台） -->
         <div
-          v-if="isOpenAICompatibleGroupPlatform(createForm.platform)"
+          v-if="createForm.platform === 'openai'"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -2592,7 +2592,7 @@
 
         <!-- 图片生成计费配置 -->
         <div
-          v-if="supportsImagePricingPlatform(editForm.platform) || isOpenAICompatibleGroupPlatform(editForm.platform)"
+          v-if="supportsImagePricingPlatform(editForm.platform)"
           class="border-t pt-4"
         >
           <label
@@ -3325,7 +3325,7 @@
 
         <!-- OpenAI Messages 调度配置（仅 openai 平台） -->
         <div
-          v-if="isOpenAICompatibleGroupPlatform(editForm.platform)"
+          v-if="editForm.platform === 'openai'"
           class="border-t border-gray-200 dark:border-dark-400 pt-4 mt-4"
         >
           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -3952,9 +3952,9 @@
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                     platformBadgeLightClass(group.platform),
                   ]"
-                  :style="platformBadgeStyle(platformDisplayColor(platforms, group.platform))"
+                  :style="platformBadgeStyle(platformDisplayColor(fixedPlatforms, group.platform))"
                 >
-                  {{ platformDisplayName(platforms, group.platform) }}
+                  {{ platformDisplayName(fixedPlatforms, group.platform) }}
                 </span>
               </div>
             </div>
@@ -4394,7 +4394,6 @@ import type {
   CompositeRouteEndpoint,
   CompositeRouteMatchType,
   GroupPlatform,
-  Platform,
   SubscriptionType,
 } from "@/types";
 import type { Column } from "@/components/common/types";
@@ -4428,6 +4427,7 @@ import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { extractApiErrorMessage } from "@/utils/apiError";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
+import { fixedPlatforms, fixedPlatformBySlug } from "@/extensions/platforms/fixedPlatforms";
 import {
   platformBadgeLightClass,
   platformBadgeStyle,
@@ -4546,7 +4546,6 @@ const groupPricingToAPI = (
 const { t } = useI18n();
 const appStore = useAppStore();
 const onboardingStore = useOnboardingStore();
-const platforms = ref<Platform[]>([]);
 
 const ALWAYS_VISIBLE_COLUMNS = new Set(["name", "actions"]);
 // Default hidden columns (hidden on first load / after schema bumps).
@@ -4723,7 +4722,7 @@ const exclusiveOptions = computed(() => [
 ]);
 
 const platformOptions = computed(() => {
-  const options = platforms.value.filter((platform) => platform.enabled).map((platform) => ({
+  const options = fixedPlatforms.map((platform) => ({
     value: platform.slug,
     label: platform.display_name,
   }));
@@ -4744,8 +4743,8 @@ const compositeRoutePlatforms = new Set([
 ]);
 
 const compositeRoutePlatformOptions = computed(() =>
-  platforms.value
-    .filter((platform) => platform.enabled && compositeRoutePlatforms.has(platform.slug))
+  fixedPlatforms
+    .filter((platform) => compositeRoutePlatforms.has(platform.slug))
     .map((platform) => ({
       value: platform.slug,
       label: platform.display_name,
@@ -5092,14 +5091,6 @@ const createForm = reactive({
   max_reasoning_effort: "",
   reasoning_effort_mappings: [] as ReasoningEffortMappingRow[],
 });
-
-const getPlatformBySlug = (slug: string) =>
-  platforms.value.find((platform) => platform.slug === slug);
-
-const isOpenAICompatibleGroupPlatform = (slug: string) => {
-  const platform = getPlatformBySlug(slug);
-  return platform?.protocol === "openai" || platform?.protocol === "openai_compatible";
-};
 
 // 简单账号类型（用于模型路由选择）
 interface SimpleAccount {
@@ -5812,14 +5803,6 @@ const loadCapacitySummary = async () => {
   }
 };
 
-const loadPlatforms = async () => {
-  try {
-    platforms.value = await adminAPI.platforms.list();
-  } catch (error) {
-    console.error("Error loading platforms:", error);
-  }
-};
-
 let searchTimeout: ReturnType<typeof setTimeout>;
 const handleSearch = () => {
   clearTimeout(searchTimeout);
@@ -6008,7 +5991,7 @@ const handleCreateGroup = async () => {
         createForm.supported_model_scopes,
       ),
       messages_dispatch_model_config:
-        isOpenAICompatibleGroupPlatform(createForm.platform)
+        createForm.platform === "openai"
           ? messagesDispatchFormStateToConfig({
               allow_messages_dispatch: createForm.allow_messages_dispatch,
               opus_mapped_model: createForm.opus_mapped_model,
@@ -6281,7 +6264,7 @@ const handleUpdateGroup = async () => {
         editForm.supported_model_scopes,
       ),
       messages_dispatch_model_config:
-        isOpenAICompatibleGroupPlatform(editForm.platform)
+        editForm.platform === "openai"
           ? messagesDispatchFormStateToConfig({
               allow_messages_dispatch: editForm.allow_messages_dispatch,
               opus_mapped_model: editForm.opus_mapped_model,
@@ -6430,7 +6413,7 @@ const formatCompositeEndpoint = (endpoint: CompositeRouteEndpoint) =>
 
 const formatCompositePlatform = (platform: string) => {
   if (!platform) return "—";
-  const definition = getPlatformBySlug(platform);
+  const definition = fixedPlatformBySlug(platform);
   if (definition) return definition.display_name;
   return t(`admin.groups.platforms.${platform}`);
 };
@@ -6661,7 +6644,7 @@ watch(
     if (!["anthropic", "antigravity"].includes(newVal)) {
       createForm.fallback_group_id_on_invalid_request = null;
     }
-    if (!isOpenAICompatibleGroupPlatform(newVal)) {
+    if (newVal !== "openai") {
       resetMessagesDispatchFormState(createForm);
     }
     if (!supportsLivePlatform(newVal)) {
@@ -6711,7 +6694,7 @@ watch(
     if (!["anthropic", "antigravity"].includes(newVal)) {
       editForm.fallback_group_id_on_invalid_request = null;
     }
-    if (!isOpenAICompatibleGroupPlatform(newVal)) {
+    if (newVal !== "openai") {
       resetMessagesDispatchFormState(editForm);
     }
     if (!supportsLivePlatform(newVal)) {
@@ -6763,7 +6746,7 @@ watch(
     if (!['anthropic', 'antigravity'].includes(newVal)) {
       editForm.fallback_group_id_on_invalid_request = null
     }
-    if (!isOpenAICompatibleGroupPlatform(newVal)) {
+    if (newVal !== 'openai') {
       editForm.allow_messages_dispatch = false
       editForm.default_mapped_model = ''
     }
@@ -6832,7 +6815,6 @@ const saveSortOrder = async () => {
 };
 
 onMounted(() => {
-  loadPlatforms();
   loadGroups();
   void loadLiveCapability();
   loadModelsListCandidates("create", 0, createForm.platform);

@@ -230,7 +230,6 @@ func ProvideAccountTestService(
 	cfg *config.Config,
 	tlsFPProfileService *TLSFingerprintProfileService,
 	openAIGatewayService *OpenAIGatewayService,
-	platformService *PlatformService,
 	settingService *SettingService,
 ) *AccountTestService {
 	service := NewAccountTestService(
@@ -242,7 +241,6 @@ func ProvideAccountTestService(
 		httpUpstream,
 		cfg,
 		tlsFPProfileService,
-		platformService,
 	)
 	service.agentIdentityWS = openAIGatewayService
 	service.SetSettingService(settingService)
@@ -939,7 +937,6 @@ var ProviderSet = wire.NewSet(
 	NewModelPricingResolver,
 	NewContentModerationService,
 	NewAffiliateService,
-	NewPlatformService,
 	ProvidePaymentConfigService,
 	ProvidePaymentService,
 	ProvidePaymentOrderExpiryService,

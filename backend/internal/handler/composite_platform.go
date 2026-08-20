@@ -57,10 +57,7 @@ func compositeOpenAICompatibleTargetAllowed(c *gin.Context, apiKey *service.APIK
 		service.PlatformKlingAudio, service.PlatformVolcengineAgentPlan:
 		return false
 	default:
-		// Custom targets reach this handler only after the route-level platform
-		// registry accepted their OpenAI-compatible protocol. The scheduler then
-		// enforces the same platform slug and account protocol again.
-		return platform != ""
+		return false
 	}
 }
 

@@ -663,7 +663,6 @@ type adminServiceImpl struct {
 	defaultSubAssigner   DefaultSubscriptionAssigner
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
-	platformService      *PlatformService
 	runtimeBlocker       AccountRuntimeBlocker
 	membershipBootstrap  MembershipBootstrapper
 	membershipRateSyncer MembershipGroupRateSyncer
@@ -716,7 +715,6 @@ func NewAdminService(
 	defaultSubAssigner DefaultSubscriptionAssigner,
 	userSubRepo UserSubscriptionRepository,
 	privacyClientFactory PrivacyClientFactory,
-	platformService *PlatformService,
 	runtimeBlocker AccountRuntimeBlocker,
 	affiliateService *AffiliateService,
 	compositeRouteRepo CompositeModelRouteRepository,
@@ -744,7 +742,6 @@ func NewAdminService(
 		defaultSubAssigner:   defaultSubAssigner,
 		userSubRepo:          userSubRepo,
 		privacyClientFactory: privacyClientFactory,
-		platformService:      platformService,
 		runtimeBlocker:       runtimeBlocker,
 		affiliateService:     affiliateService,
 		compositeRouteRepo:   compositeRouteRepo,
