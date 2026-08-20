@@ -622,6 +622,9 @@ type ForwardResult struct {
 	// RequestCount is used by native per-request providers. Zero preserves the
 	// historical one-request behavior for all existing protocols.
 	RequestCount int
+	// ServiceTier records the billable request tier. OpenAI uses service_tier;
+	// Anthropic speed=fast is normalized to "fast".
+	ServiceTier *string
 
 	// 图片生成计费字段（图片生成模型使用）
 	ImageCount         int    // 生成的图片数量

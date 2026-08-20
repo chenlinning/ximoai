@@ -4738,8 +4738,7 @@ const platformFilterOptions = computed(() => [
 ]);
 
 const compositeRoutePlatforms = new Set([
-  "anthropic", "openai", "gemini", "antigravity", "grok",
-  "grok-video", "openai-audio", "kling_audio", "volcengine-agent-plan",
+  ...fixedPlatforms.map((platform) => platform.slug),
 ]);
 
 const compositeRoutePlatformOptions = computed(() =>
