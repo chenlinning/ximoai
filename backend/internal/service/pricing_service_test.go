@@ -378,6 +378,78 @@ func TestPricingService_MergesFallbackOnlyModels(t *testing.T) {
 	require.InDelta(t, 0.034, merged["gemini-3.1-flash-lite-image"].OutputCostPerImage, 1e-12)
 }
 
+func TestPricingService_OfficialPricingOverridesRemoteStaleModels(t *testing.T) {
+	svc := &PricingService{}
+	remoteData, err := svc.parsePricingData([]byte(`{
+		"kimi-k2.5": {
+			"input_cost_per_token": 0.0000006,
+			"output_cost_per_token": 0.00000225,
+			"cache_read_input_token_cost": 0.0000001,
+			"cache_creation_input_token_cost": 0.0000006,
+			"litellm_provider": "moonshot",
+			"mode": "chat"
+		},
+		"glm-5.1": {
+			"input_cost_per_token": 0.0000014,
+			"output_cost_per_token": 0.0000044,
+			"cache_read_input_token_cost": 0.00000028,
+			"cache_creation_input_token_cost": 0.000001,
+			"litellm_provider": "zhipu",
+			"mode": "chat"
+		},
+		"deepseek-v4-pro": {
+			"input_cost_per_token": 0.000000435,
+			"output_cost_per_token": 0.00000087,
+			"cache_read_input_token_cost": 0.000000003625,
+			"litellm_provider": "deepseek",
+			"mode": "chat"
+		},
+		"minimax-m3": {
+			"input_cost_per_token": 0.0000006,
+			"output_cost_per_token": 0.0000024,
+			"cache_read_input_token_cost": 0.00000012,
+			"litellm_provider": "minimax",
+			"mode": "chat"
+		}
+	}`))
+	require.NoError(t, err)
+
+	patched := svc.applyOfficialPricingOverrides(remoteData)
+	tests := []struct {
+		model, provider          string
+		input, output, cacheRead float64
+		cacheWrite               float64
+	}{
+		{model: "kimi-k2.5", provider: "moonshot", input: 0.60e-6, output: 3e-6, cacheRead: 0.10e-6},
+		{model: "kimi-k2.7-code", provider: "moonshot", input: 0.95e-6, output: 4e-6, cacheRead: 0.19e-6},
+		{model: "minimax-m3", provider: "minimax", input: 0.30e-6, output: 1.20e-6, cacheRead: 0.06e-6},
+		{model: "minimax-m2.5-highspeed", provider: "minimax", input: 0.60e-6, output: 2.40e-6, cacheRead: 0.03e-6, cacheWrite: 0.375e-6},
+		{model: "deepseek-v4-pro", provider: "deepseek", input: 1.32e-6, output: 3.96e-6, cacheRead: 0.044e-6},
+		{model: "deepseek-v4-flash-vision-exp", provider: "deepseek", input: 0.44e-6, output: 1.32e-6, cacheRead: 0.014e-6},
+		{model: "glm-5.3", provider: "zhipu", input: 1.4e-6, output: 4.4e-6, cacheRead: 0.26e-6},
+		{model: "glm-5.1", provider: "zhipu", input: 1.4e-6, output: 4.4e-6, cacheRead: 0.26e-6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			pricing := patched[tt.model]
+			require.NotNil(t, pricing)
+			require.InDelta(t, tt.input, pricing.InputCostPerToken, 1e-12)
+			require.InDelta(t, tt.output, pricing.OutputCostPerToken, 1e-12)
+			require.InDelta(t, tt.cacheRead, pricing.CacheReadInputTokenCost, 1e-12)
+			require.InDelta(t, tt.cacheWrite, pricing.CacheCreationInputTokenCost, 1e-12)
+			require.Equal(t, tt.provider, pricing.LiteLLMProvider)
+		})
+	}
+
+	m3 := patched["minimax-m3"]
+	require.InDelta(t, 0.45e-6, m3.InputCostPerTokenPriority, 1e-12)
+	require.InDelta(t, 1.80e-6, m3.OutputCostPerTokenPriority, 1e-12)
+	require.InDelta(t, 0.09e-6, m3.CacheReadInputTokenCostPriority, 1e-12)
+	require.Equal(t, 512000, m3.LongContextInputTokenThreshold)
+	require.InDelta(t, 2.0, m3.LongContextInputCostMultiplier, 1e-12)
+	require.InDelta(t, 2.0, m3.LongContextOutputCostMultiplier, 1e-12)
+}
+
 func TestGetModelPricing_Gpt53CodexSparkUsesGpt51CodexPricing(t *testing.T) {
 	sparkPricing := &LiteLLMModelPricing{InputCostPerToken: 1}
 	gpt53Pricing := &LiteLLMModelPricing{InputCostPerToken: 9}

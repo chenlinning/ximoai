@@ -490,33 +490,47 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{
 			name:              "deepseek v4 pro",
 			model:             "deepseek-v4-pro",
-			expectedInput:     4.35e-7,
-			expectedOutput:    floatPtr(8.7e-7),
-			expectedCacheRead: floatPtr(3.625e-9),
+			expectedInput:     1.32e-6,
+			expectedOutput:    floatPtr(3.96e-6),
+			expectedCacheRead: floatPtr(0.044e-6),
 		},
 		{
 			name:              "deepseek v4 flash",
 			model:             "deepseek-v4-flash",
-			expectedInput:     1.4e-7,
-			expectedOutput:    floatPtr(2.8e-7),
-			expectedCacheRead: floatPtr(2.8e-9),
+			expectedInput:     0.44e-6,
+			expectedOutput:    floatPtr(1.32e-6),
+			expectedCacheRead: floatPtr(0.014e-6),
+		},
+		{
+			name:              "deepseek v4 flash vision",
+			model:             "deepseek-v4-flash-vision-exp",
+			expectedInput:     0.44e-6,
+			expectedOutput:    floatPtr(1.32e-6),
+			expectedCacheRead: floatPtr(0.014e-6),
 		},
 		{
 			name:              "deepseek chat alias → flash",
 			model:             "deepseek-chat",
-			expectedInput:     1.4e-7,
-			expectedOutput:    floatPtr(2.8e-7),
-			expectedCacheRead: floatPtr(2.8e-9),
+			expectedInput:     0.44e-6,
+			expectedOutput:    floatPtr(1.32e-6),
+			expectedCacheRead: floatPtr(0.014e-6),
 		},
 		{
 			name:              "deepseek reasoner alias → flash",
 			model:             "deepseek-reasoner",
-			expectedInput:     1.4e-7,
-			expectedOutput:    floatPtr(2.8e-7),
-			expectedCacheRead: floatPtr(2.8e-9),
+			expectedInput:     0.44e-6,
+			expectedOutput:    floatPtr(1.32e-6),
+			expectedCacheRead: floatPtr(0.014e-6),
 		},
 
 		// ---- 智谱 GLM（z.ai USD 口径）----
+		{
+			name:              "glm 5.3 flagship",
+			model:             "glm-5.3",
+			expectedInput:     1.4e-6,
+			expectedOutput:    floatPtr(4.4e-6),
+			expectedCacheRead: floatPtr(0.26e-6),
+		},
 		{
 			name:              "glm 5.2 flagship",
 			model:             "glm-5.2",
@@ -671,7 +685,21 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "kimi-k2.6",
 			expectedInput:     0.95e-6,
 			expectedOutput:    floatPtr(4e-6),
-			expectedCacheRead: floatPtr(0.15e-6),
+			expectedCacheRead: floatPtr(0.16e-6),
+		},
+		{
+			name:              "kimi k2.7 code",
+			model:             "kimi-k2.7-code",
+			expectedInput:     0.95e-6,
+			expectedOutput:    floatPtr(4e-6),
+			expectedCacheRead: floatPtr(0.19e-6),
+		},
+		{
+			name:              "kimi k2.7 code highspeed",
+			model:             "kimi-k2.7-code-highspeed",
+			expectedInput:     1.90e-6,
+			expectedOutput:    floatPtr(8e-6),
+			expectedCacheRead: floatPtr(0.38e-6),
 		},
 		{
 			name:              "kimi for coding explicit alias",
@@ -685,7 +713,7 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "kimi-k2.5",
 			expectedInput:     0.60e-6,
 			expectedOutput:    floatPtr(3e-6),
-			expectedCacheRead: floatPtr(0.098e-6),
+			expectedCacheRead: floatPtr(0.10e-6),
 		},
 		{
 			name:              "kimi k2-thinking",
@@ -707,7 +735,7 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "kimi-k2.6",
 			expectedInput:     0.95e-6, // = k2.6 不是 k2 的 0.56e-6
 			expectedOutput:    floatPtr(4e-6),
-			expectedCacheRead: floatPtr(0.15e-6),
+			expectedCacheRead: floatPtr(0.16e-6),
 		},
 		{
 			name:              "kimi k2 thinking hyphenated variant",
@@ -721,16 +749,16 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{
 			name:              "minimax m3",
 			model:             "minimax-m3",
-			expectedInput:     0.60e-6,
-			expectedOutput:    floatPtr(2.40e-6),
-			expectedCacheRead: floatPtr(0.12e-6),
+			expectedInput:     0.30e-6,
+			expectedOutput:    floatPtr(1.20e-6),
+			expectedCacheRead: floatPtr(0.06e-6),
 		},
 		{
 			name:              "minimax m3 long ctx boundary keep standard tier",
 			model:             "minimax-m3-long", // 仍按 standard tier (≤512K)
-			expectedInput:     0.60e-6,
-			expectedOutput:    floatPtr(2.40e-6),
-			expectedCacheRead: floatPtr(0.12e-6),
+			expectedInput:     0.30e-6,
+			expectedOutput:    floatPtr(1.20e-6),
+			expectedCacheRead: floatPtr(0.06e-6),
 		},
 		{
 			name:              "minimax m2.7",
@@ -751,6 +779,20 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "minimax-m2.5",
 			expectedInput:     0.30e-6,
 			expectedOutput:    floatPtr(1.20e-6),
+			expectedCacheRead: floatPtr(0.03e-6),
+		},
+		{
+			name:              "minimax m2.5 highspeed",
+			model:             "minimax-m2.5-highspeed",
+			expectedInput:     0.60e-6,
+			expectedOutput:    floatPtr(2.40e-6),
+			expectedCacheRead: floatPtr(0.03e-6),
+		},
+		{
+			name:              "minimax m2.1 highspeed",
+			model:             "minimax-m2.1-highspeed",
+			expectedInput:     0.60e-6,
+			expectedOutput:    floatPtr(2.40e-6),
 			expectedCacheRead: floatPtr(0.03e-6),
 		},
 		{
@@ -780,7 +822,12 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{name: "doubao unknown no fallback", model: "doubao-pro", expectNilPricing: true},
 		{name: "doubao text embedding no fallback", model: "doubao-embedding-text-240515", expectNilPricing: true},
 		{name: "hunyuan unknown no fallback", model: "hunyuan-t1", expectNilPricing: true},
-		{name: "moonshot v1 not covered", model: "moonshot-v1-8k", expectNilPricing: true},
+		{
+			name:           "moonshot v1 8k",
+			model:          "moonshot-v1-8k",
+			expectedInput:  0.20e-6,
+			expectedOutput: floatPtr(2e-6),
+		},
 		// bare k3 仅精确/后缀匹配：相似未知型号不得因含 "k3" 误命中。
 		{name: "k3-like unknown no fallback", model: "foo-k3-bar", expectNilPricing: true},
 		// 路径最后一段不是 /k3：foo-k3 不得因 HasSuffix("/k3") 或 Contains 误命中。

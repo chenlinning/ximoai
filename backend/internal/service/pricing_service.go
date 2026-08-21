@@ -388,6 +388,7 @@ func (s *PricingService) downloadPricingData() error {
 		return fmt.Errorf("parse pricing data: %w", err)
 	}
 	data = s.mergeFallbackPricingData(data)
+	data = s.applyOfficialPricingOverrides(data)
 
 	// 保存到本地文件
 	pricingFile := s.getPricingFilePath()
@@ -527,6 +528,7 @@ func (s *PricingService) loadPricingData(filePath string) error {
 		return fmt.Errorf("parse pricing data: %w", err)
 	}
 	pricingData = s.mergeFallbackPricingData(pricingData)
+	pricingData = s.applyOfficialPricingOverrides(pricingData)
 
 	// 计算哈希
 	hash := sha256.Sum256(data)
@@ -575,6 +577,17 @@ func (s *PricingService) mergeFallbackPricingData(data map[string]*LiteLLMModelP
 	}
 	if merged > 0 {
 		logger.LegacyPrintf("service.pricing", "[Pricing] Merged %d fallback-only models", merged)
+	}
+	return data
+}
+
+func (s *PricingService) applyOfficialPricingOverrides(data map[string]*LiteLLMModelPricing) map[string]*LiteLLMModelPricing {
+	if data == nil {
+		data = make(map[string]*LiteLLMModelPricing)
+	}
+	overrides := currentOfficialLiteLLMPricingOverrides()
+	for modelName, pricing := range overrides {
+		data[modelName] = pricing
 	}
 	return data
 }

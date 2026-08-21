@@ -572,7 +572,7 @@ func (s *BillingService) initFallbackPricing() {
 	// ---- 月之暗面 Kimi（K 系列）----
 	// Source: https://platform.moonshot.cn/docs/pricing/overview (元/百万 tokens 口径)
 	//       交叉验证：https://www.tmtpost.com/7961404.html (USD 口径)
-	// Moonshot V1 (¥2/¥5/¥10 多 tier) 公开页未直接标注 USD 价，本分支不覆盖，避免误计价。
+	// Moonshot V1 USD 价目：https://platform.kimi.ai/docs/pricing/chat-v1.md
 	// K2-0905 / K2-0711 官方页面未保留定价，不覆盖。
 	// Kimi K3 国际站 USD 价目：https://platform.kimi.ai/docs/pricing/chat-k3.md
 	// Kimi Code bare aliases（k3 / k3-256k）官方无按 token 价目；复用 API Platform
@@ -746,6 +746,10 @@ func (s *BillingService) initFallbackPricing() {
 		LongContextInputMultiplier:    2,
 		LongContextOutputMultiplier:   2,
 	}
+
+	for model, pricing := range currentOfficialBillingFallbacks() {
+		s.fallbackPrices[model] = pricing
+	}
 }
 
 // getFallbackPricing 根据模型系列获取回退价格
@@ -797,6 +801,9 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 
 	// DeepSeek V4 系列：仅匹配已知 V4 Pro/Flash 与官方兼容别名
 	// （deepseek-chat / deepseek-reasoner → V4 Flash），未知 deepseek-* 型号不回退，避免误计价。
+	if strings.Contains(modelLower, "deepseek-v4-flash-vision-exp") {
+		return s.fallbackPrices["deepseek-v4-flash-vision-exp"]
+	}
 	if strings.Contains(modelLower, "deepseek-v4-flash") {
 		return s.fallbackPrices["deepseek-v4-flash"]
 	}
@@ -814,6 +821,9 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	// 智谱 GLM（z.ai 公开 SKU：glm-5.2 / glm-5.1 / glm-5 / glm-5-turbo / glm-4.7 / glm-4.6 / glm-4.5 等）
 	// 匹配顺序：先判别最高 tier，再依次降级。
 	// 注意：带小数点的型号必须排在裸 "glm-5" 之前，否则会被 strings.Contains 抢走。
+	if strings.Contains(modelLower, "glm-5.3") {
+		return s.fallbackPrices["glm-5.3"]
+	}
 	if strings.Contains(modelLower, "glm-5.2") {
 		return s.fallbackPrices["glm-5.2"]
 	}
@@ -870,6 +880,12 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 		strings.HasSuffix(modelLower, "/k3") || strings.HasSuffix(modelLower, "/k3-256k") {
 		return s.fallbackPrices["kimi-k3"]
 	}
+	if strings.Contains(modelLower, "kimi-k2.7-code-highspeed") || strings.Contains(modelLower, "kimi-k2-7-code-highspeed") {
+		return s.fallbackPrices["kimi-k2.7-code-highspeed"]
+	}
+	if strings.Contains(modelLower, "kimi-k2.7-code") || strings.Contains(modelLower, "kimi-k2-7-code") {
+		return s.fallbackPrices["kimi-k2.7-code"]
+	}
 	if strings.Contains(modelLower, "kimi-k2.6") || strings.Contains(modelLower, "kimi-k2-6") {
 		return s.fallbackPrices["kimi-k2.6"]
 	}
@@ -882,6 +898,20 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	if strings.Contains(modelLower, "kimi-k2") || strings.Contains(modelLower, "kimi/k2") {
 		return s.fallbackPrices["kimi-k2"]
 	}
+	switch {
+	case modelLower == "moonshot-v1-8k" || strings.HasSuffix(modelLower, "/moonshot-v1-8k"):
+		return s.fallbackPrices["moonshot-v1-8k"]
+	case modelLower == "moonshot-v1-32k" || strings.HasSuffix(modelLower, "/moonshot-v1-32k"):
+		return s.fallbackPrices["moonshot-v1-32k"]
+	case modelLower == "moonshot-v1-128k" || strings.HasSuffix(modelLower, "/moonshot-v1-128k"):
+		return s.fallbackPrices["moonshot-v1-128k"]
+	case modelLower == "moonshot-v1-8k-vision-preview" || strings.HasSuffix(modelLower, "/moonshot-v1-8k-vision-preview"):
+		return s.fallbackPrices["moonshot-v1-8k-vision-preview"]
+	case modelLower == "moonshot-v1-32k-vision-preview" || strings.HasSuffix(modelLower, "/moonshot-v1-32k-vision-preview"):
+		return s.fallbackPrices["moonshot-v1-32k-vision-preview"]
+	case modelLower == "moonshot-v1-128k-vision-preview" || strings.HasSuffix(modelLower, "/moonshot-v1-128k-vision-preview"):
+		return s.fallbackPrices["moonshot-v1-128k-vision-preview"]
+	}
 
 	// MiniMax M 系列（M3 / M2.7 / M2.5 / M2.1 / M2；含 highspeed 变体）
 	if strings.Contains(modelLower, "minimax-m3") {
@@ -893,8 +923,14 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	if strings.Contains(modelLower, "minimax-m2.7") || strings.Contains(modelLower, "minimax-m2-7") {
 		return s.fallbackPrices["minimax-m2.7"]
 	}
+	if strings.Contains(modelLower, "minimax-m2.5-highspeed") || strings.Contains(modelLower, "minimax-m2-5-highspeed") {
+		return s.fallbackPrices["minimax-m2.5-highspeed"]
+	}
 	if strings.Contains(modelLower, "minimax-m2.5") || strings.Contains(modelLower, "minimax-m2-5") {
 		return s.fallbackPrices["minimax-m2.5"]
+	}
+	if strings.Contains(modelLower, "minimax-m2.1-highspeed") || strings.Contains(modelLower, "minimax-m2-1-highspeed") {
+		return s.fallbackPrices["minimax-m2.1-highspeed"]
 	}
 	if strings.Contains(modelLower, "minimax-m2.1") || strings.Contains(modelLower, "minimax-m2-1") {
 		return s.fallbackPrices["minimax-m2.1"]
