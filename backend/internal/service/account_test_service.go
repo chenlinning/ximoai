@@ -101,7 +101,7 @@ const (
 	AccountTestModeGrokRealtime = "realtime"
 
 	defaultGrokRealtimeTestModel = "grok-voice-latest"
-	grokRealtimeProbeTimeout     = 12 * time.Second
+	grokRealtimeProbeTimeout     = DefaultGrokRealtimeDialTimeout
 )
 
 const (
