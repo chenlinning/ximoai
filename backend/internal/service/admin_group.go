@@ -643,6 +643,8 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 
 	// 渠道缓存里存了 groupID → platform 的映射，改了平台要让它失效（见函数末尾）
 	previousPlatform := group.Platform
+	previousName := group.Name
+	previousStatus := group.Status
 
 	if input.Name != "" {
 		group.Name = input.Name
@@ -902,7 +904,12 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
 	}
-	if input.RateMultiplier != nil && s.membershipRateSyncer != nil {
+	if group.Status == StatusDisabled && s.membershipKeyCleaner != nil {
+		if err := s.membershipKeyCleaner.RemoveManagedKeysByGroup(ctx, id); err != nil {
+			return nil, fmt.Errorf("remove membership keys after group disable: %w", err)
+		}
+	}
+	if (input.RateMultiplier != nil || group.Name != previousName || group.Status != previousStatus) && s.membershipRateSyncer != nil {
 		if err := s.membershipRateSyncer.SyncGroupRate(ctx, id); err != nil {
 			logger.LegacyPrintf("service.admin", "sync membership rates after group update failed: group_id=%d err=%v", id, err)
 		}
@@ -1015,6 +1022,11 @@ func normalizeGroupModelPricing(platform string, pricing []ChannelModelPricing) 
 }
 
 func (s *adminServiceImpl) DeleteGroup(ctx context.Context, id int64) error {
+	if s.membershipKeyCleaner != nil {
+		if err := s.membershipKeyCleaner.RemoveManagedKeysByGroup(ctx, id); err != nil {
+			return fmt.Errorf("remove membership keys before group deletion: %w", err)
+		}
+	}
 	var groupKeys []string
 	if s.authCacheInvalidator != nil {
 		keys, err := s.apiKeyRepo.ListKeysByGroupID(ctx, id)

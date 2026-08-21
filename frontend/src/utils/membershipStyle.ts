@@ -1,6 +1,6 @@
 import { i18n } from '@/i18n'
 
-export const defaultMembershipColor = '#a15a2b'
+export const defaultMembershipColor = '#94a3b8'
 
 export interface MembershipLevelPresentation {
   nameKey: string
@@ -8,10 +8,6 @@ export interface MembershipLevelPresentation {
 }
 
 const fixedMembershipLevelPresentations: Record<string, MembershipLevelPresentation> = {
-  bronze: {
-    nameKey: 'membership.levels.bronze',
-    color: '#a15a2b'
-  },
   silver: {
     nameKey: 'membership.levels.silver',
     color: '#94a3b8'
@@ -35,7 +31,7 @@ const membershipColorPattern = /^#[0-9a-fA-F]{6}$/
 export function membershipLevelPresentation(code?: string | null): MembershipLevelPresentation {
   const key = code?.trim().toLowerCase() || ''
   return fixedMembershipLevelPresentations[key] || {
-    nameKey: 'membership.levels.bronze',
+    nameKey: 'membership.levels.silver',
     color: defaultMembershipColor
   }
 }
@@ -44,7 +40,7 @@ export function membershipLevelDisplayName(code?: string | null, fallback?: stri
   const key = code?.trim().toLowerCase() || ''
   const presentation = fixedMembershipLevelPresentations[key]
   if (!presentation) {
-    return fallback || i18n.global.t('membership.levels.bronze')
+    return fallback || i18n.global.t('membership.levels.silver')
   }
   return i18n.global.t(presentation.nameKey)
 }

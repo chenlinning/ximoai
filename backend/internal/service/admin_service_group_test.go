@@ -14,12 +14,22 @@ import (
 )
 
 type membershipRateSyncerStubForGroupUpdate struct {
-	err     error
-	groupID int64
+	err      error
+	groupIDs []int64
 }
 
 func (s *membershipRateSyncerStubForGroupUpdate) SyncGroupRate(_ context.Context, groupID int64) error {
-	s.groupID = groupID
+	s.groupIDs = append(s.groupIDs, groupID)
+	return s.err
+}
+
+type membershipKeyCleanerStubForGroupUpdate struct {
+	err      error
+	groupIDs []int64
+}
+
+func (s *membershipKeyCleanerStubForGroupUpdate) RemoveManagedKeysByGroup(_ context.Context, groupID int64) error {
+	s.groupIDs = append(s.groupIDs, groupID)
 	return s.err
 }
 
@@ -851,8 +861,36 @@ func TestAdminService_UpdateGroup_InvalidatesCacheAndSucceedsWhenMembershipSyncN
 
 	require.NoError(t, err)
 	require.NotNil(t, group)
-	require.Equal(t, int64(1), rateSyncer.groupID)
+	require.Equal(t, []int64{1}, rateSyncer.groupIDs)
 	require.Equal(t, []int64{1}, invalidator.groupIDs)
+}
+
+func TestAdminService_UpdateGroup_SyncsMembershipKeysAfterNameChange(t *testing.T) {
+	repo := &groupRepoStubForAdmin{getByID: &Group{
+		ID: 1, Name: "old-name", Platform: PlatformAnthropic, Status: StatusActive, RateMultiplier: 1,
+	}}
+	rateSyncer := &membershipRateSyncerStubForGroupUpdate{}
+	svc := &adminServiceImpl{groupRepo: repo, membershipRateSyncer: rateSyncer}
+
+	group, err := svc.UpdateGroup(context.Background(), 1, &UpdateGroupInput{Name: "new-name"})
+
+	require.NoError(t, err)
+	require.Equal(t, "new-name", group.Name)
+	require.Equal(t, []int64{1}, rateSyncer.groupIDs)
+}
+
+func TestAdminService_UpdateGroup_RemovesManagedKeysWhenDisabled(t *testing.T) {
+	repo := &groupRepoStubForAdmin{getByID: &Group{
+		ID: 1, Name: "group", Platform: PlatformAnthropic, Status: StatusActive, RateMultiplier: 1,
+	}}
+	cleaner := &membershipKeyCleanerStubForGroupUpdate{}
+	svc := &adminServiceImpl{groupRepo: repo, membershipKeyCleaner: cleaner}
+
+	group, err := svc.UpdateGroup(context.Background(), 1, &UpdateGroupInput{Status: StatusDisabled})
+
+	require.NoError(t, err)
+	require.Equal(t, StatusDisabled, group.Status)
+	require.Equal(t, []int64{1}, cleaner.groupIDs)
 }
 
 func TestAdminService_UpdateGroup_ReasoningEffortMappingsTriState(t *testing.T) {

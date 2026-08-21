@@ -653,20 +653,34 @@ func TestAdminService_DeleteUser_DeleteError(t *testing.T) {
 func TestAdminService_DeleteGroup_Success_WithCacheInvalidation(t *testing.T) {
 	cache := newBillingCacheStub(2)
 	repo := &groupRepoStub{affectedUserIDs: []int64{11, 12}}
+	cleaner := &membershipKeyCleanerStubForGroupUpdate{}
 	svc := &adminServiceImpl{
-		groupRepo:           repo,
-		billingCacheService: &BillingCacheService{cache: cache},
+		groupRepo:            repo,
+		billingCacheService:  &BillingCacheService{cache: cache},
+		membershipKeyCleaner: cleaner,
 	}
 
 	err := svc.DeleteGroup(context.Background(), 5)
 	require.NoError(t, err)
 	require.Equal(t, []int64{5}, repo.deleteCalls)
+	require.Equal(t, []int64{5}, cleaner.groupIDs)
 
 	calls := waitForInvalidations(t, cache.invalidations, 2)
 	require.ElementsMatch(t, []subscriptionInvalidateCall{
 		{userID: 11, groupID: 5},
 		{userID: 12, groupID: 5},
 	}, calls)
+}
+
+func TestAdminService_DeleteGroup_StopsWhenManagedKeyCleanupFails(t *testing.T) {
+	repo := &groupRepoStub{}
+	cleaner := &membershipKeyCleanerStubForGroupUpdate{err: errors.New("cleanup failed")}
+	svc := &adminServiceImpl{groupRepo: repo, membershipKeyCleaner: cleaner}
+
+	err := svc.DeleteGroup(context.Background(), 5)
+
+	require.ErrorContains(t, err, "cleanup failed")
+	require.Empty(t, repo.deleteCalls)
 }
 
 func TestAdminService_DeleteGroup_InvalidatesAuthCacheForBoundKeys(t *testing.T) {

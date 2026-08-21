@@ -666,6 +666,7 @@ type adminServiceImpl struct {
 	runtimeBlocker       AccountRuntimeBlocker
 	membershipBootstrap  MembershipBootstrapper
 	membershipRateSyncer MembershipGroupRateSyncer
+	membershipKeyCleaner MembershipManagedKeyCleaner
 	affiliateService     adminRechargeAffiliateAccruer
 	compositeRouteRepo   CompositeModelRouteRepository
 	compositeResolver    *CompositeRouteResolver
@@ -691,9 +692,16 @@ type MembershipGroupRateSyncer interface {
 	SyncGroupRate(ctx context.Context, groupID int64) error
 }
 
+type MembershipManagedKeyCleaner interface {
+	RemoveManagedKeysByGroup(ctx context.Context, groupID int64) error
+}
+
 func (s *adminServiceImpl) SetMembershipService(bootstrapper MembershipBootstrapper, rateSyncer MembershipGroupRateSyncer) {
 	s.membershipBootstrap = bootstrapper
 	s.membershipRateSyncer = rateSyncer
+	if cleaner, ok := rateSyncer.(MembershipManagedKeyCleaner); ok {
+		s.membershipKeyCleaner = cleaner
+	}
 }
 
 // NewAdminService creates a new AdminService

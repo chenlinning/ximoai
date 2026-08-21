@@ -351,6 +351,26 @@ func (r *membershipRepository) ListManagedKeysByUser(ctx context.Context, userID
 	return keys, rows.Err()
 }
 
+func (r *membershipRepository) ListManagedKeysByGroup(ctx context.Context, groupID int64) ([]service.MembershipManagedKey, error) {
+	rows, err := r.sql.QueryContext(ctx, managedKeysSelectSQL()+`
+		WHERE mk.group_id = $1
+		ORDER BY mk.id ASC
+	`, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	var keys []service.MembershipManagedKey
+	for rows.Next() {
+		key, err := scanManagedKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, *key)
+	}
+	return keys, rows.Err()
+}
+
 func (r *membershipRepository) GetManagedKeyByUserGroup(ctx context.Context, userID, groupID int64) (*service.MembershipManagedKey, error) {
 	rows, err := r.sql.QueryContext(ctx, managedKeysSelectSQL()+`
 		WHERE mk.user_id = $1 AND mk.group_id = $2
@@ -415,6 +435,14 @@ func (r *membershipRepository) SetManagedKeyStatus(ctx context.Context, userID, 
 			updated_at = NOW()
 		WHERE user_id = $1 AND group_id = $2
 	`, userID, groupID, status, reason, levelID)
+	return err
+}
+
+func (r *membershipRepository) DeleteManagedKey(ctx context.Context, userID, groupID int64) error {
+	_, err := r.sql.ExecContext(ctx, `
+		DELETE FROM membership_managed_keys
+		WHERE user_id = $1 AND group_id = $2
+	`, userID, groupID)
 	return err
 }
 

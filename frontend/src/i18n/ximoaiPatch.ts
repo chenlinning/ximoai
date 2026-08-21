@@ -226,7 +226,6 @@ const zhPatch: MessageTree = {
   },
   membership: {
     levels: {
-      bronze: '黄铜会员',
       silver: '白银会员',
       gold: '黄金会员',
       platinum: '铂金会员',
@@ -276,7 +275,7 @@ const zhPatch: MessageTree = {
     default: '默认',
     unconfigured: '未配置',
     noLevelsTitle: '暂无会员等级',
-    noLevelsDescription: '系统会通过迁移创建黄铜、白银、黄金、铂金、钻石五个固定会员等级。',
+    noLevelsDescription: '系统会通过迁移创建白银、黄金、铂金、钻石四个固定会员等级。',
     assignTitle: '分配用户会员等级',
     assignDescription: '按用户 ID 分配或调整会员等级',
     userId: '用户 ID',
@@ -608,7 +607,6 @@ const enPatch: MessageTree = {
   },
   membership: {
     levels: {
-      bronze: 'Brass Member',
       silver: 'Silver Member',
       gold: 'Gold Member',
       platinum: 'Platinum Member',
@@ -658,7 +656,7 @@ const enPatch: MessageTree = {
     default: 'Default',
     unconfigured: 'Not configured',
     noLevelsTitle: 'No membership levels',
-    noLevelsDescription: 'Migrations create five fixed levels: Brass, Silver, Gold, Platinum, and Diamond.',
+    noLevelsDescription: 'Migrations create four fixed levels: Silver, Gold, Platinum, and Diamond.',
     assignTitle: 'Assign User Membership',
     assignDescription: 'Assign or update a membership level by user ID',
     userId: 'User ID',

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"log"
 	"regexp"
 	"strings"
@@ -30,7 +31,7 @@ const (
 	ManagedKeyDisabledLevelDisabled     = "membership_level_disabled"
 	ManagedKeyDisabledRepairDisabled    = "repair_disabled"
 
-	defaultMembershipLevelColor = "#a15a2b"
+	defaultMembershipLevelColor = "#94a3b8"
 )
 
 var (
@@ -147,10 +148,12 @@ type MembershipRepository interface {
 	ListActiveUserMembershipsAfterID(ctx context.Context, afterID int64, limit int) ([]UserMembership, error)
 
 	ListManagedKeysByUser(ctx context.Context, userID int64) ([]MembershipManagedKey, error)
+	ListManagedKeysByGroup(ctx context.Context, groupID int64) ([]MembershipManagedKey, error)
 	GetManagedKeyByUserGroup(ctx context.Context, userID, groupID int64) (*MembershipManagedKey, error)
 	GetManagedKeyByAPIKeyID(ctx context.Context, apiKeyID int64) (*MembershipManagedKey, error)
 	UpsertManagedKey(ctx context.Context, key MembershipManagedKey) error
 	SetManagedKeyStatus(ctx context.Context, userID, groupID int64, status, reason string, levelID int64) error
+	DeleteManagedKey(ctx context.Context, userID, groupID int64) error
 }
 
 type MembershipBootstrapper interface {
@@ -363,7 +366,11 @@ func (s *MembershipService) GetUserMembership(ctx context.Context, userID int64)
 		return nil, err
 	}
 	groups := make([]Group, 0, len(level.Groups))
-	groups = append(groups, level.Groups...)
+	for _, group := range level.Groups {
+		if group.IsActive() {
+			groups = append(groups, group)
+		}
+	}
 	if levels == nil {
 		levels = make([]MembershipLevel, 0)
 	}
@@ -396,10 +403,10 @@ func (s *MembershipService) SyncUserMembership(ctx context.Context, userID int64
 		return err
 	}
 	if !level.Enabled {
-		return s.expireToDefault(ctx, membership, ManagedKeyDisabledLevelDisabled)
+		return s.expireToDefault(ctx, membership)
 	}
 	if membership.ExpiresAt != nil && !time.Now().Before(*membership.ExpiresAt) {
-		return s.expireToDefault(ctx, membership, ManagedKeyDisabledMembershipExpired)
+		return s.expireToDefault(ctx, membership)
 	}
 
 	managedKeys, err := s.repo.ListManagedKeysByUser(ctx, userID)
@@ -409,10 +416,16 @@ func (s *MembershipService) SyncUserMembership(ctx context.Context, userID int64
 
 	desired := make(map[int64]Group, len(level.Groups))
 	for _, group := range level.Groups {
+		if !group.IsActive() {
+			continue
+		}
 		desired[group.ID] = group
 	}
 	rateUpdates := make(map[int64]*float64)
 	for _, group := range level.Groups {
+		if !group.IsActive() {
+			continue
+		}
 		rate := group.RateMultiplier * level.DiscountRate
 		rateUpdates[group.ID] = &rate
 		if group.IsExclusive && s.userRepo != nil {
@@ -435,7 +448,7 @@ func (s *MembershipService) SyncUserMembership(ctx context.Context, userID int64
 				return fmt.Errorf("remove membership group access: %w", err)
 			}
 		}
-		if err := s.DisableManagedKey(ctx, userID, managed.GroupID, ManagedKeyDisabledGroupRemoved); err != nil {
+		if err := s.RemoveManagedKey(ctx, userID, managed.GroupID); err != nil {
 			return err
 		}
 	}
@@ -493,7 +506,7 @@ func (s *MembershipService) ExpireMemberships(ctx context.Context) error {
 		}
 		var firstErr error
 		for _, membership := range expired {
-			if err := s.expireToDefault(ctx, &membership, ManagedKeyDisabledMembershipExpired); err != nil {
+			if err := s.expireToDefault(ctx, &membership); err != nil {
 				logger.LegacyPrintf("service.membership", "expire membership failed: user_id=%d membership_id=%d err=%v", membership.UserID, membership.ID, err)
 				if firstErr == nil {
 					firstErr = err
@@ -544,20 +557,23 @@ func (s *MembershipService) EnsureManagedKey(ctx context.Context, userID, groupI
 	if err != nil {
 		return err
 	}
+	if !group.IsActive() {
+		return s.RemoveManagedKey(ctx, userID, groupID)
+	}
+	name := managedAPIKeyName(group.Name)
 	existing, err := s.repo.GetManagedKeyByUserGroup(ctx, userID, groupID)
 	if err == nil && existing != nil {
-		if shouldRestoreManagedAPIKey(existing) {
-			status := StatusAPIKeyActive
-			_, err := s.apiKeyService.Update(withManagedAPIKeyBypass(ctx), existing.APIKeyID, userID, UpdateAPIKeyRequest{Status: &status})
-			if err != nil {
-				return fmt.Errorf("restore membership api key: %w", err)
+		if existing.Status == ManagedKeyStatusActive && existing.APIKey != nil && existing.APIKey.Status == StatusAPIKeyActive {
+			if existing.APIKey.Name != html.EscapeString(name) {
+				if _, err := s.apiKeyService.Update(withManagedAPIKeyBypass(ctx), existing.APIKeyID, userID, UpdateAPIKeyRequest{Name: &name}); err != nil {
+					return fmt.Errorf("rename membership api key: %w", err)
+				}
 			}
 			return s.repo.SetManagedKeyStatus(ctx, userID, groupID, ManagedKeyStatusActive, "", levelID)
 		}
-		if existing.APIKey != nil && existing.APIKey.Status == StatusAPIKeyActive {
-			return s.repo.SetManagedKeyStatus(ctx, userID, groupID, ManagedKeyStatusActive, "", levelID)
+		if err := s.RemoveManagedKey(ctx, userID, groupID); err != nil {
+			return err
 		}
-		return s.repo.SetManagedKeyStatus(ctx, userID, groupID, existing.Status, existing.DisabledReason, levelID)
 	}
 	if err != nil && !errors.Is(err, ErrAPIKeyNotFound) {
 		return err
@@ -567,7 +583,6 @@ func (s *MembershipService) EnsureManagedKey(ctx context.Context, userID, groupI
 			return fmt.Errorf("grant membership group access: %w", err)
 		}
 	}
-	name := fmt.Sprintf("Membership Key - %s", group.Name)
 	key, err := s.apiKeyService.Create(withManagedAPIKeyBypass(ctx), userID, CreateAPIKeyRequest{
 		Name:    name,
 		GroupID: &groupID,
@@ -584,7 +599,7 @@ func (s *MembershipService) EnsureManagedKey(ctx context.Context, userID, groupI
 	})
 }
 
-func (s *MembershipService) DisableManagedKey(ctx context.Context, userID, groupID int64, reason string) error {
+func (s *MembershipService) RemoveManagedKey(ctx context.Context, userID, groupID int64) error {
 	managed, err := s.repo.GetManagedKeyByUserGroup(ctx, userID, groupID)
 	if err != nil {
 		if errors.Is(err, ErrAPIKeyNotFound) {
@@ -592,46 +607,46 @@ func (s *MembershipService) DisableManagedKey(ctx context.Context, userID, group
 		}
 		return err
 	}
-	status := StatusAPIKeyDisabled
-	if s.apiKeyService != nil {
-		if _, err := s.apiKeyService.Update(withManagedAPIKeyBypass(ctx), managed.APIKeyID, userID, UpdateAPIKeyRequest{Status: &status}); err != nil {
-			return fmt.Errorf("disable membership api key: %w", err)
+	if managed.APIKey != nil && s.apiKeyService != nil {
+		if err := s.apiKeyService.Delete(withManagedAPIKeyBypass(ctx), managed.APIKeyID, userID); err != nil && !errors.Is(err, ErrAPIKeyNotFound) {
+			return fmt.Errorf("delete membership api key: %w", err)
 		}
 	}
-	return s.repo.SetManagedKeyStatus(ctx, userID, groupID, ManagedKeyStatusDisabled, reason, managed.MembershipLevelID)
+	return s.repo.DeleteManagedKey(ctx, userID, groupID)
+}
+
+func (s *MembershipService) RemoveManagedKeysByGroup(ctx context.Context, groupID int64) error {
+	managedKeys, err := s.repo.ListManagedKeysByGroup(ctx, groupID)
+	if err != nil {
+		return err
+	}
+	var cleanupErr error
+	for _, managed := range managedKeys {
+		if err := s.RemoveManagedKey(ctx, managed.UserID, groupID); err != nil {
+			cleanupErr = errors.Join(cleanupErr, fmt.Errorf("remove membership key for user %d: %w", managed.UserID, err))
+		}
+	}
+	return cleanupErr
 }
 
 func (s *MembershipService) RestoreManagedKey(ctx context.Context, userID, groupID, levelID int64) error {
 	return s.EnsureManagedKey(ctx, userID, groupID, levelID)
 }
 
-func shouldRestoreManagedAPIKey(key *MembershipManagedKey) bool {
-	if key == nil || key.APIKey == nil {
-		return false
+func managedAPIKeyName(groupName string) string {
+	name := fmt.Sprintf("Membership Key - %s", groupName)
+	runes := []rune(name)
+	if len(runes) > 100 {
+		return string(runes[:100])
 	}
-	if key.APIKey.Status != StatusAPIKeyDisabled || key.Status != ManagedKeyStatusDisabled {
-		return false
-	}
-	return isMembershipManagedKeyDisabledReason(key.DisabledReason)
-}
-
-func isMembershipManagedKeyDisabledReason(reason string) bool {
-	switch reason {
-	case ManagedKeyDisabledMembershipExpired,
-		ManagedKeyDisabledGroupRemoved,
-		ManagedKeyDisabledLevelDisabled,
-		ManagedKeyDisabledRepairDisabled:
-		return true
-	default:
-		return false
-	}
+	return name
 }
 
 func (s *MembershipService) GetManagedKeyByAPIKeyID(ctx context.Context, apiKeyID int64) (*MembershipManagedKey, error) {
 	return s.repo.GetManagedKeyByAPIKeyID(ctx, apiKeyID)
 }
 
-func (s *MembershipService) expireToDefault(ctx context.Context, membership *UserMembership, reason string) error {
+func (s *MembershipService) expireToDefault(ctx context.Context, membership *UserMembership) error {
 	if membership == nil {
 		return nil
 	}
@@ -645,8 +660,8 @@ func (s *MembershipService) expireToDefault(ctx context.Context, membership *Use
 		return err
 	}
 	for _, managed := range managedKeys {
-		if err := s.DisableManagedKey(ctx, membership.UserID, managed.GroupID, reason); err != nil {
-			logger.LegacyPrintf("service.membership", "disable expired membership key failed: user_id=%d group_id=%d err=%v", membership.UserID, managed.GroupID, err)
+		if err := s.RemoveManagedKey(ctx, membership.UserID, managed.GroupID); err != nil {
+			logger.LegacyPrintf("service.membership", "remove expired membership key failed: user_id=%d group_id=%d err=%v", membership.UserID, managed.GroupID, err)
 		}
 		if managed.Group != nil && managed.Group.IsExclusive && s.userRepo != nil {
 			_ = s.userRepo.RemoveGroupFromUserAllowedGroups(ctx, membership.UserID, managed.GroupID)

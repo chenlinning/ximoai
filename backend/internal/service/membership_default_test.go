@@ -2,19 +2,24 @@ package service
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/Wei-Shaw/sub2api/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
 type defaultMembershipRepoStub struct {
-	active       *UserMembership
-	defaultLevel *MembershipLevel
-	levels       []MembershipLevel
-	createInput  *MembershipLevelInput
-	updateInput  *MembershipLevelInput
-	upsertCalled bool
+	active              *UserMembership
+	defaultLevel        *MembershipLevel
+	levels              []MembershipLevel
+	managedKey          *MembershipManagedKey
+	createInput         *MembershipLevelInput
+	updateInput         *MembershipLevelInput
+	upsertCalled        bool
+	managedUpsertCalled bool
+	managedDeleteCalled bool
 }
 
 type expiringMembershipRepoStub struct {
@@ -127,7 +132,17 @@ func (s *defaultMembershipRepoStub) ListManagedKeysByUser(context.Context, int64
 	return nil, nil
 }
 
-func (s *defaultMembershipRepoStub) GetManagedKeyByUserGroup(context.Context, int64, int64) (*MembershipManagedKey, error) {
+func (s *defaultMembershipRepoStub) ListManagedKeysByGroup(context.Context, int64) ([]MembershipManagedKey, error) {
+	if s.managedKey != nil {
+		return []MembershipManagedKey{*s.managedKey}, nil
+	}
+	return nil, nil
+}
+
+func (s *defaultMembershipRepoStub) GetManagedKeyByUserGroup(_ context.Context, userID, groupID int64) (*MembershipManagedKey, error) {
+	if s.managedKey != nil && s.managedKey.UserID == userID && s.managedKey.GroupID == groupID {
+		return s.managedKey, nil
+	}
 	return nil, ErrAPIKeyNotFound
 }
 
@@ -135,12 +150,77 @@ func (s *defaultMembershipRepoStub) GetManagedKeyByAPIKeyID(context.Context, int
 	return nil, ErrAPIKeyNotFound
 }
 
-func (s *defaultMembershipRepoStub) UpsertManagedKey(context.Context, MembershipManagedKey) error {
+func (s *defaultMembershipRepoStub) UpsertManagedKey(_ context.Context, key MembershipManagedKey) error {
+	s.managedUpsertCalled = true
+	s.managedKey = &key
 	return nil
 }
 
 func (s *defaultMembershipRepoStub) SetManagedKeyStatus(context.Context, int64, int64, string, string, int64) error {
 	return nil
+}
+
+func (s *defaultMembershipRepoStub) DeleteManagedKey(context.Context, int64, int64) error {
+	s.managedDeleteCalled = true
+	s.managedKey = nil
+	return nil
+}
+
+type membershipAPIKeyRepoStub struct {
+	APIKeyRepository
+	key        *APIKey
+	createdKey *APIKey
+	deletedIDs []int64
+}
+
+func (s *membershipAPIKeyRepoStub) Create(_ context.Context, key *APIKey) error {
+	key.ID = 200
+	s.key = key
+	s.createdKey = key
+	return nil
+}
+
+func (s *membershipAPIKeyRepoStub) GetByID(context.Context, int64) (*APIKey, error) {
+	if s.key == nil {
+		return nil, ErrAPIKeyNotFound
+	}
+	return s.key, nil
+}
+
+func (s *membershipAPIKeyRepoStub) GetKeyAndOwnerID(context.Context, int64) (string, int64, error) {
+	if s.key == nil {
+		return "", 0, ErrAPIKeyNotFound
+	}
+	return s.key.Key, s.key.UserID, nil
+}
+
+func (s *membershipAPIKeyRepoStub) Update(_ context.Context, key *APIKey, _ APIKeyUpdateFields) error {
+	s.key = key
+	return nil
+}
+
+func (s *membershipAPIKeyRepoStub) DeleteWithAudit(_ context.Context, id int64) error {
+	s.deletedIDs = append(s.deletedIDs, id)
+	s.key = nil
+	return nil
+}
+
+type membershipUserRepoStub struct {
+	UserRepository
+	user *User
+}
+
+func (s *membershipUserRepoStub) GetByID(context.Context, int64) (*User, error) {
+	return s.user, nil
+}
+
+type membershipGroupRepoStub struct {
+	GroupRepository
+	group *Group
+}
+
+func (s *membershipGroupRepoStub) GetByID(context.Context, int64) (*Group, error) {
+	return s.group, nil
 }
 
 func (s *expiringMembershipRepoStub) GetActiveUserMembership(_ context.Context, userID int64) (*UserMembership, error) {
@@ -262,7 +342,7 @@ func TestCreateMembershipLevelAppliesFixedMetadata(t *testing.T) {
 
 	level, err := svc.CreateLevel(context.Background(), MembershipLevelInput{
 		Name:         "Custom",
-		Code:         MembershipLevelCodeBronze,
+		Code:         MembershipLevelCodeSilver,
 		Color:        "green",
 		DiscountRate: 0.8,
 		Enabled:      false,
@@ -274,13 +354,13 @@ func TestCreateMembershipLevelAppliesFixedMetadata(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, level)
 	require.NotNil(t, repo.createInput)
-	require.Equal(t, "黄铜会员", repo.createInput.Name)
-	require.Equal(t, MembershipLevelCodeBronze, repo.createInput.Code)
+	require.Equal(t, "白银会员", repo.createInput.Name)
+	require.Equal(t, MembershipLevelCodeSilver, repo.createInput.Code)
 	require.Equal(t, defaultMembershipLevelColor, repo.createInput.Color)
 	require.True(t, repo.createInput.Enabled)
 	require.True(t, repo.createInput.IsDefault)
 	require.Equal(t, 10, repo.createInput.SortOrder)
-	require.Equal(t, "系统固定黄铜会员等级", repo.createInput.Description)
+	require.Equal(t, "系统固定白银会员等级", repo.createInput.Description)
 	require.Equal(t, 0.8, repo.createInput.DiscountRate)
 }
 
@@ -332,8 +412,8 @@ func TestUpdateMembershipLevelKeepsFixedMetadata(t *testing.T) {
 	require.Equal(t, "#94a3b8", repo.updateInput.Color)
 	require.Equal(t, 0.75, repo.updateInput.DiscountRate)
 	require.True(t, repo.updateInput.Enabled)
-	require.False(t, repo.updateInput.IsDefault)
-	require.Equal(t, 20, repo.updateInput.SortOrder)
+	require.True(t, repo.updateInput.IsDefault)
+	require.Equal(t, 10, repo.updateInput.SortOrder)
 	require.Equal(t, "系统固定白银会员等级", repo.updateInput.Description)
 	require.Equal(t, []int64{10, 20}, repo.updateInput.GroupIDs)
 }
@@ -341,59 +421,64 @@ func TestUpdateMembershipLevelKeepsFixedMetadata(t *testing.T) {
 func TestFixedMembershipLevelsIncludePlatinumTier(t *testing.T) {
 	defs := FixedMembershipLevelDefinitions()
 
-	require.Len(t, defs, 5)
-	require.Equal(t, MembershipLevelCodeBronze, defs[0].Code)
-	require.Equal(t, "黄铜会员", defs[0].Name)
-	require.Equal(t, "#a15a2b", defs[0].Color)
-	require.Equal(t, MembershipLevelCodePlatinum, defs[3].Code)
-	require.Equal(t, "铂金会员", defs[3].Name)
-	require.Equal(t, "#b89a56", defs[3].Color)
+	require.Len(t, defs, 4)
+	require.Equal(t, MembershipLevelCodeSilver, defs[0].Code)
+	require.Equal(t, "白银会员", defs[0].Name)
+	require.Equal(t, "#94a3b8", defs[0].Color)
+	require.True(t, defs[0].IsDefault)
+	require.Equal(t, MembershipLevelCodePlatinum, defs[2].Code)
+	require.Equal(t, "铂金会员", defs[2].Name)
+	require.Equal(t, "#b89a56", defs[2].Color)
+	require.Equal(t, 30, defs[2].SortOrder)
+	require.Equal(t, MembershipLevelCodeDiamond, defs[3].Code)
 	require.Equal(t, 40, defs[3].SortOrder)
-	require.Equal(t, MembershipLevelCodeDiamond, defs[4].Code)
-	require.Equal(t, 50, defs[4].SortOrder)
 }
 
-func TestShouldRestoreManagedAPIKeyOnlyForMembershipDisabledReasons(t *testing.T) {
-	tests := []struct {
-		name    string
-		key     *MembershipManagedKey
-		restore bool
-	}{
-		{
-			name:    "active key does not need status restore",
-			key:     &MembershipManagedKey{Status: ManagedKeyStatusActive, APIKey: &APIKey{Status: StatusAPIKeyActive}},
-			restore: false,
-		},
-		{
-			name:    "membership expired disabled key can restore",
-			key:     &MembershipManagedKey{Status: ManagedKeyStatusDisabled, DisabledReason: ManagedKeyDisabledMembershipExpired, APIKey: &APIKey{Status: StatusAPIKeyDisabled}},
-			restore: true,
-		},
-		{
-			name:    "membership group removed disabled key can restore",
-			key:     &MembershipManagedKey{Status: ManagedKeyStatusDisabled, DisabledReason: ManagedKeyDisabledGroupRemoved, APIKey: &APIKey{Status: StatusAPIKeyDisabled}},
-			restore: true,
-		},
-		{
-			name:    "manual disabled key stays disabled",
-			key:     &MembershipManagedKey{Status: ManagedKeyStatusActive, DisabledReason: "", APIKey: &APIKey{Status: StatusAPIKeyDisabled}},
-			restore: false,
-		},
-		{
-			name:    "quota exhausted key stays exhausted",
-			key:     &MembershipManagedKey{Status: ManagedKeyStatusActive, APIKey: &APIKey{Status: StatusAPIKeyQuotaExhausted}},
-			restore: false,
-		},
-		{
-			name:    "expired api key stays expired",
-			key:     &MembershipManagedKey{Status: ManagedKeyStatusActive, APIKey: &APIKey{Status: StatusAPIKeyExpired}},
-			restore: false,
-		},
-	}
+func TestManagedAPIKeyNameFollowsGroupName(t *testing.T) {
+	require.Equal(t, "Membership Key - Silver Group", managedAPIKeyName("Silver Group"))
+	require.Len(t, []rune(managedAPIKeyName(strings.Repeat("分", 100))), 100)
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.restore, shouldRestoreManagedAPIKey(tt.key))
-		})
-	}
+func TestEnsureManagedKeyRenamesExistingKeyAfterGroupRename(t *testing.T) {
+	group := &Group{ID: 20, Name: "Silver Group", Status: StatusActive}
+	apiKey := &APIKey{ID: 100, UserID: 10, Key: "sk-existing", Name: "Membership Key - Old Group", Status: StatusAPIKeyActive, GroupID: &group.ID}
+	repo := &defaultMembershipRepoStub{managedKey: &MembershipManagedKey{
+		UserID: 10, GroupID: group.ID, APIKeyID: apiKey.ID, MembershipLevelID: 1,
+		Status: ManagedKeyStatusActive, APIKey: apiKey, Group: group,
+	}}
+	apiKeyRepo := &membershipAPIKeyRepoStub{key: apiKey}
+	userRepo := &membershipUserRepoStub{user: &User{ID: 10, Status: StatusActive}}
+	groupRepo := &membershipGroupRepoStub{group: group}
+	apiKeyService := NewAPIKeyService(apiKeyRepo, userRepo, groupRepo, nil, nil, nil, &config.Config{})
+	svc := NewMembershipService(repo, userRepo, groupRepo, nil, apiKeyService)
+
+	err := svc.EnsureManagedKey(context.Background(), 10, group.ID, 1)
+
+	require.NoError(t, err)
+	require.Equal(t, "Membership Key - Silver Group", apiKeyRepo.key.Name)
+	require.False(t, repo.managedDeleteCalled)
+}
+
+func TestEnsureManagedKeyReplacesUnavailableManagedKey(t *testing.T) {
+	group := &Group{ID: 20, Name: "Silver Group", Status: StatusActive}
+	oldKey := &APIKey{ID: 100, UserID: 10, Key: "sk-disabled", Name: "Membership Key - Silver Group", Status: StatusAPIKeyDisabled, GroupID: &group.ID}
+	repo := &defaultMembershipRepoStub{managedKey: &MembershipManagedKey{
+		UserID: 10, GroupID: group.ID, APIKeyID: oldKey.ID, MembershipLevelID: 1,
+		Status: ManagedKeyStatusDisabled, APIKey: oldKey, Group: group,
+	}}
+	apiKeyRepo := &membershipAPIKeyRepoStub{key: oldKey}
+	userRepo := &membershipUserRepoStub{user: &User{ID: 10, Status: StatusActive}}
+	groupRepo := &membershipGroupRepoStub{group: group}
+	apiKeyService := NewAPIKeyService(apiKeyRepo, userRepo, groupRepo, nil, nil, nil, &config.Config{})
+	svc := NewMembershipService(repo, userRepo, groupRepo, nil, apiKeyService)
+
+	err := svc.EnsureManagedKey(context.Background(), 10, group.ID, 1)
+
+	require.NoError(t, err)
+	require.Equal(t, []int64{oldKey.ID}, apiKeyRepo.deletedIDs)
+	require.True(t, repo.managedDeleteCalled)
+	require.True(t, repo.managedUpsertCalled)
+	require.NotNil(t, apiKeyRepo.createdKey)
+	require.Equal(t, StatusAPIKeyActive, apiKeyRepo.createdKey.Status)
+	require.Equal(t, "Membership Key - Silver Group", apiKeyRepo.createdKey.Name)
 }

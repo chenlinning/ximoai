@@ -10,7 +10,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import bronzeBadgeUrl from '@/assets/membership/bronze.png'
 import silverBadgeUrl from '@/assets/membership/silver.png'
 import goldBadgeUrl from '@/assets/membership/gold.png'
 import platinumBadgeUrl from '@/assets/membership/platinum.png'
@@ -28,16 +27,15 @@ const props = withDefaults(defineProps<{
 })
 
 const badgeImages: Record<string, string> = {
-  bronze: bronzeBadgeUrl,
   silver: silverBadgeUrl,
   gold: goldBadgeUrl,
   platinum: platinumBadgeUrl,
   diamond: diamondBadgeUrl
 }
 
-const normalizedCode = computed(() => props.code?.trim().toLowerCase() || 'bronze')
+const normalizedCode = computed(() => props.code?.trim().toLowerCase() || 'silver')
 
-const badgeSrc = computed(() => badgeImages[normalizedCode.value] || bronzeBadgeUrl)
+const badgeSrc = computed(() => badgeImages[normalizedCode.value] || silverBadgeUrl)
 
 const label = computed(() => membershipLevelDisplayName(props.code))
 
