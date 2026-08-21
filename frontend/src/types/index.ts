@@ -529,35 +529,7 @@ export interface PaginationConfig {
 
 // ==================== API Key & Group Types ====================
 
-export type GroupPlatform =
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'antigravity'
-  | 'grok'
-  | 'kimi'
-  | 'zhipu'
-  | 'deepseek'
-  | 'grok-video'
-  | 'openai-audio'
-  | 'kling_audio'
-  | 'volcengine-agent-plan'
-  | 'composite'
-
-export interface Platform {
-  slug: string
-  kind?: string
-  display_name: string
-  protocol: string
-  base_url: string
-  auth_modes: string[]
-  capabilities: string[]
-  color: string
-  enabled: boolean
-  builtin: boolean
-  created_at: string
-  updated_at: string
-}
+export type GroupPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'grok' | 'kimi' | 'zhipu' | 'deepseek' | 'composite'
 
 export type VideoModelPrices = Record<string, Record<string, number>>
 
@@ -914,7 +886,7 @@ export interface UpdateGroupRequest {
 
 // ==================== Account & Proxy Types ====================
 
-export type AccountPlatform = Exclude<GroupPlatform, 'composite'>
+export type AccountPlatform = 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'grok' | 'kimi' | 'zhipu' | 'deepseek'
 export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock' | 'service_account'
 export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
@@ -1697,7 +1669,6 @@ export interface UsageLog {
   image_input_cost: number
   image_output_tokens: number
   image_output_cost: number
-	video_count?: number | null
 
   // User-Agent
   user_agent: string | null

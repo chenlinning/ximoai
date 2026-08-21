@@ -556,13 +556,9 @@ export async function syncUpstreamModels(id: number): Promise<SyncUpstreamModels
 export interface SyncUpstreamPreviewParams {
   platform: string
   type: string
-  credentials?: Record<string, unknown>
-  extra?: Record<string, unknown>
   base_url?: string
-  api_key?: string
+  api_key: string
 }
-
-export type SyncUpstreamModelsPreviewPayload = SyncUpstreamPreviewParams
 
 /**
  * Preview upstream models without a saved account (create-flow)
@@ -570,10 +566,7 @@ export type SyncUpstreamModelsPreviewPayload = SyncUpstreamPreviewParams
  * @returns List of model IDs returned by the upstream
  */
 export async function syncUpstreamModelsPreview(params: SyncUpstreamPreviewParams): Promise<SyncUpstreamModelsResult> {
-  const { data } = await apiClient.post<SyncUpstreamModelsResult>(
-    '/admin/accounts/models/sync-upstream-preview',
-    params
-  )
+  const { data } = await apiClient.post<SyncUpstreamModelsResult>('/admin/accounts/models/sync-upstream-preview', params)
   return data
 }
 
@@ -743,29 +736,6 @@ export interface BatchOperationResult {
   warnings?: Array<{ account_id: number; warning: string }>
 }
 
-export type AccountBatchTestType = 'auto' | 'text' | 'image' | 'audio' | 'video'
-
-export interface BatchTestAccountPayload {
-  account_ids: number[]
-  model_id: string
-  prompt?: string
-  mode?: 'default' | 'compact'
-  test_type?: AccountBatchTestType
-  seconds?: number
-  size?: string
-}
-
-export interface BatchTestAccountResult {
-  account_id: number
-  success: boolean
-  error?: string
-  latency_ms?: number
-}
-
-export interface BatchTestAccountResponse extends BatchOperationResult {
-  results: BatchTestAccountResult[]
-}
-
 /**
  * Revert account proxy to original before fallback
  * @param id - Account ID
@@ -794,16 +764,6 @@ export async function batchDelete(accountIds: number[]): Promise<BatchOperationR
 export async function batchClearError(accountIds: number[]): Promise<BatchOperationResult> {
   const { data } = await apiClient.post<BatchOperationResult>('/admin/accounts/batch-clear-error', {
     account_ids: accountIds
-  })
-  return data
-}
-
-/**
- * Batch test account connections with one shared model.
- */
-export async function batchTest(payload: BatchTestAccountPayload): Promise<BatchTestAccountResponse> {
-  const { data } = await apiClient.post<BatchTestAccountResponse>('/admin/accounts/batch-test', payload, {
-    timeout: 300000
   })
   return data
 }
@@ -1068,7 +1028,6 @@ export const accountsAPI = {
   getAntigravityDefaultModelMapping,
   batchDelete,
   batchClearError,
-  batchTest,
   batchRefresh,
   setPrivacy,
   revertProxyFallback,

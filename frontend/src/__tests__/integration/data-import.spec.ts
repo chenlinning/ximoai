@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ImportDataModal from '@/components/admin/account/ImportDataModal.vue'
-import { adminAPI } from '@/api/admin'
 
 const showError = vi.fn()
 const showSuccess = vi.fn()
@@ -59,6 +58,7 @@ describe('ImportDataModal', () => {
     showError.mockReset()
     showSuccess.mockReset()
     showWarning.mockReset()
+    const { adminAPI } = await import('@/api/admin')
     vi.mocked(adminAPI.accounts.importData).mockReset()
   })
 
@@ -210,121 +210,5 @@ describe('ImportDataModal', () => {
 
     expect(wrapper.emitted('imported')).toHaveLength(1)
     expect(wrapper.emitted('close')).toHaveLength(1)
-  })
-
-  it('merges selected files in order before importing once', async () => {
-    vi.mocked(adminAPI.accounts.importData).mockResolvedValue({
-      proxy_created: 0,
-      proxy_reused: 0,
-      proxy_failed: 0,
-      account_created: 2,
-      account_failed: 0,
-      errors: []
-    })
-
-    const wrapper = mount(ImportDataModal, {
-      props: { show: true },
-      global: {
-        stubs: {
-          BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' }
-        }
-      }
-    })
-
-    const input = wrapper.find('input[type="file"]')
-    expect(input.attributes('multiple')).toBeDefined()
-
-    const firstFile = makeJsonFile(
-      'first.json',
-      JSON.stringify({
-        exported_at: '2026-07-05T00:00:00Z',
-        proxies: [{ proxy_key: 'first-proxy' }],
-        accounts: [{ name: 'first' }]
-      })
-    )
-    const secondFile = makeJsonFile(
-      'second.json',
-      JSON.stringify({
-        exported_at: '2026-07-05T00:00:01Z',
-        proxies: [{ proxy_key: 'second-proxy' }],
-        accounts: [{ name: 'second' }]
-      })
-    )
-    Object.defineProperty(input.element, 'files', {
-      value: [firstFile, secondFile]
-    })
-
-    await input.trigger('change')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-
-    expect(adminAPI.accounts.importData).toHaveBeenCalledTimes(1)
-    expect(adminAPI.accounts.importData).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        proxies: [{ proxy_key: 'first-proxy' }, { proxy_key: 'second-proxy' }],
-        accounts: [{ name: 'first' }, { name: 'second' }]
-      }),
-      skip_default_group_bind: true
-    })
-    expect(showSuccess).toHaveBeenCalledWith('admin.accounts.dataImportSuccess')
-  })
-
-  it('preserves import result error details after merged import', async () => {
-    vi.mocked(adminAPI.accounts.importData).mockResolvedValue({
-      proxy_created: 1,
-      proxy_reused: 1,
-      proxy_failed: 1,
-      account_created: 2,
-      account_failed: 1,
-      errors: [
-        { kind: 'account', name: 'bad-account', message: 'failed account' }
-      ]
-    })
-
-    const wrapper = mount(ImportDataModal, {
-      props: { show: true },
-      global: {
-        stubs: {
-          BaseDialog: { template: '<div><slot /><slot name="footer" /></div>' }
-        }
-      }
-    })
-
-    const input = wrapper.find('input[type="file"]')
-    const firstFile = makeJsonFile(
-      'first.json',
-      JSON.stringify({
-        exported_at: '2026-07-05T00:00:00Z',
-        proxies: [{ proxy_key: 'first-proxy' }],
-        accounts: [{ name: 'first' }]
-      })
-    )
-    const secondFile = makeJsonFile(
-      'second.json',
-      JSON.stringify({
-        exported_at: '2026-07-05T00:00:01Z',
-        proxies: [],
-        accounts: [{ name: 'second' }]
-      })
-    )
-    Object.defineProperty(input.element, 'files', {
-      value: [firstFile, secondFile]
-    })
-
-    await input.trigger('change')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-
-    expect((wrapper.vm as any).result).toMatchObject({
-      proxy_created: 1,
-      proxy_reused: 1,
-      proxy_failed: 1,
-      account_created: 2,
-      account_failed: 1,
-      errors: [
-        { kind: 'account', name: 'bad-account', message: 'failed account' }
-      ]
-    })
-    expect(showError).toHaveBeenCalledWith('admin.accounts.dataImportCompletedWithErrors')
   })
 })

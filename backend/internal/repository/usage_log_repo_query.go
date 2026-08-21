@@ -127,7 +127,6 @@ func (r *usageLogRepository) ListWithFilters(ctx context.Context, params paginat
 		args = append(args, int16(*filters.BillingType))
 	}
 	conditions, args = appendUsageLogBillingModeWhereCondition(conditions, args, filters.BillingMode)
-	conditions = appendUsageLogZeroActualCostWhereCondition(conditions, filters.ZeroActualCost)
 	if filters.UpstreamModelMismatch != nil {
 		conditions = append(conditions, upstreamModelMismatchCondition("upstream_model_mismatch", *filters.UpstreamModelMismatch))
 	}

@@ -2117,32 +2117,6 @@ func TestCompositeChannelLookupUsesResolvedTargetPlatform(t *testing.T) {
 	require.Equal(t, "claude-sonnet-4-5", anthropicResult.MappedModel)
 }
 
-func TestCompositeChannelLookupUsesResolvedBuiltinPlatform(t *testing.T) {
-	const builtinPlatform = PlatformOpenAIAudio
-	channel := Channel{
-		ID:       1,
-		Status:   StatusActive,
-		GroupIDs: []int64{99},
-		ModelPricing: []ChannelModelPricing{
-			{Platform: builtinPlatform, Models: []string{"audio-*"}},
-		},
-		ModelMapping: map[string]map[string]string{
-			builtinPlatform: {
-				"public-audio": "audio-upstream",
-			},
-		},
-	}
-	cache := populateChannelCache([]Channel{channel}, map[int64]string{99: PlatformComposite})
-	svc := &ChannelService{}
-	svc.cache.Store(cache)
-
-	ctx := WithResolvedTargetPlatform(context.Background(), builtinPlatform)
-	require.NotNil(t, svc.GetChannelModelPricing(ctx, 99, "audio-upstream"))
-	result := svc.ResolveChannelMapping(ctx, 99, "public-audio")
-	require.True(t, result.Mapped)
-	require.Equal(t, "audio-upstream", result.MappedModel)
-}
-
 // ===========================================================================
 // 9. Antigravity platform isolation — no cross-platform pricing leakage
 // ===========================================================================
@@ -2444,26 +2418,6 @@ func TestValidatePricingBillingMode(t *testing.T) {
 		{
 			name:    "per_request no price no intervals - invalid",
 			pricing: []ChannelModelPricing{{BillingMode: BillingModePerRequest}},
-			wantErr: true,
-			errMsg:  "per-request price or intervals required",
-		},
-		{
-			name: "per_request zero price - valid",
-			pricing: []ChannelModelPricing{{
-				BillingMode:     BillingModePerRequest,
-				PerRequestPrice: testPtrFloat64(0),
-			}},
-		},
-		{
-			name: "video zero interval price - valid",
-			pricing: []ChannelModelPricing{{
-				BillingMode: BillingModeVideo,
-				Intervals:   []PricingInterval{{MinTokens: 0, MaxTokens: testPtrInt(1000), PerRequestPrice: testPtrFloat64(0)}},
-			}},
-		},
-		{
-			name:    "video no price no intervals - invalid",
-			pricing: []ChannelModelPricing{{BillingMode: BillingModeVideo}},
 			wantErr: true,
 			errMsg:  "per-request price or intervals required",
 		},

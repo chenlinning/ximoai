@@ -39,7 +39,7 @@ func (r *defaultOpenAIWSProtocolResolver) Resolve(account *Account) OpenAIWSProt
 	if account == nil {
 		return openAIWSHTTPDecision("account_missing")
 	}
-	if !account.IsOpenAI() && !account.IsOpenAICompatibleCustomAPIKey() {
+	if !account.IsOpenAI() {
 		return openAIWSHTTPDecision("platform_not_openai")
 	}
 	if account.IsOpenAIWSForceHTTPEnabled() {
@@ -60,7 +60,7 @@ func (r *defaultOpenAIWSProtocolResolver) Resolve(account *Account) OpenAIWSProt
 		if !wsCfg.OAuthEnabled {
 			return openAIWSHTTPDecision("oauth_disabled")
 		}
-	} else if account.IsOpenAIApiKey() || account.IsOpenAICompatibleCustomAPIKey() {
+	} else if account.IsOpenAIApiKey() {
 		if !wsCfg.APIKeyEnabled {
 			return openAIWSHTTPDecision("apikey_disabled")
 		}

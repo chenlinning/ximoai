@@ -1,8 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CONCRETE_PLATFORM_OPTIONS } from '@/constants/platforms'
-import { fixedPlatforms } from '@/extensions/platforms/fixedPlatforms'
 
 function readSource(path: string): string {
   return readFileSync(resolve(path), 'utf8')
@@ -15,25 +13,15 @@ describe('admin platform filters', () => {
     expect(source).toMatch(/const platformFilterOptions[\s\S]*?\.\.\.GROUP_PLATFORM_OPTIONS/)
   })
 
-  it('extends the upstream catalog for the groups and account pages', () => {
+  it('uses the shared catalogs on the groups page', () => {
     const source = readSource('src/views/admin/GroupsView.vue')
-    const accountFilters = readSource('src/components/admin/account/AccountTableFilters.vue')
-    const fixedPlatformSlugs = fixedPlatforms.map((platform) => platform.slug)
-
-    expect(source).toContain("import { fixedPlatforms")
-    expect(source).toContain('fixedPlatforms.map')
-    expect(accountFilters).toContain("import { fixedPlatforms } from '@/extensions/platforms/fixedPlatforms'")
-    expect(accountFilters).toContain('...fixedPlatforms.map')
-    expect(fixedPlatformSlugs).toEqual(expect.arrayContaining(
-      CONCRETE_PLATFORM_OPTIONS.map((option) => option.value)
-    ))
-    expect(fixedPlatformSlugs).toEqual(expect.arrayContaining([
-      'grok-video', 'openai-audio', 'kling_audio', 'volcengine-agent-plan'
-    ]))
+    expect(source).toContain('...GROUP_PLATFORM_OPTIONS')
+    expect(source).toContain('...CONCRETE_PLATFORM_OPTIONS')
   })
 
-  it('uses the concrete upstream catalog on unextended selectors', () => {
+  it('uses the concrete platform catalog wherever concrete platforms are selected', () => {
     for (const path of [
+      'src/components/admin/account/AccountTableFilters.vue',
       'src/components/admin/ErrorPassthroughRulesModal.vue',
       'src/views/admin/ops/components/OpsDashboardHeader.vue'
     ]) {

@@ -1026,7 +1026,7 @@ func (h *AccountHandler) Update(c *gin.Context) {
 // 网关会按"现状即证据"默认走 Responses。
 func (h *AccountHandler) scheduleOpenAIResponsesProbe(account *service.Account) {
 	if account == nil || account.Type != service.AccountTypeAPIKey ||
-		(!account.UsesOpenAIAPIKeyProtocol() && !account.IsCNProvider()) {
+		(account.Platform != service.PlatformOpenAI && !service.IsCNProvider(account.Platform)) {
 		return
 	}
 	if h.accountTestService == nil {
@@ -1063,12 +1063,9 @@ func (h *AccountHandler) Delete(c *gin.Context) {
 
 // TestAccountRequest represents the request body for testing an account
 type TestAccountRequest struct {
-	ModelID  string `json:"model_id"`
-	Prompt   string `json:"prompt"`
-	Mode     string `json:"mode"`
-	TestType string `json:"test_type"`
-	Seconds  int    `json:"seconds"`
-	Size     string `json:"size"`
+	ModelID string `json:"model_id"`
+	Prompt  string `json:"prompt"`
+	Mode    string `json:"mode"`
 	// Optional media for Grok (and future) real generation tests.
 	// ImageDataURL / AudioDataURL are data:<mime>;base64,... payloads.
 	ImageDataURL string `json:"image_data_url"`
@@ -1102,16 +1099,13 @@ func (h *AccountHandler) Test(c *gin.Context) {
 	// Allow empty body, model_id is optional
 	_ = c.ShouldBindJSON(&req)
 
-	// Use AccountTestService to test the account with SSE streaming
-	if err := h.accountTestService.TestAccountConnectionWithOptions(c, accountID, req.ModelID, service.AccountConnectionTestOptions{
-		Prompt:       req.Prompt,
-		Mode:         req.Mode,
-		TestType:     req.TestType,
-		Seconds:      req.Seconds,
-		Size:         req.Size,
+	opts := service.AccountTestOptions{
 		ImageDataURL: req.ImageDataURL,
 		AudioDataURL: req.AudioDataURL,
-	}); err != nil {
+	}
+
+	// Use AccountTestService to test the account with SSE streaming
+	if err := h.accountTestService.TestAccountConnection(c, accountID, req.ModelID, req.Prompt, req.Mode, opts); err != nil {
 		// Error already sent via SSE, just log
 		return
 	}
@@ -2713,12 +2707,6 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 		return
 	}
 
-	// XimoAI media platforms only expose explicitly mapped upstream models.
-	if isXimoAIBuiltinMediaAccount(account) {
-		response.Success(c, buildXimoAIBuiltinAvailableModels(account.GetModelMapping()))
-		return
-	}
-
 	// Handle Claude/Anthropic accounts
 	// For OAuth and Setup-Token accounts: return default models
 	if account.IsOAuth() {
@@ -2760,34 +2748,6 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 	response.Success(c, models)
 }
 
-func isXimoAIBuiltinMediaAccount(account *service.Account) bool {
-	if account == nil {
-		return false
-	}
-	switch service.NormalizePlatformSlug(account.Platform) {
-	case service.PlatformGrokVideo, service.PlatformOpenAIAudio, service.PlatformKlingAudio, service.PlatformVolcengineAgentPlan:
-		return true
-	default:
-		return false
-	}
-}
-
-func buildXimoAIBuiltinAvailableModels(mapping map[string]string) []openai.Model {
-	if len(mapping) == 0 {
-		return []openai.Model{}
-	}
-	models := make([]openai.Model, 0, len(mapping))
-	for requestedModel := range mapping {
-		models = append(models, openai.Model{
-			ID:          requestedModel,
-			Object:      "model",
-			Type:        "model",
-			DisplayName: requestedModel,
-		})
-	}
-	return models
-}
-
 // SyncUpstreamModels handles syncing live supported models from an account's upstream.
 // POST /api/v1/admin/accounts/:id/models/sync-upstream
 func (h *AccountHandler) SyncUpstreamModels(c *gin.Context) {
@@ -2823,6 +2783,56 @@ func (h *AccountHandler) SyncUpstreamModels(c *gin.Context) {
 		}
 
 		slog.Warn("sync_upstream_models_failed", "account_id", accountID)
+		response.Error(c, http.StatusBadGateway, "Failed to sync upstream models from upstream")
+		return
+	}
+
+	response.Success(c, gin.H{"models": models})
+}
+
+// SyncUpstreamModelsPreview handles syncing live supported models using provided credentials (no account ID needed).
+// POST /api/v1/admin/accounts/models/sync-upstream-preview
+func (h *AccountHandler) SyncUpstreamModelsPreview(c *gin.Context) {
+	var req struct {
+		Platform string `json:"platform" binding:"required"`
+		Type     string `json:"type" binding:"required"`
+		BaseURL  string `json:"base_url"`
+		APIKey   string `json:"api_key" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid request: "+err.Error())
+		return
+	}
+
+	tempAccount := &service.Account{
+		Platform: req.Platform,
+		Type:     req.Type,
+		Credentials: map[string]any{
+			"api_key":  req.APIKey,
+			"base_url": req.BaseURL,
+		},
+	}
+
+	if h.accountTestService == nil {
+		response.InternalError(c, "Account test service is not configured")
+		return
+	}
+
+	models, err := h.accountTestService.FetchUpstreamSupportedModels(c.Request.Context(), tempAccount)
+	if err != nil {
+		var syncErr *service.UpstreamModelSyncError
+		if errors.As(err, &syncErr) {
+			switch syncErr.Kind {
+			case service.UpstreamModelSyncErrorConfiguration, service.UpstreamModelSyncErrorUnsupported:
+				response.BadRequest(c, syncErr.SafeMessage())
+			default:
+				slog.Warn("sync_upstream_models_preview_failed", "platform", req.Platform, "kind", syncErr.Kind)
+				response.Error(c, http.StatusBadGateway, syncErr.SafeMessage())
+			}
+			return
+		}
+
+		slog.Warn("sync_upstream_models_preview_failed", "platform", req.Platform)
 		response.Error(c, http.StatusBadGateway, "Failed to sync upstream models from upstream")
 		return
 	}

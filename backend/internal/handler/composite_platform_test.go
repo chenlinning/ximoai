@@ -61,36 +61,6 @@ func TestResponsesWebSocketCompositePlatformGuardKeepsOpenAIAndGrokOnly(t *testi
 	}
 }
 
-func TestCompositeOpenAICompatibleTargetRejectsUnknownPlatform(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("POST", "/v1/images/generations", nil)
-	c.Request = c.Request.WithContext(service.WithCompositeRouteDecision(c.Request.Context(), service.CompositeRouteDecision{
-		Matched:        true,
-		TargetPlatform: "acme-openai",
-		PublicModel:    "public-image",
-		UpstreamModel:  "flux-1.1-pro",
-	}))
-	apiKey := &service.APIKey{Group: &service.Group{Platform: service.PlatformComposite}}
-
-	require.False(t, compositeOpenAICompatibleTargetAllowed(c, apiKey, "public-image"))
-}
-
-func TestCompositeOpenAICompatibleTargetRejectsExplicitNativePlatform(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
-	c.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil)
-	c.Request = c.Request.WithContext(service.WithCompositeRouteDecision(c.Request.Context(), service.CompositeRouteDecision{
-		Matched:        true,
-		TargetPlatform: service.PlatformAnthropic,
-		PublicModel:    "public-chat",
-		UpstreamModel:  "claude-sonnet-4-6",
-	}))
-	apiKey := &service.APIKey{Group: &service.Group{Platform: service.PlatformComposite}}
-
-	require.False(t, compositeOpenAICompatibleTargetAllowed(c, apiKey, "public-chat"))
-}
-
 func TestCompositeTargetPlatformAllowedRejectsWrongOrUnknownModel(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

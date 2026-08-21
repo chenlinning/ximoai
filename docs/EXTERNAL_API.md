@@ -830,13 +830,6 @@ role, content, reasoning_content, tool_calls
 | `POST` | `/v1/images/edits` | 图像编辑 |
 | `POST` | `/images/generations` | 根路径别名 |
 | `POST` | `/images/edits` | 根路径别名 |
-| `POST` | `/v1/audio/speech` | 语音合成 |
-| `POST` | `/v1/audio/transcriptions` | 语音转写 |
-| `POST` | `/v1/audio/translations` | 语音翻译 |
-| `POST` | `/audio/speech` | 根路径别名 |
-| `POST` | `/audio/transcriptions` | 根路径别名 |
-| `POST` | `/audio/translations` | 根路径别名 |
-
 Audio 请求可以是 JSON 或 multipart。本站必须能解析 `model`，否则返回错误。其余字段按 OpenAI 兼容上游透传或按平台适配。
 
 ### OpenAI Realtime
@@ -1132,7 +1125,6 @@ POST /accounts/check-mixed-channel
 POST /accounts/import/codex-session
 POST /accounts/sync/crs
 POST /accounts/sync/crs/preview
-POST /accounts/batch-test
 POST /accounts/:id/test
 POST /accounts/:id/recover-state
 POST /accounts/:id/refresh
@@ -1607,10 +1599,8 @@ backend/internal/server/routes/ximoai.go
 backend/internal/handler/dto/types.go
 backend/internal/pkg/apicompat/types.go
 backend/internal/handler/available_channel_handler.go
-backend/internal/handler/admin/platform_handler.go
 backend/internal/handler/admin/channel_handler.go
 backend/internal/handler/gateway_handler.go
-backend/internal/service/openai_audio.go
 backend/internal/service/openai_videos.go
 backend/internal/service/openai_gateway_service.go
 ```

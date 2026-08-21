@@ -95,7 +95,6 @@
     <!-- Quick Actions -->
     <div class="mb-4 flex flex-wrap gap-2">
       <button
-        v-if="canFillBuiltInModels"
         type="button"
         @click="fillRelated"
         class="rounded-lg border border-blue-200 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30"
@@ -146,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { accountsAPI } from '@/api/admin/accounts'
@@ -163,15 +162,11 @@ const props = defineProps<{
   platform?: string
   platforms?: string[]
   accountId?: number
-  canSyncUpstream?: boolean
-  upstreamModels?: string[]
-  syncUpstreamModels?: () => Promise<string[]>
   syncCredentials?: {
     platform: string
     type: string
-    protocol?: string
     base_url?: string
-    api_key?: string
+    api_key: string
   }
 }>()
 
@@ -187,7 +182,6 @@ const searchQuery = ref('')
 const customModel = ref('')
 const isComposing = ref(false)
 const isSyncingUpstream = ref(false)
-const syncedUpstreamModels = ref<string[]>([])
 const normalizedPlatforms = computed(() => {
   const rawPlatforms =
     props.platforms && props.platforms.length > 0
@@ -215,22 +209,18 @@ const upstreamSyncPlatforms = new Set([
   'zhipu',
   'deepseek'
 ])
-const upstreamSyncProtocols = new Set(['anthropic', 'openai', 'openai_compatible', 'gemini'])
 const canSyncUpstream = computed(() => {
-  if (props.syncUpstreamModels) return props.canSyncUpstream !== false
-  if (props.canSyncUpstream === true) return true
   if (props.accountId) {
     if (normalizedPlatforms.value.length === 0) return true
     return normalizedPlatforms.value.some(platform => upstreamSyncPlatforms.has(platform.toLowerCase()))
   }
   if (props.syncCredentials) {
-    return upstreamSyncPlatforms.has(props.syncCredentials.platform.toLowerCase()) ||
-      upstreamSyncProtocols.has(props.syncCredentials.protocol?.toLowerCase() || '')
+    return upstreamSyncPlatforms.has(props.syncCredentials.platform.toLowerCase())
   }
   return false
 })
 
-const builtInOptions = computed(() => {
+const availableOptions = computed(() => {
   if (normalizedPlatforms.value.length === 0) {
     return allModels
   }
@@ -244,32 +234,6 @@ const builtInOptions = computed(() => {
 
   return allModels.filter(model => allowedModels.has(model.value))
 })
-
-const availableOptions = computed(() => {
-  const options: { value: string; label: string }[] = []
-  const seen = new Set<string>()
-
-  const addOption = (model: string) => {
-    const value = model.trim()
-    if (!value || seen.has(value)) return
-    seen.add(value)
-    options.push({ value, label: value })
-  }
-
-  for (const model of builtInOptions.value) {
-    addOption(model.value)
-  }
-  for (const model of syncedUpstreamModels.value) {
-    addOption(model)
-  }
-  for (const model of props.upstreamModels || []) {
-    addOption(model)
-  }
-
-  return options
-})
-
-const canFillBuiltInModels = computed(() => builtInOptions.value.length > 0)
 
 const filteredModels = computed(() => {
   const query = searchQuery.value.toLowerCase().trim()
@@ -329,27 +293,24 @@ const fillRelated = () => {
 
 const syncUpstreamModels = async () => {
   if (isSyncingUpstream.value) return
-  if (!props.accountId && !props.syncUpstreamModels && !props.syncCredentials) return
+  if (!props.accountId && !props.syncCredentials) return
 
   isSyncingUpstream.value = true
   try {
-    let models: string[]
-    if (props.syncUpstreamModels) {
-      models = await props.syncUpstreamModels()
-    } else if (props.accountId) {
-      models = (await accountsAPI.syncUpstreamModels(props.accountId)).models
+    let result
+    if (props.accountId) {
+      result = await accountsAPI.syncUpstreamModels(props.accountId)
     } else if (props.syncCredentials) {
-      models = (await accountsAPI.syncUpstreamModelsPreview(props.syncCredentials as SyncUpstreamPreviewParams)).models
+      result = await accountsAPI.syncUpstreamModelsPreview(props.syncCredentials as SyncUpstreamPreviewParams)
     } else {
       return
     }
 
-    const upstreamModels = Array.from(new Set(models.map(model => model.trim()).filter(Boolean)))
+    const upstreamModels = result.models.map(model => model.trim()).filter(Boolean)
     if (upstreamModels.length === 0) {
       appStore.showInfo(t('admin.accounts.syncUpstreamModelsEmpty'))
       return
     }
-    syncedUpstreamModels.value = upstreamModels
 
     const newModels = [...props.modelValue]
     let addedCount = 0
@@ -377,12 +338,5 @@ const syncUpstreamModels = async () => {
 const clearAll = () => {
   emit('update:modelValue', [])
 }
-
-watch(
-  () => `${props.accountId ?? ''}:${normalizedPlatforms.value.join('|')}`,
-  () => {
-    syncedUpstreamModels.value = []
-  }
-)
 
 </script>

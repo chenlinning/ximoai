@@ -12,7 +12,6 @@ const {
   getUsageSummary,
   getCapacitySummary,
   getLiveCapability,
-	listPlatforms,
   showSuccess,
   showError
 } = vi.hoisted(() => ({
@@ -22,7 +21,6 @@ const {
   getUsageSummary: vi.fn(),
   getCapacitySummary: vi.fn(),
   getLiveCapability: vi.fn(),
-	listPlatforms: vi.fn(),
   showSuccess: vi.fn(),
   showError: vi.fn()
 }))
@@ -45,9 +43,6 @@ vi.mock('@/api/admin', () => ({
     accounts: {
       list: vi.fn(),
       getById: vi.fn()
-    },
-    platforms: {
-      list: listPlatforms
     }
   }
 }))
@@ -175,7 +170,6 @@ describe('GroupsView duplicate action', () => {
       getUsageSummary,
       getCapacitySummary,
       getLiveCapability,
-		listPlatforms,
       showSuccess,
       showError
     ]) {
@@ -199,7 +193,6 @@ describe('GroupsView duplicate action', () => {
     getUsageSummary.mockResolvedValue([])
     getCapacitySummary.mockResolvedValue([])
     getLiveCapability.mockResolvedValue({ supported: false })
-	listPlatforms.mockResolvedValue([])
   })
 
   afterEach(() => {

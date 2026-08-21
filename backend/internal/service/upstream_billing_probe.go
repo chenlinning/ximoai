@@ -992,8 +992,7 @@ func IsUpstreamBillingProbeIdentity(platform, accountType string) bool {
 }
 
 func isUpstreamBillingProbeAccount(account *Account) bool {
-	return account != nil && (IsUpstreamBillingProbeIdentity(account.Platform, account.Type) ||
-		account.UsesOpenAIAPIKeyProtocol())
+	return account != nil && IsUpstreamBillingProbeIdentity(account.Platform, account.Type)
 }
 
 // upstreamBillingProbeOfficialAPIDomains lists the root domains of official

@@ -142,15 +142,6 @@ func (h *UsageHandler) List(c *gin.Context) {
 		bt := int8(val)
 		billingType = &bt
 	}
-	var zeroActualCost *bool
-	if raw := strings.TrimSpace(c.Query("zero_actual_cost")); raw != "" {
-		val, err := strconv.ParseBool(raw)
-		if err != nil {
-			response.BadRequest(c, "Invalid zero_actual_cost value, use true or false")
-			return
-		}
-		zeroActualCost = &val
-	}
 
 	var upstreamModelMismatch *bool
 	if raw := strings.TrimSpace(c.Query("upstream_model_mismatch")); raw != "" {
@@ -203,7 +194,6 @@ func (h *UsageHandler) List(c *gin.Context) {
 		Stream:                stream,
 		BillingType:           billingType,
 		BillingMode:           billingMode,
-		ZeroActualCost:        zeroActualCost,
 		UpstreamModelMismatch: upstreamModelMismatch,
 		StartTime:             startTime,
 		EndTime:               endTime,
@@ -296,15 +286,6 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 		bt := int8(val)
 		billingType = &bt
 	}
-	var zeroActualCost *bool
-	if raw := strings.TrimSpace(c.Query("zero_actual_cost")); raw != "" {
-		val, err := strconv.ParseBool(raw)
-		if err != nil {
-			response.BadRequest(c, "Invalid zero_actual_cost value, use true or false")
-			return
-		}
-		zeroActualCost = &val
-	}
 
 	var upstreamModelMismatch *bool
 	if raw := strings.TrimSpace(c.Query("upstream_model_mismatch")); raw != "" {
@@ -365,7 +346,6 @@ func (h *UsageHandler) Stats(c *gin.Context) {
 		Stream:                stream,
 		BillingType:           billingType,
 		BillingMode:           billingMode,
-		ZeroActualCost:        zeroActualCost,
 		UpstreamModelMismatch: upstreamModelMismatch,
 		StartTime:             &startTime,
 		EndTime:               &endTime,

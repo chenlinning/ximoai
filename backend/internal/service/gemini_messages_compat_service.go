@@ -500,17 +500,13 @@ func (s *GeminiMessagesCompatService) HasAntigravityAccounts(ctx context.Context
 // 2) OAuth accounts without project_id (AI Studio OAuth)
 // 3) OAuth accounts explicitly marked as ai_studio
 // 4) Any remaining Gemini accounts (fallback)
-func (s *GeminiMessagesCompatService) SelectAccountForAIStudioEndpoints(ctx context.Context, groupID *int64, platform string) (*Account, error) {
-	platform = NormalizePlatformSlug(platform)
-	if platform == "" || platform == PlatformAntigravity {
-		platform = PlatformGemini
-	}
-	accounts, err := s.listSchedulableAccountsOnce(ctx, groupID, platform, true)
+func (s *GeminiMessagesCompatService) SelectAccountForAIStudioEndpoints(ctx context.Context, groupID *int64) (*Account, error) {
+	accounts, err := s.listSchedulableAccountsOnce(ctx, groupID, PlatformGemini, true)
 	if err != nil {
 		return nil, fmt.Errorf("query accounts failed: %w", err)
 	}
 	if len(accounts) == 0 {
-		return nil, fmt.Errorf("no available %s accounts", platform)
+		return nil, errors.New("no available Gemini accounts")
 	}
 
 	rank := func(a *Account) int {
@@ -1150,7 +1146,7 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 	}
 
 	switch action {
-	case "generateContent", "streamGenerateContent", "countTokens", "generateVideos":
+	case "generateContent", "streamGenerateContent", "countTokens":
 		// ok
 	default:
 		return nil, s.writeGoogleError(c, http.StatusNotFound, "Unsupported action: "+action)

@@ -28,14 +28,23 @@
 
       <!-- API Key fields (only for apikey type) -->
       <div v-if="account.type === 'apikey'" class="space-y-4">
-        <div v-if="showAPIKeyBaseURL && (!isCNApiKeyAccount || editApiProtocol !== 'adaptive')">
+        <div v-if="!isCNApiKeyAccount || editApiProtocol !== 'adaptive'">
           <label class="input-label">{{ t('admin.accounts.baseUrl') }}</label>
           <input
             v-model="editBaseUrl"
             type="text"
-            :required="requiresAPIKeyBaseURL"
             class="input"
-            :placeholder="apiKeyBaseUrlPlaceholder"
+            :placeholder="
+              account.platform === 'openai'
+                ? 'https://api.openai.com'
+                : account.platform === 'gemini'
+                  ? 'https://generativelanguage.googleapis.com'
+                  : account.platform === 'antigravity'
+                    ? 'https://cloudcode-pa.googleapis.com'
+                    : account.platform === 'grok'
+                      ? 'https://api.x.ai/v1'
+                      : 'https://api.anthropic.com'
+            "
           />
           <p v-if="baseUrlHint" class="input-hint">{{ baseUrlHint }}</p>
           <GrokBaseUrlPresets
@@ -53,7 +62,7 @@
             @select="onCnPresetSelect"
           />
         </div>
-        <div v-else-if="isCNApiKeyAccount && editApiProtocol === 'adaptive'">
+        <div v-else>
           <label class="input-label">{{ t('admin.accounts.cnProviders.apiProtocol.endpoints') }}</label>
           <div class="mt-2 space-y-3">
             <div v-for="item in editAdaptiveProtocolOptions" :key="item.value">
@@ -117,9 +126,19 @@
             class="input font-mono"
             autocomplete="new-password"
             data-1p-ignore
-             data-lpignore="true"
-             data-bwignore="true"
-            :placeholder="apiKeyPlaceholder"
+            data-lpignore="true"
+            data-bwignore="true"
+            :placeholder="
+              account.platform === 'openai'
+                ? 'sk-proj-...'
+                : account.platform === 'gemini'
+                  ? 'AIza...'
+                  : account.platform === 'antigravity'
+                    ? 'sk-...'
+                    : account.platform === 'grok'
+                      ? 'xai-...'
+                      : 'sk-ant-...'
+            "
           />
           <p class="input-hint">{{ t('admin.accounts.leaveEmptyToKeep') }}</p>
         </div>
@@ -194,12 +213,7 @@
 
             <!-- Whitelist Mode -->
             <div v-if="modelRestrictionMode === 'whitelist'">
-              <ModelWhitelistSelector
-                v-model="allowedModels"
-                :platform="account?.platform || 'anthropic'"
-                :account-id="account?.id"
-                :can-sync-upstream="canSyncUpstreamModels"
-              />
+              <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
                 <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
@@ -628,12 +642,7 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector
-              v-model="allowedModels"
-              :platform="account?.platform || 'anthropic'"
-              :account-id="account?.id"
-              :can-sync-upstream="canSyncUpstreamModels"
-            />
+            <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
@@ -845,12 +854,7 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector
-              v-model="allowedModels"
-              :platform="account?.platform || 'anthropic'"
-              :account-id="account?.id"
-              :can-sync-upstream="canSyncUpstreamModels"
-            />
+            <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :account-id="account?.id" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0 && modelMappings.length === 0">{{
@@ -1583,7 +1587,7 @@
 
       <!-- OpenAI 自动透传开关（OAuth/API Key） -->
       <div
-        v-if="hasOpenAIProtocolSettings"
+        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1644,7 +1648,7 @@
 
       <!-- OpenAI Codex hosted image_generation bridge policy -->
       <div
-        v-if="hasOpenAIProtocolSettings"
+        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="overflow-hidden rounded-lg border border-sky-100 bg-sky-50/60 shadow-sm dark:border-sky-900/50 dark:bg-sky-950/20">
@@ -1704,7 +1708,7 @@
 
       <!-- OpenAI WS Mode 三态（off/ctx_pool/passthrough） -->
       <div
-        v-if="hasOpenAIProtocolSettings"
+        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1725,7 +1729,7 @@
 
       <!-- OpenAI APIKey Responses API support mode -->
       <div
-        v-if="hasOpenAIAPIKeySettings"
+        v-if="account?.platform === 'openai' && account?.type === 'apikey'"
         class="space-y-4 border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -1805,7 +1809,7 @@
 
       <!-- Anthropic API Key 自动透传开关 -->
       <div
-        v-if="hasAnthropicAPIKeySettings"
+        v-if="account?.platform === 'anthropic' && account?.type === 'apikey'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1817,9 +1821,6 @@
           </div>
           <button
             type="button"
-            role="switch"
-            data-testid="anthropic-passthrough-toggle"
-            :aria-checked="anthropicPassthroughEnabled"
             @click="anthropicPassthroughEnabled = !anthropicPassthroughEnabled"
             :class="[
               'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2',
@@ -1837,7 +1838,7 @@
       </div>
 
       <div
-        v-if="hasAnthropicAPIKeySettings"
+        v-if="account?.platform === 'anthropic' && account?.type === 'apikey'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -1856,7 +1857,7 @@
 
       <!-- Anthropic API Key: Web Search Emulation (hidden when global disabled) -->
       <div
-        v-if="hasAnthropicAPIKeySettings && webSearchGlobalEnabled"
+        v-if="account?.platform === 'anthropic' && account?.type === 'apikey' && webSearchGlobalEnabled"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -1876,7 +1877,7 @@
 
       <!-- 配额控制 (Anthropic apikey/bedrock: 配额限制 + 亲和) -->
       <div
-        v-if="(hasAnthropicAPIKeySettings || account?.platform === 'anthropic') && (account?.type === 'apikey' || account?.type === 'bedrock')"
+        v-if="account?.platform === 'anthropic' && (account?.type === 'apikey' || account?.type === 'bedrock')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="mb-3">
@@ -1979,7 +1980,7 @@
 
       <!-- OpenAI API 长上下文计费开关 -->
       <div
-        v-if="hasOpenAIProtocolSettings && !isSparkShadow && !hideAccountLongContextBilling"
+        v-if="account?.platform === 'openai' && !isSparkShadow && !hideAccountLongContextBilling && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between gap-4">
@@ -2011,7 +2012,7 @@
       </div>
 
       <div
-        v-if="hasOfficialOpenAIOAuthLikeSettings"
+        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600"
       >
         <div class="flex items-center justify-between">
@@ -2102,7 +2103,7 @@
       </div>
 
       <div
-        v-if="hasOpenAIProtocolSettings"
+        v-if="account?.platform === 'openai' && (account?.type === 'oauth' || account?.type === 'setup-token' || account?.type === 'apikey')"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="flex items-center justify-between">
@@ -2188,7 +2189,7 @@
       </div>
 
       <div
-        v-if="hasOpenAIProtocolSettings"
+        v-if="account?.platform === 'openai'"
         class="border-t border-gray-200 pt-4 dark:border-dark-600 space-y-4"
       >
         <div class="space-y-2">
@@ -2824,11 +2825,6 @@ import {
   type CnNativeApiProtocol,
   type HeaderOverrideRow
 } from '@/components/account/credentialsBuilder'
-import {
-  requiresXimoAIAPIKeyBaseURL,
-  resolveXimoAIPlatformKind
-} from '@/components/account/ximoaiAPIKeyPlatform'
-import { fixedPlatforms } from '@/extensions/platforms/fixedPlatforms'
 import { formatDateTime, formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
 import { allSelectedGroupsEnableLongContextPricing } from '@/components/account/longContextBilling'
@@ -2868,104 +2864,6 @@ const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 
-const platforms = ref([...fixedPlatforms])
-
-const selectedPlatform = computed(() =>
-  platforms.value.find((platform) => platform.slug === props.account?.platform)
-)
-
-const isOfficialOpenAI = computed(() =>
-  selectedPlatform.value
-    ? selectedPlatform.value.slug === 'openai' && selectedPlatform.value.protocol === 'openai'
-    : props.account?.platform === 'openai'
-)
-
-const isOpenAISettingsAccountType = (type?: Account['type']) =>
-  type === 'oauth' || type === 'setup-token' || type === 'apikey'
-
-const isOpenAIOAuthLikeAccountType = (type?: Account['type']) =>
-  type === 'oauth' || type === 'setup-token'
-
-const hasOfficialOpenAISettings = computed(() =>
-  isOfficialOpenAI.value && isOpenAISettingsAccountType(props.account?.type)
-)
-
-const hasOpenAIProtocolSettings = computed(() =>
-  hasOfficialOpenAISettings.value
-)
-
-const hasOpenAIAPIKeySettings = computed(() =>
-  props.account?.type === 'apikey' && isOfficialOpenAI.value
-)
-
-const hasAnthropicAPIKeySettings = computed(() =>
-  props.account?.type === 'apikey' && props.account.platform === 'anthropic'
-)
-
-const hasOfficialOpenAIOAuthLikeSettings = computed(() =>
-  isOfficialOpenAI.value && isOpenAIOAuthLikeAccountType(props.account?.type)
-)
-
-const selectedProtocol = computed(() =>
-  selectedPlatform.value?.protocol || ''
-)
-
-const selectedXimoAIPlatformKind = computed(() =>
-  resolveXimoAIPlatformKind(selectedPlatform.value, props.account)
-)
-
-const requiresAPIKeyBaseURL = computed(() =>
-  requiresXimoAIAPIKeyBaseURL(selectedPlatform.value, props.account)
-)
-
-const showAPIKeyBaseURL = computed(() =>
-  selectedXimoAIPlatformKind.value !== 'volcengine_agent_plan'
-)
-
-const isOpenAICompatibleAPIKeyPlatform = computed(() =>
-  selectedProtocol.value === 'openai_compatible'
-  || (selectedXimoAIPlatformKind.value !== '' && selectedXimoAIPlatformKind.value !== 'volcengine_agent_plan')
-  || props.account?.platform === 'grok'
-)
-
-const upstreamModelSyncPlatforms = new Set([
-  'anthropic', 'openai', 'gemini', 'antigravity',
-  'grok-video', 'openai-audio', 'kling_audio',
-])
-const canSyncUpstreamModels = computed(() => {
-  return Boolean(props.account?.id && upstreamModelSyncPlatforms.has(props.account.platform))
-})
-
-const apiKeyBaseUrlDefault = computed(() => {
-  const platform = props.account?.platform
-  if (platform === 'kimi' || platform === 'zhipu' || platform === 'deepseek') {
-    return defaultCNBaseUrl(platform, editAccountMode.value, editApiProtocol.value)
-  }
-  if (selectedPlatform.value?.base_url) return selectedPlatform.value.base_url
-  if (selectedXimoAIPlatformKind.value) return ''
-  if (isOfficialOpenAI.value) return 'https://api.openai.com'
-  if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
-  if (props.account?.platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
-  if (props.account?.platform === 'grok') return 'https://api.x.ai/v1'
-  if (selectedProtocol.value === 'anthropic' || props.account?.platform === 'anthropic') return 'https://api.anthropic.com'
-  return ''
-})
-
-const apiKeyBaseUrlPlaceholder = computed(() => {
-  if (apiKeyBaseUrlDefault.value) return apiKeyBaseUrlDefault.value
-  if (isOpenAICompatibleAPIKeyPlatform.value) return 'https://api.example.com/v1'
-  return 'https://api.anthropic.com'
-})
-
-const apiKeyPlaceholder = computed(() => {
-  if (isOfficialOpenAI.value) return 'sk-proj-...'
-  if (selectedProtocol.value === 'gemini' || props.account?.platform === 'gemini') return 'AIza...'
-  if (props.account?.platform === 'antigravity') return 'sk-...'
-  if (props.account?.platform === 'grok') return 'xai-...'
-  if (isOpenAICompatibleAPIKeyPlatform.value) return 'sk-...'
-  return 'sk-ant-...'
-})
-
 // Spark 影子账号(parent_account_id 非空):代理恒继承母账号,不可独立编辑(外审 B/P1),
 // 故隐藏代理选择器。
 const isSparkShadow = computed(() => props.account?.parent_account_id != null)
@@ -2981,26 +2879,11 @@ const handleOllamaCloudUsageUpdated = (state: OllamaCloudUsageState) => {
 // Platform-specific hint for Base URL
 const baseUrlHint = computed(() => {
   if (!props.account) return t('admin.accounts.baseUrlHint')
-  if (isOfficialOpenAI.value) return t('admin.accounts.openai.baseUrlHint')
+  if (props.account.platform === 'openai') return t('admin.accounts.openai.baseUrlHint')
+  if (props.account.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   if (props.account.platform === 'grok') return ''
-  if (isOpenAICompatibleAPIKeyPlatform.value) return t('admin.accounts.openaiCompatible.baseUrlHint')
-  if (selectedProtocol.value === 'gemini' || props.account.platform === 'gemini') return t('admin.accounts.gemini.baseUrlHint')
   return t('admin.accounts.baseUrlHint')
 })
-
-function defaultBaseUrlForPlatform(platform: string): string {
-  const definition = platforms.value.find((item) => item.slug === platform)
-  const configured = definition?.base_url
-  if (configured) return configured
-  if (resolveXimoAIPlatformKind(definition, props.account)) return ''
-  if (platform === 'openai') return 'https://api.openai.com'
-  if (platform === 'grok') return 'https://api.x.ai/v1'
-  const protocol = definition?.protocol
-  if (platform === 'gemini' || protocol === 'gemini') return 'https://generativelanguage.googleapis.com'
-  if (platform === 'antigravity') return 'https://cloudcode-pa.googleapis.com'
-  if (protocol === 'openai_compatible') return ''
-  return 'https://api.anthropic.com'
-}
 
 const antigravityPresetMappings = computed(() => getPresetMappingsByPlatform('antigravity'))
 const bedrockPresets = computed(() => getPresetMappingsByPlatform('bedrock'))
@@ -3199,10 +3082,7 @@ const headerOverrideEnabled = ref(false)
 const headerOverrideRows = ref<HeaderOverrideRow[]>([])
 
 const headerOverrideCapable = computed(
-  () => !!props.account && isHeaderOverrideCapable(
-    props.account.platform,
-    props.account.type
-  )
+  () => !!props.account && isHeaderOverrideCapable(props.account.platform, props.account.type)
 )
 
 // Grok OAuth 自定义上游地址（仅转发端点；OAuth 授权/令牌刷新不受影响）
@@ -3426,31 +3306,6 @@ const openAIResponsesModeOptions = computed(() => [
   { value: 'force_responses', label: t('admin.accounts.openai.responsesModeForceResponses') },
   { value: 'force_chat_completions', label: t('admin.accounts.openai.responsesModeForceChatCompletions') }
 ])
-const normalizeOpenAIResponsesMode = (mode: unknown): OpenAIResponsesMode => {
-  if (mode === 'force_responses' || mode === 'force_chat_completions') {
-    return mode
-  }
-  return 'auto'
-}
-const isOpenAIModelRestrictionDisabled = computed(() =>
-  hasOpenAIProtocolSettings.value && openaiPassthroughEnabled.value
-)
-const openAIResponsesStatusKey = computed(() => {
-  if (openAIResponsesMode.value === 'force_responses') {
-    return 'admin.accounts.openai.responsesStatusForcedResponses'
-  }
-  if (openAIResponsesMode.value === 'force_chat_completions') {
-    return 'admin.accounts.openai.responsesStatusForcedChatCompletions'
-  }
-  const extra = props.account?.extra as Record<string, unknown> | undefined
-  if (extra?.openai_responses_supported === true) {
-    return 'admin.accounts.openai.responsesStatusAutoSupported'
-  }
-  if (extra?.openai_responses_supported === false) {
-    return 'admin.accounts.openai.responsesStatusAutoUnsupported'
-  }
-  return 'admin.accounts.openai.responsesStatusAutoUnknown'
-})
 const openAITextEndpointCapabilityLabel = computed(() => {
   if (openAIResponsesMode.value === 'force_responses') {
     return t('admin.accounts.openai.capabilityResponses')
@@ -3530,9 +3385,34 @@ const applyOpenAIEndpointCapabilities = (credentials: Record<string, unknown>) =
   }
   credentials.openai_capabilities = capabilities
 }
+const normalizeOpenAIResponsesMode = (mode: unknown): OpenAIResponsesMode => {
+  if (mode === 'force_responses' || mode === 'force_chat_completions') {
+    return mode
+  }
+  return 'auto'
+}
+const isOpenAIModelRestrictionDisabled = computed(() =>
+  props.account?.platform === 'openai' && openaiPassthroughEnabled.value
+)
+const openAIResponsesStatusKey = computed(() => {
+  if (openAIResponsesMode.value === 'force_responses') {
+    return 'admin.accounts.openai.responsesStatusForcedResponses'
+  }
+  if (openAIResponsesMode.value === 'force_chat_completions') {
+    return 'admin.accounts.openai.responsesStatusForcedChatCompletions'
+  }
+  const extra = props.account?.extra as Record<string, unknown> | undefined
+  if (extra?.openai_responses_supported === true) {
+    return 'admin.accounts.openai.responsesStatusAutoSupported'
+  }
+  if (extra?.openai_responses_supported === false) {
+    return 'admin.accounts.openai.responsesStatusAutoUnsupported'
+  }
+  return 'admin.accounts.openai.responsesStatusAutoUnknown'
+})
 const openAICompactStatusKey = computed(() => {
   const extra = props.account?.extra as Record<string, unknown> | undefined
-  if (!props.account || !hasOpenAIProtocolSettings.value) return ''
+  if (!props.account || props.account.platform !== 'openai') return ''
   const mode = typeof extra?.openai_compact_mode === 'string' ? extra.openai_compact_mode : 'auto'
   if (mode === 'force_on') return 'admin.accounts.openai.compactSupported'
   if (mode === 'force_off') return 'admin.accounts.openai.compactUnsupported'
@@ -3578,7 +3458,19 @@ const tempUnschedPresets = computed(() => [
 
 // Computed: default base URL based on platform
 const defaultBaseUrl = computed(() => {
-  return apiKeyBaseUrlDefault.value
+  if (props.account?.platform === 'openai') return 'https://api.openai.com'
+  if (props.account?.platform === 'gemini') return 'https://generativelanguage.googleapis.com'
+  if (props.account?.platform === 'grok') return 'https://api.x.ai/v1'
+  // CN 供应商：按当前模式/协议回落到官方预设（清空输入框提交时使用），
+  // 不能落到 anthropic 默认值（会被当 CC base 拼出错误端点）。
+  if (
+    props.account?.platform === 'kimi' ||
+    props.account?.platform === 'zhipu' ||
+    props.account?.platform === 'deepseek'
+  ) {
+    return defaultCNBaseUrl(props.account.platform, editAccountMode.value, editApiProtocol.value)
+  }
+  return 'https://api.anthropic.com'
 })
 
 const mixedChannelWarningMessageText = computed(() => {
@@ -3661,20 +3553,6 @@ const loadModelRestrictionFromMapping = (rawMapping?: Record<string, unknown>) =
 const buildModelRestrictionMapping = () =>
   buildModelMappingObject('combined', allowedModels.value, modelMappings.value)
 
-const readAutoPauseThresholdPercent = (value: unknown): number | null => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return null
-  }
-  return Math.min(value * 100, 100)
-}
-
-const buildAutoPauseThresholdRatio = (value: number | null): number | undefined => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return undefined
-  }
-  return Math.min(value, 100) / 100
-}
-
 const applyOpenAIModelMappingCredentials = (credentials: Record<string, unknown>) => {
   const shouldApplyModelMapping = !openaiPassthroughEnabled.value
 
@@ -3741,15 +3619,14 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   // Load mixed scheduling setting (only for antigravity accounts)
   mixedScheduling.value = false
   allowOverages.value = false
-  const extra = newAccount.extra as Record<string, unknown> | undefined
-  mixedScheduling.value = extra?.mixed_scheduling === true
-  allowOverages.value = extra?.allow_overages === true
-  autoPause5hThreshold.value = readAutoPauseThresholdPercent(extra?.auto_pause_5h_threshold)
-  autoPause7dThreshold.value = readAutoPauseThresholdPercent(extra?.auto_pause_7d_threshold)
-  autoPause5hDisabled.value = extra?.auto_pause_5h_disabled === true
-  autoPause7dDisabled.value = extra?.auto_pause_7d_disabled === true
-  openAIEndpointCapabilities.value = ['chat_completions', 'embeddings']
-  upstreamBillingAutoProbeEnabled.value = extra?.upstream_billing_probe_enabled === true
+	const extra = newAccount.extra as Record<string, unknown> | undefined
+	mixedScheduling.value = extra?.mixed_scheduling === true
+	allowOverages.value = extra?.allow_overages === true
+	autoPause5hThreshold.value = typeof extra?.auto_pause_5h_threshold === 'number' ? extra.auto_pause_5h_threshold * 100 : null
+	autoPause7dThreshold.value = typeof extra?.auto_pause_7d_threshold === 'number' ? extra.auto_pause_7d_threshold * 100 : null
+	autoPause5hDisabled.value = extra?.auto_pause_5h_disabled === true
+	autoPause7dDisabled.value = extra?.auto_pause_7d_disabled === true
+	upstreamBillingAutoProbeEnabled.value = extra?.upstream_billing_probe_enabled === true
   upstreamBillingRateSyncEnabled.value =
     upstreamBillingAutoProbeEnabled.value && extra?.upstream_billing_rate_sync_enabled === true
 
@@ -3760,6 +3637,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   editPlanType.value = ''
   openAICompactMode.value = 'auto'
   openAIResponsesMode.value = 'auto'
+  openAIEndpointCapabilities.value = ['chat_completions', 'embeddings']
   openAICompactModelMappings.value = []
   openaiOAuthResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
   openaiAPIKeyResponsesWebSocketV2Mode.value = OPENAI_WS_MODE_OFF
@@ -3770,7 +3648,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   anthropicPassthroughEnabled.value = false
   anthropicAPIKeyAuthScheme.value = 'x_api_key'
   webSearchEmulationMode.value = 'default'
-  if (hasOpenAIProtocolSettings.value) {
+  if (newAccount.platform === 'openai' && (newAccount.type === 'oauth' || newAccount.type === 'setup-token' || newAccount.type === 'apikey')) {
     openaiPassthroughEnabled.value = extra?.openai_passthrough === true || extra?.openai_oauth_passthrough === true
     openaiFlattenNamespacesEnabled.value =
       newAccount.type === 'oauth' && extra?.openai_responses_flatten_namespaces === true
@@ -3783,7 +3661,12 @@ const syncFormFromAccount = (newAccount: Account | null) => {
     openAICompactMode.value = (extra?.openai_compact_mode as OpenAICompactMode) || 'auto'
     if (newAccount.type === 'apikey') {
       openAIResponsesMode.value = normalizeOpenAIResponsesMode(extra?.openai_responses_mode)
-      openAIEndpointCapabilities.value = readOpenAIEndpointCapabilities(credentials)
+      openAIEndpointCapabilities.value = readOpenAIEndpointCapabilities(
+        newAccount.credentials as Record<string, unknown> | undefined
+      )
+      if (!openAITextGenerationCapabilityEnabled.value) {
+        openAIResponsesMode.value = 'auto'
+      }
     }
     const codexImageGenerationBridgeValue = typeof extra?.codex_image_generation_bridge === 'boolean'
       ? extra.codex_image_generation_bridge
@@ -3819,12 +3702,13 @@ const syncFormFromAccount = (newAccount: Account | null) => {
         ? fpMode as CodexFingerprintMode
         : 'off')
     }
+    const credentials = newAccount.credentials as Record<string, unknown> | undefined
     const compactMappings = credentials?.compact_model_mapping as Record<string, string> | undefined
     if (compactMappings && typeof compactMappings === 'object') {
       openAICompactModelMappings.value = Object.entries(compactMappings).map(([from, to]) => ({ from, to }))
     }
   }
-  if (hasAnthropicAPIKeySettings.value) {
+  if (newAccount.platform === 'anthropic' && newAccount.type === 'apikey') {
     anthropicPassthroughEnabled.value = extra?.anthropic_passthrough === true
     anthropicAPIKeyAuthScheme.value = extra?.anthropic_apikey_auth_scheme === 'authorization_bearer'
       ? 'authorization_bearer'
@@ -3911,10 +3795,7 @@ const syncFormFromAccount = (newAccount: Account | null) => {
   // Load header override state for eligible account platforms/types
   headerOverrideEnabled.value = false
   headerOverrideRows.value = []
-  if (newAccount.credentials && isHeaderOverrideCapable(
-    newAccount.platform,
-    newAccount.type
-  )) {
+  if (newAccount.credentials && isHeaderOverrideCapable(newAccount.platform, newAccount.type)) {
     const overrideCreds = newAccount.credentials as Record<string, unknown>
     headerOverrideEnabled.value = overrideCreds[HEADER_OVERRIDE_ENABLED_CREDENTIAL_KEY] === true
     headerOverrideRows.value = splitHeaderOverridesObject(
@@ -3992,11 +3873,17 @@ const syncFormFromAccount = (newAccount: Account | null) => {
       editAdaptiveBaseUrls.value = nextAdaptiveBaseUrls
     }
     const platformDefaultUrl =
-      newAccount.platform === 'kimi' ||
-      newAccount.platform === 'zhipu' ||
-      newAccount.platform === 'deepseek'
-        ? defaultCNBaseUrl(newAccount.platform, editAccountMode.value, editApiProtocol.value)
-        : defaultBaseUrlForPlatform(newAccount.platform)
+      newAccount.platform === 'openai'
+        ? 'https://api.openai.com'
+        : newAccount.platform === 'gemini'
+          ? 'https://generativelanguage.googleapis.com'
+          : newAccount.platform === 'grok'
+            ? 'https://api.x.ai/v1'
+            : newAccount.platform === 'kimi' ||
+                newAccount.platform === 'zhipu' ||
+                newAccount.platform === 'deepseek'
+              ? defaultCNBaseUrl(newAccount.platform, editAccountMode.value, editApiProtocol.value)
+              : 'https://api.anthropic.com'
     editBaseUrl.value = isCNApiKeyAccount.value && editApiProtocol.value === 'adaptive'
       ? editAdaptiveBaseUrls.value.chat_completions
       : (credentials.base_url as string) || platformDefaultUrl
@@ -4061,9 +3948,16 @@ const syncFormFromAccount = (newAccount: Account | null) => {
 
     // Load model mappings for service_account
     loadModelRestrictionFromMapping(credentials.model_mapping as Record<string, unknown> | undefined)
-    } else {
-      const platformDefaultUrl = defaultBaseUrlForPlatform(newAccount.platform)
-      editBaseUrl.value = platformDefaultUrl
+  } else {
+    const platformDefaultUrl =
+      newAccount.platform === 'openai'
+        ? 'https://api.openai.com'
+        : newAccount.platform === 'gemini'
+          ? 'https://generativelanguage.googleapis.com'
+          : newAccount.platform === 'grok'
+            ? 'https://api.x.ai/v1'
+            : 'https://api.anthropic.com'
+    editBaseUrl.value = platformDefaultUrl
 
     // Load model mappings for OpenAI/Grok OAuth accounts
     if ((newAccount.platform === 'openai' || newAccount.platform === 'grok') && newAccount.credentials) {
@@ -4652,18 +4546,12 @@ const handleSubmit = async () => {
     if (props.account.type === 'apikey') {
       const currentCredentials = (props.account.credentials as Record<string, unknown>) || {}
       const newBaseUrl = editBaseUrl.value.trim() || defaultBaseUrl.value
-      if (requiresAPIKeyBaseURL.value && !newBaseUrl) {
-        appStore.showError(t('admin.accounts.upstream.pleaseEnterBaseUrl'))
-        return
-      }
-      const shouldApplyModelMapping = !(hasOpenAIProtocolSettings.value && openaiPassthroughEnabled.value)
+      const shouldApplyModelMapping = !(props.account.platform === 'openai' && openaiPassthroughEnabled.value)
 
       // Always update credentials for apikey type to handle model mapping changes
-      const newCredentials: Record<string, unknown> = { ...currentCredentials }
-      if (showAPIKeyBaseURL.value && newBaseUrl) {
-        newCredentials.base_url = newBaseUrl
-      } else {
-        delete newCredentials.base_url
+      const newCredentials: Record<string, unknown> = {
+        ...currentCredentials,
+        base_url: newBaseUrl
       }
 
       // 国产供应商：模式与协议写入凭据（决定额度/余额探测与转发端点/格式）。
@@ -4708,7 +4596,7 @@ const handleSubmit = async () => {
       } else if (currentCredentials.model_mapping) {
         newCredentials.model_mapping = currentCredentials.model_mapping
       }
-      if (hasOpenAIAPIKeySettings.value) {
+      if (props.account.platform === 'openai') {
         applyOpenAIEndpointCapabilities(newCredentials)
         const compactModelMapping = buildModelMappingObject('mapping', [], openAICompactModelMappings.value)
         if (compactModelMapping) {
@@ -5110,7 +4998,7 @@ const handleSubmit = async () => {
     }
 
     // For Anthropic API Key accounts, handle passthrough mode + web search emulation in extra
-    if (hasAnthropicAPIKeySettings.value) {
+    if (props.account.platform === 'anthropic' && props.account.type === 'apikey') {
       const currentExtra = (updatePayload.extra as Record<string, unknown>) || (props.account.extra as Record<string, unknown>) || {}
       const newExtra: Record<string, unknown> = { ...currentExtra }
       if (anthropicPassthroughEnabled.value) {
@@ -5132,7 +5020,7 @@ const handleSubmit = async () => {
     }
 
     // For OpenAI OAuth/SetupToken/API Key accounts, handle passthrough mode in extra
-    if (hasOpenAIProtocolSettings.value) {
+    if (props.account.platform === 'openai' && (props.account.type === 'oauth' || props.account.type === 'setup-token' || props.account.type === 'apikey')) {
       const currentExtra = (props.account.extra as Record<string, unknown>) || {}
       const newExtra: Record<string, unknown> = { ...currentExtra }
       const hadCodexCLIOnlyEnabled = currentExtra.codex_cli_only === true
@@ -5167,39 +5055,35 @@ const handleSubmit = async () => {
       } else {
         newExtra.openai_compact_mode = openAICompactMode.value
       }
-
-      const threshold5h = buildAutoPauseThresholdRatio(autoPause5hThreshold.value)
-      if (threshold5h === undefined) {
-        delete newExtra.auto_pause_5h_threshold
-      } else {
-        newExtra.auto_pause_5h_threshold = threshold5h
-      }
-      const threshold7d = buildAutoPauseThresholdRatio(autoPause7dThreshold.value)
-      if (threshold7d === undefined) {
-        delete newExtra.auto_pause_7d_threshold
-      } else {
-        newExtra.auto_pause_7d_threshold = threshold7d
-      }
-      if (autoPause5hDisabled.value) {
-        newExtra.auto_pause_5h_disabled = true
-      } else {
-        delete newExtra.auto_pause_5h_disabled
-      }
-      if (autoPause7dDisabled.value) {
-        newExtra.auto_pause_7d_disabled = true
-      } else {
-        delete newExtra.auto_pause_7d_disabled
-      }
-
-      if (props.account.type === 'apikey') {
+		if (props.account.type === 'apikey') {
         if (!openAITextGenerationCapabilityEnabled.value || openAIResponsesMode.value === 'auto') {
           delete newExtra.openai_responses_mode
         } else {
           newExtra.openai_responses_mode = openAIResponsesMode.value
         }
-      }
+		}
+		if (autoPause5hThreshold.value != null && autoPause5hThreshold.value > 0) {
+			newExtra.auto_pause_5h_threshold = autoPause5hThreshold.value / 100
+		} else {
+			delete newExtra.auto_pause_5h_threshold
+		}
+		if (autoPause7dThreshold.value != null && autoPause7dThreshold.value > 0) {
+			newExtra.auto_pause_7d_threshold = autoPause7dThreshold.value / 100
+		} else {
+			delete newExtra.auto_pause_7d_threshold
+		}
+		if (autoPause5hDisabled.value) {
+			newExtra.auto_pause_5h_disabled = true
+		} else {
+			delete newExtra.auto_pause_5h_disabled
+		}
+		if (autoPause7dDisabled.value) {
+			newExtra.auto_pause_7d_disabled = true
+		} else {
+			delete newExtra.auto_pause_7d_disabled
+		}
 
-      delete newExtra.codex_image_generation_bridge_enabled
+		delete newExtra.codex_image_generation_bridge_enabled
       switch (codexImageToolMode.value) {
         case 'enabled':
         case 'disabled':
@@ -5219,12 +5103,12 @@ const handleSubmit = async () => {
         if (codexCLIOnlyEnabled.value) {
           newExtra.codex_cli_only = true
         } else if (hadCodexCLIOnlyEnabled) {
-          // Keep an explicit false so the backend clears a previous true value.
+          // 关闭时显式写 false，避免 extra 为空被后端忽略导致旧值无法清除
           newExtra.codex_cli_only = false
         } else {
           delete newExtra.codex_cli_only
         }
-        // Account-level client allowlist was migrated to the global whitelist.
+        // Claude Code 插件放行已迁移到全局 codex_cli_only_whitelist，编辑时清理废弃账号级快捷字段。
         delete newExtra.codex_cli_only_allowed_clients
         if (codexCLIOnlyEnabled.value && codexCLIOnlyAppServerEnabled.value) {
           newExtra.codex_cli_only_allow_app_server = true

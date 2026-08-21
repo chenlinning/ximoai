@@ -102,16 +102,6 @@ func appendUsageLogBillingModeQueryFilter(query string, args []any, billingMode 
 	return query + " AND " + conditions[0], args
 }
 
-func appendUsageLogZeroActualCostWhereCondition(conditions []string, zeroActualCost *bool) []string {
-	if zeroActualCost == nil {
-		return conditions
-	}
-	if *zeroActualCost {
-		return append(conditions, "actual_cost = 0")
-	}
-	return append(conditions, "actual_cost > 0")
-}
-
 func appendUsageLogModelWhereCondition(conditions []string, args []any, model string, source string) ([]string, []any) {
 	if strings.TrimSpace(source) == "" {
 		return appendRawUsageLogModelWhereCondition(conditions, args, model)

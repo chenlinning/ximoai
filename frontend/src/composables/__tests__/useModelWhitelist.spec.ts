@@ -7,14 +7,6 @@ vi.mock('@/api/admin/accounts', () => ({
 import { buildModelMappingObject, getModelsByPlatform, splitModelMappingObject } from '../useModelWhitelist'
 
 describe('useModelWhitelist', () => {
-  it('Volcengine Agent Plan only exposes its three native resources', () => {
-    expect(getModelsByPlatform('volcengine-agent-plan')).toEqual([
-      'doubao-seedream-5.0-lite',
-      'seed-tts-2.0',
-      'volc.seedasr.sauc.duration'
-    ])
-  })
-
   it('openai 模型列表包含 GPT-5.4 官方快照', () => {
     const models = getModelsByPlatform('openai')
 

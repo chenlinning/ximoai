@@ -124,11 +124,9 @@ const ModelWhitelistSelectorStub = defineComponent({
   template: '<div data-testid="model-whitelist-selector" />',
 })
 
-function mountModal(showOrGroups: boolean | any[] = true) {
-  const show = typeof showOrGroups === 'boolean' ? showOrGroups : true
-  const groups = Array.isArray(showOrGroups) ? showOrGroups : []
+function mountModal(groups: any[] = []) {
   return mount(CreateAccountModal, {
-    props: { show, proxies: [], groups },
+    props: { show: true, proxies: [], groups },
     global: {
       stubs: {
         BaseDialog: BaseDialogStub,
@@ -201,40 +199,6 @@ describe('CreateAccountModal OpenAI long-context billing', () => {
       warnings: [],
     })
     createOpenAICodexPATMock.mockReset().mockResolvedValue({})
-  })
-
-  it('shows upstream providers once and includes every fixed XimoAI platform', () => {
-    const wrapper = mountModal()
-    const buttonLabels = wrapper.findAll('button').map((button) => button.text().trim())
-
-    for (const platform of ['Kimi', 'Zhipu GLM', 'DeepSeek']) {
-      expect(buttonLabels.filter((label) => label === platform)).toHaveLength(1)
-    }
-    for (const platform of ['Grok Video', 'OpenAI Audio', 'Kling Audio', 'Volcengine Agent Plan']) {
-      expect(buttonLabels).toContain(platform)
-    }
-  })
-
-  it('creates a Volcengine Agent Plan account with API key only', async () => {
-    createAccountMock.mockResolvedValue({ id: 55, platform: 'volcengine-agent-plan', type: 'apikey' })
-
-    const wrapper = mountModal(false)
-    await wrapper.setProps({ show: true })
-    await flushPromises()
-    await selectButtonByText(wrapper, 'Volcengine Agent Plan')
-
-    expect(wrapper.text()).not.toContain('admin.accounts.baseUrl')
-    await wrapper.get('input[placeholder="admin.accounts.enterAccountName"]').setValue('Agent Plan account')
-    await wrapper.get('input[type="password"]').setValue('volc-agent-key')
-    await wrapper.get('form#create-account-form').trigger('submit.prevent')
-    await flushPromises()
-
-    expect(createAccountMock).toHaveBeenCalledWith(expect.objectContaining({
-      platform: 'volcengine-agent-plan',
-      type: 'apikey',
-      credentials: expect.objectContaining({ api_key: 'volc-agent-key' }),
-    }))
-    expect(createAccountMock.mock.calls[0]?.[0]?.credentials).not.toHaveProperty('base_url')
   })
 
   it('hides only the redundant account toggle when every selected group enables tier pricing', async () => {

@@ -532,7 +532,6 @@ type UsageLog struct {
 	ImageOutputCost    float64        `json:"image_output_cost"`
 	ImageSizeSource    *string        `json:"image_size_source"`
 	ImageSizeBreakdown map[string]int `json:"image_size_breakdown"`
-	VideoCount         int            `json:"video_count"`
 	MediaType          *string        `json:"media_type"`
 
 	// User-Agent

@@ -1197,6 +1197,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_StickyWeightedPreviousR
 		false,
 		false,
 		true,
+		PlatformOpenAI,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
@@ -1220,6 +1221,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_StickyWeightedPreviousR
 		false,
 		true,
 		true,
+		PlatformOpenAI,
 	)
 	require.NoError(t, err)
 	require.NotNil(t, selection)
@@ -2206,8 +2208,8 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_SessionStickyBusyKeepsS
 
 	concurrencyCache := schedulerTestConcurrencyCache{
 		acquireResults: map[int64]bool{
-			21001: false, // sticky account is full
-			21002: true,  // fallback candidate must not be selected
+			21001: false, // sticky 账号已满
+			21002: true,  // 若回退负载均衡会命中该账号（本测试要求不能切换）
 		},
 		waitCounts: map[int64]int{
 			21001: 999,
@@ -2815,7 +2817,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_RequiredWSV2_SkipsStick
 	}
 	cfg := newSchedulerTestOpenAIWSV2Config()
 
-	// Build a lower-load HTTP-only account scenario to verify required transport filtering.
+	// 构造“HTTP-only 账号负载更低”的场景，验证 required transport 会强制过滤。
 	concurrencyCache := schedulerTestConcurrencyCache{
 		loadMap: map[int64]*AccountLoadInfo{
 			2201: {AccountID: 2201, LoadRate: 0, WaitingCount: 0},

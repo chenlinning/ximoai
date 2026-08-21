@@ -63,6 +63,7 @@ describe('applyInterceptWarmup', () => {
     expect('intercept_warmup_requests' in creds).toBe(false)
   })
 })
+
 describe('applyAntigravityProjectID', () => {
   it('create + project id: trims and stores configured project fallback', () => {
     const creds: Record<string, unknown> = { access_token: 'tok' }
@@ -123,7 +124,6 @@ describe('isHeaderOverrideCapable', () => {
     expect(isHeaderOverrideCapable('antigravity', 'apikey')).toBe(false)
     expect(isHeaderOverrideCapable('', 'apikey')).toBe(false)
   })
-
 })
 
 describe('parseHeaderOverridesJson', () => {

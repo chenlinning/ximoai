@@ -38,29 +38,6 @@ func compositeTargetPlatformAllowed(c *gin.Context, apiKey *service.APIKey, mode
 	return false
 }
 
-func compositeOpenAICompatibleTargetAllowed(c *gin.Context, apiKey *service.APIKey, model string) bool {
-	if c == nil || c.Request == nil || apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformComposite {
-		return true
-	}
-	ensureCompositeTargetPlatform(c, apiKey, model)
-	platform, ok := service.ResolvedTargetPlatformFromContext(c.Request.Context())
-	if !ok {
-		return false
-	}
-	platform = service.NormalizePlatformSlug(platform)
-	switch platform {
-	case service.PlatformOpenAI, service.PlatformGrok,
-		service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
-		return true
-	case service.PlatformAnthropic, service.PlatformGemini, service.PlatformAntigravity,
-		service.PlatformComposite, service.PlatformGrokVideo, service.PlatformOpenAIAudio,
-		service.PlatformKlingAudio, service.PlatformVolcengineAgentPlan:
-		return false
-	default:
-		return false
-	}
-}
-
 func compositeTargetPlatformResolved(c *gin.Context, apiKey *service.APIKey, model string) bool {
 	if c == nil || c.Request == nil || apiKey == nil || apiKey.Group == nil || apiKey.Group.Platform != service.PlatformComposite {
 		return true

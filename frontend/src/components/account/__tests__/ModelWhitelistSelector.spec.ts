@@ -21,12 +21,6 @@ vi.mock('@/stores/app', () => ({
   })
 }))
 
-vi.mock('@/api/admin/accounts', () => ({
-  accountsAPI: {
-    syncUpstreamModels: vi.fn()
-  }
-}))
-
 vi.mock('@/composables/useClipboard', () => ({
   useClipboard: () => ({
     copyToClipboard
@@ -35,20 +29,19 @@ vi.mock('@/composables/useClipboard', () => ({
 
 import ModelWhitelistSelector from '../ModelWhitelistSelector.vue'
 
-const mountSelector = (props: Record<string, unknown> = {}) =>
-  mount(ModelWhitelistSelector, {
+function mountSelector() {
+  return mount(ModelWhitelistSelector, {
     props: {
       modelValue: [],
-      platform: 'openai',
-      ...props
-    } as any,
+      platform: 'openai'
+    },
     global: {
       stubs: {
-        ModelIcon: true,
-        Icon: true
+        ModelIcon: true
       }
     }
   })
+}
 
 function findModelRow(wrapper: ReturnType<typeof mountSelector>, modelId: string) {
   const row = wrapper
@@ -67,39 +60,12 @@ describe('ModelWhitelistSelector', () => {
     copyToClipboard.mockClear()
   })
 
-  it('keeps preview synced upstream models selectable without an account id', async () => {
-    const wrapper = mountSelector({
-      platform: 'mengfactory',
-      canSyncUpstream: true,
-      syncUpstreamModels: vi.fn().mockResolvedValue(['vendor-audio', 'vendor-video'])
-    })
-
-    const syncButton = wrapper
-      .findAll('button')
-      .find((button) => button.text().includes('admin.accounts.syncUpstreamModels'))
-    expect(syncButton).toBeTruthy()
-
-    await syncButton!.trigger('click')
-    await flushPromises()
-    await wrapper.find('div.cursor-pointer').trigger('click')
-
-    expect(wrapper.text()).toContain('vendor-audio')
-    expect(wrapper.text()).toContain('vendor-video')
-
-    const clearButton = wrapper
-      .findAll('button')
-      .find((button) => button.text().includes('admin.accounts.clearAllModels'))
-    await clearButton!.trigger('click')
-
-    expect(wrapper.text()).toContain('vendor-audio')
-    expect(wrapper.text()).toContain('vendor-video')
-  })
-
   it('copies a model ID without selecting the model', async () => {
     const wrapper = mountSelector()
     await wrapper.get('div.cursor-pointer').trigger('click')
 
     const row = findModelRow(wrapper, 'gpt-5.6-sol')
+
     const copyButton = row.get('[data-testid="copy-model-id"]')
     expect(copyButton.attributes('aria-label')).toBe('复制 gpt-5.6-sol')
 

@@ -144,41 +144,6 @@ func resolveAutomaticModelMetadata(input modelMetadataResolutionInput) modelMeta
 		}
 	}
 
-	if input.Kind == service.PlatformKindVolcengineAgentPlan {
-		switch input.RecognitionModel {
-		case service.VolcengineAgentPlanSeedreamModel:
-			metadata.Types = []string{modelTypeImage}
-			metadata.InvocationModes = []string{modelInvocationSync, modelInvocationStream}
-		case service.VolcengineAgentPlanTTSModel:
-			metadata.Types = []string{modelTypeTTS}
-			metadata.InvocationModes = []string{modelInvocationSync, modelInvocationStream, modelInvocationBidirectional}
-		case service.VolcengineAgentPlanASRModel:
-			metadata.Types = []string{modelTypeASR}
-			metadata.InvocationModes = []string{modelInvocationStream}
-		}
-		return metadata
-	}
-
-	switch input.Kind {
-	case service.PlatformKindGrokVideo:
-		metadata.Types = []string{modelTypeVideo}
-		metadata.InvocationModes = []string{modelInvocationAsync}
-		return metadata
-	case service.PlatformKindKlingAudio:
-		metadata.Types = []string{modelTypeTTS}
-		metadata.InvocationModes = []string{modelInvocationSync}
-		return metadata
-	case service.PlatformKindOpenAIAudio:
-		if containsModelMetadataValue(input.BillingModes, string(service.BillingModeToken)) {
-			metadata.Types = []string{modelTypeConversation}
-			metadata.InvocationModes = []string{modelInvocationSync, modelInvocationStream}
-		} else {
-			metadata.Types = []string{modelTypeTTS, modelTypeASR}
-			metadata.InvocationModes = []string{modelInvocationSync}
-		}
-		return metadata
-	}
-
 	for _, billingMode := range input.BillingModes {
 		switch billingMode {
 		case string(service.BillingModeToken):
@@ -253,9 +218,6 @@ func appendUniqueModelMetadataValue(values []string, value string) []string {
 func normalizeModelMetadataResolutionInput(input modelMetadataResolutionInput) modelMetadataResolutionInput {
 	input.Platform = strings.ToLower(strings.TrimSpace(input.Platform))
 	input.Kind = strings.ToLower(strings.TrimSpace(input.Kind))
-	if input.Kind == "" {
-		input.Kind = service.XimoAIPlatformKindFromSlug(input.Platform)
-	}
 	input.Protocol = strings.ToLower(strings.TrimSpace(input.Protocol))
 	input.Model = strings.TrimSpace(input.Model)
 	input.RecognitionModel = strings.TrimSpace(input.RecognitionModel)

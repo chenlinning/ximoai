@@ -143,7 +143,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	user := input.User
 	account := input.Account
 	subscription := input.Subscription
-	if !isOpenAIVideoUsageResult(result) {
+	if !isGrokVideoUsageResult(result, nil) {
 		ApplyOpenAIImageBillingResolution(result)
 	}
 
@@ -264,20 +264,16 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 			// 基线定价源以 baselineBillingModel 为准：它正是 calculateOpenAIRecordUsageCost
 			// 内部做渠道定价判断时使用的模型，且"首候选有渠道价"必然意味着首候选就是实际
 			// 定价基准（有渠道价就一定能算出价，循环不会落到后续候选）。
-			baselineChannelPriced := false
-			for _, candidate := range billingModels {
-				if s.resolveOpenAIChannelPricing(ctx, candidate, apiKey) != nil {
-					baselineChannelPriced = true
-					break
-				}
-			}
+			baselineChannelPriced := s.resolveOpenAIChannelPricing(ctx, baselineBillingModel, apiKey) != nil
 			if responseErr == nil && responseModelBillingAdoptable(cost, responseCost, baselineChannelPriced, responseChannelPriced) {
 				logResponseModelBillingApplied("service.openai_gateway", account, result.RequestID,
 					baselineBillingModel, responseModel, cost, responseCost)
+				billingModels = responseModels
 				cost = responseCost
 			}
 		}
 	}
+
 	// Determine billing type
 	isSubscriptionBilling := subscription != nil && apiKey.Group != nil && apiKey.Group.IsSubscriptionType()
 	billingType := BillingTypeBalance
@@ -350,7 +346,7 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		ImageSizeSource:       optionalTrimmedStringPtr(result.ImageSizeSource),
 		ImageSizeBreakdown:    result.ImageSizeBreakdown,
 	}
-	isVideoUsage := isOpenAIVideoUsageResult(result)
+	isVideoUsage := isGrokVideoUsageResult(result, billingModels)
 	if isVideoUsage {
 		usageLog.VideoCount = result.VideoCount
 		usageLog.VideoResolution = optionalTrimmedStringPtr(NormalizeVideoBillingResolutionOrDefault(result.VideoResolution))
@@ -514,24 +510,18 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	longContextBillingGate *bool,
 	pricingAt time.Time,
 ) (*CostBreakdown, error) {
-	billingModels = trimUsageBillingModelCandidates(billingModels)
 	billingModel := firstUsageBillingModel(billingModels)
 	if result != nil && result.WebSearchCalls > 0 {
+		// Codex alpha/search 网页搜索按次计费：上游不返回 usage/token 字段，单价只取
+		// 分组覆盖价（nil 时默认 0.01 = 官方 $10/1000 次），不参与渠道级模型定价。
+		// 倍率与 image/video 按次口径一致：使用不含高峰因子的基础倍率
+		//（用户专属 > 分组 rate_multiplier > 系统默认），与分组表单的价格预览承诺一致。
 		return s.billingService.CalculateWebSearchCost(result.WebSearchCalls, webSearchPricePerCallFromAPIKey(apiKey), webSearchMultiplier), nil
 	}
-	if isOpenAIVideoUsageResult(result) {
-		videoCount := result.VideoCount
-		if videoCount <= 0 {
-			videoCount = 1
+	if isGrokVideoUsageResult(result, billingModels) {
+		if resolved := s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey); resolved == nil || resolved.Mode != BillingModeToken {
+			return s.calculateOpenAIVideoCost(ctx, billingModel, apiKey, result, videoMultiplier), nil
 		}
-		resolution := NormalizeVideoBillingResolutionOrDefault(result.VideoResolution)
-		if cost, ok := s.calculateOpenAIUsageCostFromChannelCandidates(ctx, result, apiKey, billingModels, videoMultiplier, tokens, serviceTier, videoCount, resolution); ok {
-			if cost.BillingMode != string(BillingModeToken) {
-				cost.BillingMode = string(BillingModeVideo)
-			}
-			return cost, nil
-		}
-		return s.calculateOpenAIVideoCost(ctx, billingModel, apiKey, result, videoMultiplier), nil
 	}
 	if result != nil && result.AudioUsage != nil {
 		if resolved := s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey); resolved != nil &&
@@ -549,10 +539,9 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 
 	if result != nil && result.ImageCount > 0 {
 		// 渠道定价为 token 计费时走 token 路径，否则走图片计费
-		if cost, ok := s.calculateOpenAIImageCostFromChannelCandidates(ctx, result, apiKey, billingModels, multiplier, imageMultiplier, tokens, serviceTier); ok {
-			return cost, nil
+		if resolved := s.resolveOpenAIChannelPricing(ctx, billingModel, apiKey); resolved == nil || resolved.Mode != BillingModeToken {
+			return s.calculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier), nil
 		}
-		return s.calculateOpenAIImageCost(ctx, billingModel, apiKey, result, imageMultiplier), nil
 	}
 
 	// Token path (optional search surcharge is additive — never replaces token cost).
@@ -626,32 +615,24 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageCost(
 	return tokenCost, nil
 }
 
-func isOpenAIVideoUsageResult(result *OpenAIForwardResult) bool {
-	return result != nil && result.VideoCount > 0
-}
-
 func isGrokVideoBillingModel(model string) bool {
 	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), "grok-imagine-video")
 }
 
-func openAIUsageCandidateMatchesResult(candidate string, result *OpenAIForwardResult) bool {
-	if result == nil {
+func isGrokVideoUsageResult(result *OpenAIForwardResult, billingModels []string) bool {
+	if result == nil || result.VideoCount <= 0 {
 		return false
 	}
-	return usageBillingModelCandidateMatches(candidate, result.BillingModel, result.Model, result.UpstreamModel)
-}
-
-func usageBillingModelCandidateMatches(candidate string, models ...string) bool {
-	candidate = strings.TrimSpace(candidate)
-	if candidate == "" {
-		return false
-	}
-	for _, model := range models {
-		if strings.EqualFold(candidate, strings.TrimSpace(model)) {
+	// VideoCount alone is authoritative for async video completion billing.
+	// Prefer model-family match when present; never drop video mode on rename/mapping.
+	candidates := append([]string{}, billingModels...)
+	candidates = append(candidates, result.BillingModel, result.Model, result.UpstreamModel)
+	for _, candidate := range candidates {
+		if isGrokVideoBillingModel(candidate) {
 			return true
 		}
 	}
-	return false
+	return true
 }
 
 func isUsagePricingUnavailableError(err error) bool {
@@ -691,35 +672,6 @@ func (s *OpenAIGatewayService) calculateOpenAIRecordUsageTokenCost(
 		serviceTier,
 		longContextBillingGate == nil || *longContextBillingGate,
 	)
-}
-
-func (s *OpenAIGatewayService) calculateOpenAIRecordUsageTokenCostWithResolved(
-	ctx context.Context,
-	apiKey *APIKey,
-	billingModel string,
-	multiplier float64,
-	tokens UsageTokens,
-	serviceTier string,
-	resolved *ResolvedPricing,
-	requestCount int,
-	sizeTier string,
-) (*CostBreakdown, error) {
-	if s.resolver == nil || apiKey == nil || apiKey.Group == nil {
-		return s.billingService.CalculateCostWithServiceTier(billingModel, tokens, multiplier, serviceTier)
-	}
-	gid := apiKey.Group.ID
-	return s.billingService.CalculateCostUnified(CostInput{
-		Ctx:            ctx,
-		Model:          billingModel,
-		GroupID:        &gid,
-		Tokens:         tokens,
-		RequestCount:   requestCount,
-		SizeTier:       sizeTier,
-		RateMultiplier: multiplier,
-		ServiceTier:    serviceTier,
-		Resolver:       s.resolver,
-		Resolved:       resolved,
-	})
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIImageCost(
@@ -775,76 +727,6 @@ func (s *OpenAIGatewayService) calculateOpenAIImageCost(
 	}
 
 	return s.billingService.CalculateImageCost(billingModel, sizeTier, result.ImageCount, groupConfig, multiplier)
-}
-
-func (s *OpenAIGatewayService) calculateOpenAIImageCostFromChannelCandidates(
-	ctx context.Context,
-	result *OpenAIForwardResult,
-	apiKey *APIKey,
-	billingModels []string,
-	tokenMultiplier float64,
-	imageMultiplier float64,
-	tokens UsageTokens,
-	serviceTier string,
-) (*CostBreakdown, bool) {
-	sizeTier := NormalizeImageBillingTierOrDefault(result.ImageSize)
-	refreshedAPIKey := s.apiKeyWithFreshGroupMediaPricing(ctx, apiKey)
-	for _, candidate := range billingModels {
-		if openAIUsageCandidateMatchesResult(candidate, result) && apiKeyHasConfiguredImagePrice(apiKey, sizeTier) {
-			continue
-		}
-		if refreshedAPIKey != apiKey &&
-			openAIUsageCandidateMatchesResult(candidate, result) &&
-			apiKeyHasConfiguredImagePrice(refreshedAPIKey, sizeTier) {
-			continue
-		}
-		resolved := s.resolveOpenAIChannelPricing(ctx, candidate, apiKey)
-		if resolved == nil {
-			continue
-		}
-		switch resolved.Mode {
-		case BillingModeToken:
-			cost, err := s.calculateOpenAIRecordUsageTokenCostWithResolved(ctx, apiKey, candidate, tokenMultiplier, tokens, serviceTier, resolved, 1, "")
-			return cost, err == nil
-		case BillingModePerRequest, BillingModeImage:
-			cost, err := s.calculateOpenAIRecordUsageTokenCostWithResolved(ctx, apiKey, candidate, imageMultiplier, tokens, serviceTier, resolved, result.ImageCount, sizeTier)
-			return cost, err == nil
-		default:
-			continue
-		}
-	}
-	return nil, false
-}
-
-func (s *OpenAIGatewayService) calculateOpenAIUsageCostFromChannelCandidates(
-	ctx context.Context,
-	result *OpenAIForwardResult,
-	apiKey *APIKey,
-	billingModels []string,
-	multiplier float64,
-	tokens UsageTokens,
-	serviceTier string,
-	requestCount int,
-	sizeTier string,
-) (*CostBreakdown, bool) {
-	refreshedAPIKey := s.apiKeyWithFreshGroupMediaPricing(ctx, apiKey)
-	for _, candidate := range billingModels {
-		if openAIUsageCandidateMatchesResult(candidate, result) && apiKeyHasConfiguredVideoPrice(apiKey, candidate, sizeTier) {
-			continue
-		}
-		if refreshedAPIKey != apiKey &&
-			openAIUsageCandidateMatchesResult(candidate, result) &&
-			apiKeyHasConfiguredVideoPrice(refreshedAPIKey, candidate, sizeTier) {
-			continue
-		}
-		resolved := s.resolveOpenAIChannelPricing(ctx, candidate, apiKey)
-		if resolved == nil {
-			continue
-		}
-		cost, err := s.calculateOpenAIRecordUsageTokenCostWithResolved(ctx, apiKey, candidate, multiplier, tokens, serviceTier, resolved, requestCount, sizeTier)
-		return cost, err == nil
-	}
-	return nil, false
 }
 
 func (s *OpenAIGatewayService) calculateOpenAIVideoCost(

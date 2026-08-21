@@ -1,4 +1,4 @@
-import type { BillingMode, ChannelModelPricing, ChannelTimePricing, PricingInterval } from '@/api/admin/channels'
+import type { BillingMode, ChannelTimePricing, PricingInterval } from '@/api/admin/channels'
 
 type TranslateFn = (key: string, params?: Record<string, unknown>) => string
 
@@ -223,49 +223,6 @@ export function formIntervalsToAPI(intervals: IntervalFormEntry[]): PricingInter
     per_request_price: toNullableNumber(iv.per_request_price),
     sort_order: iv.sort_order
   }))
-}
-
-function sanitizeIntervalsForMode(intervals: PricingInterval[], mode: BillingMode): PricingInterval[] {
-  return intervals.map(iv => {
-    if (mode === 'token') {
-      return { ...iv, per_request_price: null }
-    }
-    return {
-      ...iv,
-      input_price: null,
-      output_price: null,
-      cache_write_price: null,
-      cache_read_price: null,
-    }
-  })
-}
-
-export function pricingFormEntryToAPI(
-  platform: string,
-  entry: PricingFormEntry,
-): ChannelModelPricing {
-  const tokenMode = entry.billing_mode === 'token'
-  const perRequestMode =
-    entry.billing_mode === 'per_request' ||
-    entry.billing_mode === 'image' ||
-    entry.billing_mode === 'video'
-
-  return {
-    platform,
-    models: entry.models,
-    billing_mode: entry.billing_mode,
-    input_price: tokenMode ? mTokToPerToken(entry.input_price) : null,
-    output_price: tokenMode ? mTokToPerToken(entry.output_price) : null,
-    cache_write_price: tokenMode ? mTokToPerToken(entry.cache_write_price) : null,
-    cache_read_price: tokenMode ? mTokToPerToken(entry.cache_read_price) : null,
-    fast_multiplier: toNullableNumber(entry.fast_multiplier),
-    flex_multiplier: toNullableNumber(entry.flex_multiplier),
-    image_input_price: tokenMode ? mTokToPerToken(entry.image_input_price) : null,
-    image_output_price: tokenMode ? mTokToPerToken(entry.image_output_price) : null,
-    per_request_price: perRequestMode ? toNullableNumber(entry.per_request_price) : null,
-    intervals: sanitizeIntervalsForMode(formIntervalsToAPI(entry.intervals || []), entry.billing_mode),
-    time_pricing: formTimePricingToAPI(entry.time_pricing),
-  }
 }
 
 // ── 模型模式冲突检测 ──────────────────────────────────────

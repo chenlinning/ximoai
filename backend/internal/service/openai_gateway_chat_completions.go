@@ -385,16 +385,6 @@ func (s *OpenAIGatewayService) ForwardAsChatCompletions(
 	return result, handleErr
 }
 
-func shouldUseRawChatCompletionsForAccount(account *Account) bool {
-	if account == nil || account.Type != AccountTypeAPIKey {
-		return false
-	}
-	if account.IsOpenAIAudio() {
-		return true
-	}
-	return !openai_compat.ShouldUseResponsesAPI(account.Extra)
-}
-
 func normalizeResponsesRequestServiceTier(req *apicompat.ResponsesRequest) {
 	if req == nil {
 		return

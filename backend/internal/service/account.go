@@ -271,10 +271,6 @@ func (a *Account) IsGrokOAuth() bool {
 	return a.IsGrok() && a.Type == AccountTypeOAuth
 }
 
-func (a *Account) IsGrokVideo() bool {
-	return a != nil && a.PlatformRuntimeKind() == PlatformKindGrokVideo
-}
-
 // IsKimi / IsZhipu / IsDeepseek 标识国产 OpenAI 兼容供应商账号。
 func (a *Account) IsKimi() bool {
 	return a.Platform == PlatformKimi
@@ -877,7 +873,7 @@ func (a *Account) ResolveMappedModel(requestedModel string) (mappedModel string,
 // GetOpenAICompactMode returns the compact routing mode for an OpenAI account.
 // Missing or invalid values fall back to "auto".
 func (a *Account) GetOpenAICompactMode() string {
-	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) || a.Extra == nil {
+	if a == nil || !a.IsOpenAI() || a.Extra == nil {
 		return OpenAICompactModeAuto
 	}
 	mode, _ := a.Extra["openai_compact_mode"].(string)
@@ -887,7 +883,7 @@ func (a *Account) GetOpenAICompactMode() string {
 // OpenAICompactSupportKnown reports whether compact capability is known for this
 // account and, when known, whether it is supported.
 func (a *Account) OpenAICompactSupportKnown() (supported bool, known bool) {
-	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) {
+	if a == nil || !a.IsOpenAI() {
 		return false, false
 	}
 
@@ -912,7 +908,7 @@ func (a *Account) OpenAICompactSupportKnown() (supported bool, known bool) {
 // requests. Unknown capability remains allowed to avoid breaking older accounts
 // before an explicit probe has been run.
 func (a *Account) AllowsOpenAICompact() bool {
-	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) {
+	if a == nil || !a.IsOpenAI() {
 		return false
 	}
 	supported, known := a.OpenAICompactSupportKnown()
@@ -1268,7 +1264,7 @@ func (a *Account) IsOpenAI() bool {
 }
 
 func (a *Account) IsOpenAILongContextBillingEnabled() bool {
-	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) || a.Extra == nil {
+	if a == nil || !a.IsOpenAI() || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra[openAILongContextBillingEnabledKey].(bool)
@@ -1307,30 +1303,11 @@ func (a *Account) IsOpenAIApiKey() bool {
 	return a.IsOpenAI() && a.Type == AccountTypeAPIKey
 }
 
-func (a *Account) IsOpenAICompatibleCustomAPIKey() bool {
-	if a == nil || a.Type != AccountTypeAPIKey {
-		return false
-	}
-	switch NormalizePlatformSlug(a.Platform) {
-	case PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:
-		return true
-	default:
-		return false
-	}
-}
-
-func (a *Account) IsGeminiCompatibleAPIKey() bool {
-	if a == nil || a.Type != AccountTypeAPIKey {
-		return false
-	}
-	return NormalizePlatformSlug(a.Platform) == PlatformGemini
-}
-
+// GetOpenAIBaseURL 解析 OpenAI 协议族账号的上游 base_url。
+// 适用 openai 与国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）；grok 走 GetGrokBaseURL，
+// 此处对 grok 返回 "" 以保持原有行为。
 func (a *Account) GetOpenAIBaseURL() string {
-	if a == nil {
-		return ""
-	}
-	if !a.IsOpenAI() && !a.IsCNProvider() && !a.IsOpenAICompatibleCustomAPIKey() {
+	if !a.IsOpenAI() && !a.IsCNProvider() {
 		return ""
 	}
 	if a.IsCNProvider() && a.IsAdaptiveAPIProtocol() {
@@ -1360,10 +1337,7 @@ func (a *Account) GetOpenAIBaseURL() string {
 	case PlatformDeepseek:
 		return DefaultDeepseekBaseURL
 	default:
-		if a.IsOpenAI() {
-			return "https://api.openai.com"
-		}
-		return ""
+		return "https://api.openai.com"
 	}
 }
 
@@ -1580,7 +1554,7 @@ func (a *Account) GetOpenAIRefreshToken() string {
 // traffic (OAuth authorization and token refresh) always uses the official
 // auth endpoints regardless of this value.
 func (a *Account) GetGrokBaseURL() string {
-	if a == nil || (!a.IsGrok() && !a.IsGrokVideo()) {
+	if a == nil || !a.IsGrok() {
 		return ""
 	}
 	if a.IsGrokOAuth() {
@@ -1593,7 +1567,7 @@ func (a *Account) GetGrokBaseURL() string {
 // supplied default. Official OAuth endpoints are normalized here; custom
 // endpoints are retained for the request builder's operator URL policy.
 func (a *Account) GetGrokBaseURLOr(defaultBaseURL string) string {
-	if a == nil || (!a.IsGrok() && !a.IsGrokVideo()) {
+	if a == nil || !a.IsGrok() {
 		return ""
 	}
 	defaultBaseURL = strings.TrimRight(strings.TrimSpace(defaultBaseURL), "/")
@@ -1662,7 +1636,7 @@ func (a *Account) GetOpenAIIDToken() string {
 }
 
 func (a *Account) GetOpenAIApiKey() string {
-	if a == nil || a.Type != AccountTypeAPIKey {
+	if !a.IsOpenAIApiKey() {
 		return ""
 	}
 	return a.GetCredential("api_key")
@@ -1686,7 +1660,7 @@ func (a *Account) GetOpenAIProtocolAPIKey() string {
 }
 
 func (a *Account) GetOpenAIUserAgent() string {
-	if a == nil || (a.Type != AccountTypeAPIKey && !a.IsOpenAI()) {
+	if !a.IsOpenAI() {
 		return ""
 	}
 	return a.GetCredential("user_agent")
@@ -1748,11 +1722,8 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 	if capability == "" {
 		return true
 	}
-	if !a.IsOpenAICompatible() && !a.IsOpenAICompatibleCustomAPIKey() {
+	if !a.IsOpenAICompatible() {
 		return false
-	}
-	if a.IsGrokVideo() {
-		return capability == OpenAIEndpointCapabilityGrokMediaGeneration
 	}
 	if a.IsGrok() {
 		switch capability {
@@ -1796,7 +1767,7 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 			return false
 		}
 	case OpenAIEndpointCapabilityEmbeddings:
-		if !a.UsesOpenAIAPIKeyProtocol() {
+		if a.Type != AccountTypeAPIKey {
 			return false
 		}
 	default:
@@ -1818,9 +1789,6 @@ func (a *Account) SupportsOpenAIEndpointCapability(capability OpenAIEndpointCapa
 // observations provide positive paid-entitlement evidence. An explicit
 // operator override takes precedence over probe data.
 func (a *Account) GrokMediaGenerationEligibility() (bool, string) {
-	if a != nil && a.IsGrokVideo() && a.Type == AccountTypeAPIKey {
-		return true, "grok_video_api_key"
-	}
 	if a == nil || !a.IsGrok() {
 		return false, "not_grok"
 	}
@@ -1913,12 +1881,12 @@ func (a *Account) SupportsOpenAIImageCapability(capability OpenAIImagesCapabilit
 	if capability == "" {
 		return true
 	}
-	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) {
+	if !a.IsOpenAI() {
 		return false
 	}
 	switch capability {
 	case OpenAIImagesCapabilityBasic, OpenAIImagesCapabilityNative:
-		return a.Type == AccountTypeAPIKey || a.IsOpenAIOAuth()
+		return a.Type == AccountTypeOAuth || a.Type == AccountTypeAPIKey
 	default:
 		return true
 	}
@@ -1992,7 +1960,7 @@ func (a *Account) IsOveragesEnabled() bool {
 // 兼容字段：accounts.extra.openai_oauth_passthrough（历史 OAuth 开关）。
 // 字段缺失或类型不正确时，按 false（关闭）处理。
 func (a *Account) IsOpenAIPassthroughEnabled() bool {
-	if a == nil || (!a.IsOpenAI() && !a.UsesOpenAIAPIKeyProtocol()) || a.Extra == nil {
+	if a == nil || !a.IsOpenAI() || a.Extra == nil {
 		return false
 	}
 	if enabled, ok := a.Extra["openai_passthrough"].(bool); ok {
@@ -2018,7 +1986,7 @@ func (a *Account) IsOpenAIPassthroughEnabled() bool {
 // 1. 按账号类型读取分类型字段
 // 2. 分类型字段缺失时，回退兼容字段
 func (a *Account) IsOpenAIResponsesWebSocketV2Enabled() bool {
-	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) || a.Extra == nil {
+	if a == nil || !a.IsOpenAI() || a.Extra == nil {
 		return false
 	}
 	if a.IsOpenAIOAuth() {
@@ -2026,7 +1994,7 @@ func (a *Account) IsOpenAIResponsesWebSocketV2Enabled() bool {
 			return enabled
 		}
 	}
-	if a.IsOpenAIApiKey() || a.IsOpenAICompatibleCustomAPIKey() {
+	if a.IsOpenAIApiKey() {
 		if enabled, ok := a.Extra["openai_apikey_responses_websockets_v2_enabled"].(bool); ok {
 			return enabled
 		}
@@ -2087,7 +2055,7 @@ func normalizeOpenAIWSIngressDefaultMode(mode string) string {
 // 4. defaultMode（非法时回退 ctx_pool）
 func (a *Account) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) string {
 	resolvedDefault := normalizeOpenAIWSIngressDefaultMode(defaultMode)
-	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) {
+	if a == nil || !a.IsOpenAI() {
 		return OpenAIWSIngressModeOff
 	}
 	if a.Extra == nil {
@@ -2132,7 +2100,7 @@ func (a *Account) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) stri
 			return mode
 		}
 	}
-	if a.IsOpenAIApiKey() || a.IsOpenAICompatibleCustomAPIKey() {
+	if a.IsOpenAIApiKey() {
 		if mode, ok := resolveModeString("openai_apikey_responses_websockets_v2_mode"); ok {
 			return mode
 		}
@@ -2156,7 +2124,7 @@ func (a *Account) ResolveOpenAIResponsesWebSocketV2Mode(defaultMode string) stri
 // IsOpenAIWSForceHTTPEnabled 返回账号级"强制 HTTP"开关。
 // 字段：accounts.extra.openai_ws_force_http。
 func (a *Account) IsOpenAIWSForceHTTPEnabled() bool {
-	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) || a.Extra == nil {
+	if a == nil || !a.IsOpenAI() || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra["openai_ws_force_http"].(bool)
@@ -2182,7 +2150,7 @@ func (a *Account) IsOpenAIResponsesFlattenNamespacesEnabled() bool {
 // IsOpenAIWSAllowStoreRecoveryEnabled 返回账号级 store 恢复开关。
 // 字段：accounts.extra.openai_ws_allow_store_recovery。
 func (a *Account) IsOpenAIWSAllowStoreRecoveryEnabled() bool {
-	if a == nil || (!a.IsOpenAI() && !a.IsOpenAICompatibleCustomAPIKey()) || a.Extra == nil {
+	if a == nil || !a.IsOpenAI() || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra["openai_ws_allow_store_recovery"].(bool)
@@ -2198,7 +2166,7 @@ func (a *Account) IsOpenAIOAuthPassthroughEnabled() bool {
 // 字段：accounts.extra.anthropic_passthrough。
 // 字段缺失或类型不正确时，按 false（关闭）处理。
 func (a *Account) IsAnthropicAPIKeyPassthroughEnabled() bool {
-	if a == nil || !a.UsesAnthropicAPIKeyProtocol() || a.Extra == nil {
+	if a == nil || a.Platform != PlatformAnthropic || a.Type != AccountTypeAPIKey || a.Extra == nil {
 		return false
 	}
 	enabled, ok := a.Extra["anthropic_passthrough"].(bool)

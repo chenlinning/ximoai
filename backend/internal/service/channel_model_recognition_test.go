@@ -17,9 +17,13 @@ func TestSupportedModelsKeepsDisplayNameAndUpstreamRecognitionNameSeparate(t *te
 	}
 
 	models := channel.SupportedModels()
-	require.Len(t, models, 1)
-	require.Equal(t, "ximo-gpt", models[0].Name)
-	require.Equal(t, "gpt-5", models[0].RecognitionName)
+	require.Len(t, models, 2)
+	byName := make(map[string]SupportedModel, len(models))
+	for _, model := range models {
+		byName[model.Name] = model
+	}
+	require.Equal(t, "gpt-5", byName["ximo-gpt"].RecognitionName)
+	require.Equal(t, "gpt-5", byName["gpt-5"].RecognitionName)
 }
 
 func TestSupportedModelsUsesDisplayNameWhenNoMappingExists(t *testing.T) {

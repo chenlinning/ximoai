@@ -206,7 +206,6 @@ func (s *adminServiceImpl) compositeRouteBelongsToGroup(ctx context.Context, gro
 
 func compositeRouteFromInput(groupID int64, input CompositeRouteInput) (*CompositeModelRoute, error) {
 	input = normalizeCompositeRouteInput(input)
-	input.TargetPlatform = NormalizePlatformSlug(input.TargetPlatform)
 	if input.PublicModel == "" {
 		return nil, fmt.Errorf("public_model is required")
 	}
@@ -248,12 +247,6 @@ func defaultModelsListCandidateIDs(platform string) []string {
 		return ids
 	case PlatformGrok:
 		return xai.DefaultModelIDs()
-	case PlatformVolcengineAgentPlan:
-		return []string{
-			VolcengineAgentPlanSeedreamModel,
-			VolcengineAgentPlanTTSModel,
-			VolcengineAgentPlanASRModel,
-		}
 	case PlatformComposite:
 		return compositeDefaultModelsListCandidateIDs()
 	default:
@@ -266,14 +259,9 @@ func defaultModelsListCandidateIDs(platform string) []string {
 }
 
 func defaultAllowImageGenerationForPlatform(platform string) bool {
-	// Native media routes share the legacy image-generation gate.
-	// Older clients send the false zero value, so image-native groups must default enabled.
-	switch NormalizePlatformSlug(platform) {
-	case PlatformGrok, PlatformVolcengineAgentPlan:
-		return true
-	default:
-		return false
-	}
+	// Grok image and video generation routes share the legacy image-generation gate.
+	// Older clients send the false zero value, so Grok groups must default enabled.
+	return platform == PlatformGrok
 }
 
 func compositeDefaultModelsListCandidateIDs() []string {
@@ -910,6 +898,7 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if err := s.groupRepo.Update(ctx, group); err != nil {
 		return nil, err
 	}
+
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
 	}

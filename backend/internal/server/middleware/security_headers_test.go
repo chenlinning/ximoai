@@ -193,7 +193,6 @@ func TestSecurityHeaders(t *testing.T) {
 		assert.NotEmpty(t, csp)
 		// Default policy should contain these elements
 		assert.Contains(t, csp, "default-src 'self'")
-		assert.Contains(t, csp, "media-src 'self' data: blob: https:")
 		assert.Contains(t, csp, TencentCaptchaDomain)
 	})
 

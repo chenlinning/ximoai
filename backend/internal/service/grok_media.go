@@ -617,9 +617,6 @@ func (s *OpenAIGatewayService) ForwardGrokMedia(
 	if account == nil {
 		return nil, fmt.Errorf("grok account is required")
 	}
-	if account.IsGrokVideo() {
-		return s.forwardXimoAIGrokVideoMedia(ctx, c, account, endpoint, requestID, body, contentType)
-	}
 	if account.Platform != PlatformGrok {
 		return nil, fmt.Errorf("account platform %s is not supported for grok media", account.Platform)
 	}
@@ -702,7 +699,7 @@ func (s *OpenAIGatewayService) ForwardGrokMedia(
 	requestIDHeader := firstNonEmpty(resp.Header.Get("x-request-id"), resp.Header.Get("xai-request-id"))
 	requestModel := requestInfo.Model
 	if resp.StatusCode >= 400 {
-		return s.handleGrokMediaErrorResponse(ctx, resp, c, account, endpoint, requestIDHeader, requestModel)
+		return s.handleGrokMediaErrorResponse(ctx, resp, c, account, requestIDHeader, requestModel)
 	}
 
 	s.updateGrokUsageFromResponse(withGrokTeamRateLimitModel(ctx, requestModel), account, resp.Header, resp.StatusCode)
@@ -806,7 +803,7 @@ func (s *OpenAIGatewayService) forwardGrokMediaVideoContent(
 		if statusResp.StatusCode < 400 {
 			return nil, fmt.Errorf("grok media status redirect is not allowed")
 		}
-		return s.handleGrokMediaErrorResponse(ctx, statusResp, c, account, GrokMediaEndpointVideoStatus, statusRequestID, "")
+		return s.handleGrokMediaErrorResponse(ctx, statusResp, c, account, statusRequestID, "")
 	}
 	statusBody, err := ReadUpstreamResponseBody(statusResp.Body, s.cfg, c, openAITooLargeError)
 	_ = statusResp.Body.Close()
@@ -864,7 +861,7 @@ func (s *OpenAIGatewayService) forwardGrokMediaVideoContent(
 		return nil, fmt.Errorf("grok media signed content redirect is not allowed")
 	}
 	if contentResp.StatusCode >= 400 && contentResp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
-		return s.handleGrokMediaErrorResponse(ctx, contentResp, c, account, GrokMediaEndpointVideoContent, contentRequestID, "")
+		return s.handleGrokMediaErrorResponse(ctx, contentResp, c, account, contentRequestID, "")
 	}
 
 	s.updateGrokUsageFromResponse(withGrokTeamRateLimitModel(ctx, ""), account, contentResp.Header, contentResp.StatusCode)
@@ -1218,14 +1215,13 @@ func (s *OpenAIGatewayService) handleGrokMediaErrorResponse(
 	resp *http.Response,
 	c *gin.Context,
 	account *Account,
-	endpoint GrokMediaEndpoint,
 	requestIDHeader string,
 	requestedModel string,
 ) (*OpenAIForwardResult, error) {
 	body := s.readUpstreamErrorBody(resp)
 	// Reconcile readiness before configurable passthrough branches can return;
 	// otherwise a Grok 429 can remain schedulable.
-	s.handleGrokMediaAccountUpstreamError(ctx, account, endpoint, resp.StatusCode, resp.Header, body)
+	s.handleGrokAccountUpstreamError(ctx, account, resp.StatusCode, resp.Header, body)
 	upstreamMsg := sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(body)))
 	if upstreamMsg == "" {
 		upstreamMsg = fmt.Sprintf("xAI upstream returned status %d", resp.StatusCode)

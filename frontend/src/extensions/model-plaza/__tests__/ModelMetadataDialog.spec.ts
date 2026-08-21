@@ -38,9 +38,9 @@ describe('ModelMetadataDialog', () => {
     return mount(ModelMetadataDialog, {
       props: {
         show: true,
-        platform: 'volcengine-agent-plan',
-        modelName: 'seed-tts-2.0',
-        brand: 'Doubao',
+        platform: 'openai',
+        modelName: 'gpt-audio',
+        brand: 'OpenAI',
         types: ['tts'],
         invocationModes: ['sync', 'stream', 'bidirectional'],
         editor

@@ -1,9 +1,7 @@
 package service
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -287,26 +285,4 @@ func TestCalculateTokenCostCombinesIntervalAndFastMultiplier(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.InDelta(t, 1e-3, cost.TotalCost, 1e-12)
-}
-
-func TestGatewayResolvedPricingPreservesServiceTier(t *testing.T) {
-	fast := "fast"
-	resolver := &ModelPricingResolver{}
-	service := &GatewayService{
-		billingService: &BillingService{},
-		resolver:       resolver,
-	}
-	resolved := &ResolvedPricing{BasePricing: &ModelPricing{
-		InputPricePerToken: 1e-6,
-		FastMultiplier:     pricingMultiplier(2.5),
-	}}
-
-	cost := service.calculateTokenCostWithResolved(
-		context.Background(),
-		&ForwardResult{Usage: ClaudeUsage{InputTokens: 200}, ServiceTier: &fast},
-		&APIKey{Group: &Group{ID: 1}},
-		"custom", 1, time.Now(), nil, resolved,
-	)
-
-	require.InDelta(t, 5e-4, cost.TotalCost, 1e-12)
 }

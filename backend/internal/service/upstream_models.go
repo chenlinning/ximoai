@@ -137,7 +137,7 @@ func (s *AccountTestService) buildUpstreamModelsRequest(ctx context.Context, acc
 		return s.buildAntigravityAPIKeyModelsRequest(ctx, account)
 	case account.IsGrok():
 		return s.buildGrokUpstreamModelsRequest(ctx, account)
-	case account.IsOpenAI() || account.IsCNProvider() || isXimoAIOpenAICompatibleAccount(account):
+	case account.IsOpenAI() || account.IsCNProvider():
 		// 国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）复用 OpenAI /v1/models 探测。
 		return s.buildOpenAIUpstreamModelsRequest(ctx, account)
 	case account.IsGemini():
@@ -148,18 +148,6 @@ func (s *AccountTestService) buildUpstreamModelsRequest(ctx context.Context, acc
 		return nil, newUpstreamModelSyncUnsupportedError(
 			fmt.Sprintf("Unsupported platform for upstream model sync: %s", account.Platform), nil,
 		)
-	}
-}
-
-func isXimoAIOpenAICompatibleAccount(account *Account) bool {
-	if account == nil || account.Type != AccountTypeAPIKey {
-		return false
-	}
-	switch NormalizePlatformSlug(account.Platform) {
-	case PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:
-		return true
-	default:
-		return false
 	}
 }
 

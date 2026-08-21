@@ -243,16 +243,7 @@ func expandPricingToCache(cache *channelCache, ch *Channel, gid int64, platform 
 // expandMappingToCache 将渠道的模型映射展开到缓存（按分组+平台维度）。
 // 各平台严格独立：antigravity 分组只匹配 antigravity 映射。
 func expandMappingToCache(cache *channelCache, ch *Channel, gid int64, platform string) {
-	mappingPlatforms := matchingPlatforms(platform)
-	if platform == PlatformComposite {
-		mappingPlatforms = make([]string, 0, len(ch.ModelMapping))
-		for mappingPlatform := range ch.ModelMapping {
-			if isConcreteRequestPlatform(mappingPlatform) {
-				mappingPlatforms = append(mappingPlatforms, mappingPlatform)
-			}
-		}
-	}
-	for _, mappingPlatform := range mappingPlatforms {
+	for _, mappingPlatform := range matchingPlatforms(platform) {
 		platformMapping, ok := ch.ModelMapping[mappingPlatform]
 		if !ok {
 			continue
@@ -719,7 +710,7 @@ func checkBillingModeRequirements(p ChannelModelPricing) error {
 		if p.PerRequestPrice == nil && len(p.Intervals) == 0 {
 			return infraerrors.BadRequest(
 				"BILLING_MODE_MISSING_PRICE",
-				"per-request price or intervals required for per_request/image/video billing mode",
+				"per-request price or intervals required for per_request/image billing mode",
 			)
 		}
 	}

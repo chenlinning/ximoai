@@ -10,7 +10,7 @@ import (
 )
 
 // TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupportedOverUnknown
-// verifies that compact scheduling prefers explicit support (tier=2) over unknown support (tier=1).
+// 验证 compact 调度时显式支持 (tier=2) 优先于未探测 (tier=1)。
 func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupportedOverUnknown(t *testing.T) {
 	resetOpenAIAdvancedSchedulerSettingCacheForTest()
 
@@ -64,7 +64,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactPrefersSupported
 }
 
 // TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitlyUnsupported
-// verifies that force_off or probed-unsupported accounts (tier=0) are not selected for compact requests.
+// 验证 force_off / 已探测不支持 (tier=0) 的账号不会被 compact 请求选中。
 func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitlyUnsupported(t *testing.T) {
 	resetOpenAIAdvancedSchedulerSettingCacheForTest()
 
@@ -112,7 +112,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactRejectsExplicitl
 		true,
 	)
 	require.Error(t, err)
-	require.True(t, errors.Is(err, ErrNoAvailableCompactAccounts), "compact-only accounts should reject explicitly unsupported accounts and return compact error")
+	require.True(t, errors.Is(err, ErrNoAvailableCompactAccounts), "compact-only accounts should rejected explicitly unsupported and return compact error")
 	require.Nil(t, selection)
 }
 
@@ -476,7 +476,7 @@ func TestOpenAIGatewayService_SelectAccountWithScheduler_CompactAllowsGrok(t *te
 	require.Equal(t, int64(71030), selection.Account.ID)
 }
 
-// TestOpenAICompactSupportTier verifies compact support tier classification.
+// TestOpenAICompactSupportTier 验证 tier 分类逻辑。
 func TestOpenAICompactSupportTier(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -581,14 +581,6 @@ func sanitizeOpsUpstreamErrors(entry *OpsInsertErrorLogInput) error {
 			out.AtUnixMs = 0
 		}
 
-		requestBody := strings.TrimSpace(out.UpstreamRequestBody)
-		if requestBody != "" {
-			sanitizedRequestBody, _ := sanitizeErrorBodyForStorage(requestBody, opsMaxStoredErrorBodyBytes)
-			out.UpstreamRequestBody = sanitizedRequestBody
-		} else {
-			out.UpstreamRequestBody = ""
-		}
-
 		msg := sanitizeUpstreamErrorMessage(strings.TrimSpace(out.Message))
 		msg = truncateString(msg, 2048)
 		out.Message = msg

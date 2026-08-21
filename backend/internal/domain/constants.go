@@ -23,9 +23,6 @@ const (
 	PlatformGemini      = "gemini"
 	PlatformAntigravity = "antigravity"
 	PlatformGrok        = "grok"
-	PlatformGrokVideo   = "grok-video"
-	PlatformOpenAIAudio = "openai-audio"
-	PlatformKlingAudio  = "kling_audio"
 	// 国产 OpenAI 兼容供应商（经 OpenAI 网关转发，按 Chat Completions 协议）。
 	PlatformKimi      = "kimi"     // Kimi (月之暗面 / Moonshot)
 	PlatformZhipu     = "zhipu"    // 智谱 GLM (bigmodel)
@@ -49,8 +46,6 @@ const (
 	APIProtocolResponses       = "responses"        // OpenAI Responses（仅 deepseek，适配 Codex）
 	APIProtocolAdaptive        = "adaptive"         // 按入站协议优先选择供应商原生端点
 )
-
-const PlatformVolcengineAgentPlan = "volcengine-agent-plan"
 
 // Account type constants
 const (

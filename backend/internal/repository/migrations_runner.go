@@ -194,14 +194,6 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 		sum := sha256.Sum256([]byte(content))
 		checksum := hex.EncodeToString(sum[:])
 
-		if legacyName, ok := ximoAIMigrationLegacyNames[name]; ok {
-			if alreadyApplied, err := migrationAlreadyApplied(ctx, lockConn, legacyName, checksum); err != nil {
-				return fmt.Errorf("check legacy migration %s for %s: %w", legacyName, name, err)
-			} else if alreadyApplied {
-				continue
-			}
-		}
-
 		// 检查该迁移是否已经应用
 		var existing string
 		rowErr := lockConn.QueryRowContext(ctx, "SELECT checksum FROM schema_migrations WHERE filename = $1", name).Scan(&existing)
@@ -289,32 +281,11 @@ func applyMigrationsFS(ctx context.Context, db *sql.DB, fsys fs.FS) error {
 	return nil
 }
 
-var ximoAIMigrationLegacyNames = map[string]string{
-	"900_ximoai_create_platforms_and_openai_video_jobs.sql": "136_create_platforms_and_openai_video_jobs.sql",
-	"901_ximoai_usage_log_video_count.sql":                  "137_usage_log_video_count.sql",
-	"902_ximoai_create_openai_video_characters.sql":         "138_create_openai_video_characters.sql",
-}
-
 type migrationConnection interface {
 	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-}
-
-func migrationAlreadyApplied(ctx context.Context, db migrationConnection, name string, checksum string) (bool, error) {
-	var existing string
-	err := db.QueryRowContext(ctx, "SELECT checksum FROM schema_migrations WHERE filename = $1", name).Scan(&existing)
-	if errors.Is(err, sql.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-	if existing != checksum {
-		return false, fmt.Errorf("legacy migration %s checksum mismatch (db=%s file=%s)", name, existing, checksum)
-	}
-	return true, nil
 }
 
 func prepareNonTransactionalMigration(ctx context.Context, db migrationConnection, name string) error {

@@ -46,41 +46,22 @@ func RegisterGatewayRoutes(
 	requireGroupGoogle := middleware.RequireGroupAssignment(settingService, middleware.GoogleErrorWriter)
 
 	isOpenAIResponsesCompatibleGatewayPlatform := func(c *gin.Context) bool {
-		return h != nil && h.Gateway != nil && h.Gateway.IsOpenAICompatiblePlatform(c.Request.Context(), getGroupPlatform(c))
-	}
-	isOpenAIChatCompletionsGatewayPlatform := func(c *gin.Context) bool {
-		return h != nil && h.Gateway != nil && h.Gateway.IsOpenAIChatCompletionsPlatform(c.Request.Context(), getGroupPlatform(c))
-	}
-	isXimoAIMediaGatewayPlatform := func(c *gin.Context) bool {
-		return h != nil && h.Gateway != nil && h.Gateway.IsXimoAIMediaPlatform(c.Request.Context(), getGroupPlatform(c))
-	}
-	rejectXimoAIMediaOpenAIEndpoint := func(c *gin.Context) bool {
-		if !isXimoAIMediaGatewayPlatform(c) {
+		switch getGroupPlatform(c) {
+		case service.PlatformOpenAI, service.PlatformGrok,
+			service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
+			// 国产 OpenAI 兼容供应商（kimi/zhipu/deepseek）与 openai/grok 一样经 OpenAI 网关转发。
+			return true
+		default:
 			return false
 		}
-		openAIEndpointUnsupported(c, "OpenAI-compatible endpoint is not supported for this platform")
-		return true
-	}
-	isOpenAIAPIKeyProtocolGatewayPlatform := func(c *gin.Context) bool {
-		return h != nil && h.Gateway != nil && h.Gateway.IsOpenAIAPIKeyProtocolPlatform(c.Request.Context(), getGroupPlatform(c))
-	}
-	isOpenAIImagesGatewayPlatform := func(c *gin.Context) bool {
-		return h != nil && h.Gateway != nil && h.Gateway.IsOpenAIImagesPlatform(c.Request.Context(), getGroupPlatform(c))
 	}
 	countTokensHandler := func(c *gin.Context) {
-		if rejectXimoAIMediaOpenAIEndpoint(c) {
-			return
-		}
 		switch getGroupPlatform(c) {
 		case service.PlatformOpenAI, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
 			h.OpenAIGateway.CountTokens(c)
 		case service.PlatformGrok:
 			h.OpenAIGateway.GrokCountTokens(c)
 		default:
-			if isOpenAIAPIKeyProtocolGatewayPlatform(c) {
-				h.OpenAIGateway.CountTokens(c)
-				return
-			}
 			h.Gateway.CountTokens(c)
 		}
 	}
@@ -94,6 +75,9 @@ func RegisterGatewayRoutes(
 		}
 		h.Gateway.Models(c)
 	}
+	isOpenAIOnlyEndpointGatewayPlatform := func(c *gin.Context) bool {
+		return getGroupPlatform(c) == service.PlatformOpenAI
+	}
 	imagesHandler := func(c *gin.Context) {
 		switch getGroupPlatform(c) {
 		case service.PlatformOpenAI:
@@ -101,10 +85,6 @@ func RegisterGatewayRoutes(
 		case service.PlatformGrok:
 			h.OpenAIGateway.GrokImages(c)
 		default:
-			if isOpenAIImagesGatewayPlatform(c) {
-				h.OpenAIGateway.Images(c)
-				return
-			}
 			service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": gin.H{
@@ -114,21 +94,8 @@ func RegisterGatewayRoutes(
 			})
 		}
 	}
-	asyncImagesHandler := func(c *gin.Context) {
-		if getGroupPlatform(c) == service.PlatformGrok || isOpenAIImagesGatewayPlatform(c) {
-			h.AsyncImage.Submit(c)
-			return
-		}
-		service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": gin.H{
-				"type":    "not_found_error",
-				"message": "Images API is not supported for this platform",
-			},
-		})
-	}
 	videoGenerationHandler := func(c *gin.Context) {
-		if isGrokVideoGatewayPlatform(c, h.Gateway) {
+		if getGroupPlatform(c) == service.PlatformGrok {
 			h.OpenAIGateway.GrokVideoGeneration(c)
 			return
 		}
@@ -144,7 +111,7 @@ func RegisterGatewayRoutes(
 		// Video status requests do not carry a model, so composite groups cannot
 		// be resolved by compositeTargetPlatformMiddleware. Route them through
 		// the Grok handler and let scheduler/account selection enforce capacity.
-		if isGrokVideoGatewayPlatform(c, h.Gateway) || getGroupPlatform(c) == service.PlatformComposite {
+		if getGroupPlatform(c) == service.PlatformGrok || getGroupPlatform(c) == service.PlatformComposite {
 			h.OpenAIGateway.GrokVideoStatus(c)
 			return
 		}
@@ -181,7 +148,7 @@ func RegisterGatewayRoutes(
 		c.JSON(http.StatusNotFound, gin.H{"error": gin.H{"type": "not_found_error", "message": "Videos API is not supported for this platform"}})
 	}
 	videoExtensionHandler := func(c *gin.Context) {
-		if isGrokVideoGatewayPlatform(c, h.Gateway) {
+		if getGroupPlatform(c) == service.PlatformGrok {
 			h.OpenAIGateway.GrokVideoExtension(c)
 			return
 		}
@@ -228,9 +195,6 @@ func RegisterGatewayRoutes(
 				h.OpenAIGateway.Messages(c)
 				return
 			}
-			if rejectXimoAIMediaOpenAIEndpoint(c) {
-				return
-			}
 			h.Gateway.Messages(c)
 		})
 		// /v1/messages/count_tokens: OpenAI bridges upstream, Grok estimates
@@ -249,9 +213,6 @@ func RegisterGatewayRoutes(
 				h.OpenAIGateway.Responses(c)
 				return
 			}
-			if rejectXimoAIMediaOpenAIEndpoint(c) {
-				return
-			}
 			h.Gateway.Responses(c)
 		})
 		gateway.POST("/responses/*subpath", guardResponsesSubpath(func(c *gin.Context) {
@@ -259,31 +220,22 @@ func RegisterGatewayRoutes(
 				h.OpenAIGateway.Responses(c)
 				return
 			}
-			if rejectXimoAIMediaOpenAIEndpoint(c) {
-				return
-			}
 			h.Gateway.Responses(c)
 		}))
 		gateway.POST("/alpha/search", textBodyLimit, h.OpenAIGateway.AlphaSearch)
 		gateway.GET("/responses", func(c *gin.Context) {
-			if rejectXimoAIMediaOpenAIEndpoint(c) {
-				return
-			}
 			h.OpenAIGateway.ResponsesWebSocket(c)
 		})
 		// OpenAI Chat Completions API: auto-route based on group platform
 		gateway.POST("/chat/completions", func(c *gin.Context) {
-			if isOpenAIChatCompletionsGatewayPlatform(c) {
+			if isOpenAIResponsesCompatibleGatewayPlatform(c) {
 				h.OpenAIGateway.ChatCompletions(c)
-				return
-			}
-			if rejectXimoAIMediaOpenAIEndpoint(c) {
 				return
 			}
 			h.Gateway.ChatCompletions(c)
 		})
 		gateway.POST("/embeddings", textBodyLimit, func(c *gin.Context) {
-			if !isOpenAIAPIKeyProtocolGatewayPlatform(c) {
+			if !isOpenAIOnlyEndpointGatewayPlatform(c) {
 				service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": gin.H{
@@ -297,8 +249,8 @@ func RegisterGatewayRoutes(
 		})
 		gateway.POST("/images/generations", imagesHandler)
 		gateway.POST("/images/edits", imagesHandler)
-		gateway.POST("/images/generations/async", asyncImagesHandler)
-		gateway.POST("/images/edits/async", asyncImagesHandler)
+		gateway.POST("/images/generations/async", h.AsyncImage.Submit)
+		gateway.POST("/images/edits/async", h.AsyncImage.Submit)
 		gateway.GET("/images/tasks/:task_id", h.AsyncImage.Get)
 		gateway.POST("/images/batches", h.BatchImage.Submit)
 		gateway.GET("/images/batches", h.BatchImage.List)
@@ -310,9 +262,6 @@ func RegisterGatewayRoutes(
 		gateway.POST("/images/batches/:id/cancel", h.BatchImage.Cancel)
 		gateway.DELETE("/images/batches/:id", h.BatchImage.DeleteRecord)
 		gateway.DELETE("/images/batches/:id/outputs", h.BatchImage.DeleteOutputs)
-		registerXimoAIV1GatewayRoutes(gateway, ximoAIGatewayContext{
-			handlers: h,
-		})
 		// OpenAI-compatible clients may create through /videos; xAI receives the
 		// canonical /videos/generations route inside the Grok media forwarder.
 		gateway.POST("/videos", videoGenerationHandler)
@@ -404,18 +353,12 @@ func RegisterGatewayRoutes(
 			h.OpenAIGateway.Responses(c)
 			return
 		}
-		if rejectXimoAIMediaOpenAIEndpoint(c) {
-			return
-		}
 		h.Gateway.Responses(c)
 	}
 	r.POST("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, responsesHandler)
 	r.POST("/responses/*subpath", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, guardResponsesSubpath(responsesHandler))
 	r.POST("/alpha/search", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.OpenAIGateway.AlphaSearch)
 	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, func(c *gin.Context) {
-		if rejectXimoAIMediaOpenAIEndpoint(c) {
-			return
-		}
 		h.OpenAIGateway.ResponsesWebSocket(c)
 	})
 	r.GET("/models", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, modelsHandler)
@@ -429,26 +372,20 @@ func RegisterGatewayRoutes(
 		codexDirect.POST("/responses/*subpath", guardResponsesSubpath(responsesHandler))
 		codexDirect.POST("/alpha/search", textBodyLimit, h.OpenAIGateway.AlphaSearch)
 		codexDirect.GET("/responses", func(c *gin.Context) {
-			if rejectXimoAIMediaOpenAIEndpoint(c) {
-				return
-			}
 			h.OpenAIGateway.ResponsesWebSocket(c)
 		})
 		codexDirect.GET("/models", h.OpenAIGateway.CodexModels)
 	}
 	// OpenAI Chat Completions API（不带v1前缀的别名）— auto-route based on group platform
 	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, func(c *gin.Context) {
-		if isOpenAIChatCompletionsGatewayPlatform(c) {
+		if isOpenAIResponsesCompatibleGatewayPlatform(c) {
 			h.OpenAIGateway.ChatCompletions(c)
-			return
-		}
-		if rejectXimoAIMediaOpenAIEndpoint(c) {
 			return
 		}
 		h.Gateway.ChatCompletions(c)
 	})
 	r.POST("/embeddings", textBodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, func(c *gin.Context) {
-		if !isOpenAIAPIKeyProtocolGatewayPlatform(c) {
+		if !isOpenAIOnlyEndpointGatewayPlatform(c) {
 			service.MarkOpsClientBusinessLimited(c, service.OpsClientBusinessLimitedReasonLocalFeatureGate)
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": gin.H{
@@ -462,17 +399,8 @@ func RegisterGatewayRoutes(
 	})
 	r.POST("/images/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, imagesHandler)
 	r.POST("/images/edits", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, imagesHandler)
-	registerXimoAIRootGatewayRoutes(r, ximoAIGatewayContext{
-		bodyLimit:       bodyLimit,
-		clientRequestID: clientRequestID,
-		opsErrorLogger:  opsErrorLogger,
-		endpointNorm:    endpointNorm,
-		apiKeyAuth:      apiKeyAuth,
-		requireGroup:    requireGroupAnthropic,
-		handlers:        h,
-	})
-	r.POST("/images/generations/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, asyncImagesHandler)
-	r.POST("/images/edits/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, asyncImagesHandler)
+	r.POST("/images/generations/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.AsyncImage.Submit)
+	r.POST("/images/edits/async", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.AsyncImage.Submit)
 	r.GET("/images/tasks/:task_id", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, h.AsyncImage.Get)
 	r.POST("/videos", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, videoGenerationHandler)
 	r.POST("/videos/generations", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), compositeTarget, requireGroupAnthropic, videoGenerationHandler)

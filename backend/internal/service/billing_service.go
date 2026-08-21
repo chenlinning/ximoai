@@ -1951,7 +1951,11 @@ func (s *BillingService) getDefaultVideoPrice(model string, resolution string) f
 		return price
 	}
 
-	return 0
+	// The bundled LiteLLM schema does not expose an output video generation price.
+	// Keep the historical model default as the fallback (interpreted as a per-second
+	// rate; today only Grok models reach video billing, so this path is a safety net),
+	// while letting group-level video prices override it independently from image prices.
+	return s.getDefaultImagePrice(model, ImageBillingSize2K)
 }
 
 func getDefaultGrokImagineImagePrice(model string, imageSize string) (float64, bool) {

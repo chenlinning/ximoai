@@ -6,11 +6,9 @@ import {
   formIntervalsToAPI,
   formTimePricingToAPI,
   isValidPositiveMultiplier,
-  pricingFormEntryToAPI,
   validateIntervals,
   validateTimePricing,
   type IntervalFormEntry,
-  type PricingFormEntry,
   type TimePricingFormEntry,
   type TimePricingPeriodFormEntry,
 } from '../types'
@@ -79,23 +77,6 @@ function makeInterval(over: Partial<IntervalFormEntry>): IntervalFormEntry {
   }
 }
 
-function makePricingEntry(over: Partial<PricingFormEntry>): PricingFormEntry {
-  return {
-    models: ['model-a'],
-    billing_mode: 'token',
-    input_price: null,
-    output_price: null,
-    cache_write_price: null,
-    cache_read_price: null,
-    image_input_price: null,
-    image_output_price: null,
-    per_request_price: null,
-    intervals: [],
-    time_pricing: createDefaultTimePricingForm(),
-    ...over,
-  }
-}
-
 function t(key: string, params?: Record<string, unknown>): string {
   return `${key}${params ? ` ${JSON.stringify(params)}` : ''}`
 }
@@ -159,46 +140,6 @@ describe('validateIntervals', () => {
       ]
       expect(validateIntervals(intervals, 'image', t)).toContain('maxGreaterThanMin')
     })
-  })
-})
-
-describe('pricingFormEntryToAPI', () => {
-  it('clears legacy token image price when saving image mode pricing', () => {
-    const payload = pricingFormEntryToAPI('gemini', makePricingEntry({
-      billing_mode: 'image',
-      image_output_price: 60,
-      per_request_price: 0.4,
-      input_price: 1,
-      output_price: 2,
-      intervals: [
-        makeInterval({ tier_label: '1K', input_price: 1, per_request_price: 0.2 }),
-      ],
-    }))
-
-    expect(payload.image_output_price).toBeNull()
-    expect(payload.input_price).toBeNull()
-    expect(payload.output_price).toBeNull()
-    expect(payload.per_request_price).toBe(0.4)
-    expect(payload.intervals[0].input_price).toBeNull()
-    expect(payload.intervals[0].per_request_price).toBe(0.2)
-  })
-
-  it('clears per-request prices when saving token mode pricing', () => {
-    const payload = pricingFormEntryToAPI('gemini', makePricingEntry({
-      billing_mode: 'token',
-      input_price: 1,
-      image_output_price: 60,
-      per_request_price: 0.4,
-      intervals: [
-        makeInterval({ input_price: 1, per_request_price: 0.2 }),
-      ],
-    }))
-
-    expect(payload.input_price).toBe(0.000001)
-    expect(payload.image_output_price).toBe(0.00006)
-    expect(payload.per_request_price).toBeNull()
-    expect(payload.intervals[0].input_price).toBe(0.000001)
-    expect(payload.intervals[0].per_request_price).toBeNull()
   })
 })
 

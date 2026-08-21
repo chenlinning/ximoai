@@ -111,39 +111,3 @@ func TestBuildModelPlazaMetadataUsesAdministratorOverridesAndCompleteOptions(t *
 	require.Equal(t, allModelInvocationModeOptions(), details.Editor.Options.InvocationModes)
 	require.Equal(t, service.XimoAIModelReasoningLevelOptions(), details.Editor.Options.ReasoningLevels)
 }
-
-func TestAutomaticVolcengineSpeechMetadataCoversEveryVoiceMode(t *testing.T) {
-	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
-		Platform: service.PlatformVolcengineAgentPlan,
-		Kind:     service.PlatformKindVolcengineAgentPlan,
-		Protocol: "native",
-		Model:    service.VolcengineAgentPlanTTSModel,
-	}, nil, false)
-
-	require.Equal(t, []string{modelTypeTTS}, details.Types)
-	require.ElementsMatch(t, []string{modelInvocationSync, modelInvocationStream, modelInvocationBidirectional}, details.InvocationModes)
-}
-
-func TestAutomaticVolcengineASRMetadataMatchesWebSocketRoutes(t *testing.T) {
-	details := resolveAutomaticModelMetadata(modelMetadataResolutionInput{
-		Platform:         service.PlatformVolcengineAgentPlan,
-		Kind:             service.PlatformKindVolcengineAgentPlan,
-		Model:            service.VolcengineAgentPlanASRModel,
-		RecognitionModel: service.VolcengineAgentPlanASRModel,
-	})
-
-	require.Equal(t, []string{modelTypeASR}, details.Types)
-	require.Equal(t, []string{modelInvocationStream}, details.InvocationModes)
-}
-
-func TestAutomaticVolcengineSeedreamMetadataIncludesStreaming(t *testing.T) {
-	details := resolveAutomaticModelMetadata(modelMetadataResolutionInput{
-		Platform:         service.PlatformVolcengineAgentPlan,
-		Kind:             service.PlatformKindVolcengineAgentPlan,
-		Model:            service.VolcengineAgentPlanSeedreamModel,
-		RecognitionModel: service.VolcengineAgentPlanSeedreamModel,
-	})
-
-	require.Equal(t, []string{modelTypeImage}, details.Types)
-	require.ElementsMatch(t, []string{modelInvocationSync, modelInvocationStream}, details.InvocationModes)
-}

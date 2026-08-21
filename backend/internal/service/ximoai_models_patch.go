@@ -17,55 +17,14 @@ func (s *GatewayService) GetXimoAIAvailableModels(ctx context.Context, groupID *
 			}
 		}
 	}
-	if NormalizePlatformSlug(platform) == PlatformVolcengineAgentPlan {
-		if models, ok := s.ximoAIVolcengineAgentPlanAccountModelIDs(ctx, groupID); ok {
-			return models
-		}
-	}
 	return s.GetAvailableModels(ctx, groupID, platform)
-}
-
-func (s *GatewayService) ximoAIVolcengineAgentPlanAccountModelIDs(ctx context.Context, groupID *int64) ([]string, bool) {
-	if s == nil || s.accountRepo == nil || groupID == nil {
-		return nil, false
-	}
-	accounts, err := s.accountRepo.ListSchedulableByGroupID(ctx, *groupID)
-	if err != nil {
-		return nil, false
-	}
-	modelSet := make(map[string]struct{})
-	hasAnyMapping := false
-	for _, account := range accounts {
-		if account.PlatformRuntimeKind() != PlatformKindVolcengineAgentPlan {
-			continue
-		}
-		mapping := account.GetModelMapping()
-		if len(mapping) == 0 {
-			continue
-		}
-		hasAnyMapping = true
-		for model := range mapping {
-			if model = strings.TrimSpace(model); model != "" {
-				modelSet[model] = struct{}{}
-			}
-		}
-	}
-	if !hasAnyMapping {
-		return nil, false
-	}
-	models := make([]string, 0, len(modelSet))
-	for model := range modelSet {
-		models = append(models, model)
-	}
-	sort.Strings(models)
-	return models, true
 }
 
 func ximoAIChannelMappedModelIDs(channel *Channel, platform string) ([]string, bool) {
 	if channel == nil {
 		return nil, false
 	}
-	mapping := channel.ModelMapping[NormalizePlatformSlug(platform)]
+	mapping := channel.ModelMapping[strings.ToLower(strings.TrimSpace(platform))]
 	if len(mapping) == 0 {
 		return nil, false
 	}
@@ -82,21 +41,4 @@ func ximoAIChannelMappedModelIDs(channel *Channel, platform string) ([]string, b
 	}
 	sort.Strings(models)
 	return models, true
-}
-
-func XimoAIModelsFallbackPlatform(slug string) string {
-	slug = NormalizePlatformSlug(slug)
-	if slug == PlatformVolcengineAgentPlan {
-		return PlatformVolcengineAgentPlan
-	}
-	return slug
-}
-
-func XimoAIModelsUseEmptyFallback(slug string) bool {
-	switch XimoAIPlatformKindFromSlug(slug) {
-	case PlatformKindGrokVideo, PlatformKindOpenAIAudio, PlatformKindKlingAudio:
-		return true
-	default:
-		return false
-	}
 }

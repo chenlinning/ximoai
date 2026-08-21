@@ -12,7 +12,6 @@ const {
   getCapacitySummary,
   getLiveCapability,
   listAccounts,
-  listPlatforms,
   showError,
   showSuccess,
   isCurrentStep,
@@ -25,7 +24,6 @@ const {
   getCapacitySummary: vi.fn(),
   getLiveCapability: vi.fn(),
   listAccounts: vi.fn(),
-  listPlatforms: vi.fn(),
   showError: vi.fn(),
   showSuccess: vi.fn(),
   isCurrentStep: vi.fn(),
@@ -66,9 +64,6 @@ vi.mock('@/api/admin', () => ({
     },
     accounts: {
       list: listAccounts,
-    },
-    platforms: {
-      list: listPlatforms,
     },
   },
 }))
@@ -241,9 +236,7 @@ describe('admin GroupsView column settings', () => {
     getModelsListCandidates.mockReset()
     getUsageSummary.mockReset()
     getCapacitySummary.mockReset()
-    getLiveCapability.mockReset()
     listAccounts.mockReset()
-    listPlatforms.mockReset()
     showError.mockReset()
     showSuccess.mockReset()
     isCurrentStep.mockReset()
@@ -262,7 +255,6 @@ describe('admin GroupsView column settings', () => {
     getCapacitySummary.mockResolvedValue([])
     getLiveCapability.mockResolvedValue({ supported: false })
     listAccounts.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 20, pages: 0 })
-    listPlatforms.mockResolvedValue([])
     isCurrentStep.mockReturnValue(false)
   })
 

@@ -348,11 +348,11 @@ import {
 import { formatScaled } from '@/utils/pricing'
 import {
   platformAccentBarClass,
-  platformDisplayColor
+  platformDisplayColor,
+  type PlatformInfo
 } from '@/utils/platformColors'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { useAppStore } from '@/stores/app'
-import type { Platform } from '@/types'
 import { displayUnitPrice } from '@/utils/modelPricingDisplay'
 
 const PriceLine = (
@@ -417,7 +417,7 @@ const modeFilterOptions = [allModesKey, ...invocationModeOptions]
 const loading = ref(false)
 const error = ref('')
 const models = ref<ModelEntry[]>([])
-const platforms = ref<Platform[]>([])
+const platforms = ref<PlatformInfo[]>([])
 const searchQuery = ref('')
 const activeBrand = ref(allBrandsKey)
 const activeType = ref(allTypesKey)
@@ -622,23 +622,15 @@ function buildModels(channels: UserAvailableChannel[]): ModelEntry[] {
     .sort((a, b) => a.name.localeCompare(b.name) || a.platform.localeCompare(b.platform))
 }
 
-function buildPlatforms(channels: UserAvailableChannel[]): Platform[] {
-  const items = new Map<string, Platform>()
+function buildPlatforms(channels: UserAvailableChannel[]): PlatformInfo[] {
+  const items = new Map<string, PlatformInfo>()
   for (const channel of channels) {
     for (const section of channel.platforms || []) {
       if (items.has(section.platform)) continue
       items.set(section.platform, {
         slug: section.platform,
         display_name: section.display_name || section.platform,
-        protocol: section.protocol,
-        base_url: '',
-        auth_modes: [],
-        capabilities: [],
-        color: section.color || '',
-        enabled: true,
-        builtin: false,
-        created_at: '',
-        updated_at: ''
+        color: section.color || ''
       })
     }
   }

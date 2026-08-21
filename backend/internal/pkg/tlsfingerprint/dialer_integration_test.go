@@ -24,22 +24,15 @@ func skipIfExternalServiceUnavailable(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
 		// Check for common network/TLS errors that indicate external service issues
-		errStr := strings.ToLower(err.Error())
+		errStr := err.Error()
 		if strings.Contains(errStr, "certificate has expired") ||
 			strings.Contains(errStr, "certificate is not yet valid") ||
-			strings.Contains(errStr, "connectex") ||
-			strings.Contains(errStr, "connected party did not properly respond") ||
-			strings.Contains(errStr, "connection attempt failed") ||
 			strings.Contains(errStr, "connection refused") ||
-			strings.Contains(errStr, "connection reset by peer") ||
 			strings.Contains(errStr, "connection reset") ||
 			strings.Contains(errStr, "broken pipe") ||
-			strings.Contains(errStr, "eof") ||
-			strings.Contains(errStr, "forcibly closed") ||
-			strings.Contains(errStr, "host has failed to respond") ||
+			strings.Contains(errStr, "EOF") ||
 			strings.Contains(errStr, "no such host") ||
 			strings.Contains(errStr, "network is unreachable") ||
-			strings.Contains(errStr, "wsarecv") ||
 			strings.Contains(errStr, "timeout") ||
 			strings.Contains(errStr, "deadline exceeded") {
 			t.Skipf("skipping test: external service unavailable: %v", err)

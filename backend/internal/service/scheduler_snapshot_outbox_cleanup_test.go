@@ -108,10 +108,6 @@ type outboxCleanupAccountRepo struct {
 	AccountRepository
 }
 
-func (r *outboxCleanupAccountRepo) ListActive(context.Context) ([]Account, error) {
-	return nil, nil
-}
-
 func (r *outboxCleanupAccountRepo) ListSchedulableUngroupedByPlatform(context.Context, string) ([]Account, error) {
 	return nil, nil
 }

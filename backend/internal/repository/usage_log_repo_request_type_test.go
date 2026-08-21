@@ -274,11 +274,9 @@ func TestPrepareUsageLogInsert_PersistsImageSizeMetadata(t *testing.T) {
 		ImageOutputSize:    &outputSize,
 		ImageSizeSource:    &source,
 		ImageSizeBreakdown: map[string]int{"1K": 1, "4K": 1},
-		VideoCount:         3,
 		CreatedAt:          time.Date(2025, 1, 6, 12, 0, 0, 0, time.UTC),
 	})
 
-	require.Equal(t, 2, prepared.args[37])
 	require.Equal(t, sql.NullString{String: imageSize, Valid: true}, prepared.args[38])
 	require.Equal(t, sql.NullString{String: inputSize, Valid: true}, prepared.args[39])
 	require.Equal(t, sql.NullString{String: outputSize, Valid: true}, prepared.args[40])
@@ -286,7 +284,6 @@ func TestPrepareUsageLogInsert_PersistsImageSizeMetadata(t *testing.T) {
 	breakdownJSON, ok := prepared.args[42].(string)
 	require.True(t, ok)
 	require.JSONEq(t, `{"1K":1,"4K":1}`, breakdownJSON)
-	require.Equal(t, 3, prepared.args[43])
 }
 
 func TestCoalesceTrimmedString(t *testing.T) {
@@ -898,7 +895,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullInt64{},
 			sql.NullString{},
 			sql.NullString{},
-			0, // image_count
+			0,
 			sql.NullString{},
 			sql.NullString{}, // image_input_size
 			sql.NullString{}, // image_output_size
@@ -958,7 +955,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullInt64{},
 			sql.NullString{},
 			sql.NullString{},
-			0, // image_count
+			0,
 			sql.NullString{},
 			sql.NullString{}, // image_input_size
 			sql.NullString{}, // image_output_size
@@ -1018,7 +1015,7 @@ func TestScanUsageLogRequestTypeAndLegacyFallback(t *testing.T) {
 			sql.NullInt64{},
 			sql.NullString{},
 			sql.NullString{},
-			0, // image_count
+			0,
 			sql.NullString{},
 			sql.NullString{}, // image_input_size
 			sql.NullString{}, // image_output_size

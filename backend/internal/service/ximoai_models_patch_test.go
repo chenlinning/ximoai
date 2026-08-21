@@ -98,25 +98,3 @@ func TestGetXimoAIAvailableModels_FallsBackWithoutPlatformMapping(t *testing.T) 
 
 	require.Equal(t, []string{"account-model"}, models)
 }
-
-func TestGetXimoAIAvailableModels_UsesFixedVolcenginePlatform(t *testing.T) {
-	groupID := int64(43)
-	accountRepo := &ximoAIModelsAccountRepoStub{accounts: []Account{{
-		ID:       1,
-		Platform: PlatformVolcengineAgentPlan,
-		Credentials: map[string]any{
-			"model_mapping": map[string]any{
-				"doubao-seed-tts-2.0": "seed-tts-2.0",
-			},
-		},
-	}}}
-
-	svc := &GatewayService{accountRepo: accountRepo}
-	models := svc.GetXimoAIAvailableModels(context.Background(), &groupID, PlatformVolcengineAgentPlan)
-
-	require.Equal(t, []string{"doubao-seed-tts-2.0"}, models)
-}
-
-func TestXimoAIModelsFallbackPlatform_LeavesBuiltinPlatformUnchanged(t *testing.T) {
-	require.Equal(t, PlatformGrokVideo, XimoAIModelsFallbackPlatform(PlatformGrokVideo))
-}

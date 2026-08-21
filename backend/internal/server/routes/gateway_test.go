@@ -143,48 +143,6 @@ func TestGatewayRoutesAsyncImagesPathsAreRegistered(t *testing.T) {
 	}
 }
 
-func TestGatewayRoutesVolcengineAgentPlanNativePathsAreRegistered(t *testing.T) {
-	router := newGatewayRoutesTestRouter(service.PlatformVolcengineAgentPlan)
-	registered := make(map[string]bool)
-	for _, route := range router.Routes() {
-		registered[route.Method+" "+route.Path] = true
-	}
-
-	for _, route := range []string{
-		"POST /api/plan/v3/images/generations",
-		"POST /api/v3/plan/tts/unidirectional",
-		"GET /api/v3/plan/tts/unidirectional/stream",
-		"GET /api/v3/plan/tts/bidirection",
-		"GET /api/v3/plan/sauc/bigmodel",
-		"GET /api/v3/plan/sauc/bigmodel_async",
-		"GET /api/v3/plan/sauc/bigmodel_nostream",
-	} {
-		require.True(t, registered[route], "%s should be registered", route)
-	}
-}
-
-func TestGatewayRoutesVolcengineAgentPlanLegacyPathsAreNotRegistered(t *testing.T) {
-	router := newGatewayRoutesTestRouter(service.PlatformVolcengineAgentPlan)
-	for _, route := range []struct {
-		method string
-		path   string
-	}{
-		{http.MethodPost, "/v1/volcengine/images/generations"},
-		{http.MethodPost, "/v1/volcengine/audio/tts/unidirectional"},
-		{http.MethodGet, "/v1/volcengine/audio/tts/unidirectional/stream"},
-		{http.MethodGet, "/v1/volcengine/audio/tts/bidirection"},
-		{http.MethodGet, "/v1/volcengine/audio/asr/bigmodel_async"},
-		{http.MethodGet, "/v1/volcengine/audio/asr/bigmodel_nostream"},
-	} {
-		req := httptest.NewRequest(route.method, route.path, strings.NewReader(`{"model":"seed-tts-2.0"}`))
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-
-		require.Equal(t, http.StatusNotFound, w.Code, "legacy path=%s must remain removed", route.path)
-	}
-}
-
 func TestGatewayRoutesGrokImagesAndVideosPathsAreRegistered(t *testing.T) {
 	router := newGatewayRoutesTestRouter(service.PlatformGrok)
 
@@ -341,63 +299,6 @@ func TestGatewayRoutesCompositeChatCompletionsWithGrokModelUsesOpenAIGateway(t *
 		require.NotContains(t, w.Body.String(), "not supported")
 		require.NotContains(t, w.Body.String(), "OpenAI-compatible endpoint")
 		require.NotContains(t, w.Body.String(), "composite groups")
-	}
-}
-
-func TestGatewayRoutesXimoAIGrokVideoPathsStaySeparateFromBuiltinGrok(t *testing.T) {
-	router := newGatewayRoutesTestRouter(service.PlatformGrokVideo)
-
-	for _, tc := range []struct {
-		method string
-		path   string
-		body   string
-	}{
-		{http.MethodPost, "/v1/videos/generations", `{"model":"grok-video-3-10s","prompt":"waves"}`},
-		{http.MethodPost, "/v1/videos/extensions", `{"model":"grok-video-3","video":{"id":"video_123"}}`},
-		{http.MethodGet, "/v1/videos/video_123", ""},
-		{http.MethodPost, "/videos/generations", `{"model":"grok-video-3-10s","prompt":"waves"}`},
-		{http.MethodPost, "/videos/extensions", `{"model":"grok-video-3","video":{"id":"video_123"}}`},
-		{http.MethodGet, "/videos/video_123", ""},
-	} {
-		req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "method=%s path=%s should hit XimoAi video handler", tc.method, tc.path)
-		require.NotContains(t, w.Body.String(), "Videos API is not supported for this platform")
-	}
-}
-
-func TestGatewayRoutesXimoAIGrokVideoRejectsEndpointsOutsideBuiltinGrokProtocol(t *testing.T) {
-	router := newGatewayRoutesTestRouter(service.PlatformGrokVideo)
-
-	for _, tc := range []struct {
-		method string
-		path   string
-	}{
-		{http.MethodPost, "/v1/videos/edits"},
-		{http.MethodGet, "/v1/videos/video_123/content"},
-		{http.MethodDelete, "/v1/videos/video_123"},
-	} {
-		req := httptest.NewRequest(tc.method, tc.path, nil)
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.Equal(t, http.StatusNotFound, w.Code, "method=%s path=%s", tc.method, tc.path)
-	}
-}
-
-func TestGatewayRoutesGrokVideoUpstreamCreateAliasesAreRegistered(t *testing.T) {
-	router := newGatewayRoutesTestRouter(service.PlatformGrokVideo)
-
-	for _, path := range []string{"/v1/videos", "/videos"} {
-		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"grok-video-3-10s","prompt":"waves"}`))
-		req.Header.Set("Content-Type", "application/json")
-		w := httptest.NewRecorder()
-
-		router.ServeHTTP(w, req)
-		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s must preserve the upstream video create route", path)
 	}
 }
 

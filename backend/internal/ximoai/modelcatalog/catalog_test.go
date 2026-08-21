@@ -38,29 +38,6 @@ func TestLookupBuiltInPlatformDoesNotCrossMatchAnotherProvider(t *testing.T) {
 	}
 }
 
-func TestVolcengineAgentPlanRegistryIncludesProviderModelIDs(t *testing.T) {
-	tests := []struct {
-		model     string
-		modelType string
-		mode      string
-	}{
-		{model: "doubao-seed-tts-2.0", modelType: "tts", mode: "bidirectional"},
-		{model: "doubao-seed-asr-2.0", modelType: "asr", mode: "stream"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.model, func(t *testing.T) {
-			record, ok := Lookup("volcengine-agent-plan", tt.model)
-			if !ok {
-				t.Fatalf("model registry did not match %s", tt.model)
-			}
-			if record.Brand != "Doubao" || !containsString(record.Types, tt.modelType) || !containsString(record.InvocationModes, tt.mode) {
-				t.Fatalf("unexpected metadata for %s: %#v", tt.model, record)
-			}
-		})
-	}
-}
-
 func TestPublicMetadataDoesNotExposeInternalAccessProfile(t *testing.T) {
 	metadata, ok := PublicMetadataFor("compatible-alias", "gpt-5")
 	if !ok {

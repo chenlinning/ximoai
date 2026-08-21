@@ -47,22 +47,6 @@ var ximoAIModelPlazaPlatforms = map[string]ximoAIModelPlazaPlatform{
 		DisplayName: "DeepSeek", Color: "#14B8A6", Protocol: "openai_compatible",
 		Capabilities: []string{"responses", "chat_completions", "messages"},
 	},
-	service.PlatformGrokVideo: {
-		DisplayName: "Grok Video", Color: "#111827", Protocol: "openai_compatible", Kind: service.PlatformKindGrokVideo,
-		Capabilities: []string{"videos"},
-	},
-	service.PlatformOpenAIAudio: {
-		DisplayName: "OpenAI Audio", Color: "#0F766E", Protocol: "openai_compatible", Kind: service.PlatformKindOpenAIAudio,
-		Capabilities: []string{"chat_completions", "audio"},
-	},
-	service.PlatformKlingAudio: {
-		DisplayName: "Kling Audio", Color: "#0EA5E9", Protocol: "openai_compatible", Kind: service.PlatformKindKlingAudio,
-		Capabilities: []string{"audio"},
-	},
-	service.PlatformVolcengineAgentPlan: {
-		DisplayName: "Volcengine Agent Plan", Color: "#E5484D", Protocol: "native", Kind: service.PlatformKindVolcengineAgentPlan,
-		Capabilities: []string{"images", "audio"},
-	},
 }
 
 func ximoAIModelPlazaPlatformFor(slug string) (ximoAIModelPlazaPlatform, bool) {

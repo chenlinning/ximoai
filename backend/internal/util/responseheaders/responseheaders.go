@@ -23,7 +23,6 @@ var defaultAllowed = map[string]struct{}{
 	"vary":                           {},
 	"date":                           {},
 	"x-request-id":                   {},
-	"x-tt-logid":                     {},
 	"x-ratelimit-limit-requests":     {},
 	"x-ratelimit-limit-tokens":       {},
 	"x-ratelimit-remaining-requests": {},

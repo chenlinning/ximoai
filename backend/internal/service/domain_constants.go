@@ -47,9 +47,6 @@ const (
 	PlatformGemini      = domain.PlatformGemini
 	PlatformAntigravity = domain.PlatformAntigravity
 	PlatformGrok        = domain.PlatformGrok
-	PlatformGrokVideo   = domain.PlatformGrokVideo
-	PlatformOpenAIAudio = domain.PlatformOpenAIAudio
-	PlatformKlingAudio  = domain.PlatformKlingAudio
 	// 国产 OpenAI 兼容供应商（与 grok 一样经 OpenAI 网关转发）。
 	PlatformKimi      = domain.PlatformKimi
 	PlatformZhipu     = domain.PlatformZhipu
@@ -59,8 +56,6 @@ const (
 	// account rows. Scheduling-threshold evaluation never pauses kiro accounts.
 	PlatformKiro = "kiro"
 )
-
-const PlatformVolcengineAgentPlan = domain.PlatformVolcengineAgentPlan
 
 // 账号接入模式（国产供应商）：按量付费 vs Coding Plan。
 const (
@@ -114,10 +109,6 @@ var AllowedQuotaPlatforms = []string{
 	PlatformGemini,
 	PlatformAntigravity,
 	PlatformGrok,
-	PlatformGrokVideo,
-	PlatformOpenAIAudio,
-	PlatformKlingAudio,
-	PlatformVolcengineAgentPlan,
 	PlatformKimi,
 	PlatformZhipu,
 	PlatformDeepseek,

@@ -59,7 +59,6 @@ func TestAccount_IsAnthropicAPIKeyPassthroughEnabled(t *testing.T) {
 		}
 		require.False(t, openai.IsAnthropicAPIKeyPassthroughEnabled())
 	})
-
 }
 
 func TestAccount_GetAnthropicAPIKeyAuthScheme(t *testing.T) {

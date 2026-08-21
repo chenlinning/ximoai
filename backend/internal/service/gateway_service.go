@@ -619,9 +619,6 @@ type ForwardResult struct {
 	FirstTokenMs                  *int // 首字时间（流式请求）
 	ClientDisconnect              bool // 客户端是否在流式传输过程中断开
 	ReasoningEffort               *string
-	// RequestCount is used by native per-request providers. Zero preserves the
-	// historical one-request behavior for all existing protocols.
-	RequestCount int
 	// ServiceTier records the billable request tier. OpenAI uses service_tier;
 	// Anthropic speed=fast is normalized to "fast".
 	ServiceTier *string

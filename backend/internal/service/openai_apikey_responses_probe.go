@@ -141,7 +141,7 @@ func (s *AccountTestService) ProbeOpenAIAPIKeyResponsesSupport(ctx context.Conte
 		})
 		return
 	}
-	if !account.UsesOpenAIAPIKeyProtocol() {
+	if account.Platform != PlatformOpenAI {
 		// 仅 OpenAI APIKey 账号需要探测；其他账号类型无能力差异。
 		return
 	}

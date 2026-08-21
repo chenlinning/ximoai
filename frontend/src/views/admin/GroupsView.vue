@@ -138,12 +138,25 @@
             <span
               :class="[
                 'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium',
-                platformBadgeLightClass(value),
+                value === 'anthropic'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                  : value === 'openai'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : value === 'antigravity'
+                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                      : value === 'grok'
+                        ? 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100'
+                        : value === 'kimi'
+                          ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
+                          : value === 'zhipu'
+                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                            : value === 'deepseek'
+                              ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
               ]"
-              :style="platformBadgeStyle(platformDisplayColor(fixedPlatforms, value))"
             >
               <PlatformIcon :platform="value" size="xs" />
-              {{ platformDisplayName(fixedPlatforms, value) }}
+              {{ t("admin.groups.platforms." + value) }}
             </span>
           </template>
 
@@ -3950,11 +3963,24 @@
                 <span
                   :class="[
                     'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
-                    platformBadgeLightClass(group.platform),
+                    group.platform === 'anthropic'
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                      : group.platform === 'openai'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        : group.platform === 'antigravity'
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+                          : group.platform === 'grok'
+                            ? 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100'
+                            : group.platform === 'kimi'
+                              ? 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400'
+                              : group.platform === 'zhipu'
+                                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                : group.platform === 'deepseek'
+                                  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
                   ]"
-                  :style="platformBadgeStyle(platformDisplayColor(fixedPlatforms, group.platform))"
                 >
-                  {{ platformDisplayName(fixedPlatforms, group.platform) }}
+                  {{ t("admin.groups.platforms." + group.platform) }}
                 </span>
               </div>
             </div>
@@ -4396,6 +4422,10 @@ import type {
   GroupPlatform,
   SubscriptionType,
 } from "@/types";
+import {
+  CONCRETE_PLATFORM_OPTIONS,
+  GROUP_PLATFORM_OPTIONS,
+} from "@/constants/platforms";
 import type { Column } from "@/components/common/types";
 import AppLayout from "@/components/layout/AppLayout.vue";
 import TablePageLayout from "@/components/layout/TablePageLayout.vue";
@@ -4427,13 +4457,6 @@ import { createStableObjectKeyResolver } from "@/utils/stableObjectKey";
 import { extractApiErrorMessage } from "@/utils/apiError";
 import { useKeyedDebouncedSearch } from "@/composables/useKeyedDebouncedSearch";
 import { getPersistedPageSize } from "@/composables/usePersistedPageSize";
-import { fixedPlatforms, fixedPlatformBySlug } from "@/extensions/platforms/fixedPlatforms";
-import {
-  platformBadgeLightClass,
-  platformBadgeStyle,
-  platformDisplayColor,
-  platformDisplayName,
-} from "@/utils/platformColors";
 import {
   createDefaultMessagesDispatchFormState,
   messagesDispatchConfigToFormState,
@@ -4721,34 +4744,16 @@ const exclusiveOptions = computed(() => [
   { value: "false", label: t("admin.groups.nonExclusive") },
 ]);
 
-const platformOptions = computed(() => {
-  const options = fixedPlatforms.map((platform) => ({
-    value: platform.slug,
-    label: platform.display_name,
-  }));
-  if (!options.some((option) => option.value === "composite")) {
-    options.push({ value: "composite", label: "Composite" });
-  }
-  return options;
-});
+const platformOptions = computed(() => [...GROUP_PLATFORM_OPTIONS]);
 
 const platformFilterOptions = computed(() => [
   { value: "", label: t("admin.groups.allPlatforms") },
-  ...platformOptions.value,
+  ...GROUP_PLATFORM_OPTIONS,
 ]);
 
-const compositeRoutePlatforms = new Set([
-  ...fixedPlatforms.map((platform) => platform.slug),
+const compositeRoutePlatformOptions = computed(() => [
+  ...CONCRETE_PLATFORM_OPTIONS,
 ]);
-
-const compositeRoutePlatformOptions = computed(() =>
-  fixedPlatforms
-    .filter((platform) => compositeRoutePlatforms.has(platform.slug))
-    .map((platform) => ({
-      value: platform.slug,
-      label: platform.display_name,
-    })),
-);
 
 const compositeRouteEndpointOptions = computed(() => [
   { value: "any", label: t("admin.groups.compositeRoutes.endpoints.any") },
@@ -6412,8 +6417,6 @@ const formatCompositeEndpoint = (endpoint: CompositeRouteEndpoint) =>
 
 const formatCompositePlatform = (platform: string) => {
   if (!platform) return "—";
-  const definition = fixedPlatformBySlug(platform);
-  if (definition) return definition.display_name;
   return t(`admin.groups.platforms.${platform}`);
 };
 

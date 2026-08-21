@@ -439,9 +439,9 @@ type ChannelUsageFields struct {
 // SupportedModel 渠道的一个支持模型条目（无通配符、可直接展示给用户）
 type SupportedModel struct {
 	Name            string               // 用户侧模型名
+	RecognitionName string               // 映射后的上游模型名，仅用于展示元数据识别
 	Platform        string               // 所属平台
 	Pricing         *ChannelModelPricing // 定价详情（nil 表示未配置定价）
-	RecognitionName string               `json:"-"` // Actual upstream model ID for internal metadata lookup only.
 }
 
 // wildcardSuffix 是模型模式中的通配符后缀标记（仅支持尾部匹配）。
@@ -563,7 +563,6 @@ func (c *Channel) SupportedModels() []SupportedModel {
 		name     string
 	}
 	seen := make(map[dedupKey]struct{})
-	mappedTargets := make(map[dedupKey]struct{})
 	result := make([]SupportedModel, 0)
 
 	// lookup 在 platform pricing index 中按精确名查定价，命中时返回定价大小写。
@@ -586,9 +585,9 @@ func (c *Channel) SupportedModels() []SupportedModel {
 		seen[key] = struct{}{}
 		result = append(result, SupportedModel{
 			Name:            displayName,
+			RecognitionName: recognitionName,
 			Platform:        platform,
 			Pricing:         pricing,
-			RecognitionName: recognitionName,
 		})
 	}
 
@@ -608,7 +607,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 				for _, candidate := range pidx.names {
 					if strings.HasPrefix(strings.ToLower(candidate), prefixLower) {
 						display, pricing := lookup(pidx, candidate)
-						add(platform, display, target, pricing)
+						add(platform, display, candidate, pricing)
 					}
 				}
 				continue
@@ -621,28 +620,16 @@ func (c *Channel) SupportedModels() []SupportedModel {
 			if _, targetWild := splitWildcardSuffix(pricingKey); targetWild {
 				pricingKey = src
 			}
-			if strings.TrimSpace(target) != "" && !strings.EqualFold(strings.TrimSpace(src), strings.TrimSpace(target)) {
-				if _, targetWild := splitWildcardSuffix(target); !targetWild {
-					mappedTargets[dedupKey{platform: platform, name: strings.ToLower(strings.TrimSpace(target))}] = struct{}{}
-				}
-			}
 			_, pricing := lookup(pidx, pricingKey)
 			// 显示名优先用 src 在定价里的原始大小写（若 src 本身是个定价模型名）
 			displayName, _ := lookup(pidx, src)
-			recognitionName := strings.TrimSpace(target)
-			if recognitionName == "" {
-				recognitionName = src
-			}
-			add(platform, displayName, recognitionName, pricing)
+			add(platform, displayName, pricingKey, pricing)
 		}
 	}
 
 	// Pass B：从 pricing 补齐 mapping 未覆盖的具体模型（修复"定价存在但没配映射 → 不显示"）
 	for platform, pidx := range idx {
 		for _, name := range pidx.names {
-			if _, hidden := mappedTargets[dedupKey{platform: platform, name: strings.ToLower(strings.TrimSpace(name))}]; hidden {
-				continue
-			}
 			display, pricing := lookup(pidx, name)
 			add(platform, display, name, pricing)
 		}

@@ -16,10 +16,6 @@ const (
 	OpsUpstreamErrorDetailKey  = "ops_upstream_error_detail"
 	OpsUpstreamErrorsKey       = "ops_upstream_errors"
 
-	// Best-effort capture of the current upstream request body.
-	// This value is sanitized and trimmed before persistence.
-	OpsUpstreamRequestBodyKey = "ops_upstream_request_body"
-
 	// Optional stage latencies (milliseconds) for troubleshooting and alerting.
 	OpsAuthLatencyMsKey      = "ops_auth_latency_ms"
 	OpsRoutingLatencyMsKey   = "ops_routing_latency_ms"
@@ -57,13 +53,6 @@ const (
 	OpsClientBusinessLimitedReasonLocalPolicyDenied       = "local_policy_denied"
 	OpsClientBusinessLimitedReasonLocalModelConfiguration = "local_model_configuration"
 )
-
-func setOpsUpstreamRequestBody(c *gin.Context, body []byte) {
-	if c == nil || len(body) == 0 {
-		return
-	}
-	c.Set(OpsUpstreamRequestBodyKey, body)
-}
 
 func MarkResponseCommitted(c *gin.Context) { c.Set(ResponseCommittedKey, true) }
 
@@ -233,9 +222,6 @@ type OpsUpstreamErrorEvent struct {
 	// Helps debug 404/routing errors by showing which endpoint was targeted.
 	UpstreamURL string `json:"upstream_url,omitempty"`
 
-	// Best-effort upstream request capture (sanitized+trimmed).
-	UpstreamRequestBody string `json:"upstream_request_body,omitempty"`
-
 	// Best-effort upstream response capture (sanitized+trimmed).
 	UpstreamResponseBody string `json:"upstream_response_body,omitempty"`
 
@@ -260,7 +246,6 @@ func appendOpsUpstreamError(c *gin.Context, ev OpsUpstreamErrorEvent) {
 	}
 	ev.Platform = strings.TrimSpace(ev.Platform)
 	ev.UpstreamRequestID = strings.TrimSpace(ev.UpstreamRequestID)
-	ev.UpstreamRequestBody = strings.TrimSpace(ev.UpstreamRequestBody)
 	ev.UpstreamResponseBody = strings.TrimSpace(ev.UpstreamResponseBody)
 	ev.Kind = strings.TrimSpace(ev.Kind)
 	ev.Stage = strings.TrimSpace(ev.Stage)
@@ -271,17 +256,6 @@ func appendOpsUpstreamError(c *gin.Context, ev OpsUpstreamErrorEvent) {
 	ev.Detail = strings.TrimSpace(ev.Detail)
 	if ev.Message != "" {
 		ev.Message = sanitizeUpstreamErrorMessage(ev.Message)
-	}
-
-	if ev.UpstreamRequestBody == "" {
-		if v, ok := c.Get(OpsUpstreamRequestBodyKey); ok {
-			switch raw := v.(type) {
-			case string:
-				ev.UpstreamRequestBody = strings.TrimSpace(raw)
-			case []byte:
-				ev.UpstreamRequestBody = strings.TrimSpace(string(raw))
-			}
-		}
 	}
 
 	var existing []*OpsUpstreamErrorEvent

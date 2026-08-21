@@ -1724,29 +1724,6 @@ func TestAdminService_CreateCompositeRoute_NormalizesAndPersists(t *testing.T) {
 	require.Equal(t, route, routeRepo.created)
 }
 
-func TestAdminService_CreateCompositeRoute_AllowsEnabledXimoAIBuiltinPlatform(t *testing.T) {
-	groupRepo := &groupRepoStubForAdmin{
-		getByID: &Group{ID: 7, Platform: PlatformComposite},
-	}
-	routeRepo := &compositeRouteRepoStubForAdmin{nextID: 99}
-	svc := &adminServiceImpl{
-		groupRepo:          groupRepo,
-		compositeRouteRepo: routeRepo,
-	}
-
-	route, err := svc.CreateCompositeRoute(context.Background(), 7, CompositeRouteInput{
-		PublicModel:    "router/audio",
-		TargetPlatform: " OPENAI-AUDIO ",
-		UpstreamModel:  "audio-model",
-		Endpoint:       CompositeRouteEndpointResponses,
-		Enabled:        true,
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, PlatformOpenAIAudio, route.TargetPlatform)
-	require.Equal(t, route, routeRepo.created)
-}
-
 func TestAdminService_CreateCompositeRoute_ExactEmptyUpstreamBackfillsPublicModel(t *testing.T) {
 	groupRepo := &groupRepoStubForAdmin{
 		getByID: &Group{ID: 7, Platform: PlatformComposite},

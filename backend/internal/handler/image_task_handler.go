@@ -58,8 +58,11 @@ func (h *AsyncImageHandler) Submit(c *gin.Context) {
 		imageTaskError(c, service.ErrImageTaskForbidden)
 		return
 	}
-	platform := openAICompatibleRequestPlatform(c.Request.Context(), apiKey)
-	if strings.TrimSpace(platform) == "" {
+	platform := ""
+	if apiKey.Group != nil {
+		platform = apiKey.Group.Platform
+	}
+	if platform != service.PlatformOpenAI && platform != service.PlatformGrok {
 		imageTaskJSONError(c, http.StatusNotFound, "not_found_error", "Images API is not supported for this platform")
 		return
 	}
@@ -137,7 +140,7 @@ func (h *AsyncImageHandler) checkSecurityAuditBeforeSubmit(c *gin.Context, apiKe
 		parsed := service.ParseGrokMediaRequest(c.GetHeader("Content-Type"), body)
 		model, moderationBody = parsed.Model, parsed.ModerationBody()
 	} else if h.openAI.gatewayService != nil {
-		parsed, err := h.openAI.gatewayService.ParseOpenAIImagesRequestForRouting(c, body)
+		parsed, err := h.openAI.gatewayService.ParseOpenAIImagesRequest(c, body)
 		if err != nil {
 			imageTaskJSONError(c, http.StatusBadRequest, "invalid_request_error", err.Error())
 			return false
@@ -195,16 +198,8 @@ func (h *AsyncImageHandler) validateRequest(c *gin.Context, platform string, bod
 		}
 		return nil
 	}
-	parsed, err := h.openAI.gatewayService.ParseOpenAIImagesRequestForRouting(c, body)
+	parsed, err := h.openAI.gatewayService.ParseOpenAIImagesRequest(c, body)
 	if err != nil {
-		return err
-	}
-	baseRoutingModel := openAIResolvedRoutingModel(c.Request.Context(), parsed.Model)
-	if apiKey, ok := middleware2.GetAPIKeyFromContext(c); ok && apiKey != nil {
-		mapping, _ := h.openAI.gatewayService.ResolveChannelMappingAndRestrict(c.Request.Context(), apiKey.GroupID, baseRoutingModel)
-		baseRoutingModel = openAIChannelRoutingModel(baseRoutingModel, mapping)
-	}
-	if err := validateOpenAIImageRoutingModel(platform, baseRoutingModel); err != nil {
 		return err
 	}
 	if parsed.Stream {

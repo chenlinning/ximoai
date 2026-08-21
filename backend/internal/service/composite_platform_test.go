@@ -55,40 +55,17 @@ func TestQuotaPlatformCompositeUsesResolvedOrForceOnly(t *testing.T) {
 
 func TestCompositeGroupSchedulerHasAllCanonicalPlatformBuckets(t *testing.T) {
 	seen := make(map[string]struct{})
-	for _, bucket := range schedulerBucketsForGroup(99) {
+	for _, bucket := range schedulerCanonicalBuckets(99) {
 		seen[bucket.Platform] = struct{}{}
 	}
-	for _, platform := range schedulerSnapshotPlatforms() {
-		require.Contains(t, seen, platform)
+	platforms := make([]string, 0, len(seen))
+	for platform := range seen {
+		platforms = append(platforms, platform)
 	}
-}
-
-func TestIsConcreteRequestPlatformAllowsOnlyBuiltins(t *testing.T) {
-	allowed := []string{
-		PlatformAnthropic,
-		PlatformOpenAI,
-		PlatformGemini,
-		PlatformAntigravity,
-		PlatformGrok,
-		PlatformKimi,
-		PlatformZhipu,
-		PlatformDeepseek,
-		PlatformGrokVideo,
-		PlatformOpenAIAudio,
-		PlatformKlingAudio,
-		PlatformVolcengineAgentPlan,
-	}
-	for _, platform := range allowed {
-		require.True(t, isConcreteRequestPlatform(platform), platform)
-	}
-
-	for _, platform := range []string{
-		"",
-		PlatformComposite,
-		"unknown-platform",
-	} {
-		require.False(t, isConcreteRequestPlatform(platform), platform)
-	}
+	require.ElementsMatch(t,
+		[]string{PlatformAnthropic, PlatformGemini, PlatformOpenAI, PlatformAntigravity, PlatformGrok, PlatformKimi, PlatformZhipu, PlatformDeepseek},
+		platforms,
+	)
 }
 
 func TestCompositeConcretePlatformsIncludeCNProviders(t *testing.T) {

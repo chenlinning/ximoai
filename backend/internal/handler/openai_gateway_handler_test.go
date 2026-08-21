@@ -575,21 +575,6 @@ func TestOpenAIMissingResponsesDependencies(t *testing.T) {
 	})
 }
 
-func TestOpenAIWebSocketUsesAPIKeyPlatformForScheduling(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Request = httptest.NewRequest(http.MethodGet, "/v1/realtime", nil)
-	groupID := int64(42)
-	c.Set(string(middleware.ContextKeyAPIKey), &service.APIKey{
-		ID:      7,
-		GroupID: &groupID,
-		Group:   &service.Group{Platform: "acme"},
-	})
-
-	require.Equal(t, "acme", openAIWebSocketSchedulePlatform(c))
-}
-
 func TestOpenAIEnsureResponsesDependencies(t *testing.T) {
 	t.Run("missing_dependencies_returns_503", func(t *testing.T) {
 		gin.SetMode(gin.TestMode)
@@ -1519,30 +1504,6 @@ func TestOpenAIResponsesWebSocket_PassthroughKeepsTurnMappingSnapshot(t *testing
 	require.Equal(t, "sol→gpt-5.6-terra", *got.logs[1].ModelMappingChain)
 	require.InDelta(t, got.logs[1].TotalCost*2.5, got.logs[0].TotalCost, 1e-12,
 		"the next turn must use the updated channel mapping")
-}
-
-func TestOpenAIResponsesWebSocket_OmittedFollowUpModelReusesChannelTarget(t *testing.T) {
-	got := runOpenAIResponsesWebSocketUsageLogCase(t, openAIResponsesWSUsageLogCase{
-		firstPayload:  `{"type":"response.create","model":"public-alias","stream":false}`,
-		secondPayload: `{"type":"response.create","stream":false}`,
-		channelMapping: map[string]string{
-			"public-alias": "gpt-5.6-sol",
-		},
-		accountModelMapping: map[string]any{
-			"public-alias": "gpt-5.6-terra",
-			"gpt-5.6-sol":  "gpt-5.6-sol",
-		},
-	})
-
-	require.Len(t, got.upstreamPayloads, 2)
-	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(got.upstreamPayloads[0], "model").String())
-	require.Equal(t, "gpt-5.6-sol", gjson.GetBytes(got.upstreamPayloads[1], "model").String())
-	require.Len(t, got.logs, 2)
-	for _, usageLog := range got.logs {
-		require.Equal(t, "public-alias", usageLog.RequestedModel)
-		require.NotNil(t, usageLog.UpstreamModel)
-		require.Equal(t, "gpt-5.6-sol", *usageLog.UpstreamModel)
-	}
 }
 
 func TestOpenAIResponsesWebSocket_CtxPoolAppliesPerTurnMappingAndPreservesRequestedModel(t *testing.T) {

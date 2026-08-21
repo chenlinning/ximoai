@@ -20,7 +20,6 @@ func resetViperWithJWTSecret(t *testing.T) {
 	t.Cleanup(viper.Reset)
 	t.Setenv("CONFIG_FILE", "")
 	t.Setenv("DATA_DIR", "")
-	useIsolatedConfigSearchPath(t)
 	t.Setenv("JWT_SECRET", strings.Repeat("x", 32))
 }
 
@@ -336,7 +335,6 @@ func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	t.Cleanup(viper.Reset)
 	t.Setenv("CONFIG_FILE", "")
 	t.Setenv("DATA_DIR", "")
-	useIsolatedConfigSearchPath(t)
 	t.Setenv("JWT_SECRET", "")
 
 	cfg, err := LoadForBootstrap()
@@ -346,15 +344,6 @@ func TestLoadForBootstrapAllowsMissingJWTSecret(t *testing.T) {
 	if cfg.JWT.Secret != "" {
 		t.Fatalf("LoadForBootstrap() should keep empty jwt.secret during bootstrap")
 	}
-}
-
-func useIsolatedConfigSearchPath(t *testing.T) {
-	t.Helper()
-
-	tempDir := t.TempDir()
-	t.Chdir(tempDir)
-	t.Setenv("DATA_DIR", tempDir)
-	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "config.yaml"), nil, 0o644))
 }
 
 func TestNormalizeRunMode(t *testing.T) {

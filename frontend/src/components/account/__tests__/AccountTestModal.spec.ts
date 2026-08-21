@@ -11,11 +11,6 @@ vi.mock('@/api/admin', () => ({
   adminAPI: {
     accounts: {
       getAvailableModels: getAvailableModelsMock
-    },
-    platforms: {
-      list: vi.fn().mockResolvedValue([
-        { slug: 'openai', protocol: 'openai' }
-      ])
     }
   }
 }))
@@ -153,117 +148,10 @@ describe('AccountTestModal', () => {
     })
   })
 
-  it('renders audio and video results returned by account test events', async () => {
-    const encoder = new TextEncoder()
-    const chunks = [
-      'data: {"type":"test_start","model":"gpt-4o-audio-preview"}\n',
-      'data: {"type":"audio","audio_url":"data:audio/mpeg;base64,bXAz","mime_type":"audio/mpeg"}\n',
-      'data: {"type":"video","video_url":"https://cdn.example/test.mp4","mime_type":"video/mp4"}\n',
-      'data: {"type":"test_complete","success":true}\n'
-    ].map((line) => encoder.encode(line))
-    let index = 0
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      body: {
-        getReader: () => ({
-          read: vi.fn().mockImplementation(async () => {
-            if (index < chunks.length) {
-              return { done: false, value: chunks[index++] }
-            }
-            return { done: true, value: undefined }
-          })
-        })
-      }
-    } as any)
-
-    const wrapper = mount(AccountTestModal, {
-      props: {
-        show: true,
-        account: buildAccount()
-      },
-      global: {
-        stubs: {
-          BaseDialog: BaseDialogStub,
-          Select: SelectStub,
-          TextArea: TextAreaStub,
-          Icon: true
-        }
-      }
-    })
-
-    await flushPromises()
-    ;(wrapper.vm as any).selectedModelId = 'gpt-4o-audio-preview'
-    await (wrapper.vm as any).startTest()
-    await flushPromises()
-    await flushPromises()
-
-    const audio = wrapper.find('audio')
-    expect(audio.exists()).toBe(true)
-    expect(audio.attributes('src')).toBe('data:audio/mpeg;base64,bXAz')
-
-    const video = wrapper.find('video')
-    expect(video.exists()).toBe(true)
-    expect(video.attributes('src')).toBe('https://cdn.example/test.mp4')
-    expect(wrapper.find('a[href="https://cdn.example/test.mp4"]').exists()).toBe(true)
-  })
-
-  it('prints non-text test content as separate lines', async () => {
-    const encoder = new TextEncoder()
-    const chunks = [
-      'data: {"type":"test_start","model":"sora-2"}\n',
-      'data: {"type":"content","text":"Video status: queued"}\n',
-      'data: {"type":"content","text":"Video test still processing: task_123"}\n',
-      'data: {"type":"error","error":"Video test still processing: task_123"}\n'
-    ].map((line) => encoder.encode(line))
-    let index = 0
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      body: {
-        getReader: () => ({
-          read: vi.fn().mockImplementation(async () => {
-            if (index < chunks.length) {
-              return { done: false, value: chunks[index++] }
-            }
-            return { done: true, value: undefined }
-          })
-        })
-      }
-    } as any)
-
-    const wrapper = mount(AccountTestModal, {
-      props: {
-        show: true,
-        account: {
-          ...buildAccount(),
-          type: 'apikey'
-        }
-      },
-      global: {
-        stubs: {
-          BaseDialog: BaseDialogStub,
-          Select: SelectStub,
-          TextArea: TextAreaStub,
-          Icon: true
-        }
-      }
-    })
-
-    await flushPromises()
-    ;(wrapper.vm as any).selectedModelId = 'sora-2'
-    ;(wrapper.vm as any).testType = 'video'
-    await (wrapper.vm as any).startTest()
-    await flushPromises()
-    await flushPromises()
-
-    expect(wrapper.text()).toContain('Video status: queued')
-    expect(wrapper.text()).toContain('Video test still processing: task_123')
-    expect((wrapper.vm as any).streamingContent).toBe('')
-  })
-
   it('renders Chat Completions path status from test SSE', async () => {
     const encoder = new TextEncoder()
     const chunks = [
-      encoder.encode('data: {"type":"status","text":"verified via /v1/chat/completions"}\n\n'),
+      encoder.encode('data: {"type":"status","text":"已通过 /v1/chat/completions 验证"}\n\n'),
       encoder.encode('data: {"type":"test_complete","success":true}\n\n')
     ]
     global.fetch = vi.fn().mockResolvedValue({
@@ -299,6 +187,6 @@ describe('AccountTestModal', () => {
     await (wrapper.vm as any).startTest()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('verified via /v1/chat/completions')
+    expect(wrapper.text()).toContain('已通过 /v1/chat/completions 验证')
   })
 })

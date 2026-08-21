@@ -6,7 +6,12 @@
  */
 
 import type { CSSProperties } from 'vue'
-import type { Platform as PlatformInfo } from '@/types'
+
+export interface PlatformInfo {
+  slug: string
+  display_name?: string
+  color?: string
+}
 
 export type BuiltinPlatform = 'anthropic' | 'openai' | 'antigravity' | 'gemini' | 'grok' | 'kimi' | 'zhipu' | 'deepseek' | 'composite'
 export type Platform = string

@@ -23,15 +23,11 @@ The project can theoretically connect any provider that exposes a compatible Ope
 
 | Platform | Protocol | Project entry surface | Declared capabilities | Classification expectation |
 |---|---|---|---|---|
-| `openai` | OpenAI | `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/images/*`, `/v1/audio/*`, `/v1/realtime` | Responses, Chat Completions, Embeddings, Images, Audio, Realtime, Codex | Conversation, embedding, image, TTS/ASR |
+| `openai` | OpenAI | `/v1/responses`, `/v1/chat/completions`, `/v1/embeddings`, `/v1/images/*`, `/v1/realtime` | Responses, Chat Completions, Embeddings, Images, Realtime, Codex | Conversation, embedding, image |
 | `anthropic` | Anthropic native | `/v1/messages` | Messages | Conversation |
 | `gemini` | Gemini native | `/v1beta/models/*:generateContent`, `streamGenerateContent`, `countTokens`, video actions | Messages, native Gemini, Videos | Conversation, video |
 | `antigravity` | Antigravity native | `/antigravity/v1/messages`, `/antigravity/v1beta/*` | Messages, native Gemini | Conversation |
 | `grok` | OpenAI-compatible | `/v1/responses`, `/v1/chat/completions`, image/video routes | Responses, Chat Completions, Images, Videos | Conversation, image, video |
-| `grok-video` | OpenAI-compatible specialized platform | Video generation/status routes | Videos | Video, async |
-| `openai-audio` | OpenAI-compatible specialized platform | Chat Completions and Audio routes | Chat Completions, Audio | Conversation or TTS/ASR, depending on pricing |
-| `kling-audio` | OpenAI-compatible specialized platform | Audio route | Audio | TTS |
-| `volcengine-agent-plan` | Volcengine native specialized platform | Volcengine image, TTS, and ASR routes | Images, Audio | Image, TTS, ASR |
 
 The source of the platform list is `backend/internal/service/platform_service.go`, especially `builtinPlatforms`, `defaultCustomPlatformCapabilities`, and `ensureRequiredPlatformCapabilities`.
 
@@ -89,11 +85,6 @@ Relevant implementation:
 | Per-request + Images | `image` | `sync`, `async` |
 | Per-request + Videos | `video` | `async` |
 | Per-request + Audio | `tts` | `sync` |
-| Grok-video kind | `video` | `async` |
-| Kling Audio kind | `tts` | `sync` |
-| Volcengine Agent Plan Seedream | `image` | `sync`, `stream` |
-| Volcengine Agent Plan TTS | `tts` | `sync`, `stream`, `bidirectional` |
-| Volcengine Agent Plan ASR | `asr` | `stream` |
 
 There is currently no independent `music` model type. Music models should not be described as TTS merely because both use audio-related billing.
 
@@ -311,7 +302,6 @@ Official references: [Model Studio models](https://help.aliyun.com/en/model-stud
 **Protocol and reasoning:**
 
 - Generic text access should use a custom OpenAI-compatible platform only when the selected Ark endpoint documents OpenAI-compatible Chat Completions.
-- The `volcengine-agent-plan` built-in platform is a separate native image/audio integration. It is not a generic Doubao text gateway.
 - The current Doubao 2.0 Responses entries expose an abstract thinking switch in the registry; the exact request field is kept internal.
 - `Doubao-Seed-1.6-thinking` is fixed-thinking; `Doubao-Seed-1.6` supports dynamic thinking modes; other model generations must be checked against their own endpoint documentation.
 - Do not represent every Doubao model with OpenAI `reasoning_effort` unless that exact Ark endpoint explicitly supports it.

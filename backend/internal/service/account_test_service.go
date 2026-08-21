@@ -104,36 +104,9 @@ const (
 	grokRealtimeProbeTimeout     = DefaultGrokRealtimeDialTimeout
 )
 
-const (
-	AccountTestTypeAuto  = "auto"
-	AccountTestTypeText  = "text"
-	AccountTestTypeImage = "image"
-	AccountTestTypeAudio = "audio"
-	AccountTestTypeVideo = "video"
-)
-
 // isOpenAIImageModel checks if the model is an OpenAI image generation model (e.g. gpt-image-2).
 func isOpenAIImageModel(model string) bool {
 	return strings.HasPrefix(strings.ToLower(model), "gpt-image-")
-}
-
-type AccountConnectionTestOptions struct {
-	Prompt       string
-	Mode         string
-	TestType     string
-	Seconds      int
-	Size         string
-	ImageDataURL string
-	AudioDataURL string
-}
-
-func normalizeAccountTestType(testType string) string {
-	switch strings.ToLower(strings.TrimSpace(testType)) {
-	case AccountTestTypeText, AccountTestTypeImage, AccountTestTypeAudio, AccountTestTypeVideo:
-		return strings.ToLower(strings.TrimSpace(testType))
-	default:
-		return AccountTestTypeAuto
-	}
 }
 
 func isGrokVideoGenerationModel(model string) bool {
@@ -288,21 +261,8 @@ func createTestPayload(modelID string) (map[string]any, error) {
 // mode is optional - "compact" routes OpenAI accounts to the /responses/compact probe path
 // opts is optional media (image/audio data URLs for real generation / STT).
 func (s *AccountTestService) TestAccountConnection(c *gin.Context, accountID int64, modelID string, prompt string, mode string, opts ...AccountTestOptions) error {
-	media := firstAccountTestOptions(opts)
-	return s.TestAccountConnectionWithOptions(c, accountID, modelID, AccountConnectionTestOptions{
-		Prompt:       prompt,
-		Mode:         mode,
-		ImageDataURL: media.ImageDataURL,
-		AudioDataURL: media.AudioDataURL,
-	})
-}
-
-func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, accountID int64, modelID string, opts AccountConnectionTestOptions) error {
 	ctx := c.Request.Context()
-	testOpts := AccountTestOptions{
-		ImageDataURL: opts.ImageDataURL,
-		AudioDataURL: opts.AudioDataURL,
-	}
+	testOpts := firstAccountTestOptions(opts)
 
 	// Get account
 	account, err := s.accountRepo.GetByID(ctx, accountID)
@@ -328,64 +288,29 @@ func (s *AccountTestService) TestAccountConnectionWithOptions(c *gin.Context, ac
 	if account.IsCNProvider() {
 		switch account.GetAPIProtocol() {
 		case APIProtocolAdaptive:
-			return s.testCNProviderAdaptiveConnection(c, account, modelID, opts.Prompt)
+			return s.testCNProviderAdaptiveConnection(c, account, modelID, prompt)
 		case APIProtocolChatCompletions:
-			return s.testCNProviderChatCompletionsConnection(c, account, modelID, opts.Prompt)
-		case APIProtocolResponses:
-			return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, opts)
-		case APIProtocolAnthropic:
-			return s.testClaudeAccountConnection(c, account, modelID)
+			return s.testCNProviderChatCompletionsConnection(c, account, modelID, prompt)
 		}
 	}
+
+	if account.IsOpenAI() {
+		return s.testOpenAIAccountConnection(c, account, modelID, prompt, normalizeAccountTestMode(mode))
+	}
+
+	if account.IsGemini() {
+		return s.testGeminiAccountConnection(c, account, modelID, prompt)
+	}
+
 	if account.Platform == PlatformGrok {
-		return s.testGrokAccountConnection(c, account, modelID, opts.Prompt, opts.Mode, testOpts)
+		return s.testGrokAccountConnection(c, account, modelID, prompt, mode, testOpts)
 	}
 
 	if account.Platform == PlatformAntigravity {
-		return s.routeAntigravityTest(c, account, modelID, opts.Prompt)
-	}
-
-	if s.isVolcengineAgentPlanAccount(ctx, account) {
-		return s.testVolcengineAgentPlanConnection(c, account, modelID, opts.Prompt)
-	}
-
-	if s.isOpenAIProtocolAccount(ctx, account) {
-		return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, opts)
-	}
-
-	if s.isGeminiProtocolAccount(ctx, account) {
-		return s.testGeminiAccountConnection(c, account, modelID, opts.Prompt)
-	}
-
-	if s.isAnthropicProtocolAccount(ctx, account) {
-		return s.testClaudeAccountConnection(c, account, modelID)
+		return s.routeAntigravityTest(c, account, modelID, prompt)
 	}
 
 	return s.testClaudeAccountConnection(c, account, modelID)
-}
-
-func (s *AccountTestService) isVolcengineAgentPlanAccount(_ context.Context, account *Account) bool {
-	return account != nil && account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan
-}
-
-func (s *AccountTestService) isOpenAIProtocolAccount(_ context.Context, account *Account) bool {
-	if account == nil {
-		return false
-	}
-	switch NormalizePlatformSlug(account.Platform) {
-	case PlatformOpenAI, PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio:
-		return account.Type == AccountTypeAPIKey || account.IsOpenAI()
-	default:
-		return false
-	}
-}
-
-func (s *AccountTestService) isGeminiProtocolAccount(_ context.Context, account *Account) bool {
-	return account != nil && account.IsGemini()
-}
-
-func (s *AccountTestService) isAnthropicProtocolAccount(_ context.Context, account *Account) bool {
-	return account != nil && account.IsAnthropic()
 }
 
 func (s *AccountTestService) testCNProviderChatCompletionsConnection(c *gin.Context, account *Account, modelID string, prompt string) error {
@@ -705,16 +630,8 @@ func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx co
 
 // testOpenAIAccountConnection tests an OpenAI account's connection
 func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account *Account, modelID string, prompt string, mode string) error {
-	return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, AccountConnectionTestOptions{
-		Prompt: prompt,
-		Mode:   mode,
-	})
-}
-
-func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Context, account *Account, modelID string, opts AccountConnectionTestOptions) error {
 	ctx := c.Request.Context()
-	mode := normalizeAccountTestMode(opts.Mode)
-	testType := normalizeAccountTestType(opts.TestType)
+	mode = normalizeAccountTestMode(mode)
 
 	// Default to openai.DefaultTestModel for OpenAI testing
 	testModelID := modelID
@@ -732,8 +649,8 @@ func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Conte
 	}
 
 	// Route to image generation test if an image model is selected
-	if testType == AccountTestTypeImage || (testType == AccountTestTypeAuto && isOpenAIImageModel(testModelID)) {
-		imagePrompt := strings.TrimSpace(opts.Prompt)
+	if isOpenAIImageModel(testModelID) {
+		imagePrompt := strings.TrimSpace(prompt)
 		if imagePrompt == "" {
 			imagePrompt = defaultOpenAIImageTestPrompt
 		}
@@ -741,23 +658,6 @@ func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Conte
 			return s.testOpenAIImageAPIKey(c, ctx, account, testModelID, imagePrompt)
 		}
 		return s.testOpenAIImageOAuth(c, ctx, account, testModelID, imagePrompt)
-	}
-
-	if testType == AccountTestTypeAudio || (testType == AccountTestTypeAuto && isOpenAIAudioModel(testModelID)) {
-		if account.Type != AccountTypeAPIKey {
-			return s.sendErrorAndEnd(c, "OpenAI audio test currently supports API Key accounts only")
-		}
-		if isOpenAIChatAudioModel(testModelID) {
-			return s.testOpenAIChatAudioAPIKey(c, ctx, account, testModelID, opts.Prompt)
-		}
-		return s.testOpenAIAudioAPIKey(c, ctx, account, testModelID, opts.Prompt)
-	}
-
-	if testType == AccountTestTypeVideo || (testType == AccountTestTypeAuto && isOpenAIVideoModel(testModelID)) {
-		if account.Type != AccountTypeAPIKey {
-			return s.sendErrorAndEnd(c, "OpenAI video test currently supports API Key accounts only")
-		}
-		return s.testOpenAIVideoAPIKey(c, ctx, account, testModelID, opts)
 	}
 
 	credentialAccount := account
@@ -802,7 +702,7 @@ func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Conte
 			return s.sendErrorAndEnd(c, fmt.Sprintf("Invalid base URL: %s", err.Error()))
 		}
 		if !openai_compat.ShouldUseResponsesAPI(account.Extra) {
-			return s.testOpenAIChatCompletionsConnection(c, account, testModelID, opts.Prompt, normalizedBaseURL, authToken)
+			return s.testOpenAIChatCompletionsConnection(c, account, testModelID, prompt, normalizedBaseURL, authToken)
 		}
 		apiURL = buildOpenAIResponsesURL(normalizedBaseURL)
 	} else {
@@ -905,7 +805,7 @@ func (s *AccountTestService) testOpenAIAccountConnectionWithOptions(c *gin.Conte
 				return s.sendErrorAndEnd(c, fmt.Sprintf("Agent Identity task recovery failed: %s", err.Error()))
 			}
 			c.Request = c.Request.WithContext(markAgentIdentityTaskRecoveryTried(ctx))
-			return s.testOpenAIAccountConnectionWithOptions(c, account, modelID, opts)
+			return s.testOpenAIAccountConnection(c, account, modelID, prompt, mode)
 		}
 		if resp.StatusCode == http.StatusTooManyRequests {
 			s.reconcileOpenAI429State(ctx, account, resp.Header, body)
@@ -2339,7 +2239,6 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 
 	// Create test payload (Gemini format)
 	payload := createGeminiTestPayload(testModelID, prompt)
-	stream := !isImageGenerationModel(testModelID)
 
 	// Build request based on account type
 	var req *http.Request
@@ -2347,11 +2246,11 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 
 	switch account.Type {
 	case AccountTypeAPIKey:
-		req, err = s.buildGeminiAPIKeyRequestWithStream(ctx, account, testModelID, payload, stream)
+		req, err = s.buildGeminiAPIKeyRequest(ctx, account, testModelID, payload)
 	case AccountTypeOAuth:
-		req, err = s.buildGeminiOAuthRequestWithStream(ctx, account, testModelID, payload, stream)
+		req, err = s.buildGeminiOAuthRequest(ctx, account, testModelID, payload)
 	case AccountTypeServiceAccount:
-		req, err = s.buildGeminiServiceAccountRequestWithStream(ctx, account, testModelID, payload, stream)
+		req, err = s.buildGeminiServiceAccountRequest(ctx, account, testModelID, payload)
 	default:
 		return s.sendErrorAndEnd(c, fmt.Sprintf("Unsupported account type: %s", account.Type))
 	}
@@ -2380,17 +2279,7 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 		return s.sendErrorAndEnd(c, fmt.Sprintf("API returned %d: %s", resp.StatusCode, string(body)))
 	}
 
-	if !stream {
-		body, err := io.ReadAll(io.LimitReader(resp.Body, accountTestMediaPreviewLimitBytes+1))
-		if err != nil {
-			return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to read response: %s", err.Error()))
-		}
-		if len(body) > accountTestMediaPreviewLimitBytes {
-			return s.sendErrorAndEnd(c, "Gemini image response is too large to preview")
-		}
-		return s.processGeminiJSONResponse(c, body)
-	}
-
+	// Process SSE stream
 	return s.processGeminiStream(c, resp.Body)
 }
 
@@ -2398,7 +2287,7 @@ func (s *AccountTestService) testGeminiAccountConnection(c *gin.Context, account
 // APIKey 类型走原生协议（与 gateway_handler 路由一致），OAuth/Upstream 走 CRS 中转。
 func (s *AccountTestService) routeAntigravityTest(c *gin.Context, account *Account, modelID string, prompt string) error {
 	if account.Type == AccountTypeAPIKey {
-		if strings.HasPrefix(strings.ToLower(strings.TrimSpace(modelID)), "gemini-") || isImageGenerationModel(modelID) {
+		if strings.HasPrefix(modelID, "gemini-") {
 			return s.testGeminiAccountConnection(c, account, modelID, prompt)
 		}
 		return s.testClaudeAccountConnection(c, account, modelID)
@@ -2446,7 +2335,8 @@ func (s *AccountTestService) testAntigravityAccountConnection(c *gin.Context, ac
 	return nil
 }
 
-func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
+// buildGeminiAPIKeyRequest builds request for Gemini API Key accounts
+func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
 	apiKey := account.GetCredential("api_key")
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, fmt.Errorf("no API key available")
@@ -2461,11 +2351,8 @@ func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Cont
 		return nil, err
 	}
 
-	action := "generateContent"
-	if stream {
-		action = "streamGenerateContent"
-	}
-	fullURL, err := buildGeminiAIStudioModelActionURL(normalizedBaseURL, modelID, action, stream)
+	// Use streamGenerateContent for real-time feedback
+	fullURL, err := buildGeminiAIStudioModelActionURL(normalizedBaseURL, modelID, "streamGenerateContent", true)
 	if err != nil {
 		return nil, err
 	}
@@ -2481,7 +2368,8 @@ func (s *AccountTestService) buildGeminiAPIKeyRequestWithStream(ctx context.Cont
 	return req, nil
 }
 
-func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
+// buildGeminiOAuthRequest builds request for Gemini OAuth accounts
+func (s *AccountTestService) buildGeminiOAuthRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
 	if s.geminiTokenProvider == nil {
 		return nil, fmt.Errorf("gemini token provider not configured")
 	}
@@ -2503,11 +2391,7 @@ func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Conte
 		if err != nil {
 			return nil, err
 		}
-		action := "generateContent"
-		if stream {
-			action = "streamGenerateContent"
-		}
-		fullURL, err := buildGeminiAIStudioModelActionURL(normalizedBaseURL, modelID, action, stream)
+		fullURL, err := buildGeminiAIStudioModelActionURL(normalizedBaseURL, modelID, "streamGenerateContent", true)
 		if err != nil {
 			return nil, err
 		}
@@ -2525,7 +2409,7 @@ func (s *AccountTestService) buildGeminiOAuthRequestWithStream(ctx context.Conte
 	return s.buildCodeAssistRequest(ctx, accessToken, projectID, modelID, payload)
 }
 
-func (s *AccountTestService) buildGeminiServiceAccountRequestWithStream(ctx context.Context, account *Account, modelID string, payload []byte, stream bool) (*http.Request, error) {
+func (s *AccountTestService) buildGeminiServiceAccountRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
 	if s.geminiTokenProvider == nil {
 		return nil, fmt.Errorf("gemini token provider not configured")
 	}
@@ -2533,11 +2417,7 @@ func (s *AccountTestService) buildGeminiServiceAccountRequestWithStream(ctx cont
 	if err != nil {
 		return nil, fmt.Errorf("failed to get service account access token: %w", err)
 	}
-	action := "generateContent"
-	if stream {
-		action = "streamGenerateContent"
-	}
-	fullURL, err := buildVertexGeminiURL(account.VertexProjectID(), account.VertexLocation(modelID), modelID, action, stream)
+	fullURL, err := buildVertexGeminiURL(account.VertexProjectID(), account.VertexLocation(modelID), modelID, "streamGenerateContent", true)
 	if err != nil {
 		return nil, err
 	}
@@ -2714,69 +2594,6 @@ func (s *AccountTestService) processGeminiStream(c *gin.Context, body io.Reader)
 			return s.sendErrorAndEnd(c, errorMsg)
 		}
 	}
-}
-
-func (s *AccountTestService) processGeminiJSONResponse(c *gin.Context, body []byte) error {
-	var data map[string]any
-	if err := json.Unmarshal(body, &data); err != nil {
-		return s.sendErrorAndEnd(c, fmt.Sprintf("Failed to parse Gemini response: %s", err.Error()))
-	}
-	if resp, ok := data["response"].(map[string]any); ok && resp != nil {
-		data = resp
-	}
-	if errData, ok := data["error"].(map[string]any); ok {
-		errorMsg := "Unknown error"
-		if msg, ok := errData["message"].(string); ok && msg != "" {
-			errorMsg = msg
-		}
-		return s.sendErrorAndEnd(c, errorMsg)
-	}
-	candidates, ok := data["candidates"].([]any)
-	if !ok || len(candidates) == 0 {
-		return s.sendErrorAndEnd(c, "No candidates returned from Gemini response")
-	}
-	emitted := false
-	for _, candidateValue := range candidates {
-		candidate, ok := candidateValue.(map[string]any)
-		if !ok {
-			continue
-		}
-		content, ok := candidate["content"].(map[string]any)
-		if !ok {
-			continue
-		}
-		parts, ok := content["parts"].([]any)
-		if !ok {
-			continue
-		}
-		for _, partValue := range parts {
-			part, ok := partValue.(map[string]any)
-			if !ok {
-				continue
-			}
-			if text, ok := part["text"].(string); ok && text != "" {
-				s.sendEvent(c, TestEvent{Type: "content", Text: text})
-				emitted = true
-			}
-			if inlineData, ok := part["inlineData"].(map[string]any); ok {
-				mimeType, _ := inlineData["mimeType"].(string)
-				data, _ := inlineData["data"].(string)
-				if strings.HasPrefix(strings.ToLower(mimeType), "image/") && data != "" {
-					s.sendEvent(c, TestEvent{
-						Type:     "image",
-						ImageURL: fmt.Sprintf("data:%s;base64,%s", mimeType, data),
-						MimeType: mimeType,
-					})
-					emitted = true
-				}
-			}
-		}
-	}
-	if !emitted {
-		return s.sendErrorAndEnd(c, "No text or image content returned from Gemini response")
-	}
-	s.sendEvent(c, TestEvent{Type: "test_complete", Success: true})
-	return nil
 }
 
 // createOpenAITestPayload creates a test payload for OpenAI Responses API
@@ -3276,17 +3093,13 @@ func (s *AccountTestService) sendErrorAndEnd(c *gin.Context, errorMsg string) er
 // RunTestBackground executes an account test in-memory (no real HTTP client),
 // capturing SSE output via httptest.NewRecorder, then parses the result.
 func (s *AccountTestService) RunTestBackground(ctx context.Context, accountID int64, modelID string) (*ScheduledTestResult, error) {
-	return s.RunTestBackgroundWithOptions(ctx, accountID, modelID, AccountConnectionTestOptions{})
-}
-
-func (s *AccountTestService) RunTestBackgroundWithOptions(ctx context.Context, accountID int64, modelID string, opts AccountConnectionTestOptions) (*ScheduledTestResult, error) {
 	startedAt := time.Now()
 
 	w := httptest.NewRecorder()
 	ginCtx, _ := gin.CreateTestContext(w)
 	ginCtx.Request = (&http.Request{}).WithContext(ctx)
 
-	testErr := s.TestAccountConnectionWithOptions(ginCtx, accountID, modelID, opts)
+	testErr := s.TestAccountConnection(ginCtx, accountID, modelID, "", AccountTestModeDefault)
 
 	finishedAt := time.Now()
 	body := w.Body.String()

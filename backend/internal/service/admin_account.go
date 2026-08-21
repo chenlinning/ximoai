@@ -595,7 +595,7 @@ func (s *adminServiceImpl) UpdateAccount(ctx context.Context, id int64, input *U
 		account.Name = input.Name
 	}
 	if input.Type != "" {
-		account.Type = strings.TrimSpace(input.Type)
+		account.Type = input.Type
 	}
 	if input.Notes != nil {
 		account.Notes = normalizeAccountNotes(input.Notes)
@@ -1510,18 +1510,13 @@ func (s *adminServiceImpl) CheckMixedChannelRisk(ctx context.Context, currentAcc
 
 // getAccountPlatform 根据账号 platform 判断混合渠道检查用的平台标识
 func getAccountPlatform(accountPlatform string) string {
-	platform := NormalizePlatformSlug(accountPlatform)
-	switch platform {
+	switch strings.ToLower(strings.TrimSpace(accountPlatform)) {
 	case PlatformAntigravity:
 		return "Antigravity"
 	case PlatformAnthropic, "claude":
 		return "Anthropic"
-	case PlatformOpenAI:
-		return "OpenAI"
-	case PlatformGemini:
-		return "Gemini"
 	default:
-		return platform
+		return ""
 	}
 }
 

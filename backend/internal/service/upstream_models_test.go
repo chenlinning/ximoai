@@ -247,30 +247,6 @@ func TestBuildUpstreamModelsRequestsForAPIKeyAccounts(t *testing.T) {
 	require.Equal(t, "antigravity-key", antigravityReq.Header.Get("x-api-key"))
 }
 
-func TestBuildUpstreamModelsRequestUsesXimoAIBuiltinPlatformProtocol(t *testing.T) {
-	t.Parallel()
-
-	svc := &AccountTestService{
-		cfg: upstreamModelSyncTestConfig(),
-	}
-
-	for _, platform := range []string{PlatformGrokVideo, PlatformOpenAIAudio, PlatformKlingAudio} {
-		t.Run(platform, func(t *testing.T) {
-			req, err := svc.buildUpstreamModelsRequest(context.Background(), &Account{
-				Platform: platform,
-				Type:     AccountTypeAPIKey,
-				Credentials: map[string]any{
-					"api_key":  "openai-key",
-					"base_url": "https://openai.example.com/v1",
-				},
-			})
-			require.NoError(t, err)
-			require.Equal(t, "https://openai.example.com/v1/models", req.URL.String())
-			require.Equal(t, "Bearer openai-key", req.Header.Get("Authorization"))
-		})
-	}
-}
-
 func TestBuildUpstreamModelsRequestSupportsGrokOAuth(t *testing.T) {
 	t.Parallel()
 

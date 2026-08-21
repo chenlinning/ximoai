@@ -65,23 +65,6 @@ func TestOpenAIGatewayServiceParseOpenAIImagesRequest_JSON(t *testing.T) {
 	require.False(t, parsed.Multipart)
 }
 
-func TestParseOpenAIImagesRequestForRoutingDefersModelValidation(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	recorder := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(recorder)
-	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/generations", nil)
-	c.Request.Header.Set("Content-Type", "application/json")
-	body := []byte(`{"model":"draw-pro","prompt":"cat"}`)
-	svc := &OpenAIGatewayService{}
-
-	_, strictErr := svc.ParseOpenAIImagesRequest(c, body)
-	parsed, routingErr := svc.ParseOpenAIImagesRequestForRouting(c, body)
-
-	require.Error(t, strictErr)
-	require.NoError(t, routingErr)
-	require.Equal(t, "draw-pro", parsed.Model)
-}
-
 func TestOpenAIGatewayServiceParseOpenAIImagesRequest_MultipartEdit(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

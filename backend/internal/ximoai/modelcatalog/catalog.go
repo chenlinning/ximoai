@@ -63,15 +63,11 @@ type PublicMetadata struct {
 }
 
 var builtInRegistryPlatforms = map[string]struct{}{
-	"openai":                {},
-	"anthropic":             {},
-	"gemini":                {},
-	"antigravity":           {},
-	"grok":                  {},
-	"grok-video":            {},
-	"openai-audio":          {},
-	"kling-audio":           {},
-	"volcengine-agent-plan": {},
+	"openai":      {},
+	"anthropic":   {},
+	"gemini":      {},
+	"antigravity": {},
+	"grok":        {},
 }
 
 var (

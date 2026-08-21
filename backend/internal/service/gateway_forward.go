@@ -981,9 +981,6 @@ func (s *GatewayService) checkChannelPricingRestriction(ctx context.Context, gro
 	if billingModel == "" {
 		return false
 	}
-	if route, ok := VolcengineAgentPlanModelRouteFromContext(ctx); ok {
-		return s.volcengineAgentPlanModelChainRestrictedByChannel(ctx, *groupID, billingModel, route)
-	}
 	return s.channelService.IsModelRestricted(ctx, *groupID, billingModel)
 }
 
@@ -1011,15 +1008,6 @@ func billingModelForRestriction(source, requestedModel, channelMappedModel strin
 func (s *GatewayService) isUpstreamModelRestrictedByChannel(ctx context.Context, groupID int64, account *Account, requestedModel string) bool {
 	if s.channelService == nil {
 		return false
-	}
-	if account != nil && account.PlatformRuntimeKind() == PlatformKindVolcengineAgentPlan {
-		if route, ok := VolcengineAgentPlanModelRouteFromContext(ctx); ok {
-			upstreamModel := ResolveVolcengineAgentPlanUpstreamModel(account, route.ChannelMappedModel)
-			if upstreamModel == "" {
-				return false
-			}
-			return s.volcengineAgentPlanModelChainRestrictedByChannel(ctx, groupID, upstreamModel, route)
-		}
 	}
 	upstreamModel := resolveAccountUpstreamModel(account, requestedModel)
 	if upstreamModel == "" {

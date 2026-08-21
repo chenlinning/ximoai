@@ -51,7 +51,6 @@
         <button @click="$emit('toggle-schedulable', true)" class="btn btn-success btn-sm">{{ t('admin.accounts.bulkActions.enableScheduling') }}</button>
         <button @click="$emit('toggle-schedulable', false)" class="btn btn-warning btn-sm">{{ t('admin.accounts.bulkActions.disableScheduling') }}</button>
         <button @click="$emit('edit-selected')" class="btn btn-primary btn-sm">{{ t('admin.accounts.bulkActions.edit') }}</button>
-        <button @click="$emit('batch-test')" class="btn btn-info btn-sm">{{ t('admin.accounts.bulkActions.batchTest') }}</button>
       </template>
       <button @click="$emit('edit-filtered')" class="btn btn-primary btn-sm">
         {{ t('admin.accounts.bulkEdit.submit') }}
@@ -80,7 +79,6 @@ defineEmits([
   'toggle-schedulable',
   'reset-status',
   'refresh-token',
-	'batch-test',
   'probe-upstream-billing'
 ])
 

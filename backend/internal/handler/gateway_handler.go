@@ -275,9 +275,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	} else if apiKey.Group != nil {
 		platform = apiKey.Group.Platform
 	}
-	isGeminiProtocol := h.isGeminiProtocolPlatform(c.Request.Context(), platform)
 	sessionKey := sessionHash
-	if isGeminiProtocol && sessionHash != "" {
+	if platform == service.PlatformGemini && sessionHash != "" {
 		sessionKey = "gemini:" + sessionHash
 	}
 
@@ -304,7 +303,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	// 判断是否真的绑定了粘性会话：有 sessionKey 且已经绑定到某个账号
 	hasBoundSession := sessionKey != "" && sessionBoundAccountID > 0
 
-	if isGeminiProtocol {
+	if platform == service.PlatformGemini {
 		fs := NewFailoverState(h.maxAccountSwitchesGemini, hasBoundSession)
 
 		// 单账号分组提前设置 SingleAccountRetry 标记，让 Service 层首次 503 就不设模型限流标记。
@@ -347,7 +346,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					return
 				default: // FailoverExhausted
 					if fs.LastFailoverErr != nil {
-						h.handleFailoverExhausted(c, fs.LastFailoverErr, platform, streamStarted)
+						h.handleFailoverExhausted(c, fs.LastFailoverErr, service.PlatformGemini, streamStarted)
 					} else {
 						h.handleFailoverExhaustedSimple(c, 502, streamStarted)
 					}
@@ -484,7 +483,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 				if errors.As(err, &failoverErr) {
 					// 流式内容已写入客户端，无法撤销，禁止 failover 以防止流拼接腐化
 					if c.Writer.Size() != writerSizeBeforeForward {
-						h.handleFailoverExhausted(c, failoverErr, platform, true)
+						h.handleFailoverExhausted(c, failoverErr, service.PlatformGemini, true)
 						return
 					}
 					action := fs.HandleFailoverError(c.Request.Context(), h.gatewayService, account.ID, account.Platform, account.GetPoolModeRetryCount(), failoverErr)
@@ -492,7 +491,7 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					case FailoverContinue:
 						continue
 					case FailoverExhausted:
-						h.handleFailoverExhausted(c, fs.LastFailoverErr, platform, streamStarted)
+						h.handleFailoverExhausted(c, fs.LastFailoverErr, service.PlatformGemini, streamStarted)
 						return
 					case FailoverCanceled:
 						failoverClientGone(c)
@@ -1102,13 +1101,8 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 
 	// Prefer channel-facing model aliases; fall back to the upstream account list.
 	availableModels := h.gatewayService.GetXimoAIAvailableModels(c.Request.Context(), groupID, platform)
-	modelsFallbackPlatform := service.XimoAIModelsFallbackPlatform(platform)
-	emptyModelsFallback := service.XimoAIModelsUseEmptyFallback(platform)
 	if apiKey != nil && apiKey.Group != nil && apiKey.Group.CustomModelsListEnabled() {
-		fallbackModels := defaultModelIDsForPlatform(modelsFallbackPlatform)
-		if emptyModelsFallback {
-			fallbackModels = nil
-		}
+		fallbackModels := defaultModelIDsForPlatform(platform)
 		availableModels = filterModelsByCustomList(customModelsListSource(platform, availableModels, fallbackModels), fallbackModels, apiKey.Group.ModelsListConfig.Models)
 		writeCustomModelsList(c, platform, availableModels)
 		return
@@ -1118,13 +1112,9 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		writeModelsList(c, platform, availableModels)
 		return
 	}
-	if emptyModelsFallback {
-		writeModelsList(c, platform, nil)
-		return
-	}
 
 	// Fallback to default models
-	if modelsFallbackPlatform == service.PlatformOpenAI {
+	if platform == service.PlatformOpenAI {
 		c.JSON(http.StatusOK, gin.H{
 			"object": "list",
 			"data":   openai.DefaultModels,
@@ -1132,19 +1122,15 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 		return
 	}
 
-	if modelsFallbackPlatform == service.PlatformGemini {
+	if platform == service.PlatformGemini {
 		c.JSON(http.StatusOK, gin.H{
 			"object": "list",
 			"data":   geminicli.DefaultModels,
 		})
 		return
 	}
-	if modelsFallbackPlatform == service.PlatformGrok {
+	if platform == service.PlatformGrok {
 		writeGrokModelsList(c, xai.DefaultModelIDs())
-		return
-	}
-	if modelsFallbackPlatform == service.PlatformVolcengineAgentPlan {
-		writeModelsList(c, modelsFallbackPlatform, defaultModelIDsForPlatform(modelsFallbackPlatform))
 		return
 	}
 
@@ -1161,12 +1147,7 @@ func (h *GatewayHandler) compositeAvailableModels(ctx context.Context, groupID *
 	seen := make(map[string]struct{})
 	models := make([]string, 0)
 	schedulablePlatforms := h.gatewayService.GetSchedulablePlatforms(ctx, groupID)
-	for _, platform := range []string{
-		service.PlatformAnthropic, service.PlatformGemini, service.PlatformOpenAI,
-		service.PlatformAntigravity, service.PlatformGrok, service.PlatformKimi,
-		service.PlatformZhipu, service.PlatformDeepseek, service.PlatformGrokVideo,
-		service.PlatformOpenAIAudio, service.PlatformKlingAudio, service.PlatformVolcengineAgentPlan,
-	} {
+	for _, platform := range []string{service.PlatformAnthropic, service.PlatformGemini, service.PlatformOpenAI, service.PlatformAntigravity, service.PlatformGrok, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek} {
 		platformModels := h.gatewayService.GetXimoAIAvailableModels(ctx, groupID, platform)
 		if len(platformModels) == 0 {
 			// CN 供应商没有静态默认模型列表（defaultModelIDsForPlatform 的
@@ -1390,14 +1371,6 @@ func defaultModelIDsForPlatform(platform string) []string {
 		return mergeModelIDs(ids, nil)
 	case service.PlatformGrok:
 		return xai.DefaultModelIDs()
-	case service.PlatformVolcengineAgentPlan:
-		return []string{
-			service.VolcengineAgentPlanSeedreamModel,
-			service.VolcengineAgentPlanTTSModel,
-			service.VolcengineAgentPlanASRModel,
-		}
-	case service.PlatformGrokVideo, service.PlatformOpenAIAudio, service.PlatformKlingAudio:
-		return nil
 	case service.PlatformComposite:
 		ids := make([]string, 0)
 		seen := make(map[string]struct{})
@@ -1457,10 +1430,6 @@ func cloneAPIKeyWithGroup(apiKey *service.APIKey, group *service.Group) *service
 	cloned.GroupID = &groupID
 	cloned.Group = group
 	return &cloned
-}
-
-func (h *GatewayHandler) isGeminiProtocolPlatform(_ context.Context, platform string) bool {
-	return service.NormalizePlatformSlug(platform) == service.PlatformGemini
 }
 
 // Usage handles getting account balance and usage statistics for CC Switch integration
