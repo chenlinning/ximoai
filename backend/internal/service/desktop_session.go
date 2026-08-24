@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net"
 	"net/url"
 	"strconv"
@@ -727,12 +726,12 @@ func parseDesktopPublicJWK(jwk DesktopPublicJWK) (*ecdsa.PublicKey, string, erro
 	if err != nil || len(yBytes) != 32 {
 		return nil, "", fmt.Errorf("invalid JWK y coordinate")
 	}
-	publicKey := &ecdsa.PublicKey{
-		Curve: elliptic.P256(),
-		X:     new(big.Int).SetBytes(xBytes),
-		Y:     new(big.Int).SetBytes(yBytes),
-	}
-	if !publicKey.IsOnCurve(publicKey.X, publicKey.Y) {
+	encodedKey := make([]byte, 1+len(xBytes)+len(yBytes))
+	encodedKey[0] = 4
+	copy(encodedKey[1:], xBytes)
+	copy(encodedKey[1+len(xBytes):], yBytes)
+	publicKey, err := ecdsa.ParseUncompressedPublicKey(elliptic.P256(), encodedKey)
+	if err != nil {
 		return nil, "", fmt.Errorf("JWK point is not on P-256")
 	}
 	thumbprintPayload, err := json.Marshal(struct {
