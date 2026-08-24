@@ -236,6 +236,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyModelPlazaEnabled,
 		SettingKeyModelPlazaRequireAuth,
 		SettingKeyXimoAIModelPlazaEntryEnabled,
+		SettingKeyPluginManagementEnabled,
 		SettingKeyAffiliateEnabled,
 		SettingKeyRiskControlEnabled,
 		SettingKeyAllowUserViewErrorRequests,
@@ -364,6 +365,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		ModelPlazaEnabled:            settings[SettingKeyModelPlazaEnabled] == "true",
 		ModelPlazaRequireAuth:        settings[SettingKeyModelPlazaRequireAuth] == "true",
 		XimoAIModelPlazaEntryEnabled: !isFalseSettingValue(settings[SettingKeyXimoAIModelPlazaEntryEnabled]),
+		PluginManagementEnabled:      settings[SettingKeyPluginManagementEnabled] == "true",
 
 		AffiliateEnabled: settings[SettingKeyAffiliateEnabled] == "true",
 
@@ -645,6 +647,7 @@ type PublicSettingsInjectionPayload struct {
 	ModelPlazaEnabled            bool `json:"model_plaza_enabled"`
 	ModelPlazaRequireAuth        bool `json:"model_plaza_require_auth"`
 	XimoAIModelPlazaEntryEnabled bool `json:"ximoai_model_plaza_entry_enabled"`
+	PluginManagementEnabled      bool `json:"plugin_management_enabled"`
 	AffiliateEnabled             bool `json:"affiliate_enabled"`
 	RiskControlEnabled           bool `json:"risk_control_enabled"`
 	AllowUserViewErrorRequests   bool `json:"allow_user_view_error_requests"`
@@ -726,6 +729,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		ModelPlazaEnabled:                    settings.ModelPlazaEnabled,
 		ModelPlazaRequireAuth:                settings.ModelPlazaRequireAuth,
 		XimoAIModelPlazaEntryEnabled:         settings.XimoAIModelPlazaEntryEnabled,
+		PluginManagementEnabled:              settings.PluginManagementEnabled,
 		AffiliateEnabled:                     settings.AffiliateEnabled,
 		RiskControlEnabled:                   settings.RiskControlEnabled,
 		AllowUserViewErrorRequests:           settings.AllowUserViewErrorRequests,

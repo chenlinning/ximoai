@@ -387,6 +387,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		ModelPlazaRequireAuth:        settings.ModelPlazaRequireAuth,
 		ModelPlazaDescription:        settings.ModelPlazaDescription,
 		XimoAIModelPlazaEntryEnabled: settings.XimoAIModelPlazaEntryEnabled,
+		PluginManagementEnabled:      settings.PluginManagementEnabled,
 
 		AffiliateEnabled: settings.AffiliateEnabled,
 

@@ -321,6 +321,7 @@ type SystemSettings struct {
 	ModelPlazaRequireAuth        bool   `json:"model_plaza_require_auth"`
 	ModelPlazaDescription        string `json:"model_plaza_description"`
 	XimoAIModelPlazaEntryEnabled bool   `json:"ximoai_model_plaza_entry_enabled"`
+	PluginManagementEnabled      bool   `json:"plugin_management_enabled"`
 
 	// 风控中心功能开关
 	RiskControlEnabled bool `json:"risk_control_enabled"`
@@ -423,6 +424,7 @@ type PublicSettings struct {
 	ModelPlazaEnabled            bool `json:"model_plaza_enabled"`
 	ModelPlazaRequireAuth        bool `json:"model_plaza_require_auth"`
 	XimoAIModelPlazaEntryEnabled bool `json:"ximoai_model_plaza_entry_enabled"`
+	PluginManagementEnabled      bool `json:"plugin_management_enabled"`
 
 	AffiliateEnabled bool `json:"affiliate_enabled"`
 

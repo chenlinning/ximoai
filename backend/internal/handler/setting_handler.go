@@ -114,6 +114,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		ModelPlazaEnabled:            settings.ModelPlazaEnabled,
 		ModelPlazaRequireAuth:        settings.ModelPlazaRequireAuth,
 		XimoAIModelPlazaEntryEnabled: settings.XimoAIModelPlazaEntryEnabled,
+		PluginManagementEnabled:      settings.PluginManagementEnabled,
 
 		AffiliateEnabled: settings.AffiliateEnabled,
 
