@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { durationSeverity, firstTokenSeverity } from '../latencyHealth'
+import { durationSeverity, firstTokenSeverity, outputTokenRate } from '../latencyHealth'
 
 describe('latencyHealth', () => {
   it('classifies first-token latency at 10s/30s/60s boundaries', () => {
@@ -21,5 +21,17 @@ describe('latencyHealth', () => {
     expect(durationSeverity(180_000)).toBe('slow')
     expect(durationSeverity(299_999)).toBe('slow')
     expect(durationSeverity(300_000)).toBe('critical')
+  })
+
+  it('calculates rounded output token rate after the first token', () => {
+    expect(outputTokenRate(257, 3_480, 10_430)).toBe(37)
+    expect(outputTokenRate(10, 3_100, 3_680)).toBe(17)
+  })
+
+  it('does not report a rate without a valid generation interval', () => {
+    expect(outputTokenRate(10, null, 3_680)).toBeNull()
+    expect(outputTokenRate(10, 3_680, null)).toBeNull()
+    expect(outputTokenRate(10, 3_680, 3_680)).toBeNull()
+    expect(outputTokenRate(0, 3_100, 3_680)).toBeNull()
   })
 })

@@ -230,6 +230,11 @@
               <span v-else class="text-gray-400 dark:text-gray-500">-</span>
               <span class="text-gray-400 dark:text-gray-500">{{ t('usage.latencyDuration') }}</span>
               <span class="font-medium tabular-nums" :class="LATENCY_TEXT_CLASSES[durationSeverity(row.duration_ms ?? 0)]">{{ formatDuration(row.duration_ms) }}</span>
+              <span class="text-gray-400 dark:text-gray-500">{{ t('usage.latencyRate') }}</span>
+              <span v-if="outputTokenRate(row.output_tokens, row.first_token_ms, row.duration_ms) != null" class="font-medium tabular-nums text-emerald-600 dark:text-emerald-400">
+                {{ outputTokenRate(row.output_tokens, row.first_token_ms, row.duration_ms) }} Token/s
+              </span>
+              <span v-else class="text-gray-400 dark:text-gray-500">-</span>
             </div>
           </div>
         </template>
@@ -512,6 +517,7 @@ import {
   LATENCY_TEXT_CLASSES,
   durationSeverity,
   firstTokenSeverity,
+  outputTokenRate,
 } from '@/utils/latencyHealth'
 import {
   BILLING_MODE_TOKEN,
