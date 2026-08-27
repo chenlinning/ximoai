@@ -1,5 +1,4 @@
 import { createI18n } from 'vue-i18n'
-import { applyPlatformI18nPatch } from './platformPatch'
 import { applyXimoAII18nPatch } from './ximoaiPatch'
 
 type LocaleCode = 'en' | 'zh'
@@ -50,7 +49,7 @@ export async function loadLocaleMessages(locale: LocaleCode): Promise<void> {
 
   const loader = localeLoaders[locale]
   const module = await loader()
-  const patchedMessages = applyXimoAII18nPatch(locale, applyPlatformI18nPatch(locale, module.default))
+  const patchedMessages = applyXimoAII18nPatch(locale, module.default)
   i18n.global.setLocaleMessage(locale, patchedMessages)
   loadedLocales.add(locale)
 }

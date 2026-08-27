@@ -1198,7 +1198,7 @@ func (h *GatewayHandler) codexModelIDsForGroup(ctx context.Context, group *servi
 		return fallbackModels
 	}
 
-	availableModels := h.gatewayService.GetAvailableModels(ctx, groupID, platform)
+	availableModels := h.gatewayService.GetXimoAIAvailableModels(ctx, groupID, platform)
 	fallbackModels := defaultCodexModelIDsForPlatform(platform)
 	if group.CustomModelsListEnabled() {
 		return filterModelsByCustomList(

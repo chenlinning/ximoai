@@ -30,19 +30,6 @@
           </div>
         </div>
 
-        <div>
-          <label class="input-label">{{ t('ximoaiHome.cover') }}</label>
-          <ImageUpload
-            v-model="tab.cover_url"
-            mode="cover"
-            size="lg"
-            :upload-label="t('ximoaiHome.uploadCover')"
-            :remove-label="t('ximoaiHome.removeCover')"
-            :hint="t('ximoaiHome.coverHint')"
-            :max-size="12 * 1024 * 1024"
-          />
-        </div>
-
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="flex flex-wrap items-center gap-5">
             <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -86,14 +73,12 @@
 import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ximoaiHomeAPI, type XimoAIHomeTab, type XimoAIHomeTabInput } from '@/api'
-import ImageUpload from '@/components/common/ImageUpload.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore } from '@/stores'
 import { extractApiErrorMessage } from '@/utils/apiError'
 
-interface EditorTab extends Omit<XimoAIHomeTabInput, 'cover_url' | 'workbench_sso' | 'diamond_only'> {
-  cover_url: string
+interface EditorTab extends Omit<XimoAIHomeTabInput, 'workbench_sso' | 'diamond_only'> {
   workbench_sso: boolean
   diamond_only: boolean
   editorKey: string
@@ -108,7 +93,6 @@ const saving = ref(false)
 function toEditorTab(tab: XimoAIHomeTab): EditorTab {
   return {
     ...tab,
-    cover_url: tab.cover_url || '',
     workbench_sso: !!tab.workbench_sso,
     diamond_only: !!tab.diamond_only,
     editorKey: tab.id
@@ -120,7 +104,6 @@ function addTab() {
     id: '',
     label: '',
     url: '',
-    cover_url: '',
     enabled: true,
     workbench_sso: false,
     diamond_only: false,

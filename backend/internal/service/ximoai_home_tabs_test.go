@@ -4,7 +4,7 @@ package service
 
 import (
 	"context"
-	"strings"
+	"encoding/json"
 	"testing"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
@@ -60,6 +60,21 @@ func TestXimoAIHomeTabsMissingSettingReturnsEmptyList(t *testing.T) {
 	require.Empty(t, tabs)
 }
 
+func TestGetXimoAIHomeTabsDropsLegacyCoverField(t *testing.T) {
+	repo := &ximoAIHomeTabsRepoStub{values: map[string]string{
+		SettingKeyXimoAIHomeTabs: `[{"id":"agent","label":"Agent","url":"https://agent.ximoai.cn/","cover_url":"data:image/png;base64,AAAA","enabled":true,"sort_order":0}]`,
+	}}
+	svc := NewSettingService(repo, &config.Config{})
+
+	tabs, err := svc.GetXimoAIHomeTabs(context.Background())
+	require.NoError(t, err)
+	require.Len(t, tabs, 1)
+
+	payload, err := json.Marshal(tabs)
+	require.NoError(t, err)
+	require.NotContains(t, string(payload), "cover_url")
+}
+
 func TestUpdateXimoAIHomeTabsNormalizesAndPersists(t *testing.T) {
 	repo := &ximoAIHomeTabsRepoStub{values: map[string]string{}}
 	svc := NewSettingService(repo, &config.Config{})
@@ -70,7 +85,6 @@ func TestUpdateXimoAIHomeTabsNormalizesAndPersists(t *testing.T) {
 		{
 			Label:        "  Workbench  ",
 			URL:          "https://workbench.ximoai.cn/",
-			CoverURL:     " /images/workbench.webp ",
 			Enabled:      true,
 			WorkbenchSSO: true,
 			DiamondOnly:  true,
@@ -89,7 +103,6 @@ func TestUpdateXimoAIHomeTabsNormalizesAndPersists(t *testing.T) {
 	require.Len(t, tabs, 2)
 	require.Regexp(t, `^[a-f0-9]{16}$`, tabs[0].ID)
 	require.Equal(t, "Workbench", tabs[0].Label)
-	require.Equal(t, "/images/workbench.webp", tabs[0].CoverURL)
 	require.True(t, tabs[0].DiamondOnly)
 	require.Equal(t, 0, tabs[0].SortOrder)
 	require.Equal(t, "docs", tabs[1].ID)
@@ -113,20 +126,6 @@ func TestUpdateXimoAIHomeTabsCanClearAllTabs(t *testing.T) {
 	require.Equal(t, "[]", repo.values[SettingKeyXimoAIHomeTabs])
 }
 
-func TestUpdateXimoAIHomeTabsAllowsMediaCoverDataURLs(t *testing.T) {
-	svc := NewSettingService(&ximoAIHomeTabsRepoStub{values: map[string]string{}}, &config.Config{})
-
-	tabs, err := svc.UpdateXimoAIHomeTabs(context.Background(), []XimoAIHomeTab{
-		{Label: "Video", URL: "https://video.example", CoverURL: "data:video/mp4;base64,AAAA", Enabled: true},
-		{Label: "HTML", URL: "https://html.example", CoverURL: "data:text/html;base64,PGgxPkhlbGxvPC9oMT4=", Enabled: true},
-	})
-
-	require.NoError(t, err)
-	require.Len(t, tabs, 2)
-	require.Equal(t, "data:video/mp4;base64,AAAA", tabs[0].CoverURL)
-	require.Equal(t, "data:text/html;base64,PGgxPkhlbGxvPC9oMT4=", tabs[1].CoverURL)
-}
-
 func TestUpdateXimoAIHomeTabsRejectsUnsafeAndDuplicateValues(t *testing.T) {
 	tests := []struct {
 		name string
@@ -139,18 +138,6 @@ func TestUpdateXimoAIHomeTabsRejectsUnsafeAndDuplicateValues(t *testing.T) {
 		{
 			name: "URL credentials",
 			tabs: []XimoAIHomeTab{{Label: "Bad", URL: "https://user:pass@example.com", Enabled: true}},
-		},
-		{
-			name: "unsafe cover URL",
-			tabs: []XimoAIHomeTab{{Label: "Bad", URL: "https://example.com", CoverURL: "data:text/html,bad", Enabled: true}},
-		},
-		{
-			name: "non-base64 video cover",
-			tabs: []XimoAIHomeTab{{Label: "Bad", URL: "https://example.com", CoverURL: "data:video/mp4,raw", Enabled: true}},
-		},
-		{
-			name: "cover exceeds media limit",
-			tabs: []XimoAIHomeTab{{Label: "Bad", URL: "https://example.com", CoverURL: "data:video/mp4;base64," + strings.Repeat("a", maxXimoAIHomeCoverLen), Enabled: true}},
 		},
 		{
 			name: "duplicate ID",

@@ -245,7 +245,6 @@ func RegisterAuthRoutes(
 	{
 		settings.GET("/public", h.Setting.GetPublicSettings)
 		settings.GET("/ximoai-home-tabs", h.Setting.GetXimoAIHomeTabs)
-		settings.GET("/assets/home-tabs/:id/cover/:filename", h.Setting.GetXimoAIPublicHomeCover)
 		settings.GET("/email-unsubscribe", h.Setting.UnsubscribeNotificationEmail)
 	}
 

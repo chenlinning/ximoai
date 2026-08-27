@@ -29,7 +29,6 @@ const tabs = [
     id: 'workbench',
     label: 'Workbench',
     url: 'https://workbench.ximoai.cn/app',
-    cover_url: 'data:image/png;base64,AAAA',
     enabled: true,
     workbench_sso: true,
     sort_order: 0

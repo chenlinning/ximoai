@@ -12,7 +12,6 @@ Workbench uses the access token only with these existing main-site endpoints:
 - `GET /api/v1/keys`
 - `GET /api/v1/groups/available`
 - `GET /api/v1/groups/rates`
-- `GET /api/v1/platforms`
 - `GET /api/v1/channels/model-plaza`
 
 No `/api/v1/workbench/model-access` or `/v1/workbench/catalog/*` compatibility
@@ -62,7 +61,7 @@ only this top-level field:
 }
 ```
 
-The child server sends `accessToken` as the Bearer token to the five native GET
+The child server sends `accessToken` as the Bearer token to the four native GET
 endpoints. It rotates the refresh token with
 `POST /api/v1/workbench/control-token/refresh` and revokes it with
 `POST /api/v1/workbench/control-token/revoke`. Both lifecycle endpoints require

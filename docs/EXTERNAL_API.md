@@ -169,7 +169,7 @@ GET /downloads/ximoapp/:file
 
 ## Existing XimoAi API Reference
 
-本文档按当前代码实现整理外部可调用接口。覆盖范围包括用户登录、用户后台、管理员后台、支付回调、协议网关、模型列表、模型广场、平台管理、异步视频任务查询等入口。
+本文档按当前代码实现整理外部可调用接口。覆盖范围包括用户登录、用户后台、管理员后台、支付回调、协议网关、模型列表、模型广场、渠道管理、异步视频任务查询等入口。
 
 ## 1. 基本约定
 
@@ -437,7 +437,6 @@ page, page_size, limit, sort_by, sort_order, search, status, group_id
 | `GET` | `/api/v1/groups/rates` | 用户分组倍率 |
 | `GET` | `/api/v1/channels/available` | 用户可见渠道，受功能开关影响 |
 | `GET` | `/api/v1/channels/model-plaza` | 模型广场可售模型，不依赖 available channels 开关 |
-| `GET` | `/api/v1/platforms` | 公开平台列表，隐藏 `base_url/auth_modes` |
 
 用户可见模型广场字段：
 
@@ -909,34 +908,7 @@ x-stainless-runtime-version, x-stainless-timeout
 
 不会全量透传任意自定义 Header。对 Gemini 视频上游，`authorization` 和 `x-goog-api-key` 会被替换为上游账号凭据。
 
-## 7. 平台和渠道管理
-
-### 平台管理
-
-| 方法 | 路径 | 权限 |
-|---|---|---|
-| `GET` | `/api/v1/admin/platforms` | 管理员 |
-| `POST` | `/api/v1/admin/platforms` | 管理员 |
-| `PUT` | `/api/v1/admin/platforms/:slug` | 管理员 |
-| `DELETE` | `/api/v1/admin/platforms/:slug` | 管理员 |
-| `GET` | `/api/v1/platforms` | 用户 JWT，公开字段 |
-
-管理端请求字段：
-
-```text
-slug, display_name, protocol, base_url, auth_modes, capabilities, color, enabled
-```
-
-管理端响应字段：
-
-```text
-slug, display_name, protocol, base_url, auth_modes, capabilities, color,
-enabled, builtin, created_at, updated_at
-```
-
-公开端响应字段相同，但 `base_url` 固定为空，`auth_modes` 固定为空数组。
-
-### 渠道管理
+## 7. 渠道管理
 
 | 方法 | 路径 |
 |---|---|
@@ -1525,19 +1497,6 @@ AdminUserSubscription 额外字段：
 assigned_by, assigned_at, notes, assigned_by_user
 ```
 
-### Platform
-
-```text
-slug, display_name, protocol, base_url, auth_modes, capabilities,
-color, enabled, builtin, created_at, updated_at
-```
-
-公开平台接口会隐藏：
-
-```text
-base_url, auth_modes
-```
-
 ### Channel
 
 ```text
@@ -1574,7 +1533,7 @@ id, name, group_ids, account_ids, pricing
 
 跨协议转换时，仅映射当前代码明确支持的字段。无法安全映射的高级字段不会传给上游，以避免请求失败或计费混乱。
 
-OpenAI 兼容上游使用账号配置的 Base URL 和 API Key/OAuth 凭据。自定义平台的能力由 `protocol` 与 `capabilities` 共同参与入口放行和前端展示，但实际路由最终会按平台协议与能力检查执行。
+OpenAI 兼容上游使用对应内置平台账号配置的 Base URL 和 API Key/OAuth 凭据。入口放行、协议选择和账号调度均以 sub2api 内置平台能力为准。
 
 Gemini 视频使用 Gemini native 入口。Anthropic 不提供视频协议入口。
 

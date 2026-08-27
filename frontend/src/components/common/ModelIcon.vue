@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <svg
     v-if="iconInfo"
     :width="size"

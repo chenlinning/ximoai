@@ -19,7 +19,6 @@ const (
 	maxXimoAIHomeTabs        = 24
 	maxXimoAIHomeTabLabelLen = 48
 	maxXimoAIHomeTabURLLen   = 2048
-	maxXimoAIHomeCoverLen    = 17 * 1024 * 1024
 )
 
 var ximoAIHomeTabIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -28,7 +27,6 @@ type XimoAIHomeTab struct {
 	ID           string `json:"id"`
 	Label        string `json:"label"`
 	URL          string `json:"url"`
-	CoverURL     string `json:"cover_url,omitempty"`
 	Enabled      bool   `json:"enabled"`
 	WorkbenchSSO bool   `json:"workbench_sso,omitempty"`
 	DiamondOnly  bool   `json:"diamond_only,omitempty"`
@@ -83,7 +81,6 @@ func normalizeXimoAIHomeTabs(tabs []XimoAIHomeTab, generateMissingIDs bool) ([]X
 		tab.ID = strings.TrimSpace(tab.ID)
 		tab.Label = strings.TrimSpace(tab.Label)
 		tab.URL = strings.TrimSpace(tab.URL)
-		tab.CoverURL = strings.TrimSpace(tab.CoverURL)
 
 		if tab.ID == "" && generateMissingIDs {
 			generatedID, err := generateXimoAIHomeTabID()
@@ -106,10 +103,6 @@ func normalizeXimoAIHomeTabs(tabs []XimoAIHomeTab, generateMissingIDs bool) ([]X
 		if err := validateXimoAIHomePageURL(tab.URL); err != nil {
 			return nil, invalidXimoAIHomeTabs("tab %d URL: %v", index+1, err)
 		}
-		if err := validateXimoAIHomeCoverURL(tab.CoverURL); err != nil {
-			return nil, invalidXimoAIHomeTabs("tab %d cover: %v", index+1, err)
-		}
-
 		tab.SortOrder = index
 		normalized = append(normalized, tab)
 	}
@@ -123,38 +116,6 @@ func validateXimoAIHomePageURL(raw string) error {
 	parsed, err := url.ParseRequestURI(raw)
 	if err != nil || !parsed.IsAbs() || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return fmt.Errorf("must be an absolute HTTP(S) URL")
-	}
-	if parsed.User != nil {
-		return fmt.Errorf("must not contain embedded credentials")
-	}
-	return nil
-}
-
-func validateXimoAIHomeCoverURL(raw string) error {
-	if raw == "" {
-		return nil
-	}
-	if len(raw) > maxXimoAIHomeCoverLen {
-		return fmt.Errorf("is too large")
-	}
-	if strings.HasPrefix(raw, "/") && !strings.HasPrefix(raw, "//") {
-		return nil
-	}
-	lower := strings.ToLower(raw)
-	if strings.HasPrefix(lower, "data:") {
-		headerEnd := strings.IndexByte(lower, ',')
-		if headerEnd < 0 || !strings.Contains(lower[:headerEnd], ";base64") {
-			return fmt.Errorf("data media must be base64 encoded")
-		}
-		mimeType := strings.TrimPrefix(strings.SplitN(lower[5:headerEnd], ";", 2)[0], " ")
-		if strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/") || mimeType == "text/html" || mimeType == "application/xhtml+xml" {
-			return nil
-		}
-		return fmt.Errorf("unsupported data cover type")
-	}
-	parsed, err := url.ParseRequestURI(raw)
-	if err != nil || !parsed.IsAbs() || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return fmt.Errorf("must be an HTTP(S), relative, or base64 image, video, or HTML URL")
 	}
 	if parsed.User != nil {
 		return fmt.Errorf("must not contain embedded credentials")

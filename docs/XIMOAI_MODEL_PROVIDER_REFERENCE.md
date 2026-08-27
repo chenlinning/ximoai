@@ -8,11 +8,12 @@
 
 This document records which model providers can be used through the current XimoAI project, which entry protocol should be selected, and how reasoning/thinking information should be understood when users configure a model.
 
-The document has three boundaries:
+The document has four boundaries:
 
 1. **Built-in platforms** are controlled by the upstream sub2api implementation and the current built-in platform definitions. Their entry behavior must follow the platform protocol and capability declared by the project.
-2. **Custom platforms** use the protocol selected by the administrator. A custom platform does not become an official vendor platform merely because its model name has a familiar prefix.
-3. **Model Plaza metadata** is reference and classification data. It does not transform requests, select a protocol, change pricing, or guarantee that an upstream account has access to a model.
+2. **No independent custom-platform registry is provided.** Accounts, protocols, routing, and scheduling remain limited to the platform types supported by upstream sub2api.
+3. **Compatible model names** may be recognized from the actual upstream model name used by channel mapping, but recognition changes metadata only and never creates a platform or route.
+4. **Model Plaza metadata** is reference and classification data. It does not transform requests, select a protocol, change pricing, or guarantee that an upstream account has access to a model.
 4. **Public Model Plaza responses must not expose upstream details.** Upstream protocol fields, provider endpoint paths, request field names, upstream model IDs, provider documentation URLs, and internal mapping data are private registry data only. The public response may expose only abstract reasoning levels and a thinking-support flag for user integration reference.
 
 The project can theoretically connect any provider that exposes a compatible OpenAI, OpenAI-compatible, Anthropic, or Gemini interface. Therefore, a permanently complete list of every provider is not possible. This document separates providers verified against current official documentation from providers that are only protocol-compatible candidates.
@@ -28,19 +29,15 @@ The project can theoretically connect any provider that exposes a compatible Ope
 | `gemini` | Gemini native | `/v1beta/models/*:generateContent`, `streamGenerateContent`, `countTokens`, video actions | Messages, native Gemini, Videos | Conversation, video |
 | `antigravity` | Antigravity native | `/antigravity/v1/messages`, `/antigravity/v1beta/*` | Messages, native Gemini | Conversation |
 | `grok` | OpenAI-compatible | `/v1/responses`, `/v1/chat/completions`, image/video routes | Responses, Chat Completions, Images, Videos | Conversation, image, video |
+| `kimi` | Provider-compatible | Uses the upstream Kimi routes selected by account protocol | Chat Completions, Messages | Conversation |
+| `zhipu` | Provider-compatible | Uses the upstream Zhipu routes selected by account protocol | Chat Completions, Messages | Conversation |
+| `deepseek` | Provider-compatible | Uses the upstream DeepSeek routes selected by account protocol | Responses, Chat Completions, Messages | Conversation |
 
-The source of the platform list is `backend/internal/service/platform_service.go`, especially `builtinPlatforms`, `defaultCustomPlatformCapabilities`, and `ensureRequiredPlatformCapabilities`.
+The source of truth is the upstream platform constants and routing implementation. XimoAI's presentation-only metadata is isolated in `backend/internal/handler/ximoai_model_plaza_platforms.go`.
 
-### 2.2 Custom platform protocols
+### 2.2 Compatible account boundary
 
-| Selected protocol | Main XimoAI entry | Suitable upstream interface | Important limitation |
-|---|---|---|---|
-| `openai` | `/v1/responses`, `/v1/chat/completions`, and capability-specific OpenAI routes | OpenAI native or an upstream that explicitly supports the selected OpenAI surface | Do not assume every OpenAI-compatible service implements Responses |
-| `openai_compatible` | `/v1/responses`, `/v1/chat/completions`, and declared capability routes | OpenAI-compatible providers | The model name does not determine the protocol; the administrator's platform protocol does |
-| `anthropic` | `/v1/messages` | Anthropic-compatible providers | Responses/Chat payloads are not automatically equivalent to native Anthropic features |
-| `gemini` | Gemini native routes and the project's Gemini compatibility surface | Gemini-compatible providers | Advanced `thinkingConfig` fields are reliable only on native Gemini requests |
-
-Custom platform account configuration must use the selected platform's URL and key rules. A custom OpenAI-compatible platform is not the same as the built-in `openai` or `grok` platform and must not inherit OAuth, Codex, Antigravity, Grok media, or other vendor-specific account behavior unless explicitly declared by the platform kind.
+The project does not expose administrator APIs for creating platform types. A compatible provider can be used only when an existing upstream platform account type already supports its URL, credentials, and protocol. A familiar model prefix must never be used to bypass the selected account protocol or inherit another platform's OAuth, media, or scheduling behavior.
 
 ## 3. Model Plaza Behavior
 
@@ -121,7 +118,7 @@ The existing section-level `platform`, `display_name`, `color`, and `protocol` f
 
 #### Internal registry
 
-The internal registry may retain the complete fields described in the provider sections, including `access_profiles`, reasoning field paths, exact upstream endpoint semantics, and verification sources. Backend matching uses the built-in `platform + actual upstream model` pair first, then a unique actual model ID for custom platforms; the registry is never returned verbatim to normal users.
+The internal registry may retain the complete fields described in the provider sections, including `access_profiles`, reasoning field paths, exact upstream endpoint semantics, and verification sources. Backend matching uses the built-in `platform + actual upstream model` pair first, then a unique actual model ID only for compatible aliases allowed by the registry lookup; the registry is never returned verbatim to normal users.
 
 For channel mappings, `name` and the registry lookup name are intentionally different:
 
@@ -129,14 +126,14 @@ For channel mappings, `name` and the registry lookup name are intentionally diff
 - The registry lookup uses the channel mapping target, which is the actual model name sent upstream.
 - When no mapping exists, both names are the same.
 - Administrator overrides are keyed by the display/requested name, so they remain stable even when a channel target changes.
-- Custom platforms may reuse a registry record only when the actual upstream model ID uniquely matches one verified record. Ambiguous IDs are left for administrator correction.
+- Compatible aliases may reuse a registry record only when the actual upstream model ID uniquely matches one verified record. Ambiguous IDs are left for administrator correction.
 
 The safe data flow is:
 
 ```text
 internal model registry
   -> platform + actual upstream model exact lookup
-  -> custom platform unique model-ID lookup when unambiguous
+  -> compatible-alias unique model-ID lookup when unambiguous
   -> admin override precedence
   -> public-field projection
   -> GET /api/v1/channels/model-plaza
@@ -311,7 +308,7 @@ Official reference: [Volcengine Ark product and model catalog](https://www.volce
 
 ## 5. Other Compatible Providers
 
-The following providers are candidates for custom platform configuration, not built-in XimoAI platforms. Their current model IDs and feature availability must be checked against the selected account, region, and endpoint before publishing them in Model Plaza.
+The following providers are classification references, not platform types supplied by XimoAI. They can be published only when an existing upstream-supported account type can actually reach the selected provider and its model IDs, fields, and feature availability have been verified.
 
 | Provider family | Usual custom protocol | Do not assume |
 |---|---|---|
@@ -333,10 +330,10 @@ For these providers, the safe publishing rule is: verify the provider's model li
 
 ## 6. Practical Configuration Rules
 
-1. Select the protocol from the upstream endpoint contract, not from the model brand.
-2. Use `openai_compatible` plus `/v1/chat/completions` for providers that explicitly document OpenAI Chat compatibility.
-3. Use custom `anthropic` only when the upstream exposes `/v1/messages` semantics; do not use it merely because a model is good at reasoning.
-4. Use custom `gemini` only when the upstream exposes Gemini native request objects; an OpenAI-compatible provider that happens to host a Gemini model remains OpenAI-compatible.
+1. Select an upstream-supported account type from the endpoint contract, not from the model brand.
+2. Use an OpenAI-compatible built-in account path only for providers that explicitly document the selected OpenAI surface.
+3. Use an Anthropic route only when the selected built-in account type exposes `/v1/messages` semantics; do not infer it from model capability.
+4. Use a Gemini route only when the selected built-in account type exposes Gemini native request objects; an OpenAI-compatible provider that happens to host a Gemini model remains OpenAI-compatible.
 5. Configure channel model mapping when the public model name differs from the upstream model ID.
 6. Set billing mode and capability correctly because the model plaza type and invocation modes are derived from them.
 7. Use metadata overrides for an incorrect brand/type/mode display; do not use metadata overrides to change routing or model mapping.

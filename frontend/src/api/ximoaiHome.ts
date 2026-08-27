@@ -4,7 +4,6 @@ export interface XimoAIHomeTab {
   id: string
   label: string
   url: string
-  cover_url?: string
   enabled: boolean
   workbench_sso?: boolean
   diamond_only?: boolean

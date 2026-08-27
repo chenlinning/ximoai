@@ -1,6 +1,13 @@
 type MessageTree = Record<string, any>
 
 const zhPatch: MessageTree = {
+  desktopAuthorization: {
+    title: '\u684c\u9762\u7aef\u6388\u6743',
+    authorizing: '\u6b63\u5728\u9a8c\u8bc1\u767b\u5f55\u5e76\u5efa\u7acb\u8bbe\u5907\u4f1a\u8bdd...',
+    returning: '\u6388\u6743\u6210\u529f\uff0c\u6b63\u5728\u8fd4\u56de\u684c\u9762\u5e94\u7528...',
+    failed: '\u65e0\u6cd5\u5b8c\u6210\u684c\u9762\u7aef\u6388\u6743\u3002',
+    retry: '\u91cd\u8bd5'
+  },
   ximoaiHome: {
     entry: '\u8fd4\u56de\u9996\u9875',
     home: '\u9996\u9875',
@@ -9,15 +16,11 @@ const zhPatch: MessageTree = {
     theme: '\u5207\u6362\u4e3b\u9898',
     loadFailed: '\u9875\u9762\u52a0\u8f7d\u5931\u8d25',
     settingsTitle: '\u9996\u9875\u6807\u7b7e',
-    settingsHint: '\u7ba1\u7406\u9996\u9875\u5165\u53e3\u5361\u7247\u3001\u9876\u90e8\u6807\u7b7e\u548c\u5d4c\u5165\u7f51\u5740\u3002',
+    settingsHint: '\u7ba1\u7406\u9996\u9875\u9876\u90e8\u6807\u7b7e\u548c\u5d4c\u5165\u7f51\u5740\u3002',
     addTab: '\u65b0\u589e\u6807\u7b7e',
     emptyTabs: '\u6682\u65e0\u9996\u9875\u6807\u7b7e\u3002',
     label: '\u6807\u7b7e\u540d\u79f0',
     url: '\u9875\u9762\u7f51\u5740',
-    cover: '\u5165\u53e3\u5c01\u9762',
-    uploadCover: '\u4e0a\u4f20\u5c01\u9762',
-    removeCover: '\u5220\u9664\u5c01\u9762',
-    coverHint: '\u7528\u4e8e\u9996\u9875\u5165\u53e3\u5361\u7247\uff0c\u652f\u6301\u56fe\u7247\u3001GIF\u3001\u89c6\u9891\u548c HTML\uff0c\u6700\u5927 12 MB\u3002',
     moveUp: '\u4e0a\u79fb',
     moveDown: '\u4e0b\u79fb',
     retry: '\u91cd\u8bd5',
@@ -29,53 +32,9 @@ const zhPatch: MessageTree = {
   },
   nav: {
     modelPlaza: '模型广场',
+    ximoaiModelPlaza: 'XimoAI 模型广场',
     membership: '会员中心',
     membershipManagement: '会员管理'
-  },
-  ximodeskUpdate: {
-    nav: 'XimoDesk 更新',
-    title: 'XimoDesk 更新源',
-    description: '维护 XimoDesk 客户端使用的版本检查响应、安装包和校验信息。',
-    publicEndpoint: '更新接口：POST /api/ximoapp/:appKey/version/latest。下载入口：/downloads/ximoapp/:file。',
-    globalSettings: '全局设置',
-    globalSettingsHint: '关闭后，版本检查接口会返回 204。',
-    enabled: '启用更新源',
-    uploadInstaller: '上传安装包',
-    uploadInstallerHint: '上传后自动计算 sha256，并生成 ximoai.cn 下载链接。',
-    channel: '发布渠道',
-    os: '系统',
-    arch: '架构',
-    version: '版本号',
-    locale: '语言版本',
-    localeHint: '留空或 all 表示通用包。',
-    packageType: '安装包类型',
-    autoDetect: '自动识别',
-    publishedAt: '发布时间',
-    packageFile: '安装包文件',
-    packageFileHint: '支持 .msi / .zip / .exe / .dmg / .pkg。',
-    downloadUrl: '下载地址',
-    sha256: 'sha256',
-    notes: '更新说明',
-    force: '强制更新',
-    releaseEnabled: '启用版本',
-    uploading: '上传中',
-    upload: '上传安装包',
-    releaseList: '已发布安装包',
-    releaseListHint: '同渠道、系统、架构下，接口会优先匹配语言版本，再返回最高版本。',
-    saveList: '保存列表配置',
-    emptyReleases: '还没有上传安装包。',
-    target: '目标',
-    options: '选项',
-    loadFailed: 'XimoDesk 更新配置加载失败',
-    saveFailed: 'XimoDesk 更新配置保存失败',
-    saved: 'XimoDesk 更新配置已保存',
-    packageFileRequired: '请选择安装包文件',
-    uploaded: '安装包已上传',
-    uploadFailed: '安装包上传失败',
-    releaseIdMissing: '版本缺少 ID，无法删除',
-    confirmDelete: '确定删除这个安装包版本吗？',
-    deleted: '安装包版本已删除',
-    deleteFailed: '安装包版本删除失败'
   },
   ximoappUpdate: {
     nav: '应用中心',
@@ -85,6 +44,7 @@ const zhPatch: MessageTree = {
     globalSettings: '全局设置',
     globalSettingsHint: '关闭后，所有更新检查接口返回 204。',
     enabled: '启用更新源',
+    hiddenInDownloadCenter: '\u4ece\u4e0b\u8f7d\u4e2d\u5fc3\u9690\u85cf',
     apps: '应用登记',
     appsHint: '按 appKey 区分不同客户端，XimoDesk 使用 ximodesk。',
     addApp: '新增应用',
@@ -166,6 +126,7 @@ const zhPatch: MessageTree = {
     billingModeToken: '按 Token',
     billingModePerRequest: '按次',
     billingModeImage: '按图片',
+    billingModeVideo: '按视频',
     groupLabel: '分组',
     rateValue: 'x{rate}',
     inputPrice: '输入',
@@ -178,6 +139,8 @@ const zhPatch: MessageTree = {
     perMillionUnit: '/ 1M token',
     perRequestUnit: '/ 次',
     perImageUnit: '/ 张',
+    perVideoUnit: '/ 个视频',
+    videoPrice: '视频价格',
     intervalUnlimited: '无限制',
     noPricing: '未配置定价',
     noModels: '暂无模型数据',
@@ -346,6 +309,16 @@ const zhPatch: MessageTree = {
     tryAgain: '请重试'
   },
   admin: {
+    settings: {
+      features: {
+        ximoaiModelPlazaEntry: {
+          title: '定制模型广场入口',
+          description: '控制定制模型广场是否显示在侧边栏。',
+          enabled: '显示侧边栏入口',
+          enabledHint: '关闭后只隐藏入口，不影响页面直达或接口。'
+        }
+      }
+    },
     channels: {
       noGroupsSelected: '{platform} 平台未选择分组，请至少选择一个分组或禁用该平台',
       emptyModelsInPricing: '{platform} 平台下有定价条目未添加模型，请添加模型或删除该条目'
@@ -382,6 +355,13 @@ const zhPatch: MessageTree = {
 }
 
 const enPatch: MessageTree = {
+  desktopAuthorization: {
+    title: 'Desktop Authorization',
+    authorizing: 'Verifying your login and establishing the device session...',
+    returning: 'Authorization complete. Returning to the desktop app...',
+    failed: 'Desktop authorization could not be completed.',
+    retry: 'Retry'
+  },
   ximoaiHome: {
     entry: 'Back to home',
     home: 'Home',
@@ -390,15 +370,11 @@ const enPatch: MessageTree = {
     theme: 'Toggle theme',
     loadFailed: 'Page failed to load',
     settingsTitle: 'Home tabs',
-    settingsHint: 'Manage home entry cards, header tabs, and embedded page URLs.',
+    settingsHint: 'Manage home header tabs and embedded page URLs.',
     addTab: 'Add tab',
     emptyTabs: 'No home tabs configured.',
     label: 'Tab label',
     url: 'Page URL',
-    cover: 'Entry cover',
-    uploadCover: 'Upload cover',
-    removeCover: 'Remove cover',
-    coverHint: 'Used by the home entry card. Supports images, GIFs, videos, and HTML. Maximum size: 12 MB.',
     moveUp: 'Move up',
     moveDown: 'Move down',
     retry: 'Retry',
@@ -410,53 +386,9 @@ const enPatch: MessageTree = {
   },
   nav: {
     modelPlaza: 'Model Plaza',
+    ximoaiModelPlaza: 'XimoAI Model Plaza',
     membership: 'Membership',
     membershipManagement: 'Membership Management'
-  },
-  ximodeskUpdate: {
-    nav: 'XimoDesk Update',
-    title: 'XimoDesk Update Source',
-    description: 'Maintain the version-check response, installers, and checksums used by XimoDesk clients.',
-    publicEndpoint: 'Update endpoint: POST /api/ximoapp/:appKey/version/latest. Download path: /downloads/ximoapp/:file.',
-    globalSettings: 'Global Settings',
-    globalSettingsHint: 'When disabled, the version-check endpoint returns 204.',
-    enabled: 'Enable update source',
-    uploadInstaller: 'Upload Installer',
-    uploadInstallerHint: 'Uploads automatically calculate sha256 and generate a ximoai.cn download URL.',
-    channel: 'Channel',
-    os: 'OS',
-    arch: 'Architecture',
-    version: 'Version',
-    locale: 'Language',
-    localeHint: 'Empty or all means a universal package.',
-    packageType: 'Package Type',
-    autoDetect: 'Auto detect',
-    publishedAt: 'Published at',
-    packageFile: 'Installer File',
-    packageFileHint: 'Supports .msi / .zip / .exe / .dmg / .pkg.',
-    downloadUrl: 'Download URL',
-    sha256: 'sha256',
-    notes: 'Release notes',
-    force: 'Force update',
-    releaseEnabled: 'Release enabled',
-    uploading: 'Uploading',
-    upload: 'Upload installer',
-    releaseList: 'Published Installers',
-    releaseListHint: 'For the same channel, OS, and architecture, the endpoint matches language first, then returns the highest version.',
-    saveList: 'Save list settings',
-    emptyReleases: 'No installers uploaded yet.',
-    target: 'Target',
-    options: 'Options',
-    loadFailed: 'Failed to load XimoDesk update config',
-    saveFailed: 'Failed to save XimoDesk update config',
-    saved: 'XimoDesk update config saved',
-    packageFileRequired: 'Please choose an installer file',
-    uploaded: 'Installer uploaded',
-    uploadFailed: 'Failed to upload installer',
-    releaseIdMissing: 'Release ID is missing, cannot delete',
-    confirmDelete: 'Delete this installer release?',
-    deleted: 'Installer release deleted',
-    deleteFailed: 'Failed to delete installer release'
   },
   ximoappUpdate: {
     nav: 'Application Center',
@@ -466,6 +398,7 @@ const enPatch: MessageTree = {
     globalSettings: 'Global Settings',
     globalSettingsHint: 'When disabled, all update-check endpoints return 204.',
     enabled: 'Enable update source',
+    hiddenInDownloadCenter: 'Hide from download center',
     apps: 'Apps',
     appsHint: 'Use appKey to separate clients. XimoDesk uses ximodesk.',
     addApp: 'Add App',
@@ -547,6 +480,7 @@ const enPatch: MessageTree = {
     billingModeToken: 'Per Token',
     billingModePerRequest: 'Per Request',
     billingModeImage: 'Per Image',
+    billingModeVideo: 'Per Video',
     groupLabel: 'Group',
     rateValue: 'x{rate}',
     inputPrice: 'Input',
@@ -559,6 +493,8 @@ const enPatch: MessageTree = {
     perMillionUnit: '/ 1M tokens',
     perRequestUnit: '/ request',
     perImageUnit: '/ image',
+    perVideoUnit: '/ video',
+    videoPrice: 'Video Price',
     intervalUnlimited: 'unlimited',
     noPricing: 'Pricing not configured',
     noModels: 'No model data',
@@ -727,6 +663,16 @@ const enPatch: MessageTree = {
     tryAgain: 'Please try again'
   },
   admin: {
+    settings: {
+      features: {
+        ximoaiModelPlazaEntry: {
+          title: 'Custom Model Plaza Entry',
+          description: 'Control whether the custom Model Plaza appears in the sidebar.',
+          enabled: 'Show sidebar entry',
+          enabledHint: 'Disabling this only hides the entry; direct page and API access remain available.'
+        }
+      }
+    },
     channels: {
       noGroupsSelected: '{platform} has no groups selected. Select at least one group or disable this platform.',
       emptyModelsInPricing: '{platform} has a pricing entry without models. Add models or remove the entry.'
