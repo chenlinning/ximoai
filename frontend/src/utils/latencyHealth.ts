@@ -42,9 +42,9 @@ export const outputTokenRate = (
   firstTokenMs: number | null | undefined,
   durationMs: number | null | undefined,
 ): number | null => {
-  if (outputTokens == null || firstTokenMs == null || durationMs == null) return null
+  if (outputTokens == null || durationMs == null) return null
 
-  const generationMs = durationMs - firstTokenMs
+  const generationMs = firstTokenMs == null ? durationMs : durationMs - firstTokenMs
   if (outputTokens <= 0 || generationMs <= 0) return null
 
   return Math.round((outputTokens * 1000) / generationMs)

@@ -170,6 +170,35 @@ describe('admin UsageTable tooltip', () => {
     expect(wrapper.text()).toContain('37 Token/s')
   })
 
+  it('shows synchronous output token rate over the total duration', () => {
+    const wrapper = mount(UsageTable, {
+      props: {
+        data: [
+          {
+            ...baseImageRow,
+            request_id: 'req-sync-token-rate',
+            billing_mode: 'token',
+            output_tokens: 10,
+            first_token_ms: null,
+            duration_ms: 2_000,
+          },
+        ],
+        loading: false,
+        columns: [{ key: 'latency', label: 'Latency' }],
+      },
+      global: {
+        stubs: {
+          DataTable: DataTableStub,
+          EmptyState: true,
+          Icon: true,
+          Teleport: true,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('5 Token/s')
+  })
+
   it('marks only usage rows that actually applied long-context billing', () => {
     const wrapper = mount(UsageTable, {
       props: {

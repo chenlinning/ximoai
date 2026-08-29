@@ -28,10 +28,14 @@ describe('latencyHealth', () => {
     expect(outputTokenRate(10, 3_100, 3_680)).toBe(17)
   })
 
-  it('does not report a rate without a valid generation interval', () => {
-    expect(outputTokenRate(10, null, 3_680)).toBeNull()
+  it('calculates synchronous output token rate over the total duration', () => {
+    expect(outputTokenRate(10, null, 2_000)).toBe(5)
+  })
+
+  it('does not report a rate without a valid duration or output', () => {
     expect(outputTokenRate(10, 3_680, null)).toBeNull()
     expect(outputTokenRate(10, 3_680, 3_680)).toBeNull()
+    expect(outputTokenRate(10, null, 0)).toBeNull()
     expect(outputTokenRate(0, 3_100, 3_680)).toBeNull()
   })
 })
