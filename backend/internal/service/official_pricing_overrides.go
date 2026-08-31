@@ -41,10 +41,6 @@ func officialTokenPriceCards() []officialTokenPriceCard {
 		{Model: "minimax-m2.1-highspeed", Provider: "minimax", Input: 0.60e-6, Output: 2.40e-6, CacheRead: 0.03e-6, CacheWrite: 0.375e-6, SupportsPromptCaching: true},
 		{Model: "minimax-m2", Provider: "minimax", Input: 0.30e-6, Output: 1.20e-6, CacheRead: 0.03e-6, CacheWrite: 0.375e-6, SupportsPromptCaching: true},
 
-		{Model: "deepseek-v4-flash", Provider: "deepseek", Input: 0.44e-6, Output: 1.32e-6, CacheRead: 0.014e-6, SupportsPromptCaching: true},
-		{Model: "deepseek-v4-pro", Provider: "deepseek", Input: 1.32e-6, Output: 3.96e-6, CacheRead: 0.044e-6, SupportsPromptCaching: true},
-		{Model: "deepseek-v4-flash-vision-exp", Provider: "deepseek", Input: 0.44e-6, Output: 1.32e-6, CacheRead: 0.014e-6, SupportsPromptCaching: true},
-
 		{Model: "glm-5.3", Provider: "zhipu", Input: 1.4e-6, Output: 4.4e-6, CacheRead: 0.26e-6, SupportsPromptCaching: true},
 		{Model: "glm-5.2", Provider: "zhipu", Input: 1.4e-6, Output: 4.4e-6, CacheRead: 0.26e-6, SupportsPromptCaching: true},
 		{Model: "glm-5.1", Provider: "zhipu", Input: 1.4e-6, Output: 4.4e-6, CacheRead: 0.26e-6, SupportsPromptCaching: true},

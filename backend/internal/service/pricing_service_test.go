@@ -397,13 +397,6 @@ func TestPricingService_OfficialPricingOverridesRemoteStaleModels(t *testing.T) 
 			"litellm_provider": "zhipu",
 			"mode": "chat"
 		},
-		"deepseek-v4-pro": {
-			"input_cost_per_token": 0.000000435,
-			"output_cost_per_token": 0.00000087,
-			"cache_read_input_token_cost": 0.000000003625,
-			"litellm_provider": "deepseek",
-			"mode": "chat"
-		},
 		"minimax-m3": {
 			"input_cost_per_token": 0.0000006,
 			"output_cost_per_token": 0.0000024,
@@ -424,8 +417,6 @@ func TestPricingService_OfficialPricingOverridesRemoteStaleModels(t *testing.T) 
 		{model: "kimi-k2.7-code", provider: "moonshot", input: 0.95e-6, output: 4e-6, cacheRead: 0.19e-6},
 		{model: "minimax-m3", provider: "minimax", input: 0.30e-6, output: 1.20e-6, cacheRead: 0.06e-6},
 		{model: "minimax-m2.5-highspeed", provider: "minimax", input: 0.60e-6, output: 2.40e-6, cacheRead: 0.03e-6, cacheWrite: 0.375e-6},
-		{model: "deepseek-v4-pro", provider: "deepseek", input: 1.32e-6, output: 3.96e-6, cacheRead: 0.044e-6},
-		{model: "deepseek-v4-flash-vision-exp", provider: "deepseek", input: 0.44e-6, output: 1.32e-6, cacheRead: 0.014e-6},
 		{model: "glm-5.3", provider: "zhipu", input: 1.4e-6, output: 4.4e-6, cacheRead: 0.26e-6},
 		{model: "glm-5.1", provider: "zhipu", input: 1.4e-6, output: 4.4e-6, cacheRead: 0.26e-6},
 	}
