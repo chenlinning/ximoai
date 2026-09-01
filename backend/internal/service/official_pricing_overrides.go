@@ -54,26 +54,6 @@ func officialTokenPriceCards() []officialTokenPriceCard {
 	}
 }
 
-func (c officialTokenPriceCard) liteLLMPricing() *LiteLLMModelPricing {
-	return &LiteLLMModelPricing{
-		InputCostPerToken:                   c.Input,
-		OutputCostPerToken:                  c.Output,
-		CacheReadInputTokenCost:             c.CacheRead,
-		CacheCreationInputTokenCost:         c.CacheWrite,
-		InputCostPerTokenPriority:           c.InputPriority,
-		OutputCostPerTokenPriority:          c.OutputPriority,
-		CacheReadInputTokenCostPriority:     c.CacheReadPriority,
-		CacheCreationInputTokenCostPriority: c.CacheWritePriority,
-		LongContextInputTokenThreshold:      c.LongContextThreshold,
-		LongContextInputCostMultiplier:      c.LongContextInputMult,
-		LongContextOutputCostMultiplier:     c.LongContextOutputMult,
-		SupportsPromptCaching:               c.SupportsPromptCaching,
-		SupportsServiceTier:                 c.SupportsServiceTier,
-		LiteLLMProvider:                     c.Provider,
-		Mode:                                "chat",
-	}
-}
-
 func (c officialTokenPriceCard) modelPricing() *ModelPricing {
 	return &ModelPricing{
 		InputPricePerToken:                 c.Input,
@@ -89,14 +69,6 @@ func (c officialTokenPriceCard) modelPricing() *ModelPricing {
 		LongContextOutputMultiplier:        c.LongContextOutputMult,
 		SupportsCacheBreakdown:             false,
 	}
-}
-
-func currentOfficialLiteLLMPricingOverrides() map[string]*LiteLLMModelPricing {
-	out := make(map[string]*LiteLLMModelPricing)
-	for _, card := range officialTokenPriceCards() {
-		out[card.Model] = card.liteLLMPricing()
-	}
-	return out
 }
 
 func currentOfficialBillingFallbacks() map[string]*ModelPricing {

@@ -1,0 +1,258 @@
+{
+  "kimi-k3": {
+    "input_cost_per_token": 3e-06,
+    "output_cost_per_token": 1.5e-05,
+    "cache_read_input_token_cost": 3e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "kimi-k2.7-code": {
+    "input_cost_per_token": 9.5e-07,
+    "output_cost_per_token": 4e-06,
+    "cache_read_input_token_cost": 1.9e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "kimi-k2.7-code-highspeed": {
+    "input_cost_per_token": 1.9e-06,
+    "output_cost_per_token": 8e-06,
+    "cache_read_input_token_cost": 3.8e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "kimi-k2.6": {
+    "input_cost_per_token": 9.5e-07,
+    "output_cost_per_token": 4e-06,
+    "cache_read_input_token_cost": 1.6e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "kimi-k2.5": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 3e-06,
+    "cache_read_input_token_cost": 1e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "moonshot-v1-8k": {
+    "input_cost_per_token": 2e-07,
+    "output_cost_per_token": 2e-06,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat"
+  },
+  "moonshot-v1-32k": {
+    "input_cost_per_token": 1e-06,
+    "output_cost_per_token": 3e-06,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat"
+  },
+  "moonshot-v1-128k": {
+    "input_cost_per_token": 2e-06,
+    "output_cost_per_token": 5e-06,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat"
+  },
+  "moonshot-v1-8k-vision-preview": {
+    "input_cost_per_token": 2e-07,
+    "output_cost_per_token": 2e-06,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat"
+  },
+  "moonshot-v1-32k-vision-preview": {
+    "input_cost_per_token": 1e-06,
+    "output_cost_per_token": 3e-06,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat"
+  },
+  "moonshot-v1-128k-vision-preview": {
+    "input_cost_per_token": 2e-06,
+    "output_cost_per_token": 5e-06,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "moonshot",
+    "mode": "chat"
+  },
+  "minimax-m3": {
+    "input_cost_per_token": 3e-07,
+    "output_cost_per_token": 1.2e-06,
+    "cache_read_input_token_cost": 6e-08,
+    "cache_creation_input_token_cost": null,
+    "input_cost_per_token_priority": 4.5e-07,
+    "output_cost_per_token_priority": 1.8e-06,
+    "cache_read_input_token_cost_priority": 9e-08,
+    "long_context_input_token_threshold": 512000,
+    "long_context_input_cost_multiplier": 2,
+    "long_context_output_cost_multiplier": 2,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true,
+    "supports_service_tier": true
+  },
+  "minimax-m2.7": {
+    "input_cost_per_token": 3e-07,
+    "output_cost_per_token": 1.2e-06,
+    "cache_read_input_token_cost": 6e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "minimax-m2.7-highspeed": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 2.4e-06,
+    "cache_read_input_token_cost": 6e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "minimax-m2.5": {
+    "input_cost_per_token": 3e-07,
+    "output_cost_per_token": 1.2e-06,
+    "cache_read_input_token_cost": 3e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "minimax-m2.5-highspeed": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 2.4e-06,
+    "cache_read_input_token_cost": 3e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "minimax-m2.1": {
+    "input_cost_per_token": 3e-07,
+    "output_cost_per_token": 1.2e-06,
+    "cache_read_input_token_cost": 3e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "minimax-m2.1-highspeed": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 2.4e-06,
+    "cache_read_input_token_cost": 3e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "minimax-m2": {
+    "input_cost_per_token": 3e-07,
+    "output_cost_per_token": 1.2e-06,
+    "cache_read_input_token_cost": 3e-08,
+    "cache_creation_input_token_cost": 3.75e-07,
+    "litellm_provider": "minimax",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-5.3": {
+    "input_cost_per_token": 1.4e-06,
+    "output_cost_per_token": 4.4e-06,
+    "cache_read_input_token_cost": 2.6e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-5.2": {
+    "input_cost_per_token": 1.4e-06,
+    "output_cost_per_token": 4.4e-06,
+    "cache_read_input_token_cost": 2.6e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-5.1": {
+    "input_cost_per_token": 1.4e-06,
+    "output_cost_per_token": 4.4e-06,
+    "cache_read_input_token_cost": 2.6e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-5": {
+    "input_cost_per_token": 1e-06,
+    "output_cost_per_token": 3.2e-06,
+    "cache_read_input_token_cost": 2e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-5-turbo": {
+    "input_cost_per_token": 1.2e-06,
+    "output_cost_per_token": 4e-06,
+    "cache_read_input_token_cost": 2.4e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-4.7": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 2.2e-06,
+    "cache_read_input_token_cost": 1.1e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-4.7-flashx": {
+    "input_cost_per_token": 7e-08,
+    "output_cost_per_token": 4e-07,
+    "cache_read_input_token_cost": 1e-08,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-4.6": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 2.2e-06,
+    "cache_read_input_token_cost": 1.1e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-4.5": {
+    "input_cost_per_token": 6e-07,
+    "output_cost_per_token": 2.2e-06,
+    "cache_read_input_token_cost": 1.1e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  },
+  "glm-4.5-x": {
+    "input_cost_per_token": 2.2e-06,
+    "output_cost_per_token": 8.9e-06,
+    "cache_read_input_token_cost": 4.5e-07,
+    "cache_creation_input_token_cost": null,
+    "litellm_provider": "zhipu",
+    "mode": "chat",
+    "supports_prompt_caching": true
+  }
+}
