@@ -58,7 +58,7 @@ func TestGetXimoAIAvailableModels_PrefersChannelMappingSources(t *testing.T) {
 	}
 	svc := &GatewayService{
 		accountRepo:    accountRepo,
-		channelService: NewChannelService(channelRepo, nil, nil, nil),
+		channelService: NewChannelService(channelRepo, nil, nil, nil, nil),
 	}
 
 	models := svc.GetXimoAIAvailableModels(context.Background(), &groupID, platform)
@@ -91,7 +91,7 @@ func TestGetXimoAIAvailableModels_FallsBackWithoutPlatformMapping(t *testing.T) 
 	}
 	svc := &GatewayService{
 		accountRepo:    accountRepo,
-		channelService: NewChannelService(channelRepo, nil, nil, nil),
+		channelService: NewChannelService(channelRepo, nil, nil, nil, nil),
 	}
 
 	models := svc.GetXimoAIAvailableModels(context.Background(), &groupID, platform)
