@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 func TestRegistryIsAuditedAndLoads(t *testing.T) {
@@ -35,6 +37,20 @@ func TestLookupBuiltInPlatformDoesNotCrossMatchAnotherProvider(t *testing.T) {
 	_, ok := Lookup("anthropic", "gpt-5")
 	if ok {
 		t.Fatal("built-in platform cross-matched gpt-5")
+	}
+}
+
+func TestLookupRegisteredPlatformsDoNotUseCompatibleAliasFallback(t *testing.T) {
+	for _, platform := range domain.ConcretePlatformIDs() {
+		if platform == domain.PlatformOpenAI {
+			continue
+		}
+		if _, ok := Lookup(platform, "gpt-5"); ok {
+			t.Fatalf("registered platform %q cross-matched an OpenAI model", platform)
+		}
+	}
+	if _, ok := Lookup(domain.PlatformComposite, "gpt-5"); ok {
+		t.Fatal("composite grouping must not resolve model metadata as a platform")
 	}
 }
 

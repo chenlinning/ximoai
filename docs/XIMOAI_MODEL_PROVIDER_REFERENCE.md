@@ -298,7 +298,7 @@ Official references: [Model Studio models](https://help.aliyun.com/en/model-stud
 
 **Protocol and reasoning:**
 
-- Generic text access should use a custom OpenAI-compatible platform only when the selected Ark endpoint documents OpenAI-compatible Chat Completions.
+- Generic text access should use an existing upstream-supported OpenAI-compatible platform only when the selected Ark endpoint documents OpenAI-compatible Chat Completions.
 - The current Doubao 2.0 Responses entries expose an abstract thinking switch in the registry; the exact request field is kept internal.
 - `Doubao-Seed-1.6-thinking` is fixed-thinking; `Doubao-Seed-1.6` supports dynamic thinking modes; other model generations must be checked against their own endpoint documentation.
 - Do not represent every Doubao model with OpenAI `reasoning_effort` unless that exact Ark endpoint explicitly supports it.

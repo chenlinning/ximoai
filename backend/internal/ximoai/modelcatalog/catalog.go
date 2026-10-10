@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 //go:embed model-registry.json
@@ -62,12 +64,11 @@ type PublicMetadata struct {
 	ThinkingSupported bool     `json:"thinking_supported,omitempty"`
 }
 
-var builtInRegistryPlatforms = map[string]struct{}{
-	"openai":      {},
-	"anthropic":   {},
-	"gemini":      {},
-	"antigravity": {},
-	"grok":        {},
+// registryPlatformAliases keeps model-provider naming separate from the
+// upstream platform catalog. Kimi is the actual platform; Moonshot is the
+// verified provider label used by the internal model registry.
+var registryPlatformAliases = map[string][]string{
+	domain.PlatformKimi: {"moonshot"},
 }
 
 var (
@@ -96,18 +97,20 @@ func Lookup(platform, model string) (ModelRecord, bool) {
 	}
 	platform = strings.ToLower(strings.TrimSpace(platform))
 	model = strings.ToLower(strings.TrimSpace(model))
-	// Built-in platforms require a platform-qualified match. This prevents an
+	// Registered platforms require a platform-qualified match. This prevents an
 	// ordinary model ID from changing metadata across built-in protocol paths.
-	for _, record := range registry.Models {
-		if strings.ToLower(record.Platform) != platform || strings.ToLower(record.Model) != model {
-			continue
+	for _, candidatePlatform := range registryPlatformCandidates(platform) {
+		for _, record := range registry.Models {
+			if strings.ToLower(record.Platform) != candidatePlatform || strings.ToLower(record.Model) != model {
+				continue
+			}
+			if !isVerifiedRecord(record) {
+				return ModelRecord{}, false
+			}
+			return cloneRecord(record), true
 		}
-		if !isVerifiedRecord(record) {
-			return ModelRecord{}, false
-		}
-		return cloneRecord(record), true
 	}
-	if _, ok := builtInRegistryPlatforms[platform]; ok {
+	if domain.IsGroupPlatform(platform) {
 		return ModelRecord{}, false
 	}
 
@@ -128,6 +131,17 @@ func Lookup(platform, model string) (ModelRecord, bool) {
 		return *match, true
 	}
 	return ModelRecord{}, false
+}
+
+func registryPlatformCandidates(platform string) []string {
+	candidates := []string{platform}
+	for _, alias := range registryPlatformAliases[platform] {
+		if alias == platform {
+			continue
+		}
+		candidates = append(candidates, alias)
+	}
+	return candidates
 }
 
 func PublicMetadataFor(platform, model string) (PublicMetadata, bool) {
