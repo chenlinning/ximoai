@@ -39,19 +39,6 @@ export const firstTokenSeverity = (ms: number): LatencySeverity =>
 export const durationSeverity = (ms: number): LatencySeverity =>
   classify(ms, DURATION_THRESHOLDS_MS)
 
-export const outputTokenRate = (
-  outputTokens: number | null | undefined,
-  firstTokenMs: number | null | undefined,
-  durationMs: number | null | undefined,
-): number | null => {
-  if (outputTokens == null || durationMs == null) return null
-
-  const generationMs = firstTokenMs == null ? durationMs : durationMs - firstTokenMs
-  if (outputTokens <= 0 || generationMs <= 0) return null
-
-  return Math.round((outputTokens * 1000) / generationMs)
-}
-
 export const LATENCY_TEXT_CLASSES: Record<LatencySeverity, string> = {
   good: 'text-emerald-600 dark:text-emerald-400',
   warn: 'text-amber-600 dark:text-amber-400',

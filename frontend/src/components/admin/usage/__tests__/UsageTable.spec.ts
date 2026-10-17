@@ -88,7 +88,6 @@ const messages: Record<string, string> = {
   'usage.modelMismatch': 'Different model',
   'usage.latencyFirstToken': 'First',
   'usage.latencyDuration': 'Total',
-  'usage.latencyRate': 'Rate',
 }
 
 vi.mock('vue-i18n', async () => {
