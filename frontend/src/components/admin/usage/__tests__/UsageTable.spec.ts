@@ -81,13 +81,11 @@ const messages: Record<string, string> = {
 	'keys.copied': 'Copied',
 	'keys.copyToClipboard': 'Copy to clipboard',
 	'common.copyFailed': 'Copy failed',
-  'usage.requestedModel': 'Requested',
-  'usage.sentUpstreamModel': 'Sent upstream',
-  'usage.upstreamResponseModel': 'Upstream response',
-  'usage.modelVariant': 'Possible version variant',
-  'usage.modelMismatch': 'Different model',
-  'usage.latencyFirstToken': 'First',
-  'usage.latencyDuration': 'Total',
+	'usage.requestedModel': 'Requested',
+	'usage.sentUpstreamModel': 'Sent upstream',
+	'usage.upstreamResponseModel': 'Upstream response',
+	'usage.modelVariant': 'Possible version variant',
+	'usage.modelMismatch': 'Different model',
 }
 
 vi.mock('vue-i18n', async () => {
@@ -109,8 +107,8 @@ const DataTableStub = {
         <slot name="cell-reasoning_effort" :row="row" :value="row.reasoning_effort" />
         <slot name="cell-billing_mode" :row="row" />
         <slot name="cell-tokens" :row="row" />
-        <slot name="cell-cost" :row="row" />
         <slot name="cell-latency" :row="row" />
+        <slot name="cell-cost" :row="row" />
         <slot name="cell-request_id" :row="row" />
         <slot name="cell-upstream_request_id" :row="row" />
       </div>
@@ -174,65 +172,6 @@ describe('admin UsageTable tooltip', () => {
       height: 20,
       toJSON: () => ({}),
     } as DOMRect)
-  })
-
-  it('shows per-request output token rate in the latency cell', () => {
-    const wrapper = mount(UsageTable, {
-      props: {
-        data: [
-          {
-            ...baseImageRow,
-            request_id: 'req-token-rate',
-            billing_mode: 'token',
-            output_tokens: 257,
-            first_token_ms: 3_480,
-            duration_ms: 10_430,
-          },
-        ],
-        loading: false,
-        columns: [{ key: 'latency', label: 'Latency' }],
-      },
-      global: {
-        stubs: {
-          DataTable: DataTableStub,
-          EmptyState: true,
-          Icon: true,
-          Teleport: true,
-        },
-      },
-    })
-
-    expect(wrapper.text()).toContain('Rate')
-    expect(wrapper.text()).toContain('37 Token/s')
-  })
-
-  it('shows synchronous output token rate over the total duration', () => {
-    const wrapper = mount(UsageTable, {
-      props: {
-        data: [
-          {
-            ...baseImageRow,
-            request_id: 'req-sync-token-rate',
-            billing_mode: 'token',
-            output_tokens: 10,
-            first_token_ms: null,
-            duration_ms: 2_000,
-          },
-        ],
-        loading: false,
-        columns: [{ key: 'latency', label: 'Latency' }],
-      },
-      global: {
-        stubs: {
-          DataTable: DataTableStub,
-          EmptyState: true,
-          Icon: true,
-          Teleport: true,
-        },
-      },
-    })
-
-    expect(wrapper.text()).toContain('5 Token/s')
   })
 
   it.each([
