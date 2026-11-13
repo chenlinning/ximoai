@@ -2,6 +2,7 @@ package modelcatalog
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -86,5 +87,20 @@ func TestPublicMetadataSeparatesReasoningLevelsFromThinkingToggle(t *testing.T) 
 	}
 	if len(metadata.ReasoningLevels) != 3 || metadata.ThinkingSupported {
 		t.Fatalf("kimi-k3 should expose reasoning levels only: %#v", metadata)
+	}
+}
+
+func TestClaude52MetadataSupportsEffortWithoutThinkingToggle(t *testing.T) {
+	for _, model := range []string{"claude-fable-5-2", "claude-mythos-5-2"} {
+		for _, platform := range []string{"anthropic", "compatible-alias"} {
+			metadata, ok := PublicMetadataFor(platform, model)
+			if !ok {
+				t.Fatalf("missing verified metadata for %s/%s", platform, model)
+			}
+			want := []string{"low", "medium", "high", "xhigh", "max"}
+			if metadata.Brand != "Anthropic" || !reflect.DeepEqual(metadata.ReasoningLevels, want) || metadata.ThinkingSupported {
+				t.Fatalf("unexpected metadata for %s/%s: %#v", platform, model, metadata)
+			}
+		}
 	}
 }

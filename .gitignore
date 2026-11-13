@@ -147,6 +147,7 @@ docs/*
 !docs/ASYNC_IMAGE_TASKS.md
 !docs/workbench-control-plane-auth.md
 !docs/XIMOAI_MODEL_PROVIDER_REFERENCE.md
+!docs/OPENAI_IMAGES_CODEX.md
 !docs/BATCH_IMAGE_MVP.md
 !docs/COMPOSITE_GROUPS.md
 !docs/PLUGIN_DEVELOPMENT.md

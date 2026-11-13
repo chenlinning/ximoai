@@ -40,6 +40,23 @@ func TestAutomaticMetadataUsesActualUpstreamModelForFixedPlatform(t *testing.T) 
 	require.False(t, details.ThinkingSupported)
 }
 
+func TestAutomaticClaude52MetadataUsesMappedUpstreamModel(t *testing.T) {
+	details := buildModelPlazaMetadata(modelMetadataResolutionInput{
+		Platform:         service.PlatformAnthropic,
+		Protocol:         "anthropic",
+		Model:            "ximo-claude",
+		RecognitionModel: "claude-fable-5-2",
+	}, nil, false)
+
+	require.Equal(t, "Anthropic", details.Brand)
+	require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, details.ReasoningLevels)
+	require.False(t, details.ThinkingSupported)
+	model := userSupportedModel{Name: "ximo-claude", Platform: service.PlatformAnthropic, recognitionName: "claude-fable-5-2"}
+	raw, err := json.Marshal(model)
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "claude-fable-5-2")
+}
+
 func TestModelPlazaKeepsRecognitionNameOutOfPublicModelJSON(t *testing.T) {
 	model := userSupportedModel{
 		Name:            "ximo-gpt",
