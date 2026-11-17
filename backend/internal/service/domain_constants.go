@@ -22,10 +22,6 @@ const (
 	RoleUser  = domain.RoleUser
 )
 
-const (
-	SettingKeyWorkbenchTicketTTLSeconds = "workbench_ticket_ttl_seconds"
-)
-
 // Affiliate rebate settings
 const (
 	AffiliateRebateRateDefault          = 20.0
@@ -552,13 +548,11 @@ const (
 	// and the header entry is hidden. Defaults to false (opt-in feature).
 	SettingKeyModelPlazaEnabled = "model_plaza_enabled"
 
-	// SettingKeyXimoAIModelPlazaEntryEnabled controls only the custom Model Plaza sidebar entry.
-	SettingKeyXimoAIModelPlazaEntryEnabled = "ximoai_model_plaza_entry_enabled"
-
 	// SettingKeyModelPlazaRequireAuth controls whether the Model Plaza page requires a
 	// logged-in user. When false the page is public and anonymous visitors see only
 	// non-exclusive groups.
 	SettingKeyModelPlazaRequireAuth = "model_plaza_require_auth"
+	SettingKeyXimoAIModelPlazaEntryEnabled = "ximoai_model_plaza_entry_enabled"
 
 	// SettingKeyModelPlazaDescription stores the Markdown blurb rendered at the top of
 	// the Model Plaza page (global pricing notes, exchange rate, promotions, ...).

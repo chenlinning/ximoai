@@ -34,9 +34,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/home',
     name: 'Home',
-    component: () => import('@/extensions/ximoai-home/XimoAIHomeGate.vue'),
+    component: () => import('@/views/HomeView.vue'),
     meta: {
-      requiresAuth: true,
+      requiresAuth: false,
       title: 'Home'
     }
   },
@@ -214,17 +214,6 @@ const routes: RouteRecordRaw[] = [
       title: 'API Keys',
       titleKey: 'keys.title',
       descriptionKey: 'keys.description'
-    }
-  },
-  {
-    path: '/membership',
-    name: 'Membership',
-    component: () => import('@/views/user/MembershipView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: false,
-      title: 'Membership',
-      titleKey: 'nav.membership'
     }
   },
   {
@@ -498,17 +487,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/admin/memberships',
-    name: 'AdminMemberships',
-    component: () => import('@/views/admin/MembershipsView.vue'),
-    meta: {
-      requiresAuth: true,
-      requiresAdmin: true,
-      title: 'Membership Management',
-      titleKey: 'nav.membershipManagement'
-    }
-  },
-  {
     path: '/admin/channels',
     redirect: '/admin/channels/pricing'
   },
@@ -721,6 +699,8 @@ const routes: RouteRecordRaw[] = [
       descriptionKey: 'admin.affiliates.transfersDescription'
     }
   },
+
+
   // ==================== Payment Admin Routes ====================
   {
     path: '/admin/orders/dashboard',
@@ -995,7 +975,6 @@ router.beforeEach(async (to, _from, next) => {
   // 简易模式下限制访问某些页面
   if (authStore.isSimpleMode) {
     const restrictedPaths = [
-      '/admin/memberships',
       '/admin/subscriptions',
       '/admin/redeem',
       '/subscriptions',

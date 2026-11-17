@@ -252,11 +252,9 @@ import PendingOAuthCreateAccountForm, {
 } from '@/components/auth/PendingOAuthCreateAccountForm.vue'
 import { apiClient } from '@/api/client'
 import { useAuthStore, useAppStore } from '@/stores'
-import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 import {
   completeOIDCOAuthRegistration,
   exchangePendingOAuthCompletion,
-  getDesktopAuthorizationCallback,
   getOAuthCompletionKind,
   getPublicSettings,
   isOAuthLoginCompletion,
@@ -285,7 +283,7 @@ const needsInvitation = ref(false)
 const invitationCode = ref('')
 const isSubmitting = ref(false)
 const invitationError = ref('')
-const redirectTo = ref(DEFAULT_POST_AUTH_PATH)
+const redirectTo = ref('/dashboard')
 const providerName = ref('OIDC')
 const adoptionRequired = ref(false)
 const suggestedDisplayName = ref('')
@@ -394,11 +392,11 @@ function readLegacyFragmentLogin(params: URLSearchParams): OAuthTokenResponse | 
 }
 
 function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return DEFAULT_POST_AUTH_PATH
-  if (!path.startsWith('/')) return DEFAULT_POST_AUTH_PATH
-  if (path.startsWith('//')) return DEFAULT_POST_AUTH_PATH
-  if (path.includes('://')) return DEFAULT_POST_AUTH_PATH
-  if (path.includes('\n') || path.includes('\r')) return DEFAULT_POST_AUTH_PATH
+  if (!path) return '/dashboard'
+  if (!path.startsWith('/')) return '/dashboard'
+  if (path.startsWith('//')) return '/dashboard'
+  if (path.includes('://')) return '/dashboard'
+  if (path.includes('\n') || path.includes('\r')) return '/dashboard'
   return path
 }
 
@@ -596,11 +594,6 @@ function isCreateAccountRecoveryError(error: unknown): boolean {
 }
 
 async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redirect: string) {
-  const desktopCallback = getDesktopAuthorizationCallback(completion)
-  if (desktopCallback) {
-    window.location.assign(desktopCallback)
-    return
-  }
   if (getOAuthCompletionKind(completion) === 'bind') {
     const bindRedirect = sanitizeRedirectPath(completion.redirect || '/profile')
     clearPendingAuthSession()
@@ -622,11 +615,6 @@ async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redi
 }
 
 async function finalizePendingAccountResponse(completion: PendingOidcCompletion) {
-  const desktopCallback = getDesktopAuthorizationCallback(completion)
-  if (desktopCallback) {
-    window.location.assign(desktopCallback)
-    return
-  }
   applyAdoptionSuggestionState(completion)
   const redirect = sanitizeRedirectPath(completion.redirect || redirectTo.value)
 
@@ -772,11 +760,6 @@ async function handleSubmitTotpChallenge() {
       temp_token: totpTempToken.value,
       totp_code: code
     })
-    const desktopCallback = getDesktopAuthorizationCallback(completion)
-    if (desktopCallback) {
-      window.location.assign(desktopCallback)
-      return
-    }
     await authStore.setToken(completion.access_token)
     clearAllAffiliateReferralCodes()
     appStore.showSuccess(t('auth.loginSuccess'))
@@ -797,7 +780,7 @@ onMounted(async () => {
   const error = params.get('error')
   const errorDesc = params.get('error_description') || params.get('error_message') || ''
   const redirect = sanitizeRedirectPath(
-    params.get('redirect') || (route.query.redirect as string | undefined) || DEFAULT_POST_AUTH_PATH
+    params.get('redirect') || (route.query.redirect as string | undefined) || '/dashboard'
   )
 
   try {
@@ -826,7 +809,7 @@ onMounted(async () => {
 
     const completion = await exchangePendingOAuthCompletion() as PendingOidcCompletion
     const completionRedirect = sanitizeRedirectPath(
-      completion.redirect || (route.query.redirect as string | undefined) || DEFAULT_POST_AUTH_PATH
+      completion.redirect || (route.query.redirect as string | undefined) || '/dashboard'
     )
     applyAdoptionSuggestionState(completion)
     redirectTo.value = completionRedirect

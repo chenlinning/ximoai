@@ -13,7 +13,7 @@ vi.mock('vue-i18n', async (importOriginal) => ({
   useI18n: () => ({ t: (key: string) => key })
 }))
 
-vi.mock('@/api/channels', () => ({
+vi.mock('@/extensions/model-plaza/api', () => ({
   default: { getModelPlaza: mocks.channels }
 }))
 

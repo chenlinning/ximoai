@@ -17,7 +17,7 @@ type modelPlazaMetadataTarget struct {
 func (h *AvailableChannelHandler) enrichModelPlazaCatalog(
 	ctx context.Context,
 	userID int64,
-	channels []userAvailableChannel,
+	channels []ximoAIUserAvailableChannel,
 	isAdmin bool,
 ) error {
 	if h == nil || h.apiKeyService == nil || h.settingService == nil {

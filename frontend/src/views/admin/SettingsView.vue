@@ -6686,8 +6686,6 @@
                 </p>
               </div>
 
-              <XimoAIHomeTabsSettings />
-
               <!-- Compact Home Page -->
               <div class="flex items-center justify-between border-t border-gray-100 pt-4 dark:border-dark-700">
                 <div>
@@ -7340,8 +7338,6 @@
             </div>
           </div>
         </div>
-
-        <XimoAIModelPlazaEntrySetting v-model="form.ximoai_model_plaza_entry_enabled" />
 
         <div class="card">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
@@ -8868,6 +8864,8 @@
           <BackupSettings />
         </div>
 
+        <XimoAIModelPlazaEntrySetting v-model="form.ximoai_model_plaza_entry_enabled" />
+
         <!-- Save dock — sticky so long tabs never require scrolling to the end -->
         <div v-show="activeTab !== 'backup'" class="settings-save-dock">
           <button
@@ -8942,6 +8940,7 @@
 </template>
 
 <script setup lang="ts">
+import XimoAIModelPlazaEntrySetting from "@/extensions/model-plaza/XimoAIModelPlazaEntrySetting.vue";
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { listPlatformIds } from "@/constants/platformCatalog";
 import { useI18n } from "vue-i18n";
@@ -8997,8 +8996,6 @@ import GroupOptionItem from "@/components/common/GroupOptionItem.vue";
 import Toggle from "@/components/common/Toggle.vue";
 import ProxySelector from "@/components/common/ProxySelector.vue";
 import ImageUpload from "@/components/common/ImageUpload.vue";
-import XimoAIHomeTabsSettings from "@/extensions/ximoai-home/XimoAIHomeTabsSettings.vue";
-import XimoAIModelPlazaEntrySetting from "@/extensions/model-plaza/XimoAIModelPlazaEntrySetting.vue";
 import BackupSettings from "@/views/admin/BackupView.vue";
 import EmailTemplateEditor from "@/views/admin/settings/EmailTemplateEditor.vue";
 import RechargeBonusTierEditor from "@/components/admin/settings/RechargeBonusTierEditor.vue";
@@ -10034,8 +10031,8 @@ const form = reactive<SettingsForm>({
   // Model Plaza feature switches + description
   model_plaza_enabled: false,
   model_plaza_require_auth: false,
-  model_plaza_description: '',
   ximoai_model_plaza_entry_enabled: true,
+  model_plaza_description: '',
   // Plugin management menu visibility; plugin runtime is unaffected.
   plugin_management_enabled: false,
   // Affiliate (邀请返利) feature switch
@@ -11770,8 +11767,8 @@ async function saveSettings() {
       // Model Plaza feature switches + description
       model_plaza_enabled: form.model_plaza_enabled,
       model_plaza_require_auth: form.model_plaza_require_auth,
-      model_plaza_description: form.model_plaza_description,
       ximoai_model_plaza_entry_enabled: form.ximoai_model_plaza_entry_enabled,
+      model_plaza_description: form.model_plaza_description,
       plugin_management_enabled: form.plugin_management_enabled,
       // Affiliate (邀请返利) feature switch
       affiliate_enabled: form.affiliate_enabled,
@@ -13289,21 +13286,11 @@ watch(
 
 /* ============ 系统设置 Tab 导航 ============ */
 .settings-tabs-shell {
-  @apply sticky z-20 -mx-1 rounded-2xl border p-1.5 backdrop-blur-xl;
+  @apply sticky z-20 -mx-1 rounded-2xl border border-white/80 bg-white/90 p-1.5 backdrop-blur-xl;
   top: 4.75rem;
-  border-color: rgb(var(--color-accent-200) / 0.8);
-  background: rgb(var(--color-accent-50) / 0.92);
   box-shadow:
-    0 12px 28px rgb(var(--color-slate-900) / 0.07),
-    0 1px 0 rgb(var(--color-highlight) / 0.9) inset;
-}
-
-:global(.dark) .settings-tabs-shell {
-  border-color: rgb(var(--color-dark-700) / 0.65);
-  background: rgb(var(--color-dark-900) / 0.86);
-  box-shadow:
-    0 16px 36px rgb(var(--color-shadow) / 0.28),
-    0 1px 0 rgb(var(--color-highlight) / 0.06) inset;
+    0 12px 28px rgb(15 23 42 / 0.07),
+    0 1px 0 rgb(255 255 255 / 0.9) inset;
 }
 
 .settings-tabs-scroll {
@@ -13321,8 +13308,7 @@ watch(
 }
 
 .settings-tab {
-  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium outline-none transition-colors duration-200 ease-out;
-  color: rgb(var(--color-accent-600));
+  @apply relative isolate flex h-10 min-w-[6.75rem] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-3 text-sm font-medium text-gray-600 outline-none transition-colors duration-200 ease-out dark:text-gray-300;
 }
 
 @media (min-width: 768px) {
@@ -13342,7 +13328,7 @@ watch(
 .settings-tab::before {
   @apply absolute inset-0 -z-10 rounded-xl opacity-0 transition-opacity duration-200;
   content: "";
-  background: linear-gradient(135deg, rgb(var(--color-accent-100) / 0.95), rgb(var(--color-primary-50) / 0.72));
+  background: linear-gradient(135deg, rgb(248 250 252 / 0.95), rgb(241 245 249 / 0.8));
 }
 
 .settings-tab:hover::before,
@@ -13350,32 +13336,15 @@ watch(
   opacity: 1;
 }
 
-:global(.dark) .settings-tab::before {
-  background: linear-gradient(135deg, rgb(var(--color-dark-800) / 0.9), rgb(var(--color-primary-900) / 0.32));
-}
-
 .settings-tab:focus-visible {
-  @apply ring-2 ring-primary-500/40 ring-offset-2;
-  --tw-ring-offset-color: rgb(var(--color-accent-50));
+  @apply ring-2 ring-primary-500/40 ring-offset-2 ring-offset-white dark:ring-offset-dark-900;
 }
 
 .settings-tab-active {
-  @apply shadow-sm;
-  border-color: rgb(var(--color-primary-200) / 0.8);
-  background: rgb(var(--color-accent-50));
-  color: rgb(var(--color-primary-700));
+  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-400/30 dark:bg-dark-700/95 dark:text-primary-200;
   box-shadow:
-    0 8px 18px rgb(var(--color-slate-900) / 0.08),
-    0 1px 0 rgb(var(--color-highlight) / 0.92) inset;
-}
-
-:global(.dark) .settings-tab-active {
-  border-color: rgb(var(--color-primary-400) / 0.3);
-  background: rgb(var(--color-dark-700) / 0.95);
-  color: rgb(var(--color-primary-200));
-  box-shadow:
-    0 12px 26px rgb(var(--color-shadow) / 0.22),
-    0 1px 0 rgb(var(--color-highlight) / 0.08) inset;
+    0 8px 18px rgb(15 23 42 / 0.08),
+    0 1px 0 rgb(255 255 255 / 0.92) inset;
 }
 
 .settings-tab-active::before {
@@ -13390,22 +13359,20 @@ watch(
   height: 2px;
   border-radius: 9999px;
   content: "";
-  background: linear-gradient(90deg, rgb(var(--color-primary-500)), rgb(var(--color-sky-500)));
+  background: linear-gradient(90deg, #14b8a6, #0ea5e9);
 }
 
 .settings-tab-icon {
-  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-200;
-  color: rgb(var(--color-accent-500));
+  @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 dark:text-gray-400;
 }
 
 .settings-tab:hover .settings-tab-icon,
 .settings-tab:focus-visible .settings-tab-icon {
-  color: rgb(var(--color-accent-700));
+  @apply text-gray-700 dark:text-gray-200;
 }
 
 .settings-tab-active .settings-tab-icon {
-  background: rgb(var(--color-primary-50));
-  color: rgb(var(--color-primary-600));
+  @apply bg-primary-50 text-primary-600 dark:bg-primary-400/10 dark:text-primary-300;
 }
 
 .settings-tab-label {
@@ -13426,38 +13393,21 @@ watch(
    because Vue's scoped-CSS compiler was dropping the `:global(.dark) ...`
    rules in the production build, leaving inactive tabs unreadable on dark. */
 .dark .settings-tabs-shell {
-  border-color: rgb(var(--color-dark-700) / 0.65);
-  background: rgb(var(--color-dark-900) / 0.86);
+  border-color: rgb(51 65 85 / 0.65);
+  background: rgb(15 23 42 / 0.86);
   box-shadow:
-    0 16px 36px rgb(var(--color-shadow) / 0.28),
-    0 1px 0 rgb(var(--color-highlight) / 0.06) inset;
+    0 16px 36px rgb(0 0 0 / 0.28),
+    0 1px 0 rgb(255 255 255 / 0.06) inset;
 }
 
 .dark .settings-tab::before {
-  background: linear-gradient(135deg, rgb(var(--color-dark-800) / 0.9), rgb(var(--color-primary-900) / 0.32));
+  background: linear-gradient(135deg, rgb(30 41 59 / 0.9), rgb(51 65 85 / 0.62));
 }
 
 .dark .settings-tab-active {
-  border-color: rgb(var(--color-primary-400) / 0.3);
-  background: rgb(var(--color-dark-700) / 0.95);
-  color: rgb(var(--color-primary-200));
   box-shadow:
-    0 12px 26px rgb(var(--color-shadow) / 0.22),
-    0 1px 0 rgb(var(--color-highlight) / 0.08) inset;
-}
-
-.dark .settings-tab {
-  color: rgb(var(--color-accent-300));
-}
-
-.dark .settings-tab:hover .settings-tab-icon,
-.dark .settings-tab:focus-visible .settings-tab-icon {
-  color: rgb(var(--color-accent-200));
-}
-
-.dark .settings-tab-active .settings-tab-icon {
-  background: rgb(var(--color-primary-400) / 0.1);
-  color: rgb(var(--color-primary-300));
+    0 12px 26px rgb(0 0 0 / 0.22),
+    0 1px 0 rgb(255 255 255 / 0.08) inset;
 }
 
 .dark .settings-save-dock {

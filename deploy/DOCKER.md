@@ -1,34 +1,53 @@
-# Docker Deployment
+# Sub2API Docker Image
 
-Production deployments use the image built by this repository's GitHub Actions workflow. Do not build the application on the server, and do not deploy `weishaw/sub2api:latest`, because it does not contain the XimoAI customizations.
+Sub2API is an AI API Gateway Platform for distributing and managing AI product subscription API quotas.
 
-## Deploy A Verified Commit
-
-1. Confirm `Security Scan`, `CI`, and `Docker Image` all passed for the target commit.
-2. Set the immutable image tag in `deploy/.env`:
-
-```dotenv
-SUB2API_IMAGE=ilemon00/sub2api:sha-<12-char-commit>
-```
-
-3. Pull the image and recreate only the application container:
+## Quick Start
 
 ```bash
-cd /opt/ximoai-src/deploy
-docker compose -f docker-compose.local.yml pull sub2api
-docker compose -f docker-compose.local.yml up -d --no-deps --no-build sub2api
-docker compose -f docker-compose.local.yml ps sub2api
+docker run -d \
+  --name sub2api \
+  -p 8080:8080 \
+  -e DATABASE_URL="postgres://user:pass@host:5432/sub2api" \
+  -e REDIS_URL="redis://host:6379" \
+  weishaw/sub2api:latest
 ```
 
-PostgreSQL, Redis, and persistent data directories are not recreated by these commands.
+## Docker Compose
 
-## Local Development
+```yaml
+version: '3.8'
 
-Use `docker-compose.dev.yml` when a local source build is intentionally required.
+services:
+  sub2api:
+    image: weishaw/sub2api:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/sub2api?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
 
-## Ports
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sub2api
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-- Sub2API web: `8080/tcp`
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+```
 
 ## Startup and Database Recovery
 
@@ -44,6 +63,28 @@ and a simple SQL query. `depends_on: condition: service_healthy` helps order a
 fresh Compose start, but application-level retries are still required when
 Docker restores existing containers after a host restart.
 
-The production Compose files retain the same health checks and application-level
-retry behavior. Database credentials, volumes, and application settings remain
-managed by the existing deployment configuration.
+## Environment Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | Yes | - |
+| `REDIS_URL` | Redis connection string | Yes | - |
+| `PORT` | Server port | No | `8080` |
+| `GIN_MODE` | Gin framework mode (`debug`/`release`) | No | `release` |
+
+## Supported Architectures
+
+- `linux/amd64`
+- `linux/arm64`
+
+## Tags
+
+- `latest` - Latest stable release
+- `x.y.z` - Specific version
+- `x.y` - Latest patch of minor version
+- `x` - Latest minor of major version
+
+## Links
+
+- [GitHub Repository](https://github.com/weishaw/sub2api)
+- [Documentation](https://github.com/weishaw/sub2api#readme)

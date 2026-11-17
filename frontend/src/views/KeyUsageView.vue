@@ -423,7 +423,6 @@ import { useAppStore } from '@/stores'
 import { FeatureFlags, resolveFeatureFlag } from '@/utils/featureFlags'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { themeColor, themeColorVar } from '@/utils/theme-colors'
 import { buildGatewayUrl } from '@/api/client'
 import { formatDateLocalInput } from '@/utils/format'
 import { sanitizeUrl } from '@/utils/url'
@@ -530,20 +529,16 @@ function setDailyUsageDays(days: 7 | 30 | 90) {
 
 const CIRCUMFERENCE = 2 * Math.PI * 68
 const RING_GRADIENTS = [
-  { from: themeColorVar('primary-500'), to: themeColorVar('primary-300') },
-  { from: themeColorVar('indigo-500'), to: themeColorVar('indigo-300') },
-  { from: themeColorVar('emerald-500'), to: themeColorVar('emerald-300') },
-  { from: themeColorVar('amber-500'), to: themeColorVar('amber-300') },
+  { from: '#14b8a6', to: '#5eead4' },
+  { from: '#6366F1', to: '#A5B4FC' },
+  { from: '#10B981', to: '#6EE7B7' },
+  { from: '#F59E0B', to: '#FCD34D' },
 ]
 
 const ringAnimated = ref(false)
 const displayPcts = ref<number[]>([])
-let ringAnimationFrame: number | null = null
-let ringAnimationTimer: ReturnType<typeof setTimeout> | null = null
-let ringAnimationRun = 0
-let isUnmounted = false
 
-const ringTrackColor = computed(() => isDark.value ? themeColor('dark-800') : themeColor('gray-100'))
+const ringTrackColor = computed(() => isDark.value ? '#222222' : '#F0F0EE')
 
 interface RingItem {
   title: string
@@ -560,32 +555,13 @@ function getRingOffset(ring: RingItem): number {
   return CIRCUMFERENCE - (Math.min(ring.pct, 100) / 100) * CIRCUMFERENCE
 }
 
-function clearRingAnimation() {
-  ringAnimationRun += 1
-  if (ringAnimationFrame !== null) {
-    window.cancelAnimationFrame?.(ringAnimationFrame)
-    ringAnimationFrame = null
-  }
-  if (ringAnimationTimer !== null) {
-    clearTimeout(ringAnimationTimer)
-    ringAnimationTimer = null
-  }
-}
-
 function triggerRingAnimation(items: RingItem[]) {
-  clearRingAnimation()
-  const run = ringAnimationRun
   ringAnimated.value = false
   displayPcts.value = items.map(() => 0)
 
   nextTick(() => {
-    if (isUnmounted || run !== ringAnimationRun) return
-    ringAnimationFrame = requestAnimationFrame(() => {
-      ringAnimationFrame = null
-      if (isUnmounted || run !== ringAnimationRun) return
-      ringAnimationTimer = setTimeout(() => {
-        ringAnimationTimer = null
-        if (isUnmounted || run !== ringAnimationRun) return
+    requestAnimationFrame(() => {
+      setTimeout(() => {
         ringAnimated.value = true
 
         // Animate percentage numbers
@@ -594,18 +570,13 @@ function triggerRingAnimation(items: RingItem[]) {
         const targets = items.map(item => item.isBalance ? 0 : item.pct)
 
         function tick() {
-          if (isUnmounted || run !== ringAnimationRun) return
           const elapsed = performance.now() - startTime
           const p = Math.min(elapsed / duration, 1)
           const ease = 1 - Math.pow(1 - p, 3)
           displayPcts.value = targets.map(target => Math.round(ease * target))
-          if (p < 1) {
-            ringAnimationFrame = requestAnimationFrame(tick)
-          } else {
-            ringAnimationFrame = null
-          }
+          if (p < 1) requestAnimationFrame(tick)
         }
-        ringAnimationFrame = requestAnimationFrame(tick)
+        requestAnimationFrame(tick)
       }, 50)
     })
   })
@@ -960,7 +931,6 @@ function formatResetTime(resetAt: string | null | undefined): string {
 }
 
 onMounted(() => {
-  isUnmounted = false
   initTheme()
   if (!appStore.publicSettingsLoaded) {
     appStore.fetchPublicSettings()
@@ -969,8 +939,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  isUnmounted = true
-  clearRingAnimation()
   if (resetTimer) clearInterval(resetTimer)
 })
 </script>
@@ -981,8 +949,8 @@ onUnmounted(() => {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .input-ring:focus {
-  box-shadow: 0 0 0 3px rgb(var(--color-primary-500) / 0.2);
-  border-color: rgb(var(--color-primary-500));
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+  border-color: #14b8a6;
   outline: none;
 }
 
@@ -999,13 +967,13 @@ onUnmounted(() => {
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, rgb(var(--color-gray-200)) 25%, rgb(var(--color-gray-100)) 50%, rgb(var(--color-gray-200)) 75%);
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
   background-size: 200% 100%;
   animation: shimmer-kv 1.8s ease-in-out infinite;
   border-radius: 8px;
 }
 :global(.dark) .skeleton {
-  background: linear-gradient(90deg, rgb(var(--color-dark-700)) 25%, rgb(var(--color-dark-800)) 50%, rgb(var(--color-dark-700)) 75%);
+  background: linear-gradient(90deg, #334155 25%, #1e293b 50%, #334155 75%);
   background-size: 200% 100%;
 }
 

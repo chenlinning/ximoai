@@ -45,7 +45,6 @@ import { isBuiltInAlipayMethod, isBuiltInWxpayMethod } from '@/components/paymen
 import QRCode from 'qrcode'
 import alipayIcon from '@/assets/icons/alipay.svg'
 import wxpayIcon from '@/assets/icons/wxpay.svg'
-import { themeColor } from '@/utils/theme-colors'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -92,12 +91,6 @@ function getLogoForType(): string | null {
   return null
 }
 
-function getLogoColorToken(): string {
-  if (isAlipay.value) return 'alipay-500'
-  if (isWxpay.value) return 'wxpay-500'
-  return 'primary-500'
-}
-
 async function renderQR() {
   await nextTick()
   if (!qrCanvas.value || !qrUrl.value) return
@@ -125,7 +118,7 @@ async function renderQR() {
     const y = (canvas.height - logoSize) / 2
     // White background with rounded corners
     const pad = 5
-    ctx.fillStyle = themeColor('white')
+    ctx.fillStyle = '#FFFFFF'
     ctx.beginPath()
     const r = 6
     ctx.moveTo(x - pad + r, y - pad)
@@ -134,16 +127,8 @@ async function renderQR() {
     ctx.arcTo(x - pad, y + logoSize + pad, x - pad, y - pad, r)
     ctx.arcTo(x - pad, y - pad, x + logoSize + pad, y - pad, r)
     ctx.fill()
-    const logoCanvas = document.createElement('canvas')
-    logoCanvas.width = logoSize
-    logoCanvas.height = logoSize
-    const logoCtx = logoCanvas.getContext('2d')
-    if (!logoCtx) return
-    logoCtx.drawImage(img, 0, 0, logoSize, logoSize)
-    logoCtx.globalCompositeOperation = 'source-in'
-    logoCtx.fillStyle = themeColor(getLogoColorToken())
-    logoCtx.fillRect(0, 0, logoSize, logoSize)
-    ctx.drawImage(logoCanvas, x, y, logoSize, logoSize)
+    // Draw logo
+    ctx.drawImage(img, x, y, logoSize, logoSize)
   }
 }
 

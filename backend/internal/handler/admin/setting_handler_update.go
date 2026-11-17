@@ -164,7 +164,6 @@ type UpdateSettingsRequest struct {
 	HideCcsImportButton         bool                  `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled *bool                 `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL     *string               `json:"purchase_subscription_url"`
-	WorkbenchTicketTTLSeconds   *int                  `json:"workbench_ticket_ttl_seconds"`
 	TableDefaultPageSize        int                   `json:"table_default_page_size"`
 	TablePageSizeOptions        []int                 `json:"table_page_size_options"`
 	CustomMenuItems             *[]dto.CustomMenuItem `json:"custom_menu_items"`
@@ -355,10 +354,10 @@ type UpdateSettingsRequest struct {
 	SubscriptionEnabled *bool `json:"subscription_enabled"`
 
 	// Model Plaza feature switches + description
-	ModelPlazaEnabled            *bool   `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth        *bool   `json:"model_plaza_require_auth"`
-	ModelPlazaDescription        *string `json:"model_plaza_description"`
-	XimoAIModelPlazaEntryEnabled *bool   `json:"ximoai_model_plaza_entry_enabled"`
+	ModelPlazaEnabled     *bool   `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth *bool   `json:"model_plaza_require_auth"`
+	XimoAIModelPlazaEntryEnabled *bool `json:"ximoai_model_plaza_entry_enabled"`
+	ModelPlazaDescription *string `json:"model_plaza_description"`
 
 	// Plugin management menu visibility switch; plugin runtime is unaffected.
 	PluginManagementEnabled *bool `json:"plugin_management_enabled"`
@@ -1259,13 +1258,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 
 	// Frontend URL 验证
-	workbenchTicketTTLSeconds := previousSettings.WorkbenchTicketTTLSeconds
-	if req.WorkbenchTicketTTLSeconds != nil {
-		workbenchTicketTTLSeconds = *req.WorkbenchTicketTTLSeconds
-	}
-	if workbenchTicketTTLSeconds <= 0 {
-		workbenchTicketTTLSeconds = 60
-	}
 	req.FrontendURL = strings.TrimSpace(req.FrontendURL)
 	if req.FrontendURL != "" {
 		if err := config.ValidateAbsoluteHTTPURL(req.FrontendURL); err != nil {
@@ -1660,7 +1652,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		HideCcsImportButton:                    req.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:            purchaseEnabled,
 		PurchaseSubscriptionURL:                purchaseURL,
-		WorkbenchTicketTTLSeconds:              workbenchTicketTTLSeconds,
 		TableDefaultPageSize:                   req.TableDefaultPageSize,
 		TablePageSizeOptions:                   req.TablePageSizeOptions,
 		CustomMenuItems:                        customMenuJSON,
@@ -2006,17 +1997,17 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.ModelPlazaRequireAuth
 		}(),
-		ModelPlazaDescription: func() string {
-			if req.ModelPlazaDescription != nil {
-				return *req.ModelPlazaDescription
-			}
-			return previousSettings.ModelPlazaDescription
-		}(),
 		XimoAIModelPlazaEntryEnabled: func() bool {
 			if req.XimoAIModelPlazaEntryEnabled != nil {
 				return *req.XimoAIModelPlazaEntryEnabled
 			}
 			return previousSettings.XimoAIModelPlazaEntryEnabled
+		}(),
+		ModelPlazaDescription: func() string {
+			if req.ModelPlazaDescription != nil {
+				return *req.ModelPlazaDescription
+			}
+			return previousSettings.ModelPlazaDescription
 		}(),
 		PluginManagementEnabled: func() bool {
 			if req.PluginManagementEnabled != nil {
@@ -2331,7 +2322,6 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		HideCcsImportButton:                                    updatedSettings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:                            updatedSettings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:                                updatedSettings.PurchaseSubscriptionURL,
-		WorkbenchTicketTTLSeconds:                              updatedSettings.WorkbenchTicketTTLSeconds,
 		TableDefaultPageSize:                                   updatedSettings.TableDefaultPageSize,
 		TablePageSizeOptions:                                   updatedSettings.TablePageSizeOptions,
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),
@@ -2461,11 +2451,11 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AvailableChannelsEnabled: updatedSettings.AvailableChannelsEnabled,
 		SubscriptionEnabled:      updatedSettings.SubscriptionEnabled,
 
-		ModelPlazaEnabled:            updatedSettings.ModelPlazaEnabled,
-		ModelPlazaRequireAuth:        updatedSettings.ModelPlazaRequireAuth,
-		ModelPlazaDescription:        updatedSettings.ModelPlazaDescription,
+		ModelPlazaEnabled:       updatedSettings.ModelPlazaEnabled,
+		ModelPlazaRequireAuth:   updatedSettings.ModelPlazaRequireAuth,
 		XimoAIModelPlazaEntryEnabled: updatedSettings.XimoAIModelPlazaEntryEnabled,
-		PluginManagementEnabled:      updatedSettings.PluginManagementEnabled,
+		ModelPlazaDescription:   updatedSettings.ModelPlazaDescription,
+		PluginManagementEnabled: updatedSettings.PluginManagementEnabled,
 
 		AffiliateEnabled: updatedSettings.AffiliateEnabled,
 

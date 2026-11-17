@@ -92,13 +92,6 @@ vi.mock('@/stores/onboarding', () => ({
   }),
 }))
 
-vi.mock('@/stores/membership', () => ({
-  useMembershipStore: () => ({
-    summary: null,
-    fetch: vi.fn().mockResolvedValue(null),
-  }),
-}))
-
 vi.mock('@/composables/useClipboard', () => ({
   useClipboard: () => ({
     copyToClipboard,

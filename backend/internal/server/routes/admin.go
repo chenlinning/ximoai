@@ -42,9 +42,6 @@ func RegisterAdminRoutes(
 		// 用户管理
 		registerUserManagementRoutes(admin, h)
 
-		// 会员等级管理
-		registerMembershipRoutes(admin, h)
-
 		// 分组管理
 		registerGroupRoutes(admin, h)
 
@@ -80,7 +77,6 @@ func RegisterAdminRoutes(
 
 		// 系统设置
 		registerSettingsRoutes(admin, h, stepUpAuth)
-		registerXimoDeskAdminRoutes(admin, settingService)
 
 		// 数据管理
 		registerDataManagementRoutes(admin, h, stepUpAuth)
@@ -121,8 +117,6 @@ func RegisterAdminRoutes(
 		// 渠道管理
 		registerChannelRoutes(admin, h)
 
-		registerXimoAIAdminRoutes(admin, h)
-
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h, settingService)
 		registerChannelMonitorV2Routes(admin, h, settingService)
@@ -138,6 +132,9 @@ func RegisterAdminRoutes(
 
 		// 操作审计日志
 		registerAuditLogRoutes(admin, h, stepUpAuth)
+
+		// XimoAI 独立模型广场管理接口
+		registerXimoAIAdminRoutes(admin, h)
 	}
 }
 
@@ -319,7 +316,6 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		users.GET("/:id/usage", h.Admin.User.GetUserUsage)
 		users.GET("/:id/balance-history", h.Admin.User.GetBalanceHistory)
 		users.POST("/:id/replace-group", h.Admin.User.ReplaceGroup)
-		users.POST("/:id/membership", h.Admin.Membership.AssignUser)
 		users.GET("/:id/rpm-status", h.Admin.User.GetUserRPMStatus)
 		users.POST("/batch-concurrency", h.Admin.User.BatchUpdateConcurrency)
 		users.POST("/batch-limits", h.Admin.User.BatchUpdateLimits)
@@ -332,19 +328,6 @@ func registerUserManagementRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		// User attribute values
 		users.GET("/:id/attributes", h.Admin.UserAttribute.GetUserAttributes)
 		users.PUT("/:id/attributes", h.Admin.UserAttribute.UpdateUserAttributes)
-	}
-}
-
-func registerMembershipRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
-	memberships := admin.Group("/memberships")
-	{
-		memberships.GET("", h.Admin.Membership.List)
-		memberships.POST("", h.Admin.Membership.Create)
-		memberships.GET("/assignments", h.Admin.Membership.ListAssignments)
-		memberships.GET("/:id", h.Admin.Membership.Get)
-		memberships.PUT("/:id", h.Admin.Membership.Update)
-		memberships.DELETE("/:id", h.Admin.Membership.Delete)
-		memberships.POST("/:id/sync", h.Admin.Membership.Sync)
 	}
 }
 
@@ -595,8 +578,6 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpA
 	{
 		adminSettings.GET("", h.Admin.Setting.GetSettings)
 		adminSettings.PUT("", h.Admin.Setting.UpdateSettings)
-		adminSettings.GET("/ximoai-home-tabs", h.Admin.Setting.GetXimoAIHomeTabs)
-		adminSettings.PUT("/ximoai-home-tabs", h.Admin.Setting.UpdateXimoAIHomeTabs)
 		adminSettings.POST("/test-smtp", h.Admin.Setting.TestSMTPConnection)
 		adminSettings.POST("/send-test-email", h.Admin.Setting.SendTestEmail)
 		adminSettings.GET("/email-templates", h.Admin.Setting.ListEmailTemplates)

@@ -218,10 +218,8 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 docker compose -f docker-compose.local.yml restart sub2api
 
 # Update to latest version
-# Wait for Security Scan, CI, and Docker Image to pass for the target commit.
-# Set SUB2API_IMAGE in .env to ilemon00/sub2api:sha-<12-char-commit>, then:
-docker compose -f docker-compose.local.yml pull sub2api
-docker compose -f docker-compose.local.yml up -d --no-deps --no-build sub2api
+docker compose -f docker-compose.local.yml pull
+docker compose -f docker-compose.local.yml up -d
 
 # Remove all data (caution!)
 docker compose -f docker-compose.local.yml down
@@ -244,10 +242,8 @@ docker compose logs -f sub2api
 docker compose restart sub2api
 
 # Update to latest version
-# Wait for Security Scan, CI, and Docker Image to pass for the target commit.
-# Set SUB2API_IMAGE in .env to ilemon00/sub2api:sha-<12-char-commit>, then:
-docker compose pull sub2api
-docker compose up -d --no-deps --no-build sub2api
+docker compose pull
+docker compose up -d
 
 # Remove all data (caution!)
 docker compose down -v

@@ -102,9 +102,8 @@ func RegisterUserRoutes(
 			channels.GET("/available", h.AvailableChannel.List)
 		}
 
+		// XimoAI 独立模型广场接口
 		registerXimoAIUserRoutes(authenticated, h)
-
-		authenticated.GET("/membership", h.Membership.GetCurrent)
 
 		// 使用记录（聚合统计属重查询，叠加更严格的按用户限流）
 		usage := authenticated.Group("/usage")

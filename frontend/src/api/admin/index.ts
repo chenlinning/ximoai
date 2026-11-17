@@ -34,8 +34,6 @@ import adminPaymentAPI from './payment'
 import affiliatesAPI from './affiliates'
 import riskControlAPI from './riskControl'
 import adminComplianceAPI from './compliance'
-import membershipsAPI from './memberships'
-import ximodeskUpdateAPI from './ximodeskUpdate'
 import auditAPI from './audit'
 import pluginsAPI from './plugins'
 
@@ -74,8 +72,6 @@ export const adminAPI = {
   affiliates: affiliatesAPI,
   riskControl: riskControlAPI,
   compliance: adminComplianceAPI,
-  memberships: membershipsAPI,
-  ximodeskUpdate: ximodeskUpdateAPI,
   audit: auditAPI,
   plugins: pluginsAPI
 }
@@ -112,8 +108,6 @@ export {
   affiliatesAPI,
   riskControlAPI,
   adminComplianceAPI,
-  membershipsAPI,
-  ximodeskUpdateAPI,
   auditAPI,
   pluginsAPI
 }

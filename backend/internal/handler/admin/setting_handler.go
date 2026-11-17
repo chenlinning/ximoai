@@ -257,7 +257,6 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		HideCcsImportButton:                                    settings.HideCcsImportButton,
 		PurchaseSubscriptionEnabled:                            settings.PurchaseSubscriptionEnabled,
 		PurchaseSubscriptionURL:                                settings.PurchaseSubscriptionURL,
-		WorkbenchTicketTTLSeconds:                              settings.WorkbenchTicketTTLSeconds,
 		TableDefaultPageSize:                                   settings.TableDefaultPageSize,
 		TablePageSizeOptions:                                   settings.TablePageSizeOptions,
 		CustomMenuItems:                                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
@@ -393,11 +392,11 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		AvailableChannelsEnabled: settings.AvailableChannelsEnabled,
 		SubscriptionEnabled:      settings.SubscriptionEnabled,
 
-		ModelPlazaEnabled:            settings.ModelPlazaEnabled,
-		ModelPlazaRequireAuth:        settings.ModelPlazaRequireAuth,
-		ModelPlazaDescription:        settings.ModelPlazaDescription,
+		ModelPlazaEnabled:       settings.ModelPlazaEnabled,
+		ModelPlazaRequireAuth:   settings.ModelPlazaRequireAuth,
 		XimoAIModelPlazaEntryEnabled: settings.XimoAIModelPlazaEntryEnabled,
-		PluginManagementEnabled:      settings.PluginManagementEnabled,
+		PluginManagementEnabled: settings.PluginManagementEnabled,
+		ModelPlazaDescription:   settings.ModelPlazaDescription,
 
 		AffiliateEnabled: settings.AffiliateEnabled,
 

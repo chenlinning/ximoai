@@ -1,18 +1,12 @@
 <template>
-  <div
-    class="relative flex min-h-screen items-center justify-center overflow-hidden p-4"
-    :class="{ 'auth-layout-login': isLoginPage }"
-  >
-    <LoginGalaxyBackground v-if="isLoginPage" class="absolute inset-0 z-0" />
-
+  <div class="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
     <!-- Background -->
     <div
-      v-if="!isLoginPage"
       class="absolute inset-0 bg-gradient-to-br from-gray-50 via-primary-50/30 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950"
     ></div>
 
     <!-- Decorative Elements -->
-    <div v-if="!isLoginPage" class="pointer-events-none absolute inset-0 overflow-hidden">
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
       <!-- Gradient Orbs -->
       <div
         class="absolute -right-40 -top-40 h-80 w-80 rounded-full bg-primary-400/20 blur-3xl"
@@ -26,7 +20,7 @@
 
       <!-- Grid Pattern -->
       <div
-        class="absolute inset-0 bg-[linear-gradient(rgb(var(--color-primary-500)_/_0.03)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--color-primary-500)_/_0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
+        class="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.03)_1px,transparent_1px)] bg-[size:64px_64px]"
       ></div>
     </div>
 
@@ -70,19 +64,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import LoginGalaxyBackground from '@/components/auth/LoginGalaxyBackground.vue'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 
 const appStore = useAppStore()
-const route = useRoute()
 
 const siteName = computed(() => appStore.siteName || 'Sub2API')
 const siteLogo = computed(() => sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }))
 const siteSubtitle = computed(() => appStore.cachedPublicSettings?.site_subtitle || 'Subscription to API Conversion Platform')
 const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
-const isLoginPage = computed(() => route.path === '/login')
 
 const currentYear = computed(() => new Date().getFullYear())
 
@@ -94,15 +84,5 @@ onMounted(() => {
 <style scoped>
 .text-gradient {
   @apply bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent;
-}
-
-.auth-layout-login {
-  --login-galaxy-background: rgb(var(--color-accent-50));
-  background: rgb(var(--color-accent-50));
-}
-
-:global(html.dark) .auth-layout-login {
-  --login-galaxy-background: rgb(var(--color-dark-950));
-  background: rgb(var(--color-dark-950));
 }
 </style>

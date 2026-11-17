@@ -156,11 +156,6 @@ func (s *adminServiceImpl) CreateUser(ctx context.Context, input *CreateUserInpu
 			input.ActorAdminID, user.ID)
 	}
 	s.assignDefaultSubscriptions(ctx, user.ID)
-	if s.membershipBootstrap != nil {
-		if err := s.membershipBootstrap.AssignDefaultMembership(ctx, user.ID); err != nil {
-			logger.LegacyPrintf("service.admin", "failed to assign default membership: user_id=%d err=%v", user.ID, err)
-		}
-	}
 	return user, nil
 }
 

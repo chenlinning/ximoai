@@ -985,7 +985,7 @@ func (s *AntigravityGatewayService) handleClaudeStreamToNonStreaming(c *gin.Cont
 }
 
 // handleClaudeStreamingResponse 处理 Claude 流式响应（Gemini SSE → Claude SSE 转换）
-func (s *AntigravityGatewayService) handleClaudeStreamingResponse(c *gin.Context, resp *http.Response, startTime time.Time, originalModel, mappedModel string) (*antigravityStreamResult, error) {
+func (s *AntigravityGatewayService) handleClaudeStreamingResponse(c *gin.Context, resp *http.Response, startTime time.Time, originalModel string) (*antigravityStreamResult, error) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -998,7 +998,6 @@ func (s *AntigravityGatewayService) handleClaudeStreamingResponse(c *gin.Context
 	}
 
 	processor := antigravity.NewStreamingProcessor(originalModel)
-	guard := newAntigravityClaudeStreamGuard(mappedModel)
 	var firstTokenMs *int
 	// 使用 Scanner 并限制单行大小，避免 ReadString 无上限导致 OOM
 	scanner := bufio.NewScanner(resp.Body)
@@ -1118,16 +1117,6 @@ func (s *AntigravityGatewayService) handleClaudeStreamingResponse(c *gin.Context
 			if !ok {
 				// 上游完成，发送结束事件
 				finalEvents, agUsage := processor.Finish()
-				empty := false
-				if guard != nil {
-					finalEvents, empty = guard.finish(finalEvents, processor.MessageStartSent())
-				}
-				if empty {
-					if !cw.Disconnected() && c.Request.Context().Err() == nil {
-						writeAntigravityEmptyClaudeResponse(c, cw, guard.finishReason)
-					}
-					return &antigravityStreamResult{usage: convertUsage(agUsage), firstTokenMs: firstTokenMs, clientDisconnect: cw.Disconnected()}, nil
-				}
 				if len(finalEvents) > 0 {
 					cw.Write(finalEvents)
 				} else if !processor.MessageStartSent() && !cw.Disconnected() {
@@ -1160,9 +1149,6 @@ func (s *AntigravityGatewayService) handleClaudeStreamingResponse(c *gin.Context
 
 			// 处理 SSE 行，转换为 Claude 格式
 			claudeEvents := processor.ProcessLine(strings.TrimRight(ev.line, "\r\n"))
-			if guard != nil {
-				claudeEvents = guard.observe(ev.line, claudeEvents)
-			}
 			if len(claudeEvents) > 0 {
 				if firstTokenMs == nil {
 					ms := int(time.Since(startTime).Milliseconds())

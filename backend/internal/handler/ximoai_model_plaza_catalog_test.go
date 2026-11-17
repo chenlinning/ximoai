@@ -51,14 +51,14 @@ func TestAutomaticClaude52MetadataUsesMappedUpstreamModel(t *testing.T) {
 	require.Equal(t, "Anthropic", details.Brand)
 	require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, details.ReasoningLevels)
 	require.False(t, details.ThinkingSupported)
-	model := userSupportedModel{Name: "ximo-claude", Platform: service.PlatformAnthropic, recognitionName: "claude-fable-5-2"}
+	model := ximoAIUserSupportedModel{Name: "ximo-claude", Platform: service.PlatformAnthropic, recognitionName: "claude-fable-5-2"}
 	raw, err := json.Marshal(model)
 	require.NoError(t, err)
 	require.NotContains(t, string(raw), "claude-fable-5-2")
 }
 
 func TestModelPlazaKeepsRecognitionNameOutOfPublicModelJSON(t *testing.T) {
-	model := userSupportedModel{
+	model := ximoAIUserSupportedModel{
 		Name:            "ximo-gpt",
 		Platform:        service.PlatformOpenAI,
 		recognitionName: "gpt-5",
@@ -74,7 +74,7 @@ func TestModelPlazaModelJSONContainsOnlyPublicCatalogFields(t *testing.T) {
 		Platform: service.PlatformOpenAI, Protocol: "openai", Model: "custom-model",
 		Capabilities: []string{"responses"}, BillingModes: []string{string(service.BillingModeToken)},
 	}, nil, false)
-	model := userSupportedModel{
+	model := ximoAIUserSupportedModel{
 		Name: "custom-model", Platform: service.PlatformOpenAI, Brand: details.Brand, Pricing: &userSupportedModelPricing{BillingMode: string(service.BillingModeToken)},
 		Types: details.Types, InvocationModes: details.InvocationModes,
 	}
@@ -96,7 +96,7 @@ func TestModelPlazaModelJSONContainsOnlyPublicCatalogFields(t *testing.T) {
 }
 
 func TestAvailableChannelModelJSONOmitsUnsetModelPlazaBrand(t *testing.T) {
-	raw, err := json.Marshal(userSupportedModel{Name: "custom-model", Platform: service.PlatformOpenAI})
+	raw, err := json.Marshal(ximoAIUserSupportedModel{Name: "custom-model", Platform: service.PlatformOpenAI})
 	require.NoError(t, err)
 	require.NotContains(t, string(raw), `"brand"`)
 	require.NotContains(t, string(raw), `"brand_editor"`)

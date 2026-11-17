@@ -22,10 +22,7 @@ func (s *settingPublicRepoStub) Get(ctx context.Context, key string) (*Setting, 
 }
 
 func (s *settingPublicRepoStub) GetValue(ctx context.Context, key string) (string, error) {
-	if value, ok := s.values[key]; ok {
-		return value, nil
-	}
-	return "", ErrSettingNotFound
+	panic("unexpected GetValue call")
 }
 
 func (s *settingPublicRepoStub) Set(ctx context.Context, key, value string) error {
@@ -85,19 +82,6 @@ func TestSettingService_GetPublicSettings_ExposesTablePreferences(t *testing.T) 
 	require.NoError(t, err)
 	require.Equal(t, 50, settings.TableDefaultPageSize)
 	require.Equal(t, []int{20, 50, 100}, settings.TablePageSizeOptions)
-}
-
-func TestSettingService_GetFrameSrcOriginsIncludesHomeTabs(t *testing.T) {
-	repo := &settingPublicRepoStub{
-		values: map[string]string{
-			SettingKeyXimoAIHomeTabs: `[{"id":"novel","label":"Novel","url":"https://novel.ximoai.cn/app","enabled":true,"workbench_sso":true}]`,
-		},
-	}
-	svc := NewSettingService(repo, &config.Config{})
-
-	origins, err := svc.GetFrameSrcOrigins(context.Background())
-	require.NoError(t, err)
-	require.Contains(t, origins, "https://novel.ximoai.cn")
 }
 
 func TestSettingService_GetPublicSettings_ExposesCompactHomeEnabled(t *testing.T) {

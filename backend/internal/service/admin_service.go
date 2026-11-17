@@ -294,6 +294,7 @@ type CreateGroupInput struct {
 	AllowMessagesDispatch       bool
 	AllowLive                   bool
 	ForceOpenAIFast             bool
+	ForceOpenAIUltrafast        bool
 	FreeOpenAIFast              bool
 	DefaultMappedModel          string
 	RequireOAuthOnly            bool
@@ -377,6 +378,7 @@ type UpdateGroupInput struct {
 	AllowMessagesDispatch       *bool
 	AllowLive                   *bool
 	ForceOpenAIFast             *bool
+	ForceOpenAIUltrafast        *bool
 	FreeOpenAIFast              *bool
 	DefaultMappedModel          *string
 	RequireOAuthOnly            *bool
@@ -716,9 +718,6 @@ type adminServiceImpl struct {
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
 	runtimeBlocker       AccountRuntimeBlocker
-	membershipBootstrap  MembershipBootstrapper
-	membershipRateSyncer MembershipGroupRateSyncer
-	membershipKeyCleaner MembershipManagedKeyCleaner
 	affiliateService     adminRechargeAffiliateAccruer
 	compositeRouteRepo   CompositeModelRouteRepository
 	compositeResolver    *CompositeRouteResolver
@@ -738,22 +737,6 @@ type adminRechargeAffiliateAccruer interface {
 
 type userGroupRateBatchReader interface {
 	GetByUserIDs(ctx context.Context, userIDs []int64) (map[int64]map[int64]float64, error)
-}
-
-type MembershipGroupRateSyncer interface {
-	SyncGroupRate(ctx context.Context, groupID int64) error
-}
-
-type MembershipManagedKeyCleaner interface {
-	RemoveManagedKeysByGroup(ctx context.Context, groupID int64) error
-}
-
-func (s *adminServiceImpl) SetMembershipService(bootstrapper MembershipBootstrapper, rateSyncer MembershipGroupRateSyncer) {
-	s.membershipBootstrap = bootstrapper
-	s.membershipRateSyncer = rateSyncer
-	if cleaner, ok := rateSyncer.(MembershipManagedKeyCleaner); ok {
-		s.membershipKeyCleaner = cleaner
-	}
 }
 
 // NewAdminService creates a new AdminService

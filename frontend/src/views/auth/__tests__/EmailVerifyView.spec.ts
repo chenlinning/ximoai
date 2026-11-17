@@ -2,7 +2,6 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import EmailVerifyView from '@/views/auth/EmailVerifyView.vue'
-import { storeAffiliateReferralCode } from '@/utils/oauthAffiliate'
 
 const {
   pushMock,
@@ -557,7 +556,6 @@ describe('EmailVerifyView', () => {
       provider: 'wechat',
       redirect: '/profile',
     }
-    storeAffiliateReferralCode('AFF123')
     sessionStorage.setItem(
       'register_data',
       JSON.stringify({
@@ -841,7 +839,7 @@ describe('EmailVerifyView', () => {
       invitation_code: 'INVITE',
     })
     expect(apiClientPostMock).not.toHaveBeenCalled()
-    expect(pushMock).toHaveBeenCalledWith('/home')
+    expect(pushMock).toHaveBeenCalledWith('/dashboard')
   })
 
   it('does not require another Tencent proof for final email registration', async () => {

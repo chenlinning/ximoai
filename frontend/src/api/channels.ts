@@ -5,7 +5,6 @@
 
 import { apiClient } from './client'
 import type { BillingMode } from '@/constants/channel'
-import type { ModelInvocationMode, ModelMetadataEditor, ModelReasoningLevel, ModelType } from './modelMetadata'
 
 export interface UserAvailableGroup {
   id: number
@@ -58,13 +57,7 @@ export interface UserSupportedModelPricing {
 export interface UserSupportedModel {
   name: string
   platform: string
-  brand?: string
-  metadata_editor?: ModelMetadataEditor | null
   pricing: UserSupportedModelPricing | null
-  types: ModelType[]
-  invocation_modes: ModelInvocationMode[]
-  reasoning_levels?: ModelReasoningLevel[]
-  thinking_supported?: boolean
 }
 
 /**
@@ -74,9 +67,6 @@ export interface UserSupportedModel {
  */
 export interface UserChannelPlatformSection {
   platform: string
-  display_name: string
-  color: string
-  protocol: string
   groups: UserAvailableGroup[]
   supported_models: UserSupportedModel[]
 }
@@ -95,13 +85,6 @@ export async function getAvailable(options?: { signal?: AbortSignal }): Promise<
   return data
 }
 
-export async function getModelPlaza(options?: { signal?: AbortSignal }): Promise<UserAvailableChannel[]> {
-  const { data } = await apiClient.get<UserAvailableChannel[]>('/channels/model-plaza', {
-    signal: options?.signal
-  })
-  return data
-}
-
-export const userChannelsAPI = { getAvailable, getModelPlaza }
+export const userChannelsAPI = { getAvailable }
 
 export default userChannelsAPI

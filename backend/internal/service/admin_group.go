@@ -369,6 +369,7 @@ func sanitizeGroupOpenAIFast(group *Group) {
 	if group == nil || !groupSupportsOpenAIFast(group.Platform) {
 		if group != nil {
 			group.ForceOpenAIFast = false
+			group.ForceOpenAIUltrafast = false
 			group.FreeOpenAIFast = false
 		}
 	}
@@ -626,6 +627,7 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		AllowMessagesDispatch:           input.AllowMessagesDispatch,
 		AllowLive:                       input.AllowLive,
 		ForceOpenAIFast:                 input.ForceOpenAIFast,
+		ForceOpenAIUltrafast:            input.ForceOpenAIUltrafast,
 		FreeOpenAIFast:                  input.FreeOpenAIFast,
 		RequireOAuthOnly:                input.RequireOAuthOnly,
 		RequirePrivacySet:               input.RequirePrivacySet,
@@ -784,8 +786,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 
 	// 渠道缓存里存了 groupID → platform 的映射，改了平台要让它失效（见函数末尾）
 	previousPlatform := group.Platform
-	previousName := group.Name
-	previousStatus := group.Status
 
 	if input.Name != "" {
 		group.Name = input.Name
@@ -1021,6 +1021,9 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if input.ForceOpenAIFast != nil {
 		group.ForceOpenAIFast = *input.ForceOpenAIFast
 	}
+	if input.ForceOpenAIUltrafast != nil {
+		group.ForceOpenAIUltrafast = *input.ForceOpenAIUltrafast
+	}
 	if input.FreeOpenAIFast != nil {
 		group.FreeOpenAIFast = *input.FreeOpenAIFast
 	}
@@ -1092,16 +1095,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 
 	if s.authCacheInvalidator != nil {
 		s.authCacheInvalidator.InvalidateAuthCacheByGroupID(ctx, id)
-	}
-	if group.Status == StatusDisabled && s.membershipKeyCleaner != nil {
-		if err := s.membershipKeyCleaner.RemoveManagedKeysByGroup(ctx, id); err != nil {
-			return nil, fmt.Errorf("remove membership keys after group disable: %w", err)
-		}
-	}
-	if (input.RateMultiplier != nil || group.Name != previousName || group.Status != previousStatus) && s.membershipRateSyncer != nil {
-		if err := s.membershipRateSyncer.SyncGroupRate(ctx, id); err != nil {
-			logger.LegacyPrintf("service.admin", "sync membership rates after group update failed: group_id=%d err=%v", id, err)
-		}
 	}
 
 	// 平台变了就失效渠道缓存：该缓存持有 groupID → platform，而渠道定价 / 模型映射 /
@@ -1231,11 +1224,7 @@ func (s *adminServiceImpl) deleteGroup(ctx context.Context, id int64, requireEmp
 	if requireEmpty && s.emptyGroupDeleteRepo == nil {
 		return fmt.Errorf("guarded group deletion is unavailable")
 	}
-	if !requireEmpty && s.membershipKeyCleaner != nil {
-		if err := s.membershipKeyCleaner.RemoveManagedKeysByGroup(ctx, id); err != nil {
-			return fmt.Errorf("remove membership keys before group deletion: %w", err)
-		}
-	}
+
 	var groupKeys []string
 	if s.authCacheInvalidator != nil {
 		keys, err := s.apiKeyRepo.ListKeysByGroupID(ctx, id)
@@ -1253,11 +1242,6 @@ func (s *adminServiceImpl) deleteGroup(ctx context.Context, id int64, requireEmp
 	}
 	if err != nil {
 		return err
-	}
-	if requireEmpty && s.membershipKeyCleaner != nil {
-		if err := s.membershipKeyCleaner.RemoveManagedKeysByGroup(ctx, id); err != nil {
-			return fmt.Errorf("remove membership keys after guarded group deletion: %w", err)
-		}
 	}
 	// 注意：user_group_rate_multipliers 表通过外键 ON DELETE CASCADE 自动清理
 

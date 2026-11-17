@@ -3,15 +3,15 @@
     <div class="mx-auto flex w-full max-w-none flex-col gap-6">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 class="page-title">{{ t('modelPlaza.title') }}</h1>
-          <p class="page-description">{{ t('modelPlaza.description') }}</p>
+          <h1 class="page-title">{{ t('ximoaiModelPlaza.title') }}</h1>
+          <p class="page-description">{{ t('ximoaiModelPlaza.description') }}</p>
         </div>
 
         <button
           type="button"
           class="btn btn-secondary btn-md"
           :disabled="loading"
-          :title="t('modelPlaza.refresh')"
+          :title="t('ximoaiModelPlaza.refresh')"
           @click="loadData"
         >
           <Icon name="refresh" size="md" :class="loading ? 'animate-spin' : ''" />
@@ -27,7 +27,7 @@
         <input
           v-model="searchQuery"
           type="text"
-          :placeholder="t('modelPlaza.searchPlaceholder')"
+          :placeholder="t('ximoaiModelPlaza.searchPlaceholder')"
           class="input pl-10"
         />
       </div>
@@ -35,7 +35,7 @@
       <div class="space-y-3">
         <div data-filter-level="brand" class="flex w-full min-w-0 items-center gap-3">
           <span class="w-16 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
-            {{ t('modelPlaza.brand') }}
+            {{ t('ximoaiModelPlaza.brand') }}
           </span>
           <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
             <button
@@ -47,14 +47,14 @@
               :class="filterButtonClass(brand, activeBrand)"
               @click="activeBrand = brand"
             >
-              {{ brand === allBrandsKey ? t('modelPlaza.allBrands') : brand }}
+              {{ brand === allBrandsKey ? t('ximoaiModelPlaza.allBrands') : brand }}
             </button>
           </div>
         </div>
 
         <div data-filter-level="type" class="flex w-full min-w-0 items-center gap-3">
           <span class="w-16 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
-            {{ t('modelPlaza.modelType') }}
+            {{ t('ximoaiModelPlaza.modelType') }}
           </span>
           <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
             <button
@@ -66,14 +66,14 @@
               :class="filterButtonClass(type, activeType)"
               @click="activeType = type"
             >
-              {{ type === allTypesKey ? t('modelPlaza.allTypes') : typeLabel(type as ModelType) }}
+              {{ type === allTypesKey ? t('ximoaiModelPlaza.allTypes') : typeLabel(type as ModelType) }}
             </button>
           </div>
         </div>
 
         <div data-filter-level="mode" class="flex w-full min-w-0 items-center gap-3">
           <span class="w-16 flex-shrink-0 text-sm font-medium text-gray-600 dark:text-gray-300">
-            {{ t('modelPlaza.invocationMode') }}
+            {{ t('ximoaiModelPlaza.invocationMode') }}
           </span>
           <div class="flex min-w-0 gap-2 overflow-x-auto pb-1">
             <button
@@ -85,7 +85,7 @@
               :class="filterButtonClass(mode, activeMode)"
               @click="activeMode = mode"
             >
-              {{ mode === allModesKey ? t('modelPlaza.allModes') : modeLabel(mode as ModelInvocationMode) }}
+              {{ mode === allModesKey ? t('ximoaiModelPlaza.allModes') : modeLabel(mode as ModelInvocationMode) }}
             </button>
           </div>
         </div>
@@ -106,13 +106,13 @@
         <Icon name="exclamationCircle" size="xl" class="text-red-500" />
         <p class="text-sm text-gray-600 dark:text-gray-300">{{ error }}</p>
         <button type="button" class="btn btn-primary btn-md" @click="loadData">
-          {{ t('modelPlaza.retry') }}
+          {{ t('ximoaiModelPlaza.retry') }}
         </button>
       </div>
 
       <div v-else-if="filteredModels.length === 0" class="card flex flex-col items-center justify-center gap-3 p-12 text-center">
         <Icon name="inbox" size="xl" class="text-gray-300 dark:text-dark-600" />
-        <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('modelPlaza.noModels') }}</p>
+        <p class="text-sm text-gray-500 dark:text-dark-400">{{ t('ximoaiModelPlaza.noModels') }}</p>
       </div>
 
       <div
@@ -163,7 +163,7 @@
                   {{ modeLabel(mode) }}
                 </span>
                 <span class="text-xs text-gray-500 dark:text-dark-400">
-                  {{ t('modelPlaza.groupCount', { count: model.groups.length }) }}
+                  {{ t('ximoaiModelPlaza.groupCount', { count: model.groups.length }) }}
                 </span>
               </div>
             </div>
@@ -174,7 +174,7 @@
                 type="button"
                 :data-model-metadata-edit="model.key"
                 class="btn btn-ghost btn-icon"
-                :title="t('modelPlaza.metadataEditor.edit')"
+                :title="t('ximoaiModelPlaza.metadataEditor.edit')"
                 @click="selectedMetadataModel = model"
               >
                 <Icon name="edit" size="sm" />
@@ -182,7 +182,7 @@
               <button
                 type="button"
                 class="btn btn-ghost btn-icon"
-                :title="t('modelPlaza.copyModelName')"
+                :title="t('ximoaiModelPlaza.copyModelName')"
                 @click="copyName(model.name)"
               >
                 <Icon name="copy" size="sm" />
@@ -209,65 +209,65 @@
                   class="flex-shrink-0 rounded-md px-2 py-0.5 text-xs font-semibold"
                   :class="rateBadgeClass(group.rate)"
                 >
-                  {{ t('modelPlaza.rateValue', { rate: formatRate(group.rate) }) }}
+                  {{ t('ximoaiModelPlaza.rateValue', { rate: formatRate(group.rate) }) }}
                 </span>
               </div>
 
               <div v-if="group.pricing" class="space-y-1.5 text-xs">
                 <div class="mb-1 flex items-center justify-between gap-3 text-gray-500 dark:text-dark-400">
-                  <span>{{ t('modelPlaza.billingMode') }}</span>
+                  <span>{{ t('ximoaiModelPlaza.billingMode') }}</span>
                   <span>{{ billingModeLabel(group.pricing.billing_mode) }}</span>
                 </div>
 
                 <template v-if="group.pricing.billing_mode === BILLING_MODE_TOKEN">
                   <PriceLine
-                    :label="t('modelPlaza.inputPrice')"
+                    :label="t('ximoaiModelPlaza.inputPrice')"
                     :value="scaledPrice(group.pricing.input_price, group.rate)"
-                    :unit="t('modelPlaza.perMillionUnit')"
+                    :unit="t('ximoaiModelPlaza.perMillionUnit')"
                     :scale="perMillionScale"
                   />
                   <PriceLine
-                    :label="t('modelPlaza.outputPrice')"
+                    :label="t('ximoaiModelPlaza.outputPrice')"
                     :value="scaledPrice(group.pricing.output_price, group.rate)"
-                    :unit="t('modelPlaza.perMillionUnit')"
+                    :unit="t('ximoaiModelPlaza.perMillionUnit')"
                     :scale="perMillionScale"
                   />
                   <PriceLine
                     v-if="group.pricing.cache_write_price != null"
-                    :label="t('modelPlaza.cacheWritePrice')"
+                    :label="t('ximoaiModelPlaza.cacheWritePrice')"
                     :value="scaledPrice(group.pricing.cache_write_price, group.rate)"
-                    :unit="t('modelPlaza.perMillionUnit')"
+                    :unit="t('ximoaiModelPlaza.perMillionUnit')"
                     :scale="perMillionScale"
                   />
                   <PriceLine
                     v-if="group.pricing.cache_read_price != null"
-                    :label="t('modelPlaza.cacheReadPrice')"
+                    :label="t('ximoaiModelPlaza.cacheReadPrice')"
                     :value="scaledPrice(group.pricing.cache_read_price, group.rate)"
-                    :unit="t('modelPlaza.perMillionUnit')"
+                    :unit="t('ximoaiModelPlaza.perMillionUnit')"
                     :scale="perMillionScale"
                   />
                   <PriceLine
                     v-if="group.pricing.image_output_price != null"
-                    :label="t('modelPlaza.imageOutputPrice')"
+                    :label="t('ximoaiModelPlaza.imageOutputPrice')"
                     :value="scaledPrice(group.pricing.image_output_price, group.rate)"
-                    :unit="t('modelPlaza.perMillionUnit')"
+                    :unit="t('ximoaiModelPlaza.perMillionUnit')"
                     :scale="perMillionScale"
                   />
                 </template>
 
                 <PriceLine
                   v-else-if="group.pricing.billing_mode === BILLING_MODE_PER_REQUEST || group.pricing.billing_mode === BILLING_MODE_VIDEO"
-                  :label="group.pricing.billing_mode === BILLING_MODE_VIDEO ? t('modelPlaza.videoPrice') : t('modelPlaza.perRequestPrice')"
+                  :label="group.pricing.billing_mode === BILLING_MODE_VIDEO ? t('ximoaiModelPlaza.videoPrice') : t('ximoaiModelPlaza.perRequestPrice')"
                   :value="scaledPrice(group.pricing.per_request_price, group.rate)"
-                  :unit="group.pricing.billing_mode === BILLING_MODE_VIDEO ? t('modelPlaza.perVideoUnit') : t('modelPlaza.perRequestUnit')"
+                  :unit="group.pricing.billing_mode === BILLING_MODE_VIDEO ? t('ximoaiModelPlaza.perVideoUnit') : t('ximoaiModelPlaza.perRequestUnit')"
                   :scale="1"
                 />
 
                 <template v-else-if="group.pricing.billing_mode === BILLING_MODE_IMAGE">
                   <PriceLine
-                    :label="t('modelPlaza.imageOutputPrice')"
+                    :label="t('ximoaiModelPlaza.imageOutputPrice')"
                     :value="scaledPrice(displayUnitPrice(group.pricing), group.rate)"
-                    :unit="t('modelPlaza.perImageUnit')"
+                    :unit="t('ximoaiModelPlaza.perImageUnit')"
                     :scale="1"
                   />
                 </template>
@@ -277,7 +277,7 @@
                   class="mt-2 border-t border-gray-200 pt-2 dark:border-dark-700"
                 >
                   <p class="mb-1 text-xs font-medium text-gray-500 dark:text-dark-400">
-                    {{ t('modelPlaza.intervals') }}
+                    {{ t('ximoaiModelPlaza.intervals') }}
                   </p>
                   <div class="space-y-1">
                     <div
@@ -297,7 +297,7 @@
               </div>
 
               <p v-else class="text-xs text-gray-500 dark:text-dark-400">
-                {{ t('modelPlaza.noPricing') }}
+                {{ t('ximoaiModelPlaza.noPricing') }}
               </p>
             </section>
           </div>
@@ -330,7 +330,7 @@ import userChannelsAPI, {
   type UserAvailableChannel,
   type UserPricingInterval,
   type UserSupportedModelPricing
-} from '@/api/channels'
+} from '@/extensions/model-plaza/api'
 import type {
   ModelInvocationMode,
   ModelMetadataEditor,
@@ -346,11 +346,8 @@ import {
   type BillingMode
 } from '@/constants/channel'
 import { formatScaled } from '@/utils/pricing'
-import {
-  platformAccentBarClass,
-  platformDisplayColor,
-  type PlatformInfo
-} from '@/utils/platformColors'
+import { platformAccentBarClass } from '@/utils/platformColors'
+import { platformDisplayColor, type PlatformInfo } from './platformColors'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { useAppStore } from '@/stores/app'
 import { displayUnitPrice } from '@/utils/modelPricingDisplay'
@@ -467,11 +464,11 @@ function platformColor(platform: string): string {
 }
 
 function typeLabel(type: ModelType) {
-  return t(`modelPlaza.types.${type}`)
+  return t(`ximoaiModelPlaza.types.${type}`)
 }
 
 function modeLabel(mode: ModelInvocationMode) {
-  return t(`modelPlaza.modes.${mode}`)
+  return t(`ximoaiModelPlaza.modes.${mode}`)
 }
 
 function updateModelMetadata(state: ModelMetadataState) {
@@ -504,14 +501,14 @@ function formatRate(rate: number): string {
 function billingModeLabel(mode: BillingMode): string {
   switch (mode) {
     case BILLING_MODE_PER_REQUEST:
-      return t('modelPlaza.billingModePerRequest')
+      return t('ximoaiModelPlaza.billingModePerRequest')
     case BILLING_MODE_IMAGE:
-      return t('modelPlaza.billingModeImage')
+      return t('ximoaiModelPlaza.billingModeImage')
     case BILLING_MODE_VIDEO:
-      return t('modelPlaza.billingModeVideo')
+      return t('ximoaiModelPlaza.billingModeVideo')
     case BILLING_MODE_TOKEN:
     default:
-      return t('modelPlaza.billingModeToken')
+      return t('ximoaiModelPlaza.billingModeToken')
   }
 }
 
@@ -529,7 +526,7 @@ function formatDisplayPrice(value: number | null, scale: number): string | null 
 
 function intervalLabel(interval: UserPricingInterval): string {
   if (interval.tier_label) return interval.tier_label
-  const max = interval.max_tokens == null ? t('modelPlaza.intervalUnlimited') : interval.max_tokens
+  const max = interval.max_tokens == null ? t('ximoaiModelPlaza.intervalUnlimited') : interval.max_tokens
   return `${interval.min_tokens} - ${max}`
 }
 
@@ -537,21 +534,21 @@ function intervalPrice(interval: UserPricingInterval, mode: BillingMode, rate: n
   if (mode === BILLING_MODE_PER_REQUEST || mode === BILLING_MODE_IMAGE || mode === BILLING_MODE_VIDEO) {
     const unitKey =
       mode === BILLING_MODE_IMAGE
-        ? 'modelPlaza.perImageUnit'
+        ? 'ximoaiModelPlaza.perImageUnit'
         : mode === BILLING_MODE_VIDEO
-          ? 'modelPlaza.perVideoUnit'
-          : 'modelPlaza.perRequestUnit'
+          ? 'ximoaiModelPlaza.perVideoUnit'
+          : 'ximoaiModelPlaza.perRequestUnit'
     const price = formatDisplayPrice(scaledPrice(interval.per_request_price, rate), 1)
     return price ? `${price} ${t(unitKey)}` : null
   }
   const input = formatDisplayPrice(scaledPrice(interval.input_price, rate), perMillionScale)
   const output = formatDisplayPrice(scaledPrice(interval.output_price, rate), perMillionScale)
   const parts = [
-    input ? `${t('modelPlaza.inputPrice')} ${input}` : null,
-    output ? `${t('modelPlaza.outputPrice')} ${output}` : null
+    input ? `${t('ximoaiModelPlaza.inputPrice')} ${input}` : null,
+    output ? `${t('ximoaiModelPlaza.outputPrice')} ${output}` : null
   ].filter((part): part is string => Boolean(part))
 
-  return parts.length > 0 ? `${parts.join(' / ')} ${t('modelPlaza.perMillionUnit')}` : null
+  return parts.length > 0 ? `${parts.join(' / ')} ${t('ximoaiModelPlaza.perMillionUnit')}` : null
 }
 
 function displayIntervals(pricing: UserSupportedModelPricing, rate: number): DisplayInterval[] {
@@ -639,7 +636,7 @@ function buildPlatforms(channels: UserAvailableChannel[]): PlatformInfo[] {
 
 async function copyName(name: string) {
   await navigator.clipboard.writeText(name)
-  appStore.showSuccess(t('modelPlaza.copied'))
+  appStore.showSuccess(t('ximoaiModelPlaza.copied'))
 }
 
 async function loadData() {
@@ -653,7 +650,7 @@ async function loadData() {
       activeBrand.value = allBrandsKey
     }
   } catch (err: unknown) {
-    error.value = extractApiErrorMessage(err, t('modelPlaza.loadError'))
+    error.value = extractApiErrorMessage(err, t('ximoaiModelPlaza.loadError'))
   } finally {
     loading.value = false
   }

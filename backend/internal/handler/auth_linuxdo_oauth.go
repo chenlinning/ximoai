@@ -368,9 +368,6 @@ func (h *AuthHandler) LinuxDoOAuthCallback(c *gin.Context) {
 			h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
 			clearOAuthPendingSessionCookie(c, secureCookie)
 			clearOAuthPendingBrowserCookie(c, secureCookie)
-			if h.redirectDesktopAuthorizationIfRequested(c, frontendCallback, user.ID, redirectTo) {
-				return
-			}
 			redirectOAuthTokenPair(c, frontendCallback, tokenPair, redirectTo)
 			return
 		}
@@ -610,7 +607,13 @@ func (h *AuthHandler) CompleteLinuxDoOAuthRegistration(c *gin.Context) {
 	h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
 	clearOAuthPendingSessionCookie(c, secureCookie)
 	clearOAuthPendingBrowserCookie(c, secureCookie)
-	h.writeDesktopAwareOAuthTokenPair(c, user.ID, session.RedirectTo, tokenPair)
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"expires_in":    tokenPair.ExpiresIn,
+		"token_type":    "Bearer",
+	})
 }
 
 func (h *AuthHandler) getLinuxDoOAuthConfig(ctx context.Context) (config.LinuxDoConnectConfig, error) {
@@ -1205,9 +1208,6 @@ func (h *AuthHandler) resolveOAuthBindTargetUserID(c *gin.Context) (*int64, erro
 	claims, err := h.authService.ValidateToken(tokenString)
 	if err != nil {
 		return nil, err
-	}
-	if claims.TokenUse != "" {
-		return nil, service.ErrInvalidToken
 	}
 	user, err := h.userService.GetByID(c.Request.Context(), claims.UserID)
 	if err != nil {

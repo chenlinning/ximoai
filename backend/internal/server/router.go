@@ -115,7 +115,6 @@ func registerRoutes(
 ) {
 	// 通用路由（健康检查、状态等）
 	routes.RegisterCommonRoutes(r)
-	routes.RegisterXimoDeskRoutes(r, settingService)
 
 	// API v1
 	v1 := r.Group("/api/v1")
@@ -127,9 +126,6 @@ func registerRoutes(
 	// 注册各模块路由
 	routes.RegisterAuthRoutes(v1, h, jwtAuth, auditLog, redisClient, settingService, panelRateLimiter)
 	routes.RegisterUserRoutes(v1, h, jwtAuth, auditLog, settingService, panelRateLimiter)
-	routes.RegisterWorkbenchRoutes(v1, h, jwtAuth, redisClient)
-	routes.RegisterDesktopRoutes(v1, h, jwtAuth, redisClient)
-	routes.RegisterXimoAppDownloadRoutes(v1, jwtAuth, settingService)
 	routes.RegisterModelPlazaRoutes(v1, h, optionalJWTAuth, settingService, panelRateLimiter)
 	routes.RegisterAdminRoutes(v1, h, adminAuth, auditLog, stepUpAuth, settingService, panelRateLimiter)
 	routes.RegisterMCPRoutes(v1, h, auditLog, stepUpAuth, settingService, panelRateLimiter, cfg.CORS.AllowedOrigins, redisClient)

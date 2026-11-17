@@ -710,7 +710,13 @@ func (h *AuthHandler) CompleteOIDCOAuthRegistration(c *gin.Context) {
 	h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
 	clearOAuthPendingSessionCookie(c, secureCookie)
 	clearOAuthPendingBrowserCookie(c, secureCookie)
-	h.writeDesktopAwareOAuthTokenPair(c, user.ID, session.RedirectTo, tokenPair)
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  tokenPair.AccessToken,
+		"refresh_token": tokenPair.RefreshToken,
+		"expires_in":    tokenPair.ExpiresIn,
+		"token_type":    "Bearer",
+	})
 }
 
 func (h *AuthHandler) getOIDCOAuthConfig(ctx context.Context) (config.OIDCConnectConfig, error) {
@@ -1265,7 +1271,7 @@ func (h *AuthHandler) tryOIDCVerifiedEmailFastPath(
 		AvatarURL:        pendingSessionStringValue(upstreamClaims, "suggested_avatar_url"),
 		UpstreamMetadata: upstreamMetadata,
 	}
-	tokenPair, user, err := h.authService.LoginOrRegisterVerifiedEmailOAuthWithSignupCodes(
+	tokenPair, _, err := h.authService.LoginOrRegisterVerifiedEmailOAuthWithSignupCodes(
 		ctx,
 		input,
 		"",
@@ -1275,11 +1281,6 @@ func (h *AuthHandler) tryOIDCVerifiedEmailFastPath(
 	if err != nil {
 		log.Printf("[OIDC OAuth] verified-email fast path skipped: reason=%s", infraerrors.Reason(err))
 		return false
-	}
-	if h.redirectDesktopAuthorizationIfRequested(c, frontendCallback, user.ID, redirectTo) {
-		clearOAuthPendingSessionCookie(c, isRequestHTTPS(c))
-		clearOAuthPendingBrowserCookie(c, isRequestHTTPS(c))
-		return true
 	}
 
 	fragment := url.Values{}

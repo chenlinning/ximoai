@@ -490,7 +490,6 @@ export interface SystemSettings {
   home_content: string;
   compact_home_enabled: boolean;
   hide_ccs_import_button: boolean;
-  workbench_ticket_ttl_seconds?: number;
   table_default_page_size: number;
   table_page_size_options: number[];
   backend_mode_enabled: boolean;
@@ -749,8 +748,8 @@ export interface SystemSettings {
   // Model Plaza feature switches + description
   model_plaza_enabled: boolean;
   model_plaza_require_auth: boolean;
-  model_plaza_description: string;
   ximoai_model_plaza_entry_enabled: boolean;
+  model_plaza_description: string;
   plugin_management_enabled: boolean;
 
   // Affiliate (邀请返利) feature switch
@@ -844,7 +843,6 @@ export interface UpdateSettingsRequest {
   home_content?: string;
   compact_home_enabled?: boolean;
   hide_ccs_import_button?: boolean;
-  workbench_ticket_ttl_seconds?: number;
   table_default_page_size?: number;
   table_page_size_options?: number[];
   backend_mode_enabled?: boolean;
@@ -1063,8 +1061,8 @@ export interface UpdateSettingsRequest {
   // Model Plaza feature switches + description
   model_plaza_enabled?: boolean;
   model_plaza_require_auth?: boolean;
-  model_plaza_description?: string;
   ximoai_model_plaza_entry_enabled?: boolean;
+  model_plaza_description?: string;
   plugin_management_enabled?: boolean;
 
   // Affiliate (邀请返利) feature switch

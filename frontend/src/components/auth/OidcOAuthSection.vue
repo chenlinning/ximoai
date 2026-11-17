@@ -25,7 +25,6 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { OAuthLoginStart } from '@/api/auth'
 import { resolveAffiliateReferralCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
-import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 
 const props = withDefaults(defineProps<{
   disabled?: boolean
@@ -51,7 +50,7 @@ const normalizedProviderName = computed(() => {
 const providerInitial = computed(() => normalizedProviderName.value.charAt(0).toUpperCase() || 'O')
 
 function startLogin(): void {
-  const redirectTo = (route.query.redirect as string) || DEFAULT_POST_AUTH_PATH
+  const redirectTo = (route.query.redirect as string) || '/dashboard'
   storeOAuthAffiliateCode(resolveAffiliateReferralCode(props.affCode, route.query.aff, route.query.aff_code))
   emit('start', { provider: 'oidc', params: { redirect: redirectTo } })
 }

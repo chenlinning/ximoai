@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"html"
 	"math"
@@ -289,10 +288,6 @@ type RateLimitCacheInvalidator interface {
 	InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error
 }
 
-type ManagedAPIKeyPolicy interface {
-	GetManagedKeyByAPIKeyID(ctx context.Context, apiKeyID int64) (*MembershipManagedKey, error)
-}
-
 type APIKeyService struct {
 	apiKeyRepo                APIKeyRepository
 	userRepo                  UserRepository
@@ -320,7 +315,6 @@ type APIKeyService struct {
 	authInvalidationFailures  atomic.Uint64
 	lastUsedTouchL1           sync.Map // keyID -> nextAllowedAt(time.Time)
 	lastUsedTouchSF           singleflight.Group
-	managedAPIKeyPolicy       ManagedAPIKeyPolicy
 }
 
 type APIKeyAuthLookupMetrics struct {
@@ -375,10 +369,6 @@ func NewAPIKeyService(
 // Called after construction (e.g. in wire) to avoid circular dependencies.
 func (s *APIKeyService) SetRateLimitCacheInvalidator(inv RateLimitCacheInvalidator) {
 	s.rateLimitCacheInvalid = inv
-}
-
-func (s *APIKeyService) SetManagedAPIKeyPolicy(policy ManagedAPIKeyPolicy) {
-	s.managedAPIKeyPolicy = policy
 }
 
 func (s *APIKeyService) SetConcurrencyService(concurrencyService *ConcurrencyService) {
@@ -815,11 +805,6 @@ func (s *APIKeyService) Update(ctx context.Context, id int64, userID int64, req 
 	if apiKey.UserID != userID {
 		return nil, ErrInsufficientPerms
 	}
-	if !isManagedAPIKeyBypass(ctx) && req.Status != nil && *req.Status == StatusAPIKeyActive {
-		if err := s.ensureManagedAPIKeyUserCanEnable(ctx, id); err != nil {
-			return nil, err
-		}
-	}
 
 	// 验证 IP 白名单格式
 	if req.IPWhitelist != nil && len(*req.IPWhitelist) > 0 {
@@ -971,11 +956,6 @@ func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) erro
 	if ownerID != userID {
 		return ErrInsufficientPerms
 	}
-	if !isManagedAPIKeyBypass(ctx) {
-		if err := s.ensureManagedAPIKeyUserCanDelete(ctx, id); err != nil {
-			return err
-		}
-	}
 
 	// 事务内:写审计 + 软删除(tombstone)。
 	if err := s.apiKeyRepo.DeleteWithAudit(ctx, id); err != nil {
@@ -987,40 +967,6 @@ func (s *APIKeyService) Delete(ctx context.Context, id int64, userID int64) erro
 	s.InvalidateAuthCacheByKey(ctx, key)
 	s.lastUsedTouchL1.Delete(id)
 
-	return nil
-}
-
-func (s *APIKeyService) ensureManagedAPIKeyUserCanEnable(ctx context.Context, apiKeyID int64) error {
-	if s == nil || s.managedAPIKeyPolicy == nil || apiKeyID <= 0 {
-		return nil
-	}
-	managed, err := s.managedAPIKeyPolicy.GetManagedKeyByAPIKeyID(ctx, apiKeyID)
-	if err != nil {
-		if errors.Is(err, ErrAPIKeyNotFound) {
-			return nil
-		}
-		return err
-	}
-	if managed != nil && managed.Status == ManagedKeyStatusDisabled {
-		return ErrMembershipManagedKeyEnable
-	}
-	return nil
-}
-
-func (s *APIKeyService) ensureManagedAPIKeyUserCanDelete(ctx context.Context, apiKeyID int64) error {
-	if s == nil || s.managedAPIKeyPolicy == nil || apiKeyID <= 0 {
-		return nil
-	}
-	managed, err := s.managedAPIKeyPolicy.GetManagedKeyByAPIKeyID(ctx, apiKeyID)
-	if err != nil {
-		if errors.Is(err, ErrAPIKeyNotFound) {
-			return nil
-		}
-		return err
-	}
-	if managed != nil {
-		return ErrMembershipManagedKeyDeletion
-	}
 	return nil
 }
 

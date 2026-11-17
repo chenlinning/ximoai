@@ -58,12 +58,10 @@ const refreshTokenPrefix = "rt_"
 
 // JWTClaims JWT载荷数据
 type JWTClaims struct {
-	UserID       int64    `json:"user_id"`
-	Email        string   `json:"email"`
-	Role         string   `json:"role"`
-	TokenVersion int64    `json:"token_version"` // Used to invalidate tokens on password change
-	TokenUse     string   `json:"token_use,omitempty"`
-	Scopes       []string `json:"scopes,omitempty"`
+	UserID       int64  `json:"user_id"`
+	Email        string `json:"email"`
+	Role         string `json:"role"`
+	TokenVersion int64  `json:"token_version"` // Used to invalidate tokens on password change
 	// SessionID 会话 ID（与 refresh token family 对应），用于单会话撤销与 step-up 授权绑定。
 	SessionID string `json:"sid,omitempty"`
 	// BindingHash 会话指纹哈希（IP+UA），会话绑定开启时校验；空值表示旧 token（平滑升级）。
@@ -88,7 +86,6 @@ type AuthService struct {
 	affiliateService      *AffiliateService
 	defaultSubAssigner    DefaultSubscriptionAssigner
 	userPlatformQuotaRepo UserPlatformQuotaRepository
-	membershipBootstrap   MembershipBootstrapper
 	mcpGrantRevoker       MCPGrantRevoker
 }
 
@@ -146,10 +143,6 @@ func NewAuthService(
 		defaultSubAssigner:    defaultSubAssigner,
 		userPlatformQuotaRepo: userPlatformQuotaRepo,
 	}
-}
-
-func (s *AuthService) SetMembershipBootstrapper(bootstrapper MembershipBootstrapper) {
-	s.membershipBootstrap = bootstrapper
 }
 
 func (s *AuthService) EntClient() *dbent.Client {
@@ -1013,11 +1006,6 @@ func (s *AuthService) postAuthUserBootstrap(ctx context.Context, user *User, sig
 		signupSource = "email"
 	}
 	s.updateUserSignupSource(ctx, user.ID, signupSource)
-	if s.membershipBootstrap != nil {
-		if err := s.membershipBootstrap.AssignDefaultMembership(ctx, user.ID); err != nil {
-			logger.LegacyPrintf("service.auth", "[Auth] Failed to assign default membership: user_id=%d err=%v", user.ID, err)
-		}
-	}
 
 	if touchLogin {
 		s.touchUserLogin(ctx, user.ID)
@@ -1069,6 +1057,9 @@ func (s *AuthService) shouldApplyEmailFirstBindDefaults(
 	identity *dbent.AuthIdentity,
 	created bool,
 ) bool {
+	if identity == nil {
+		return false
+	}
 	source := emailAuthIdentitySource(identity.Metadata)
 	if source == "auth_service_login_backfill" {
 		return false
@@ -1076,7 +1067,7 @@ func (s *AuthService) shouldApplyEmailFirstBindDefaults(
 	if created {
 		return true
 	}
-	if s == nil || s.entClient == nil || userID <= 0 || identity == nil || identity.UserID != userID {
+	if s == nil || s.entClient == nil || userID <= 0 || identity.UserID != userID {
 		return false
 	}
 	if source != "auth_service_dual_write" {
@@ -1517,9 +1508,6 @@ func (s *AuthService) RefreshToken(ctx context.Context, oldTokenString string) (
 	claims, err := s.ValidateToken(oldTokenString)
 	if err != nil && !errors.Is(err, ErrTokenExpired) {
 		return "", err
-	}
-	if claims.TokenUse != "" {
-		return "", ErrInvalidToken
 	}
 
 	// 获取最新的用户信息

@@ -859,36 +859,6 @@ func ProvideAPIKeyService(
 	return svc
 }
 
-func ProvideMembershipService(
-	repo MembershipRepository,
-	userRepo UserRepository,
-	groupRepo GroupRepository,
-	userGroupRateRepo UserGroupRateRepository,
-	apiKeyService *APIKeyService,
-	authService *AuthService,
-	adminService AdminService,
-) *MembershipService {
-	svc := NewMembershipService(repo, userRepo, groupRepo, userGroupRateRepo, apiKeyService)
-	if apiKeyService != nil {
-		apiKeyService.SetManagedAPIKeyPolicy(svc)
-	}
-	if authService != nil {
-		authService.SetMembershipBootstrapper(svc)
-	}
-	if hook, ok := adminService.(interface {
-		SetMembershipService(MembershipBootstrapper, MembershipGroupRateSyncer)
-	}); ok {
-		hook.SetMembershipService(svc, svc)
-	}
-	return svc
-}
-
-func ProvideMembershipExpiryService(membershipService *MembershipService) *MembershipExpiryService {
-	svc := NewMembershipExpiryService(membershipService, time.Hour)
-	svc.Start()
-	return svc
-}
-
 // ProviderSet is the Wire provider set for all services
 var ProviderSet = wire.NewSet(
 	// Core services
@@ -898,8 +868,6 @@ var ProviderSet = wire.NewSet(
 	NewMCPOAuthService,
 	ProvideAPIKeyService,
 	ProvideAPIKeyAuthCacheInvalidator,
-	ProvideMembershipService,
-	ProvideMembershipExpiryService,
 	ProvideAuthCacheInvalidationWorker,
 	NewGroupService,
 	NewCompositeRouteResolver,
@@ -956,10 +924,6 @@ var ProviderSet = wire.NewSet(
 	ProvideOllamaCloudUsageService,
 	ProvideOpenCodeGoUsageService,
 	ProvideSettingService,
-	NewWorkbenchControlTokenService,
-	NewWorkbenchSSOService,
-	NewDesktopSessionService,
-	NewDesktopSSOBrokerService,
 	NewDataManagementService,
 	ProvideBackupService,
 	ProvideOpsSystemLogSink,
@@ -1029,7 +993,14 @@ var ProviderSet = wire.NewSet(
 	ProvideChannelMonitorV2Aggregator,
 	NewChannelMonitorRequestTemplateService,
 	ProvideUserPlatformQuotaUsageFlusher,
+	NewUsageBillingLaneCombiner,
+	ProvideUsageBillingRepository,
 )
+
+// ProvideUsageBillingRepository 以按用户合并结算的通道作为各服务使用的计费仓储。
+func ProvideUsageBillingRepository(lanes *UsageBillingLaneCombiner) UsageBillingRepository {
+	return lanes
+}
 
 // ProvideUserPlatformQuotaUsageFlusher 创建并启动 UserPlatformQuotaUsageFlusher。
 func ProvideUserPlatformQuotaUsageFlusher(cfg *config.Config, cache BillingCache, quotaRepo UserPlatformQuotaRepository, tw *TimingWheelService) *UserPlatformQuotaUsageFlusher {

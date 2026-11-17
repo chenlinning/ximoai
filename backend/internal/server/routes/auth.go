@@ -244,7 +244,6 @@ func RegisterAuthRoutes(
 	settings.Use(panelRateLimiter.PublicIP())
 	{
 		settings.GET("/public", h.Setting.GetPublicSettings)
-		settings.GET("/ximoai-home-tabs", h.Setting.GetXimoAIHomeTabs)
 		settings.GET("/email-unsubscribe", h.Setting.UnsubscribeNotificationEmail)
 	}
 

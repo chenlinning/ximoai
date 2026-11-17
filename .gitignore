@@ -1,6 +1,7 @@
 # 本地杂项文档、测试数据和外部项目副本
 /docs-local/
 .codex
+.codex-cache/
 
 # ===================
 # Go 后端
@@ -131,9 +132,6 @@ AGENTS.md
 backend/cmd/server/server
 deploy/docker-compose.override.yml
 .gocache/
-.build-cache/
-.runtime/
-data/
 vite.config.js
 docs/*
 !docs/agent-resource-safety.md
@@ -143,10 +141,7 @@ docs/*
 !docs/PAYMENT.md
 !docs/PAYMENT_CN.md
 !docs/ADMIN_PAYMENT_INTEGRATION_API.md
-!docs/EXTERNAL_API.md
 !docs/ASYNC_IMAGE_TASKS.md
-!docs/workbench-control-plane-auth.md
-!docs/XIMOAI_MODEL_PROVIDER_REFERENCE.md
 !docs/OPENAI_IMAGES_CODEX.md
 !docs/BATCH_IMAGE_MVP.md
 !docs/COMPOSITE_GROUPS.md

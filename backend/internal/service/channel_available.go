@@ -52,17 +52,6 @@ type AvailableChannel struct {
 // 前置条件：s.groupRepo 必须非 nil（由 wire DI 保证）。直接 nil-deref 用于 fail-fast，
 // 避免静默掩盖注入缺失。
 func (s *ChannelService) ListAvailable(ctx context.Context) ([]AvailableChannel, error) {
-	return s.listAvailable(ctx, true)
-}
-
-// ListAvailableChannelPricing returns the same user-facing available-channel view,
-// but keeps pricing strictly limited to channel.ModelPricing. It is used by the
-// model plaza where "configured channel pricing" is the source of truth.
-func (s *ChannelService) ListAvailableChannelPricing(ctx context.Context) ([]AvailableChannel, error) {
-	return s.listAvailable(ctx, false)
-}
-
-func (s *ChannelService) listAvailable(ctx context.Context, withGlobalPricingFallback bool) ([]AvailableChannel, error) {
 	channels, err := s.repo.ListAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list channels: %w", err)
@@ -104,11 +93,7 @@ func (s *ChannelService) listAvailable(ctx context.Context, withGlobalPricingFal
 		ch.normalizeBillingModelSource()
 
 		supported := ch.SupportedModels()
-		if withGlobalPricingFallback {
-			fillGlobalPricingFallback(s.pricingService, supported)
-		} else {
-			supported = filterXimoAIModelPlazaModels(ch, supported)
-		}
+		fillGlobalPricingFallback(s.pricingService, supported)
 
 		out = append(out, AvailableChannel{
 			ID:                 ch.ID,

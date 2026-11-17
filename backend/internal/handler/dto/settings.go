@@ -160,7 +160,6 @@ type SystemSettings struct {
 	HideCcsImportButton         bool             `json:"hide_ccs_import_button"`
 	PurchaseSubscriptionEnabled bool             `json:"purchase_subscription_enabled"`
 	PurchaseSubscriptionURL     string           `json:"purchase_subscription_url"`
-	WorkbenchTicketTTLSeconds   int              `json:"workbench_ticket_ttl_seconds"`
 	TableDefaultPageSize        int              `json:"table_default_page_size"`
 	TablePageSizeOptions        []int            `json:"table_page_size_options"`
 	CustomMenuItems             []CustomMenuItem `json:"custom_menu_items"`
@@ -331,11 +330,11 @@ type SystemSettings struct {
 	SubscriptionEnabled bool `json:"subscription_enabled"`
 
 	// Model Plaza feature (public group/model pricing showcase)
-	ModelPlazaEnabled            bool   `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth        bool   `json:"model_plaza_require_auth"`
-	ModelPlazaDescription        string `json:"model_plaza_description"`
-	XimoAIModelPlazaEntryEnabled bool   `json:"ximoai_model_plaza_entry_enabled"`
-	PluginManagementEnabled      bool   `json:"plugin_management_enabled"`
+	ModelPlazaEnabled       bool   `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth   bool   `json:"model_plaza_require_auth"`
+	XimoAIModelPlazaEntryEnabled bool `json:"ximoai_model_plaza_entry_enabled"`
+	ModelPlazaDescription   string `json:"model_plaza_description"`
+	PluginManagementEnabled bool   `json:"plugin_management_enabled"`
 
 	// 风控中心功能开关
 	RiskControlEnabled bool `json:"risk_control_enabled"`
@@ -442,11 +441,12 @@ type PublicSettings struct {
 
 	AvailableChannelsEnabled bool `json:"available_channels_enabled"`
 
-	ModelPlazaEnabled            bool `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth        bool `json:"model_plaza_require_auth"`
+	SubscriptionEnabled bool `json:"subscription_enabled"`
+
+	ModelPlazaEnabled       bool `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth   bool `json:"model_plaza_require_auth"`
 	XimoAIModelPlazaEntryEnabled bool `json:"ximoai_model_plaza_entry_enabled"`
-	PluginManagementEnabled      bool `json:"plugin_management_enabled"`
-	SubscriptionEnabled          bool `json:"subscription_enabled"`
+	PluginManagementEnabled bool `json:"plugin_management_enabled"`
 
 	AffiliateEnabled bool `json:"affiliate_enabled"`
 

@@ -237,8 +237,8 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyAvailableChannelsEnabled,
 		SettingKeySubscriptionEnabled,
 		SettingKeyModelPlazaEnabled,
-		SettingKeyModelPlazaRequireAuth,
 		SettingKeyXimoAIModelPlazaEntryEnabled,
+		SettingKeyModelPlazaRequireAuth,
 		SettingKeyPluginManagementEnabled,
 		SettingKeyAffiliateEnabled,
 		SettingKeyRiskControlEnabled,
@@ -370,10 +370,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 
 		SubscriptionEnabled: !isFalseSettingValue(settings[SettingKeySubscriptionEnabled]),
 
-		ModelPlazaEnabled:            settings[SettingKeyModelPlazaEnabled] == "true",
-		ModelPlazaRequireAuth:        settings[SettingKeyModelPlazaRequireAuth] == "true",
+		ModelPlazaEnabled:       settings[SettingKeyModelPlazaEnabled] == "true",
+		ModelPlazaRequireAuth:   settings[SettingKeyModelPlazaRequireAuth] == "true",
 		XimoAIModelPlazaEntryEnabled: !isFalseSettingValue(settings[SettingKeyXimoAIModelPlazaEntryEnabled]),
-		PluginManagementEnabled:      settings[SettingKeyPluginManagementEnabled] == "true",
+		PluginManagementEnabled: settings[SettingKeyPluginManagementEnabled] == "true",
 
 		AffiliateEnabled: settings[SettingKeyAffiliateEnabled] == "true",
 
@@ -412,28 +412,6 @@ func parseChannelMonitorInterval(raw string) int {
 		return channelMonitorIntervalFallback
 	}
 	return clampChannelMonitorInterval(v)
-}
-
-func (s *SettingService) workbenchTicketTTLSeconds(settings map[string]string) int {
-	if raw, ok := settings[SettingKeyWorkbenchTicketTTLSeconds]; ok && strings.TrimSpace(raw) != "" {
-		if v, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil && v > 0 {
-			return v
-		}
-	}
-	if s.cfg != nil && s.cfg.WorkbenchSSO.TicketTTLSeconds > 0 {
-		return s.cfg.WorkbenchSSO.TicketTTLSeconds
-	}
-	return 60
-}
-
-func (s *SettingService) GetWorkbenchTicketTTLSeconds(ctx context.Context) (int, error) {
-	settings, err := s.settingRepo.GetMultiple(ctx, []string{
-		SettingKeyWorkbenchTicketTTLSeconds,
-	})
-	if err != nil {
-		return 0, fmt.Errorf("get workbench sso settings: %w", err)
-	}
-	return s.workbenchTicketTTLSeconds(settings), nil
 }
 
 // clampChannelMonitorInterval clamps v to the allowed range. 0 means "not provided".
@@ -665,7 +643,7 @@ type PublicSettingsInjectionPayload struct {
 	SubscriptionEnabled           bool `json:"subscription_enabled"`
 	ModelPlazaEnabled             bool `json:"model_plaza_enabled"`
 	ModelPlazaRequireAuth         bool `json:"model_plaza_require_auth"`
-	XimoAIModelPlazaEntryEnabled  bool `json:"ximoai_model_plaza_entry_enabled"`
+	XimoAIModelPlazaEntryEnabled bool `json:"ximoai_model_plaza_entry_enabled"`
 	PluginManagementEnabled       bool `json:"plugin_management_enabled"`
 	AffiliateEnabled              bool `json:"affiliate_enabled"`
 	RiskControlEnabled            bool `json:"risk_control_enabled"`
@@ -751,7 +729,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		SubscriptionEnabled:                  settings.SubscriptionEnabled,
 		ModelPlazaEnabled:                    settings.ModelPlazaEnabled,
 		ModelPlazaRequireAuth:                settings.ModelPlazaRequireAuth,
-		XimoAIModelPlazaEntryEnabled:         settings.XimoAIModelPlazaEntryEnabled,
+		XimoAIModelPlazaEntryEnabled: settings.XimoAIModelPlazaEntryEnabled,
 		PluginManagementEnabled:              settings.PluginManagementEnabled,
 		AffiliateEnabled:                     settings.AffiliateEnabled,
 		RiskControlEnabled:                   settings.RiskControlEnabled,
@@ -838,13 +816,6 @@ func (s *SettingService) GetFrameSrcOrigins(ctx context.Context) ([]string, erro
 	// all custom menu items (including admin-only, since CSP must allow all iframes)
 	for _, item := range parseCustomMenuItemURLs(settings.CustomMenuItems) {
 		addOrigin(item)
-	}
-	homeTabs, err := s.GetXimoAIHomeTabs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, origin := range XimoAIHomeTabFrameOrigins(homeTabs) {
-		addOrigin(origin)
 	}
 
 	return origins, nil

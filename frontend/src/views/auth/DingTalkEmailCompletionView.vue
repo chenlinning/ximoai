@@ -33,12 +33,10 @@ import PendingOAuthCreateAccountForm, {
 import { apiClient } from '@/api/client'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
-  getDesktopAuthorizationCallback,
   persistOAuthTokenContext,
   type PendingOAuthExchangeResponse
 } from '@/api/auth'
 import { clearAllAffiliateReferralCodes } from '@/utils/oauthAffiliate'
-import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,11 +51,11 @@ const accountActionError = ref('')
 const initialEmail = (route.query.email as string | undefined) || ''
 
 function sanitizeRedirectPath(path: string | null | undefined): string {
-  if (!path) return DEFAULT_POST_AUTH_PATH
-  if (!path.startsWith('/')) return DEFAULT_POST_AUTH_PATH
-  if (path.startsWith('//')) return DEFAULT_POST_AUTH_PATH
-  if (path.includes('://')) return DEFAULT_POST_AUTH_PATH
-  if (path.includes('\n') || path.includes('\r')) return DEFAULT_POST_AUTH_PATH
+  if (!path) return '/dashboard'
+  if (!path.startsWith('/')) return '/dashboard'
+  if (path.startsWith('//')) return '/dashboard'
+  if (path.includes('://')) return '/dashboard'
+  if (path.includes('\n') || path.includes('\r')) return '/dashboard'
   return path
 }
 
@@ -96,12 +94,6 @@ async function handleCreateAccount(payload: PendingOAuthCreateAccountPayload) {
     )
 
     const redirect = sanitizeRedirectPath(data.redirect || (route.query.redirect as string | undefined))
-
-    const desktopCallback = getDesktopAuthorizationCallback(data)
-    if (desktopCallback) {
-      window.location.assign(desktopCallback)
-      return
-    }
 
     if (data.access_token) {
       persistOAuthTokenContext(data)

@@ -1,17 +1,17 @@
 <template>
   <BaseDialog
     :show="show"
-    :title="t('modelPlaza.metadataEditor.title', { model: modelName })"
+    :title="t('ximoaiModelPlaza.metadataEditor.title', { model: modelName })"
     width="wide"
     @close="emit('close')"
   >
     <div class="space-y-6">
       <section>
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <label for="model-brand" class="label mb-0">{{ t('modelPlaza.metadataEditor.brand') }}</label>
+          <label for="model-brand" class="label mb-0">{{ t('ximoaiModelPlaza.metadataEditor.brand') }}</label>
           <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <input v-model="brandAutomatic" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-            {{ t('modelPlaza.metadataEditor.useAutomatic') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.useAutomatic') }}
           </label>
         </div>
         <input
@@ -25,16 +25,16 @@
           :disabled="brandAutomatic"
         />
         <p class="mt-2 text-xs text-gray-500 dark:text-dark-400">
-          {{ t('modelPlaza.metadataEditor.automaticValue') }}: {{ editor.automatic.brand }}
+          {{ t('ximoaiModelPlaza.metadataEditor.automaticValue') }}: {{ editor.automatic.brand }}
         </p>
       </section>
 
       <section class="border-t border-gray-200 pt-5 dark:border-dark-700">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <span class="label mb-0">{{ t('modelPlaza.modelType') }}</span>
+          <span class="label mb-0">{{ t('ximoaiModelPlaza.modelType') }}</span>
           <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <input v-model="typesAutomatic" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-            {{ t('modelPlaza.metadataEditor.useAutomatic') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.useAutomatic') }}
           </label>
         </div>
         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -58,10 +58,10 @@
 
       <section class="border-t border-gray-200 pt-5 dark:border-dark-700">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <span class="label mb-0">{{ t('modelPlaza.metadataEditor.reasoningLevels') }}</span>
+          <span class="label mb-0">{{ t('ximoaiModelPlaza.metadataEditor.reasoningLevels') }}</span>
           <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <input v-model="reasoningAutomatic" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-            {{ t('modelPlaza.metadataEditor.useAutomatic') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.useAutomatic') }}
           </label>
         </div>
         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -85,10 +85,10 @@
 
       <section class="border-t border-gray-200 pt-5 dark:border-dark-700">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <span class="label mb-0">{{ t('modelPlaza.metadataEditor.thinkingSupport') }}</span>
+          <span class="label mb-0">{{ t('ximoaiModelPlaza.metadataEditor.thinkingSupport') }}</span>
           <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <input v-model="thinkingAutomatic" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-            {{ t('modelPlaza.metadataEditor.useAutomatic') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.useAutomatic') }}
           </label>
         </div>
         <label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -99,16 +99,16 @@
             v-model="selectedThinking"
             :disabled="thinkingAutomatic"
           />
-          {{ t('modelPlaza.metadataEditor.thinkingEnabled') }}
+          {{ t('ximoaiModelPlaza.metadataEditor.thinkingEnabled') }}
         </label>
       </section>
 
       <section class="border-t border-gray-200 pt-5 dark:border-dark-700">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <span class="label mb-0">{{ t('modelPlaza.invocationMode') }}</span>
+          <span class="label mb-0">{{ t('ximoaiModelPlaza.invocationMode') }}</span>
           <label class="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <input v-model="modesAutomatic" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-            {{ t('modelPlaza.metadataEditor.useAutomatic') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.useAutomatic') }}
           </label>
         </div>
         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -141,16 +141,16 @@
           @click="resetMetadata"
         >
           <Icon name="refresh" size="sm" />
-          {{ t('modelPlaza.metadataEditor.resetAll') }}
+          {{ t('ximoaiModelPlaza.metadataEditor.resetAll') }}
         </button>
         <span v-else></span>
         <div class="flex gap-2">
           <button type="button" class="btn btn-secondary btn-md" :disabled="saving" @click="emit('close')">
-            {{ t('modelPlaza.metadataEditor.cancel') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.cancel') }}
           </button>
           <button type="button" class="btn btn-primary btn-md" :disabled="saving || !canSave" @click="saveMetadata">
             <Icon v-if="saving" name="refresh" size="sm" class="animate-spin" />
-            {{ t('modelPlaza.metadataEditor.save') }}
+            {{ t('ximoaiModelPlaza.metadataEditor.save') }}
           </button>
         </div>
       </div>
@@ -265,10 +265,10 @@ async function saveMetadata() {
   try {
     const override = buildOverride()
     const saved = await modelMetadataAPI.save(target(), override)
-    appStore.showSuccess(t('modelPlaza.metadataEditor.saved'))
+    appStore.showSuccess(t('ximoaiModelPlaza.metadataEditor.saved'))
     emit('updated', stateFromOverride(Object.keys(saved).length > 0 ? saved : null))
   } catch (err: unknown) {
-    appStore.showError(extractApiErrorMessage(err, t('modelPlaza.metadataEditor.saveError')))
+    appStore.showError(extractApiErrorMessage(err, t('ximoaiModelPlaza.metadataEditor.saveError')))
   } finally {
     saving.value = false
   }
@@ -278,21 +278,21 @@ async function resetMetadata() {
   saving.value = true
   try {
     await modelMetadataAPI.reset(target())
-    appStore.showSuccess(t('modelPlaza.metadataEditor.resetDone'))
+    appStore.showSuccess(t('ximoaiModelPlaza.metadataEditor.resetDone'))
     emit('updated', stateFromOverride(null))
   } catch (err: unknown) {
-    appStore.showError(extractApiErrorMessage(err, t('modelPlaza.metadataEditor.resetError')))
+    appStore.showError(extractApiErrorMessage(err, t('ximoaiModelPlaza.metadataEditor.resetError')))
   } finally {
     saving.value = false
   }
 }
 
 function typeLabel(type: ModelType) {
-  return t(`modelPlaza.types.${type}`)
+  return t(`ximoaiModelPlaza.types.${type}`)
 }
 
 function modeLabel(mode: ModelInvocationMode) {
-  return t(`modelPlaza.modes.${mode}`)
+  return t(`ximoaiModelPlaza.modes.${mode}`)
 }
 
 function loadDraft() {

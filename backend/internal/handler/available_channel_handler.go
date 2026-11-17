@@ -103,16 +103,9 @@ type userPricingIntervalDTO struct {
 
 // userSupportedModel 用户可见的支持模型条目。
 type userSupportedModel struct {
-	Name              string                       `json:"name"`
-	Platform          string                       `json:"platform"`
-	Brand             string                       `json:"brand,omitempty"`
-	MetadataEditor    *modelMetadataEditorResponse `json:"metadata_editor,omitempty"`
-	Pricing           *userSupportedModelPricing   `json:"pricing"`
-	Types             []string                     `json:"types"`
-	InvocationModes   []string                     `json:"invocation_modes"`
-	ReasoningLevels   []string                     `json:"reasoning_levels,omitempty"`
-	ThinkingSupported bool                         `json:"thinking_supported,omitempty"`
-	recognitionName   string
+	Name     string                     `json:"name"`
+	Platform string                     `json:"platform"`
+	Pricing  *userSupportedModelPricing `json:"pricing"`
 }
 
 // userChannelPlatformSection 单渠道内某个平台的子视图：用户可见的分组 + 该平台
@@ -120,9 +113,6 @@ type userSupportedModel struct {
 // 后面的平台行按 sections 顺序铺开。
 type userChannelPlatformSection struct {
 	Platform        string               `json:"platform"`
-	DisplayName     string               `json:"display_name"`
-	Color           string               `json:"color"`
-	Protocol        string               `json:"protocol"`
 	Groups          []userAvailableGroup `json:"groups"`
 	SupportedModels []userSupportedModel `json:"supported_models"`
 }
@@ -153,57 +143,20 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 		return
 	}
 
-	out, err := h.listVisibleChannels(c, subject.UserID, true)
+	userGroups, err := h.apiKeyService.GetAvailableGroups(c.Request.Context(), subject.UserID)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
-	}
-
-	response.Success(c, out)
-}
-
-// ModelPlaza lists user-visible model pricing without checking the optional
-// Available Channels feature flag.
-// GET /api/v1/channels/model-plaza
-func (h *AvailableChannelHandler) ModelPlaza(c *gin.Context) {
-	subject, ok := middleware.GetAuthSubjectFromContext(c)
-	if !ok {
-		response.Unauthorized(c, "User not authenticated")
-		return
-	}
-
-	out, err := h.listVisibleChannels(c, subject.UserID, false)
-	if err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-	role, _ := middleware.GetUserRoleFromContext(c)
-	if err := h.enrichModelPlazaCatalog(c.Request.Context(), subject.UserID, out, role == service.RoleAdmin); err != nil {
-		response.ErrorFrom(c, err)
-		return
-	}
-
-	response.Success(c, out)
-}
-
-func (h *AvailableChannelHandler) listVisibleChannels(c *gin.Context, userID int64, withGlobalPricingFallback bool) ([]userAvailableChannel, error) {
-	userGroups, err := h.apiKeyService.GetAvailableGroups(c.Request.Context(), userID)
-	if err != nil {
-		return nil, err
 	}
 	allowedGroupIDs := make(map[int64]struct{}, len(userGroups))
 	for i := range userGroups {
 		allowedGroupIDs[userGroups[i].ID] = struct{}{}
 	}
 
-	var channels []service.AvailableChannel
-	if withGlobalPricingFallback {
-		channels, err = h.channelService.ListAvailable(c.Request.Context())
-	} else {
-		channels, err = h.channelService.ListAvailableChannelPricing(c.Request.Context())
-	}
+	channels, err := h.channelService.ListAvailable(c.Request.Context())
 	if err != nil {
-		return nil, err
+		response.ErrorFrom(c, err)
+		return
 	}
 
 	acceptLanguage := c.GetHeader("Accept-Language")
@@ -228,7 +181,7 @@ func (h *AvailableChannelHandler) listVisibleChannels(c *gin.Context, userID int
 		})
 	}
 
-	return out, nil
+	response.Success(c, out)
 }
 
 // localizeUserAvailableGroups 把分组名称就地换成请求首选语言的版本。
@@ -345,10 +298,9 @@ func toUserSupportedModels(
 			}
 		}
 		out = append(out, userSupportedModel{
-			Name:            m.Name,
-			Platform:        m.Platform,
-			Pricing:         toUserPricing(m.Pricing),
-			recognitionName: m.RecognitionName,
+			Name:     m.Name,
+			Platform: m.Platform,
+			Pricing:  toUserPricing(m.Pricing),
 		})
 	}
 	return out

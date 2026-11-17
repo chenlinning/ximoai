@@ -1,33 +1,15 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { ximoAIUserNavItems } from '@/extensions/navigation'
-import { FeatureFlags } from '@/utils/featureFlags'
-
 describe('XimoAI model plaza navigation', () => {
-  it('uses the upstream label for both entries and flags only the custom entry independently', () => {
-    const upstreamFlag = () => true
-    const customFlag = () => false
-    const items = ximoAIUserNavItems({
-      modelPlaza: 'upstream-icon',
-      customModelPlaza: 'custom-icon',
-      downloadCenter: 'download-icon',
-      modelPlazaFeatureFlag: upstreamFlag,
-      ximoAIModelPlazaEntryFeatureFlag: customFlag,
-    })
+  it('keeps the custom entry isolated behind its own feature flag', () => {
+    const sidebar = readFileSync(resolve('src/components/layout/AppSidebar.vue'), 'utf8')
+    const flags = readFileSync(resolve('src/utils/featureFlags.ts'), 'utf8')
 
-    expect(items[0]).toMatchObject({
-      path: '/model-plaza',
-      labelKey: 'nav.modelPlaza',
-      featureFlag: upstreamFlag,
-    })
-    expect(items[1]).toMatchObject({
-      path: '/ximoai-model-plaza',
-      labelKey: 'nav.modelPlaza',
-      featureFlag: customFlag,
-    })
-    expect(FeatureFlags.ximoaiModelPlazaEntry).toMatchObject({
-      key: 'ximoai_model_plaza_entry_enabled',
-      mode: 'opt-out',
-    })
+    expect(sidebar).toContain("path: '/ximoai-model-plaza'")
+    expect(sidebar).toContain('FeatureFlags.ximoaiModelPlazaEntry')
+    expect(flags).toContain("key: 'ximoai_model_plaza_entry_enabled'")
+    expect(flags).toContain("mode: 'opt-out'")
   })
 })

@@ -302,14 +302,14 @@ const isMobileAlipayDeepLink = computed(() => props.mobileAlipayDeepLink === tru
 const showQRCode = computed(() => !!qrUrl.value && (!isMobileAlipayDeepLink.value || deepLinkFallbackVisible.value))
 
 const qrBorderClass = computed(() => {
-  if (isAlipay.value) return 'border-alipay-500 bg-alipay-50 dark:border-alipay-500/70 dark:bg-alipay-950/20'
-  if (isWxpay.value) return 'border-wxpay-500 bg-wxpay-50 dark:border-wxpay-500/70 dark:bg-wxpay-950/20'
+  if (isAlipay.value) return 'border-[#00AEEF] bg-blue-50 dark:border-[#00AEEF]/70 dark:bg-blue-950/20'
+  if (isWxpay.value) return 'border-[#2BB741] bg-green-50 dark:border-[#2BB741]/70 dark:bg-green-950/20'
   return 'border-gray-200 bg-white dark:border-dark-600 dark:bg-dark-800'
 })
 
 const qrLogoBgClass = computed(() => {
-  if (isAlipay.value) return 'bg-alipay-500'
-  if (isWxpay.value) return 'bg-wxpay-500'
+  if (isAlipay.value) return 'bg-[#00AEEF]'
+  if (isWxpay.value) return 'bg-[#2BB741]'
   return 'bg-gray-400'
 })
 

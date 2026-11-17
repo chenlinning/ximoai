@@ -1008,7 +1008,6 @@ func TestAPIContracts(t *testing.T) {
 					"model_plaza_enabled": false,
 					"model_plaza_require_auth": false,
 					"model_plaza_description": "",
-					"ximoai_model_plaza_entry_enabled": true,
 					"plugin_management_enabled": false,
 					"risk_control_enabled": false,
 					"cyber_policy_user_allowlist": "",
@@ -1031,7 +1030,6 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_redirect_url": "",
 					"wechat_connect_frontend_redirect_url": "/auth/wechat/callback",
 					"wechat_connect_scopes": "snsapi_login",
-					"workbench_ticket_ttl_seconds": 60,
 					"allow_user_view_error_requests": false
 				}
 			}`,
@@ -1332,7 +1330,6 @@ func TestAPIContracts(t *testing.T) {
 					"model_plaza_enabled": false,
 					"model_plaza_require_auth": false,
 					"model_plaza_description": "",
-					"ximoai_model_plaza_entry_enabled": true,
 					"plugin_management_enabled": false,
 					"risk_control_enabled": false,
 					"cyber_policy_user_allowlist": "",
@@ -1355,7 +1352,6 @@ func TestAPIContracts(t *testing.T) {
 					"wechat_connect_redirect_url": "",
 					"wechat_connect_frontend_redirect_url": "/auth/wechat/callback",
 					"wechat_connect_scopes": "snsapi_login",
-					"workbench_ticket_ttl_seconds": 60,
 					"auth_source_default_email_balance": 0,
 					"auth_source_default_email_concurrency": 5,
 					"auth_source_default_email_subscriptions": [],
@@ -2048,6 +2044,10 @@ func (s *stubAccountRepo) ClearAntigravityQuotaScopes(ctx context.Context, id in
 }
 
 func (s *stubAccountRepo) ClearModelRateLimits(ctx context.Context, id int64) error {
+	return errors.New("not implemented")
+}
+
+func (s *stubAccountRepo) ClearModelRateLimit(ctx context.Context, id int64, scope string) error {
 	return errors.New("not implemented")
 }
 

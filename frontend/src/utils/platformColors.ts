@@ -6,16 +6,9 @@
  * the server (see constants/platformCatalog) use the neutral *_DEFAULT styles.
  */
 
-import type { CSSProperties } from 'vue'
 import { getPlatformSpec } from '@/constants/platformCatalog'
 
-export interface PlatformInfo {
-  slug: string
-  display_name?: string
-  color?: string
-}
-
-export type BuiltinPlatform =
+export type Platform =
   | 'anthropic'
   | 'openai'
   | 'antigravity'
@@ -30,10 +23,9 @@ export type BuiltinPlatform =
   | 'command_code'
   | 'cline'
   | 'composite'
-export type Platform = string
 
 // ── Badge (bg + text + border, for inline badges with border) ───────
-const BADGE: Record<BuiltinPlatform, string> = {
+const BADGE: Record<Platform, string> = {
   anthropic: 'bg-orange-500/10 text-orange-600 border-orange-500/30 dark:text-orange-400',
   openai: 'bg-green-500/10 text-green-600 border-green-500/30 dark:text-green-400',
   antigravity: 'bg-purple-500/10 text-purple-600 border-purple-500/30 dark:text-purple-400',
@@ -52,7 +44,7 @@ const BADGE: Record<BuiltinPlatform, string> = {
 const BADGE_DEFAULT = 'bg-slate-500/10 text-slate-600 border-slate-500/30 dark:text-slate-400'
 
 // ── Light badge (softer bg, no border) ──────────────────────────────
-const BADGE_LIGHT: Record<BuiltinPlatform, string> = {
+const BADGE_LIGHT: Record<Platform, string> = {
   anthropic: 'bg-orange-500/10 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300',
   openai: 'bg-green-500/10 text-green-600 dark:bg-green-500/10 dark:text-green-300',
   antigravity: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300',
@@ -70,7 +62,7 @@ const BADGE_LIGHT: Record<BuiltinPlatform, string> = {
 }
 
 // ── Border ──────────────────────────────────────────────────────────
-const BORDER: Record<BuiltinPlatform, string> = {
+const BORDER: Record<Platform, string> = {
   anthropic: 'border-orange-500/20 dark:border-orange-500/20',
   openai: 'border-green-500/20 dark:border-green-500/20',
   antigravity: 'border-purple-500/20 dark:border-purple-500/20',
@@ -128,7 +120,7 @@ const ACCENT: Record<Platform, string> = {
 const ACCENT_DEFAULT = '#14b8a6' // primary-500 (teal)
 
 // ── Accent bar (gradient) ───────────────────────────────────────────
-const ACCENT_BAR: Record<BuiltinPlatform, string> = {
+const ACCENT_BAR: Record<Platform, string> = {
   anthropic: 'bg-gradient-to-r from-orange-400 to-orange-500',
   openai: 'bg-gradient-to-r from-emerald-400 to-emerald-500',
   antigravity: 'bg-gradient-to-r from-purple-400 to-purple-500',
@@ -147,7 +139,7 @@ const ACCENT_BAR: Record<BuiltinPlatform, string> = {
 const ACCENT_BAR_DEFAULT = 'bg-gradient-to-r from-primary-400 to-primary-500'
 
 // ── Text (price, icon) ─────────────────────────────────────────────
-const TEXT: Record<BuiltinPlatform, string> = {
+const TEXT: Record<Platform, string> = {
   anthropic: 'text-orange-600 dark:text-orange-400',
   openai: 'text-emerald-600 dark:text-emerald-400',
   antigravity: 'text-purple-600 dark:text-purple-400',
@@ -166,7 +158,7 @@ const TEXT: Record<BuiltinPlatform, string> = {
 const TEXT_DEFAULT = 'text-primary-600 dark:text-primary-400'
 
 // ── Icon (check mark etc.) ──────────────────────────────────────────
-const ICON: Record<BuiltinPlatform, string> = {
+const ICON: Record<Platform, string> = {
   anthropic: 'text-orange-500 dark:text-orange-400',
   openai: 'text-emerald-500 dark:text-emerald-400',
   antigravity: 'text-purple-500 dark:text-purple-400',
@@ -185,7 +177,7 @@ const ICON: Record<BuiltinPlatform, string> = {
 const ICON_DEFAULT = 'text-primary-500 dark:text-primary-400'
 
 // ── Button (solid bg) ───────────────────────────────────────────────
-const BUTTON: Record<BuiltinPlatform, string> = {
+const BUTTON: Record<Platform, string> = {
   anthropic: 'bg-orange-500 text-white hover:bg-orange-600 active:bg-orange-700 dark:bg-orange-500/80 dark:hover:bg-orange-500',
   openai: 'bg-green-600 text-white hover:bg-green-700 active:bg-green-800 dark:bg-green-600/80 dark:hover:bg-green-600',
   antigravity: 'bg-purple-500 text-white hover:bg-purple-600 active:bg-purple-700 dark:bg-purple-500/80 dark:hover:bg-purple-500',
@@ -204,7 +196,7 @@ const BUTTON: Record<BuiltinPlatform, string> = {
 const BUTTON_DEFAULT = 'bg-primary-500 text-white hover:bg-primary-600 dark:bg-primary-600 dark:hover:bg-primary-500'
 
 // ── Discount badge ──────────────────────────────────────────────────
-const DISCOUNT: Record<BuiltinPlatform, string> = {
+const DISCOUNT: Record<Platform, string> = {
   anthropic: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
   openai: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
   antigravity: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
@@ -223,7 +215,7 @@ const DISCOUNT: Record<BuiltinPlatform, string> = {
 const DISCOUNT_DEFAULT = 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
 
 // ── Header gradient (subscription confirm) ─────────────────────────
-const GRADIENT: Record<BuiltinPlatform, string> = {
+const GRADIENT: Record<Platform, string> = {
   anthropic: 'from-orange-500 to-orange-600',
   openai: 'from-emerald-500 to-emerald-600',
   antigravity: 'from-purple-500 to-purple-600',
@@ -242,7 +234,7 @@ const GRADIENT: Record<BuiltinPlatform, string> = {
 const GRADIENT_DEFAULT = 'from-primary-500 to-primary-600'
 
 // ── Header text (light text on gradient bg) ────────────────────────
-const GRADIENT_TEXT: Record<BuiltinPlatform, string> = {
+const GRADIENT_TEXT: Record<Platform, string> = {
   anthropic: 'text-orange-100',
   openai: 'text-emerald-100',
   antigravity: 'text-purple-100',
@@ -260,7 +252,7 @@ const GRADIENT_TEXT: Record<BuiltinPlatform, string> = {
 }
 const GRADIENT_TEXT_DEFAULT = 'text-primary-100'
 
-const GRADIENT_SUBTEXT: Record<BuiltinPlatform, string> = {
+const GRADIENT_SUBTEXT: Record<Platform, string> = {
   anthropic: 'text-orange-200',
   openai: 'text-emerald-200',
   antigravity: 'text-purple-200',
@@ -277,11 +269,10 @@ const GRADIENT_SUBTEXT: Record<BuiltinPlatform, string> = {
   composite: 'text-cyan-200',
 }
 const GRADIENT_SUBTEXT_DEFAULT = 'text-primary-200'
-const UNKNOWN_PLATFORM_COLORS = ['#0F766E', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#059669', '#4F46E5', '#0891B2']
 
 // ── Public API ──────────────────────────────────────────────────────
 
-function isPlatform(p: string): p is BuiltinPlatform {
+function isPlatform(p: string): p is Platform {
   return (
     p === 'anthropic' ||
     p === 'openai' ||
@@ -298,62 +289,6 @@ function isPlatform(p: string): p is BuiltinPlatform {
     p === 'cline' ||
     p === 'composite'
   )
-}
-
-export function normalizePlatformColor(color?: string | null): string {
-  const value = String(color || '').trim()
-  if (/^#[0-9a-f]{6}$/i.test(value) || /^#[0-9a-f]{3}$/i.test(value)) {
-    return value
-  }
-  return ''
-}
-
-export function platformColorStyle(color?: string | null): CSSProperties {
-  const normalized = normalizePlatformColor(color)
-  return normalized ? { color: normalized } : {}
-}
-
-export function platformBadgeStyle(color?: string | null): CSSProperties {
-  const normalized = normalizePlatformColor(color)
-  if (!normalized) return {}
-  return {
-    color: normalized,
-    borderColor: `${normalized}55`,
-    backgroundColor: `${normalized}18`,
-  }
-}
-
-export function platformButtonStyle(color?: string | null): CSSProperties {
-  const normalized = normalizePlatformColor(color)
-  if (!normalized) return {}
-  return {
-    color: normalized,
-    borderColor: `${normalized}55`,
-    backgroundColor: `${normalized}14`,
-  }
-}
-
-export function platformDisplayName(platforms: PlatformInfo[] | undefined, slug: string): string {
-  const normalized = String(slug || '').trim()
-  if (!normalized) return 'API'
-  const found = (platforms || []).find(p => p.slug === normalized)
-  return found?.display_name || platformLabel(normalized)
-}
-
-export function platformDisplayColor(platforms: PlatformInfo[] | undefined, slug: string): string {
-  const normalized = String(slug || '').trim()
-  const found = (platforms || []).find(p => p.slug === normalized)
-  return normalizePlatformColor(found?.color) || unknownPlatformFallbackColor(normalized)
-}
-
-export function unknownPlatformFallbackColor(slug: string): string {
-  const normalized = String(slug || '').trim()
-  if (!normalized) return '#64748B'
-  let hash = 0
-  for (const char of normalized) {
-    hash = Math.imul(hash, 31) + char.charCodeAt(0)
-  }
-  return UNKNOWN_PLATFORM_COLORS[Math.abs(hash) % UNKNOWN_PLATFORM_COLORS.length]
 }
 
 export function platformBadgeClass(p: string): string {

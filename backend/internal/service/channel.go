@@ -451,10 +451,9 @@ type ChannelUsageFields struct {
 
 // SupportedModel 渠道的一个支持模型条目（无通配符、可直接展示给用户）
 type SupportedModel struct {
-	Name            string               // 用户侧模型名
-	RecognitionName string               // 映射后的上游模型名，仅用于展示元数据识别
-	Platform        string               // 所属平台
-	Pricing         *ChannelModelPricing // 定价详情（nil 表示未配置定价）
+	Name     string               // 用户侧模型名
+	Platform string               // 所属平台
+	Pricing  *ChannelModelPricing // 定价详情（nil 表示未配置定价）
 }
 
 // wildcardSuffix 是模型模式中的通配符后缀标记（仅支持尾部匹配）。
@@ -590,17 +589,16 @@ func (c *Channel) SupportedModels() []SupportedModel {
 		return name, nil
 	}
 
-	add := func(platform, displayName, recognitionName string, pricing *ChannelModelPricing) {
+	add := func(platform, displayName string, pricing *ChannelModelPricing) {
 		key := dedupKey{platform: platform, name: strings.ToLower(displayName)}
 		if _, ok := seen[key]; ok {
 			return
 		}
 		seen[key] = struct{}{}
 		result = append(result, SupportedModel{
-			Name:            displayName,
-			RecognitionName: recognitionName,
-			Platform:        platform,
-			Pricing:         pricing,
+			Name:     displayName,
+			Platform: platform,
+			Pricing:  pricing,
 		})
 	}
 
@@ -620,7 +618,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 				for _, candidate := range pidx.names {
 					if strings.HasPrefix(strings.ToLower(candidate), prefixLower) {
 						display, pricing := lookup(pidx, candidate)
-						add(platform, display, candidate, pricing)
+						add(platform, display, pricing)
 					}
 				}
 				continue
@@ -636,7 +634,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 			_, pricing := lookup(pidx, pricingKey)
 			// 显示名优先用 src 在定价里的原始大小写（若 src 本身是个定价模型名）
 			displayName, _ := lookup(pidx, src)
-			add(platform, displayName, pricingKey, pricing)
+			add(platform, displayName, pricing)
 		}
 	}
 
@@ -644,7 +642,7 @@ func (c *Channel) SupportedModels() []SupportedModel {
 	for platform, pidx := range idx {
 		for _, name := range pidx.names {
 			display, pricing := lookup(pidx, name)
-			add(platform, display, name, pricing)
+			add(platform, display, pricing)
 		}
 	}
 

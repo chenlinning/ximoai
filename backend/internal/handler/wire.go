@@ -46,7 +46,6 @@ func ProvideAdminHandlers(
 	paymentHandler *admin.PaymentHandler,
 	affiliateHandler *admin.AffiliateHandler,
 	complianceHandler *admin.ComplianceHandler,
-	membershipHandler *admin.MembershipHandler,
 	auditLogHandler *admin.AuditLogHandler,
 	upstreamBillingProbe *service.UpstreamBillingProbeService,
 	ollamaCloudUsage *service.OllamaCloudUsageService,
@@ -93,7 +92,6 @@ func ProvideAdminHandlers(
 		Payment:                paymentHandler,
 		Affiliate:              affiliateHandler,
 		Compliance:             complianceHandler,
-		Membership:             membershipHandler,
 		AuditLog:               auditLogHandler,
 	}
 }
@@ -202,18 +200,13 @@ func ProvideHandlers(
 	paymentHandler *PaymentHandler,
 	paymentWebhookHandler *PaymentWebhookHandler,
 	availableChannelHandler *AvailableChannelHandler,
-	membershipHandler *MembershipHandler,
-	workbenchSSOHandler *WorkbenchSSOHandler,
-	desktopSessionHandler *DesktopSessionHandler,
 	modelPlazaHandler *ModelPlazaHandler,
 	asyncImageHandler *AsyncImageHandler,
 	batchImageHandler *BatchImageHandler,
 	_ *service.IdempotencyCoordinator,
 	_ *service.IdempotencyCleanupService,
-	_ *service.MembershipExpiryService,
 	_ *service.OpenAIQuotaAutoResetService,
 ) *Handlers {
-	authHandler.SetDesktopSessionService(desktopSessionHandler.DesktopService())
 	return &Handlers{
 		Auth:             authHandler,
 		User:             userHandler,
@@ -234,9 +227,6 @@ func ProvideHandlers(
 		Payment:          paymentHandler,
 		PaymentWebhook:   paymentWebhookHandler,
 		AvailableChannel: availableChannelHandler,
-		Membership:       membershipHandler,
-		WorkbenchSSO:     workbenchSSOHandler,
-		DesktopSession:   desktopSessionHandler,
 		ModelPlaza:       modelPlazaHandler,
 		AsyncImage:       asyncImageHandler,
 		BatchImage:       batchImageHandler,
@@ -264,9 +254,6 @@ var ProviderSet = wire.NewSet(
 	NewPaymentHandler,
 	NewPaymentWebhookHandler,
 	NewAvailableChannelHandler,
-	NewMembershipHandler,
-	NewWorkbenchSSOHandler,
-	NewDesktopSessionHandler,
 	NewModelPlazaHandler,
 	NewAsyncImageHandler,
 	ProvideBatchImageHandler,
@@ -306,7 +293,6 @@ var ProviderSet = wire.NewSet(
 	admin.NewPaymentHandler,
 	admin.NewAffiliateHandler,
 	admin.NewComplianceHandler,
-	admin.NewMembershipHandler,
 	admin.NewAuditLogHandler,
 
 	// AdminHandlers and Handlers constructors

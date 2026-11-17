@@ -42,7 +42,6 @@ type AdminHandlers struct {
 	Payment                *admin.PaymentHandler
 	Affiliate              *admin.AffiliateHandler
 	Compliance             *admin.ComplianceHandler
-	Membership             *admin.MembershipHandler
 	AuditLog               *admin.AuditLogHandler
 }
 
@@ -67,9 +66,6 @@ type Handlers struct {
 	Payment          *PaymentHandler
 	PaymentWebhook   *PaymentWebhookHandler
 	AvailableChannel *AvailableChannelHandler
-	Membership       *MembershipHandler
-	WorkbenchSSO     *WorkbenchSSOHandler
-	DesktopSession   *DesktopSessionHandler
 	ModelPlaza       *ModelPlazaHandler
 	AsyncImage       *AsyncImageHandler
 	BatchImage       *BatchImageHandler

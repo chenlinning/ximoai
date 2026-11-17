@@ -754,21 +754,7 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "kimi-k2.6",
 			expectedInput:     0.95e-6,
 			expectedOutput:    floatPtr(4e-6),
-			expectedCacheRead: floatPtr(0.16e-6),
-		},
-		{
-			name:              "kimi k2.7 code",
-			model:             "kimi-k2.7-code",
-			expectedInput:     0.95e-6,
-			expectedOutput:    floatPtr(4e-6),
-			expectedCacheRead: floatPtr(0.19e-6),
-		},
-		{
-			name:              "kimi k2.7 code highspeed",
-			model:             "kimi-k2.7-code-highspeed",
-			expectedInput:     1.90e-6,
-			expectedOutput:    floatPtr(8e-6),
-			expectedCacheRead: floatPtr(0.38e-6),
+			expectedCacheRead: floatPtr(0.15e-6),
 		},
 		{
 			name:              "kimi for coding explicit alias",
@@ -782,7 +768,7 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "kimi-k2.5",
 			expectedInput:     0.60e-6,
 			expectedOutput:    floatPtr(3e-6),
-			expectedCacheRead: floatPtr(0.10e-6),
+			expectedCacheRead: floatPtr(0.098e-6),
 		},
 		{
 			name:              "kimi k2-thinking",
@@ -804,7 +790,7 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			model:             "kimi-k2.6",
 			expectedInput:     0.95e-6, // = k2.6 不是 k2 的 0.56e-6
 			expectedOutput:    floatPtr(4e-6),
-			expectedCacheRead: floatPtr(0.16e-6),
+			expectedCacheRead: floatPtr(0.15e-6),
 		},
 		{
 			name:              "kimi k2 thinking hyphenated variant",
@@ -818,16 +804,16 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{
 			name:              "minimax m3",
 			model:             "minimax-m3",
-			expectedInput:     0.30e-6,
-			expectedOutput:    floatPtr(1.20e-6),
-			expectedCacheRead: floatPtr(0.06e-6),
+			expectedInput:     0.60e-6,
+			expectedOutput:    floatPtr(2.40e-6),
+			expectedCacheRead: floatPtr(0.12e-6),
 		},
 		{
 			name:              "minimax m3 long ctx boundary keep standard tier",
 			model:             "minimax-m3-long", // 仍按 standard tier (≤512K)
-			expectedInput:     0.30e-6,
-			expectedOutput:    floatPtr(1.20e-6),
-			expectedCacheRead: floatPtr(0.06e-6),
+			expectedInput:     0.60e-6,
+			expectedOutput:    floatPtr(2.40e-6),
+			expectedCacheRead: floatPtr(0.12e-6),
 		},
 		{
 			name:              "minimax m2.7",
@@ -851,25 +837,75 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 			expectedCacheRead: floatPtr(0.03e-6),
 		},
 		{
-			name:              "minimax m2.5 highspeed",
-			model:             "minimax-m2.5-highspeed",
-			expectedInput:     0.60e-6,
-			expectedOutput:    floatPtr(2.40e-6),
-			expectedCacheRead: floatPtr(0.03e-6),
-		},
-		{
-			name:              "minimax m2.1 highspeed",
-			model:             "minimax-m2.1-highspeed",
-			expectedInput:     0.60e-6,
-			expectedOutput:    floatPtr(2.40e-6),
-			expectedCacheRead: floatPtr(0.03e-6),
-		},
-		{
 			name:              "minimax m2 legacy",
 			model:             "minimax-m2",
 			expectedInput:     0.30e-6,
 			expectedOutput:    floatPtr(1.20e-6),
 			expectedCacheRead: floatPtr(0.03e-6),
+		},
+
+		// ---- 硅基流动 Qwen3-Embedding 系列（纯文本向量化，仅输入计费）----
+		{
+			name:           "qwen3 embedding 8b vendor prefix",
+			model:          "Qwen/Qwen3-Embedding-8B",
+			expectedInput:  0.04e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 embedding 8b bare",
+			model:          "qwen3-embedding-8b",
+			expectedInput:  0.04e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 embedding 4b vendor prefix",
+			model:          "Qwen/Qwen3-Embedding-4B",
+			expectedInput:  0.02e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 embedding 0.6b vendor prefix",
+			model:          "Qwen/Qwen3-Embedding-0.6B",
+			expectedInput:  0.01e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 embedding 0.6b dash alias",
+			model:          "qwen3-embedding-0-6b",
+			expectedInput:  0.01e-6,
+			expectedOutput: floatPtr(0),
+		},
+
+		// ---- 硅基流动 Qwen3-Reranker 系列（文本重排序，仅输入计费）----
+		{
+			name:           "qwen3 reranker 8b vendor prefix",
+			model:          "Qwen/Qwen3-Reranker-8B",
+			expectedInput:  0.04e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 reranker 8b bare",
+			model:          "qwen3-reranker-8b",
+			expectedInput:  0.04e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 reranker 4b vendor prefix",
+			model:          "Qwen/Qwen3-Reranker-4B",
+			expectedInput:  0.02e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 reranker 0.6b vendor prefix",
+			model:          "Qwen/Qwen3-Reranker-0.6B",
+			expectedInput:  0.01e-6,
+			expectedOutput: floatPtr(0),
+		},
+		{
+			name:           "qwen3 reranker 0.6b dash alias",
+			model:          "qwen3-reranker-0-6b",
+			expectedInput:  0.01e-6,
+			expectedOutput: floatPtr(0),
 		},
 
 		// ---- 火山方舟 豆包 Embedding（多模态向量化）----
@@ -887,16 +923,15 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 
 		// ---- 负向用例 ----
 		{name: "qwen unknown no fallback", model: "qwen-max", expectNilPricing: true},
+		// qwen3-embedding 仅白名单 8b / 4b / 0.6b 三个官方档位；未知档位不回退。
+		{name: "qwen3 embedding unknown size no fallback", model: "Qwen/Qwen3-Embedding-2B", expectNilPricing: true},
+		// qwen3-reranker 同样仅白名单 8b / 4b / 0.6b；qwen3-vl-reranker-8b 与 bge-reranker 不在白名单，不回退。
+		{name: "qwen3 reranker unknown size no fallback", model: "Qwen/Qwen3-Reranker-2B", expectNilPricing: true},
 		// doubao-pro / doubao-embedding（纯文本）不在白名单，不回退；仅 doubao-embedding-vision 显式命中。
 		{name: "doubao unknown no fallback", model: "doubao-pro", expectNilPricing: true},
 		{name: "doubao text embedding no fallback", model: "doubao-embedding-text-240515", expectNilPricing: true},
 		{name: "hunyuan unknown no fallback", model: "hunyuan-t1", expectNilPricing: true},
-		{
-			name:           "moonshot v1 8k",
-			model:          "moonshot-v1-8k",
-			expectedInput:  0.20e-6,
-			expectedOutput: floatPtr(2e-6),
-		},
+		{name: "moonshot v1 not covered", model: "moonshot-v1-8k", expectNilPricing: true},
 		// bare k3 仅精确/后缀匹配：相似未知型号不得因含 "k3" 误命中。
 		{name: "k3-like unknown no fallback", model: "foo-k3-bar", expectNilPricing: true},
 		// 路径最后一段不是 /k3：foo-k3 不得因 HasSuffix("/k3") 或 Contains 误命中。
@@ -935,6 +970,58 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 				require.InDelta(t, *tt.expectedCacheRead, pricing.CacheReadPricePerToken, 1e-14,
 					"CacheReadPricePerToken mismatch for %s", tt.model)
 			}
+		})
+	}
+}
+
+// 硅基流动 Qwen3-Embedding 系列（纯文本向量化）：只按输入计费，输出价为 0。
+// 验证 GetModelPricing 能解出带厂商前缀 / 裸名 / 0.6B 连字符别名的拼法。
+func TestGetModelPricing_Qwen3EmbeddingFallback(t *testing.T) {
+	svc := newTestBillingService()
+
+	tests := []struct {
+		model string
+		input float64
+	}{
+		{model: "Qwen/Qwen3-Embedding-8B", input: 0.04e-6},
+		{model: "qwen3-embedding-8b", input: 0.04e-6},
+		{model: "Qwen/Qwen3-Embedding-4B", input: 0.02e-6},
+		{model: "Qwen/Qwen3-Embedding-0.6B", input: 0.01e-6},
+		{model: "qwen3-embedding-0-6b", input: 0.01e-6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(tt.model)
+			require.NoError(t, err, "model %s should resolve fallback pricing", tt.model)
+			require.NotNil(t, pricing)
+			require.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-12, "input rate for %s", tt.model)
+			require.Zero(t, pricing.OutputPricePerToken, "embedding has no output cost for %s", tt.model)
+		})
+	}
+}
+
+// 硅基流动 Qwen3-Reranker 系列（文本重排序）：只按输入计费，输出价为 0。
+// 验证 GetModelPricing 能解出带厂商前缀 / 裸名 / 0.6B 连字符别名的拼法。
+func TestGetModelPricing_Qwen3RerankerFallback(t *testing.T) {
+	svc := newTestBillingService()
+
+	tests := []struct {
+		model string
+		input float64
+	}{
+		{model: "Qwen/Qwen3-Reranker-8B", input: 0.04e-6},
+		{model: "qwen3-reranker-8b", input: 0.04e-6},
+		{model: "Qwen/Qwen3-Reranker-4B", input: 0.02e-6},
+		{model: "Qwen/Qwen3-Reranker-0.6B", input: 0.01e-6},
+		{model: "qwen3-reranker-0-6b", input: 0.01e-6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			pricing, err := svc.GetModelPricing(tt.model)
+			require.NoError(t, err, "model %s should resolve fallback pricing", tt.model)
+			require.NotNil(t, pricing)
+			require.InDelta(t, tt.input, pricing.InputPricePerToken, 1e-12, "input rate for %s", tt.model)
+			require.Zero(t, pricing.OutputPricePerToken, "rerank has no output cost for %s", tt.model)
 		})
 	}
 }
@@ -2256,6 +2343,35 @@ func TestAstraUltrafastPricingUsesSixTimesStandard(t *testing.T) {
 	p, err := svc.GetModelPricing("gpt-6-sol")
 	require.NoError(t, err)
 	require.Equal(t, 2.0, configuredServiceTierMultiplier("ultrafast", p))
+}
+
+// 门控与计费共用同一判定：凡是分组会强制写入 ultrafast 的模型，都必须按 6x 计费。
+func TestOpenAIUltrafastGateMatchesBilling(t *testing.T) {
+	svc := newTestBillingService()
+	for _, tt := range []struct {
+		model string
+		want  float64
+	}{
+		{model: "gpt-6-astra", want: 6},
+		{model: "gpt-6.1-sol", want: 6},
+		{model: "gpt-6.1-sol-high", want: 6},
+		{model: "gpt-6.1-terra", want: 2},
+		{model: "gpt-6-sol", want: 2},
+		{model: "gpt-5.6-sol", want: 2},
+	} {
+		pricing, err := svc.GetModelPricing(tt.model)
+		require.NoError(t, err, tt.model)
+		require.Equal(t, tt.want, configuredServiceTierMultiplier(OpenAIFastTierUltrafast, pricing), tt.model)
+		require.Equal(t, tt.want == 6, openAIModelSupportsUltrafast(tt.model), tt.model)
+
+		// 渠道自定义价格与显式 Fast 倍率都不改变 Ultrafast 倍率。
+		custom, fast := 1e-6, 3.0
+		channelPricing, err := svc.GetModelPricingWithChannel(tt.model, &ChannelModelPricing{
+			InputPrice: &custom, OutputPrice: &custom, FastMultiplier: &fast,
+		})
+		require.NoError(t, err, tt.model)
+		require.Equal(t, tt.want, configuredServiceTierMultiplier(OpenAIFastTierUltrafast, channelPricing), tt.model)
+	}
 }
 
 func TestGPT61SolExplicitZeroCacheWriteAcrossTiers(t *testing.T) {

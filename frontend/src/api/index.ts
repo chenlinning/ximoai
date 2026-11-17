@@ -22,15 +22,6 @@ export { totpAPI } from './totp'
 export { passkeyAPI, type PasskeyCredentialSummary } from './passkey'
 export { default as announcementsAPI } from './announcements'
 export { channelMonitorUserAPI } from './channelMonitor'
-export { modelMetadataAPI } from './modelMetadata'
-export { membershipAPI } from './membership'
-export { ximoAppAPI } from './ximoapp'
-export { workbenchAPI, type WorkbenchSSOTicketResponse } from './workbench'
-export {
-  ximoaiHomeAPI,
-  type XimoAIHomeTab,
-  type XimoAIHomeTabInput
-} from './ximoaiHome'
 
 // Admin APIs
 export { adminAPI } from './admin'

@@ -1,26 +1,8 @@
 <template>
-  <header :class="headerClass">
-    <div
-      class="flex items-center gap-2 px-2 sm:px-4 md:px-6"
-      :class="props.variant === 'floating'
-        ? 'h-16 justify-end'
-        : props.variant === 'workspace'
-          ? 'min-h-16 flex-wrap py-2 lg:grid lg:h-16 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,auto)_minmax(0,1fr)] lg:flex-nowrap lg:py-0'
-          : 'h-16 justify-between'"
-    >
+  <header class="glass sticky top-0 z-30 border-b border-gray-200/50 dark:border-dark-700/50">
+    <div class="flex h-16 items-center justify-between gap-2 px-2 sm:px-4 md:px-6">
       <!-- Left: Mobile Menu Toggle + Page Title -->
-      <div v-if="props.variant === 'default'" class="flex shrink-0 items-center gap-2 sm:gap-4">
-        <!-- Home Entry -->
-        <router-link
-          to="/home"
-          class="header-navigation-button"
-          :title="t('ximoaiHome.entry')"
-          :aria-label="t('ximoaiHome.entry')"
-        >
-          <Icon name="home" size="sm" />
-          <span>{{ t('ximoaiHome.home') }}</span>
-        </router-link>
-
+      <div class="flex shrink-0 items-center gap-2 sm:gap-4">
         <button
           @click="toggleMobileSidebar"
           class="btn-ghost btn-icon lg:hidden"
@@ -38,23 +20,9 @@
           </p>
         </div>
       </div>
-      <div
-        v-else-if="props.variant === 'workspace'"
-        class="order-2 flex min-w-0 w-full items-center justify-center lg:order-none lg:col-start-2 lg:w-auto lg:justify-self-center"
-      >
-        <slot name="left" />
-      </div>
 
       <!-- Right: Announcements + Docs + Language + Subscriptions + Balance + User Dropdown -->
-      <div
-        class="flex min-w-0 shrink-0 items-center gap-1 sm:gap-3"
-        :class="[
-          props.variant === 'workspace'
-            ? 'order-1 w-full justify-end lg:order-none lg:col-start-3 lg:w-auto lg:justify-self-end'
-            : '',
-          { 'pointer-events-auto': props.variant === 'floating' }
-        ]"
-      >
+      <div class="flex min-w-0 items-center gap-1 sm:gap-3">
         <!-- Announcement Bell -->
         <AnnouncementBell v-if="user" />
 
@@ -85,31 +53,33 @@
         <!-- Language Switcher -->
         <LocaleSwitcher />
 
-        <button
-          v-if="props.showThemeToggle"
-          type="button"
-          class="btn-ghost btn-icon"
-          :title="t('ximoaiHome.theme')"
-          :aria-label="t('ximoaiHome.theme')"
-          @click="toggleTheme"
-        >
-          <Icon :name="isDark ? 'sun' : 'moon'" size="sm" />
-        </button>
-
         <!-- Subscription Progress (for users with active subscriptions; not mounted at all when the feature is off) -->
         <SubscriptionProgressMini v-if="user && subscriptionFeatureEnabled" />
 
         <!-- Balance Display -->
         <div
           v-if="user"
-          class="group relative hidden items-center gap-2 sm:flex"
+          class="group relative hidden items-center gap-2 rounded-xl bg-primary-50 px-3 py-1.5 dark:bg-primary-900/20 sm:flex"
         >
-          <span class="text-sm font-semibold text-orange-600 dark:text-orange-400">
+          <svg
+            class="h-4 w-4 text-primary-600 dark:text-primary-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
+            />
+          </svg>
+          <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
             {{ formatHeaderMoney(availableBalance) }}
           </span>
           <span
             v-if="frozenBalance > 0"
-            class="text-xs font-medium text-orange-600 dark:text-orange-400"
+            class="rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
           >
             {{ balanceFrozenLabel }}
           </span>
@@ -140,27 +110,14 @@
             class="flex items-center gap-2 rounded-xl p-1.5 transition-colors hover:bg-gray-100 dark:hover:bg-dark-800"
             :aria-label="t('common.userMenu')"
           >
-            <div class="relative">
-              <div
-                class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm"
-                :style="membershipSummary?.level ? membershipAvatarStyle(currentMembershipColor) : undefined"
+            <div class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-sm font-medium text-white shadow-sm">
+              <img
+                v-if="avatarUrl"
+                :src="avatarUrl"
+                :alt="displayName"
+                class="h-full w-full object-cover"
               >
-                <img
-                  v-if="avatarUrl"
-                  :src="avatarUrl"
-                  :alt="displayName"
-                  class="h-full w-full object-cover"
-                >
-                <span v-else>{{ userInitials }}</span>
-              </div>
-              <span
-                v-if="membershipSummary?.level"
-                class="absolute -bottom-1 left-1/2 max-w-14 -translate-x-1/2 truncate rounded-[2px] border border-white px-0.5 py-0 text-[8px] font-semibold leading-[10px] shadow-sm dark:border-dark-900"
-                :style="membershipBadgeStyle(currentMembershipColor)"
-                :title="currentMembershipName"
-              >
-                {{ currentMembershipName }}
-              </span>
+              <span v-else>{{ userInitials }}</span>
             </div>
             <div class="hidden text-left md:block">
               <div class="text-sm font-medium text-gray-900 dark:text-white">
@@ -182,27 +139,6 @@
                   {{ displayName }}
                 </div>
                 <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
-                <div
-                  v-if="membershipSummary?.level"
-                  class="mt-2 border-l-4 px-2.5 py-2 text-xs"
-                  :style="membershipPanelStyle(currentMembershipColor)"
-                >
-                  <div class="flex items-center gap-2">
-                    <MembershipLevelMark
-                      :code="membershipSummary.level.code"
-                      :color="membershipSummary.level.color"
-                      size="sm"
-                    />
-                    <div class="min-w-0">
-                      <div class="truncate font-medium" :style="{ color: membershipLevelColor }">
-                        {{ currentMembershipName }}
-                      </div>
-                      <div class="mt-0.5 text-gray-500 dark:text-dark-400">
-                        {{ membershipExpiryText }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <!-- Balance (mobile only) -->
@@ -227,11 +163,6 @@
                 <router-link to="/keys" @click="closeDropdown" class="dropdown-item">
                   <Icon name="key" size="sm" />
                   {{ t('nav.apiKeys') }}
-                </router-link>
-
-                <router-link to="/membership" @click="closeDropdown" class="dropdown-item">
-                  <Icon name="badge" size="sm" />
-                  {{ t('nav.membership') }}
                 </router-link>
 
                 <a
@@ -315,89 +246,41 @@
             </div>
           </transition>
         </div>
-
-        <router-link
-          v-if="props.showConsoleButton"
-          :to="consolePath"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="header-navigation-button"
-          :title="t('ximoaiHome.console')"
-        >
-          <Icon name="chart" size="sm" />
-          <span class="hidden sm:inline">{{ t('ximoaiHome.console') }}</span>
-        </router-link>
       </div>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAppStore, useAuthStore, useMembershipStore, useOnboardingStore } from '@/stores'
+import { useAppStore, useAuthStore, useOnboardingStore } from '@/stores'
 import { useAdminSettingsStore } from '@/stores/adminSettings'
-import { formatDateTime } from '@/utils/format'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import SubscriptionProgressMini from '@/components/common/SubscriptionProgressMini.vue'
 import AnnouncementBell from '@/components/common/AnnouncementBell.vue'
 import Icon from '@/components/icons/Icon.vue'
-import MembershipLevelMark from '@/components/membership/MembershipLevelMark.vue'
-import { onMembershipUpdated } from '@/utils/membershipEvents'
-import {
-  membershipAvatarStyle,
-  membershipBadgeStyle,
-  membershipLevelColor as fixedMembershipLevelColor,
-  membershipLevelDisplayName,
-  membershipPanelStyle,
-  normalizeMembershipColor
-} from '@/utils/membershipStyle'
 import { sanitizeUrl } from '@/utils/url'
 import { FeatureFlags, isFeatureFlagEnabled } from '@/utils/featureFlags'
 import { resolveRouteMetaKeys } from '@/router/title'
 import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
-
-const props = withDefaults(defineProps<{
-  variant?: 'default' | 'floating' | 'workspace'
-  showThemeToggle?: boolean
-  showConsoleButton?: boolean
-}>(), {
-  variant: 'default',
-  showThemeToggle: false,
-  showConsoleButton: false
-})
 
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
-const membershipStore = useMembershipStore()
 const adminSettingsStore = useAdminSettingsStore()
 const onboardingStore = useOnboardingStore()
 
 const user = computed(() => authStore.user)
 const dropdownOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
-let stopMembershipUpdatedListener: (() => void) | null = null
-let themeObserver: MutationObserver | null = null
-const isDark = ref(document.documentElement.classList.contains('dark'))
 const contactInfo = computed(() => appStore.contactInfo)
 const docUrl = computed(() => sanitizeUrl(appStore.docUrl))
 const modelPlazaEnabled = computed(() => isFeatureFlagEnabled(FeatureFlags.modelPlaza))
 const avatarUrl = computed(() => user.value?.avatar_url?.trim() || '')
-const membershipSummary = computed(() => membershipStore.summary)
-const currentMembershipColor = computed(() => fixedMembershipLevelColor(
-  membershipSummary.value?.level?.code,
-  membershipSummary.value?.level?.color
-))
-const membershipLevelColor = computed(() => normalizeMembershipColor(currentMembershipColor.value))
-const currentMembershipName = computed(() =>
-  membershipSummary.value?.level
-    ? membershipLevelDisplayName(membershipSummary.value.level.code, membershipSummary.value.level.name)
-    : ''
-)
 const availableBalance = computed(() => Number(user.value?.balance || 0))
 const frozenBalance = computed(() => Number(user.value?.frozen_balance || 0))
 const totalBalance = computed(() => availableBalance.value + frozenBalance.value)
@@ -405,10 +288,6 @@ const balanceAvailableText = computed(() => t('common.availableBalance') === 'co
 const balanceFrozenText = computed(() => t('common.frozenBalance') === 'common.frozenBalance' ? '冻结金额' : t('common.frozenBalance'))
 const balanceTotalText = computed(() => t('common.totalBalance') === 'common.totalBalance' ? '总余额' : t('common.totalBalance'))
 const balanceFrozenLabel = computed(() => `${balanceFrozenText.value} ${formatHeaderMoney(frozenBalance.value)}`)
-const consolePath = computed(() => authStore.isAdmin ? '/admin/dashboard' : '/dashboard')
-const headerClass = computed(() => props.variant === 'floating'
-  ? 'pointer-events-none fixed inset-x-0 top-0 z-40'
-  : 'bg-white sticky top-0 z-30 border-b border-gray-200/50 dark:bg-dark-900 dark:border-dark-700/50')
 
 // 只在标准模式的管理员下显示新手引导按钮
 const showOnboardingButton = computed(() => {
@@ -432,11 +311,6 @@ const userInitials = computed(() => {
 const displayName = computed(() => {
   if (!user.value) return ''
   return user.value.username || user.value.email?.split('@')[0] || ''
-})
-
-const membershipExpiryText = computed(() => {
-  if (!membershipSummary.value?.expires_at) return t('membership.longTerm')
-  return t('membership.expiresAtInline', { time: formatDateTime(membershipSummary.value.expires_at) })
 })
 
 // 订阅功能关闭时不挂载顶栏订阅徽章（组件 onMounted 会拉取订阅接口）。
@@ -475,23 +349,8 @@ function toggleMobileSidebar() {
   appStore.toggleMobileSidebar()
 }
 
-function toggleTheme() {
-  const next = !document.documentElement.classList.contains('dark')
-  document.documentElement.classList.toggle('dark', next)
-  localStorage.setItem('theme', next ? 'dark' : 'light')
-  isDark.value = next
-}
-
 function toggleDropdown() {
   dropdownOpen.value = !dropdownOpen.value
-}
-
-async function loadMembershipSummary(force = false) {
-  try {
-    await membershipStore.fetch(force)
-  } catch {
-    // Keep the last successful summary when a refresh fails.
-  }
 }
 
 function closeDropdown() {
@@ -527,36 +386,14 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  if (props.showThemeToggle) {
-    themeObserver = new MutationObserver(() => {
-      isDark.value = document.documentElement.classList.contains('dark')
-    })
-    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-  }
-  stopMembershipUpdatedListener = onMembershipUpdated(() => loadMembershipSummary(true))
-  loadMembershipSummary()
-})
-
-watch(() => user.value?.id, () => {
-  loadMembershipSummary()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
-  themeObserver?.disconnect()
-  themeObserver = null
-  stopMembershipUpdatedListener?.()
-  stopMembershipUpdatedListener = null
 })
 </script>
 
 <style scoped>
-.header-navigation-button {
-  @apply inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-sm font-medium;
-  @apply bg-primary-500 text-white shadow-sm transition-colors;
-  @apply hover:bg-primary-600 hover:text-white hover:shadow-md;
-}
-
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;

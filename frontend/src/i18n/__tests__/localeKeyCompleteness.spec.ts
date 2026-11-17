@@ -62,12 +62,8 @@ function missingKeys(usedKeys: string[], availableKeys: Set<string>): string[] {
 }
 
 describe('locale key completeness', () => {
-  const effectiveMessages = {
-    en: applyXimoAII18nPatch('en', structuredClone(en)),
-    zh: applyXimoAII18nPatch('zh', structuredClone(zh))
-  }
-  const enKeys = new Set(flattenLeafKeys(effectiveMessages.en))
-  const zhKeys = new Set(flattenLeafKeys(effectiveMessages.zh))
+  const enKeys = new Set(flattenLeafKeys(applyXimoAII18nPatch('en', structuredClone(en))))
+  const zhKeys = new Set(flattenLeafKeys(applyXimoAII18nPatch('zh', structuredClone(zh))))
   const usedKeys = [...new Set(sourceKeys())].sort()
 
   it('keeps English and Chinese locale schemas identical', () => {
@@ -76,7 +72,7 @@ describe('locale key completeness', () => {
   })
 
   it('contains a non-empty message for every locale leaf', () => {
-    for (const [locale, messages] of Object.entries(effectiveMessages)) {
+    for (const [locale, messages] of Object.entries({ en, zh })) {
       const emptyKeys = flattenLeafKeys(messages).filter((key) => {
         let current: unknown = messages
         for (const segment of key.split('.')) {

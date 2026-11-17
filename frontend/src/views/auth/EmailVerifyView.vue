@@ -186,7 +186,6 @@ import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/CaptchaChallenge.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import {
-  getDesktopAuthorizationCallback,
   persistOAuthTokenContext,
   getPublicSettings,
   isOAuthLoginCompletion,
@@ -196,7 +195,6 @@ import {
 } from '@/api/auth'
 import { apiClient } from '@/api/client'
 import { buildAuthErrorMessage } from '@/utils/authError'
-import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 import { extractApiErrorCode } from '@/utils/apiError'
 import {
   formatRegistrationEmailSuffixWhitelistForMessage,
@@ -237,11 +235,10 @@ type PendingAuthSessionSummary = {
 }
 type PendingOAuthCreateAccountResponse = {
   auth_result?: string
-  access_token?: string
+  access_token: string
   refresh_token?: string
   expires_in?: number
   token_type?: string
-  desktop_callback_url?: string
   provider?: string
   redirect?: string
 }
@@ -361,7 +358,6 @@ onMounted(async () => {
     pendingAuthTokenField.value = activePendingSession.token_field
     pendingProvider.value = activePendingSession.provider
     pendingRedirect.value = activePendingSession.redirect || ''
-    affCode.value = loadAffiliateReferralCode()
   }
 
   // Load public settings
@@ -714,11 +710,6 @@ async function handleVerify(): Promise<void> {
         await router.push(resolvePendingOAuthCallbackRoute(data.provider || pendingProvider.value))
         return
       }
-      const desktopCallback = getDesktopAuthorizationCallback(data)
-      if (desktopCallback) {
-        window.location.assign(desktopCallback)
-        return
-      }
       if (!isOAuthLoginCompletion(data)) {
         throw new Error(t('auth.verifyFailed'))
       }
@@ -752,7 +743,7 @@ async function handleVerify(): Promise<void> {
     appStore.showSuccess(t('auth.accountCreatedSuccess', { siteName: siteName.value }))
 
     // Redirect to dashboard
-    await router.push(pendingRedirect.value || DEFAULT_POST_AUTH_PATH)
+    await router.push(pendingRedirect.value || '/dashboard')
   } catch (error: unknown) {
     errorMessage.value = buildRegistrationErrorMessage(error, t('auth.verifyFailed'))
 

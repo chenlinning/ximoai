@@ -39,7 +39,6 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { OAuthLoginStart } from '@/api/auth'
 import { resolveAffiliateReferralCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
-import { DEFAULT_POST_AUTH_PATH } from '@/utils/authRedirect'
 
 const props = withDefaults(defineProps<{
   disabled?: boolean
@@ -56,7 +55,7 @@ const route = useRoute()
 const { t } = useI18n()
 
 function startLogin(): void {
-  const redirectTo = (route.query.redirect as string) || DEFAULT_POST_AUTH_PATH
+  const redirectTo = (route.query.redirect as string) || '/dashboard'
   storeOAuthAffiliateCode(resolveAffiliateReferralCode(props.affCode, route.query.aff, route.query.aff_code))
   emit('start', { provider: 'dingtalk', params: { redirect: redirectTo } })
 }
