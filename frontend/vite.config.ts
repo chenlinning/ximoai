@@ -110,6 +110,26 @@ export default defineConfig(({ mode }) => {
          */
         manualChunks(id: string) {
           if (id.includes('node_modules')) {
+            if (id.includes('/@lobehub/icons/')) {
+              return 'vendor-icons'
+            }
+
+            if (id.includes('/marked/') || id.includes('/dompurify/')) {
+              return 'vendor-markdown'
+            }
+
+            if (id.includes('/driver.js/')) {
+              return 'vendor-onboarding'
+            }
+
+            if (id.includes('/ogl/')) {
+              return 'vendor-ogl'
+            }
+
+            if (id.includes('/qrcode/') || id.includes('/file-saver/')) {
+              return 'vendor-file-tools'
+            }
+
             // Vue 核心库
             if (
               id.includes('/vue/') ||
@@ -121,8 +141,12 @@ export default defineConfig(({ mode }) => {
             }
 
             // UI 工具库（较大，单独分离）
-            if (id.includes('/@vueuse/') || id.includes('/xlsx/')) {
-              return 'vendor-ui'
+            if (id.includes('/xlsx/')) {
+              return 'vendor-spreadsheet'
+            }
+
+            if (id.includes('/@vueuse/')) {
+              return 'vendor-vueuse'
             }
 
             // 图表库
