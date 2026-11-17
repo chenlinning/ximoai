@@ -115,10 +115,10 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		AvailableChannelsEnabled: settings.AvailableChannelsEnabled,
 		SubscriptionEnabled:      settings.SubscriptionEnabled,
 
-		ModelPlazaEnabled:       settings.ModelPlazaEnabled,
-		ModelPlazaRequireAuth:   settings.ModelPlazaRequireAuth,
+		ModelPlazaEnabled:            settings.ModelPlazaEnabled,
+		ModelPlazaRequireAuth:        settings.ModelPlazaRequireAuth,
 		XimoAIModelPlazaEntryEnabled: settings.XimoAIModelPlazaEntryEnabled,
-		PluginManagementEnabled: settings.PluginManagementEnabled,
+		PluginManagementEnabled:      settings.PluginManagementEnabled,
 
 		AffiliateEnabled: settings.AffiliateEnabled,
 

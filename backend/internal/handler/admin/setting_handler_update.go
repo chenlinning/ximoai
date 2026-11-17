@@ -354,10 +354,10 @@ type UpdateSettingsRequest struct {
 	SubscriptionEnabled *bool `json:"subscription_enabled"`
 
 	// Model Plaza feature switches + description
-	ModelPlazaEnabled     *bool   `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth *bool   `json:"model_plaza_require_auth"`
-	XimoAIModelPlazaEntryEnabled *bool `json:"ximoai_model_plaza_entry_enabled"`
-	ModelPlazaDescription *string `json:"model_plaza_description"`
+	ModelPlazaEnabled            *bool   `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth        *bool   `json:"model_plaza_require_auth"`
+	XimoAIModelPlazaEntryEnabled *bool   `json:"ximoai_model_plaza_entry_enabled"`
+	ModelPlazaDescription        *string `json:"model_plaza_description"`
 
 	// Plugin management menu visibility switch; plugin runtime is unaffected.
 	PluginManagementEnabled *bool `json:"plugin_management_enabled"`
@@ -2451,11 +2451,11 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		AvailableChannelsEnabled: updatedSettings.AvailableChannelsEnabled,
 		SubscriptionEnabled:      updatedSettings.SubscriptionEnabled,
 
-		ModelPlazaEnabled:       updatedSettings.ModelPlazaEnabled,
-		ModelPlazaRequireAuth:   updatedSettings.ModelPlazaRequireAuth,
+		ModelPlazaEnabled:            updatedSettings.ModelPlazaEnabled,
+		ModelPlazaRequireAuth:        updatedSettings.ModelPlazaRequireAuth,
 		XimoAIModelPlazaEntryEnabled: updatedSettings.XimoAIModelPlazaEntryEnabled,
-		ModelPlazaDescription:   updatedSettings.ModelPlazaDescription,
-		PluginManagementEnabled: updatedSettings.PluginManagementEnabled,
+		ModelPlazaDescription:        updatedSettings.ModelPlazaDescription,
+		PluginManagementEnabled:      updatedSettings.PluginManagementEnabled,
 
 		AffiliateEnabled: updatedSettings.AffiliateEnabled,
 
