@@ -551,7 +551,7 @@ const (
 	// SettingKeyModelPlazaRequireAuth controls whether the Model Plaza page requires a
 	// logged-in user. When false the page is public and anonymous visitors see only
 	// non-exclusive groups.
-	SettingKeyModelPlazaRequireAuth = "model_plaza_require_auth"
+	SettingKeyModelPlazaRequireAuth        = "model_plaza_require_auth"
 	SettingKeyXimoAIModelPlazaEntryEnabled = "ximoai_model_plaza_entry_enabled"
 
 	// SettingKeyModelPlazaDescription stores the Markdown blurb rendered at the top of
