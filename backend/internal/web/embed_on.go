@@ -99,8 +99,10 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			cleanPath = "index.html"
 		}
 
-		// For index.html or SPA routes, serve with injected settings
-		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
+		// For index.html or extensionless SPA routes, serve with injected settings.
+		// A missing static asset must stay a 404 instead of receiving the full
+		// HTML document as a fallback.
+		if cleanPath == "index.html" || (!s.fileExists(cleanPath) && filepath.Ext(cleanPath) == "") {
 			s.serveIndexHTML(c)
 			return
 		}
@@ -237,6 +239,12 @@ func injectSiteFavicon(html, settingsJSON []byte) []byte {
 	if logoURL == "" {
 		return html
 	}
+	// Keep large inline logos in __APP_CONFIG__ only. The frontend applies the
+	// configured favicon during bootstrap; duplicating the same data URL in
+	// index.html makes every uncached document unnecessarily large.
+	if strings.HasPrefix(strings.ToLower(logoURL), "data:image/") {
+		return html
+	}
 
 	linkStart := bytes.Index(html, []byte(`<link rel="icon"`))
 	if linkStart == -1 {
@@ -336,6 +344,12 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			}
 			applyStaticAssetCacheHeaders(c.Writer.Header(), cleanPath)
 			fileServer.ServeHTTP(c.Writer, c.Request)
+			c.Abort()
+			return
+		}
+
+		if filepath.Ext(cleanPath) != "" {
+			c.Status(http.StatusNotFound)
 			c.Abort()
 			return
 		}

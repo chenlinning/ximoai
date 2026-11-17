@@ -125,11 +125,11 @@ func TestInjectSiteFavicon(t *testing.T) {
 		assert.NotContains(t, string(result), `/logo.png`)
 	})
 
-	t.Run("supports_relative_and_data_image_urls", func(t *testing.T) {
+	t.Run("supports_relative_and_skips_inline_data_image_urls", func(t *testing.T) {
 		html := []byte(`<link rel="icon" href="/logo.png" />`)
 
 		assert.Contains(t, string(injectSiteFavicon(html, []byte(`{"site_logo":"/uploads/logo.svg"}`))), `/uploads/logo.svg`)
-		assert.Contains(t, string(injectSiteFavicon(html, []byte(`{"site_logo":"data:image/png;base64,abc"}`))), `data:image/png;base64,abc`)
+		assert.Equal(t, string(html), string(injectSiteFavicon(html, []byte(`{"site_logo":"data:image/png;base64,abc"}`))))
 	})
 
 	t.Run("rejects_unsafe_logo_urls", func(t *testing.T) {
@@ -769,6 +769,14 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		assert.Contains(t, w.Header().Get("Content-Type"), "image/svg+xml")
 		assert.Empty(t, w.Header().Get("Cache-Control"))
 
+		// Missing static assets must not receive the SPA HTML fallback.
+		w = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "/favicon.ico", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.NotContains(t, w.Header().Get("Content-Type"), "text/html")
+
 		entries, err := fs.ReadDir(server.distFS, "assets")
 		require.NoError(t, err)
 		fingerprintedPath := ""
@@ -886,6 +894,13 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Header().Get("Content-Type"), "image/svg+xml")
+
+		w = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "/favicon.ico", nil)
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.NotContains(t, w.Header().Get("Content-Type"), "text/html")
 	})
 
 	t.Run("serves_index_html_for_root", func(t *testing.T) {
