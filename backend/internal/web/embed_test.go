@@ -735,6 +735,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 			"/dashboard",
 			"/users/123",
 			"/settings/profile",
+			"/custom/workbench.v2",
 		}
 
 		for _, path := range spaPaths {
@@ -776,6 +777,12 @@ func TestFrontendServer_Middleware(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.NotContains(t, w.Header().Get("Content-Type"), "text/html")
+
+		w = httptest.NewRecorder()
+		req = httptest.NewRequest(http.MethodGet, "/assets/missing-12345678.js", nil)
+		router.ServeHTTP(w, req)
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Empty(t, w.Header().Get("Cache-Control"))
 
 		entries, err := fs.ReadDir(server.distFS, "assets")
 		require.NoError(t, err)
@@ -924,7 +931,7 @@ func TestServeEmbeddedFrontend(t *testing.T) {
 		router := gin.New()
 		router.Use(middleware)
 
-		spaPaths := []string{"/dashboard", "/users/123", "/settings"}
+		spaPaths := []string{"/dashboard", "/users/123", "/settings", "/custom/workbench.v2"}
 
 		for _, path := range spaPaths {
 			t.Run(path, func(t *testing.T) {

@@ -99,10 +99,13 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			cleanPath = "index.html"
 		}
 
-		// For index.html or extensionless SPA routes, serve with injected settings.
-		// A missing static asset must stay a 404 instead of receiving the full
-		// HTML document as a fallback.
-		if cleanPath == "index.html" || (!s.fileExists(cleanPath) && filepath.Ext(cleanPath) == "") {
+		// Missing static resources must not receive or cache the SPA document.
+		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
+			if strings.HasPrefix(cleanPath, "assets/") || cleanPath == "favicon.ico" {
+				c.Status(http.StatusNotFound)
+				c.Abort()
+				return
+			}
 			s.serveIndexHTML(c)
 			return
 		}
@@ -348,7 +351,7 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			return
 		}
 
-		if filepath.Ext(cleanPath) != "" {
+		if strings.HasPrefix(cleanPath, "assets/") || cleanPath == "favicon.ico" {
 			c.Status(http.StatusNotFound)
 			c.Abort()
 			return

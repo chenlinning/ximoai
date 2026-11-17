@@ -114,6 +114,11 @@ export default defineConfig(({ mode }) => {
               return 'vendor-icons'
             }
 
+            // Keep payment SDK side effects out of the shared entry chunk.
+            if (id.includes('/@airwallex/')) {
+              return 'vendor-airwallex'
+            }
+
             if (id.includes('/marked/') || id.includes('/dompurify/')) {
               return 'vendor-markdown'
             }
