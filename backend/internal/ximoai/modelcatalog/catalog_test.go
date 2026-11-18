@@ -104,3 +104,24 @@ func TestClaude52MetadataSupportsEffortWithoutThinkingToggle(t *testing.T) {
 		}
 	}
 }
+
+func TestGPT62MetadataUsesHTTPReasoningLevels(t *testing.T) {
+	for _, model := range []string{"gpt-6.2-sol", "gpt-6.2-astra"} {
+		for _, platform := range []string{"openai", "compatible-alias"} {
+			metadata, ok := PublicMetadataFor(platform, model)
+			if !ok {
+				t.Fatalf("missing metadata for %s/%s", platform, model)
+			}
+			// Codex also advertises client task delegation as "ultra"; this
+			// catalog describes the HTTP effort levels covered by gateway tests.
+			want := []string{"low", "medium", "high", "xhigh", "max"}
+			if metadata.Brand != "OpenAI" || !reflect.DeepEqual(metadata.ReasoningLevels, want) || metadata.ThinkingSupported {
+				t.Fatalf("unexpected metadata for %s/%s: %#v", platform, model, metadata)
+			}
+			if !reflect.DeepEqual(metadata.Types, []string{"conversation"}) ||
+				!reflect.DeepEqual(metadata.InvocationModes, []string{"sync", "stream"}) {
+				t.Fatalf("unexpected invocation metadata: %#v", metadata)
+			}
+		}
+	}
+}

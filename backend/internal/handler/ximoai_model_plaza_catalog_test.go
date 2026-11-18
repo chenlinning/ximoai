@@ -57,6 +57,35 @@ func TestAutomaticClaude52MetadataUsesMappedUpstreamModel(t *testing.T) {
 	require.NotContains(t, string(raw), "claude-fable-5-2")
 }
 
+func TestGPT62ModelPlazaPreservesAliasAndAdministratorOverride(t *testing.T) {
+	for _, upstreamModel := range []string{"gpt-6.2-sol", "gpt-6.2-astra"} {
+		input := modelMetadataResolutionInput{
+			Platform: service.PlatformOpenAI, Model: "public-model",
+			RecognitionModel: upstreamModel, Protocol: "openai",
+		}
+		levels := []string{"high"}
+		override := &service.ModelMetadataOverride{ReasoningLevels: &levels}
+		details := buildModelPlazaMetadata(input, override, true)
+		require.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, details.Editor.Automatic.ReasoningLevels)
+		require.Equal(t, levels, details.ReasoningLevels)
+		require.False(t, details.ThinkingSupported)
+
+		public := buildModelPlazaMetadata(input, override, false)
+		require.Nil(t, public.Editor)
+		raw, err := json.Marshal(ximoAIUserSupportedModel{
+			Name: input.Model, Platform: input.Platform, Brand: public.Brand,
+			Types: public.Types, InvocationModes: public.InvocationModes,
+			ReasoningLevels: public.ReasoningLevels, recognitionName: upstreamModel,
+		})
+		require.NoError(t, err)
+		require.Contains(t, string(raw), `"name":"public-model"`)
+		require.Contains(t, string(raw), `"reasoning_levels":["high"]`)
+		for _, internal := range []string{upstreamModel, "endpoint", "field", "metadata_editor", "recognition"} {
+			require.NotContains(t, string(raw), internal)
+		}
+	}
+}
+
 func TestModelPlazaKeepsRecognitionNameOutOfPublicModelJSON(t *testing.T) {
 	model := ximoAIUserSupportedModel{
 		Name:            "ximo-gpt",
