@@ -366,10 +366,15 @@ func shouldReturnStaticNotFound(cleanPath string) bool {
 	if lower == "favicon.ico" || strings.HasPrefix(lower, "assets/") {
 		return true
 	}
-	for _, prefix := range []string{".git/", ".well-known/"} {
+	for _, prefix := range []string{
+		".git/", ".well-known/", "cgi-bin/", "phpmyadmin/", "wp-admin/", "wp-content/",
+	} {
 		if strings.HasPrefix(lower, prefix) {
 			return true
 		}
+	}
+	if lower == "wp-admin" || lower == "wp-login" || lower == "phpmyadmin" {
+		return true
 	}
 	switch filepath.Ext(lower) {
 	case ".bak", ".conf", ".env", ".ini", ".json", ".log", ".map", ".php", ".sql", ".txt", ".xml", ".yaml", ".yml", ".zip":
