@@ -784,6 +784,14 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Empty(t, w.Header().Get("Cache-Control"))
 
+		for _, path := range []string{"/.env", "/.git/config", "/wp-admin/install.php", "/config.json", "/robots.txt"} {
+			w = httptest.NewRecorder()
+			req = httptest.NewRequest(http.MethodGet, path, nil)
+			router.ServeHTTP(w, req)
+			assert.Equalf(t, http.StatusNotFound, w.Code, "unexpected SPA fallback for %s", path)
+			assert.NotContains(t, w.Header().Get("Content-Type"), "text/html")
+		}
+
 		entries, err := fs.ReadDir(server.distFS, "assets")
 		require.NoError(t, err)
 		fingerprintedPath := ""

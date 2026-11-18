@@ -101,7 +101,7 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 
 		// Missing static resources must not receive or cache the SPA document.
 		if cleanPath == "index.html" || !s.fileExists(cleanPath) {
-			if strings.HasPrefix(cleanPath, "assets/") || cleanPath == "favicon.ico" {
+			if shouldReturnStaticNotFound(cleanPath) {
 				c.Status(http.StatusNotFound)
 				c.Abort()
 				return
@@ -351,13 +351,31 @@ func ServeEmbeddedFrontend() gin.HandlerFunc {
 			return
 		}
 
-		if strings.HasPrefix(cleanPath, "assets/") || cleanPath == "favicon.ico" {
+		if shouldReturnStaticNotFound(cleanPath) {
 			c.Status(http.StatusNotFound)
 			c.Abort()
 			return
 		}
 
 		serveIndexHTML(c, distFS)
+	}
+}
+
+func shouldReturnStaticNotFound(cleanPath string) bool {
+	lower := strings.ToLower(strings.TrimPrefix(cleanPath, "/"))
+	if lower == "favicon.ico" || strings.HasPrefix(lower, "assets/") {
+		return true
+	}
+	for _, prefix := range []string{".git/", ".well-known/"} {
+		if strings.HasPrefix(lower, prefix) {
+			return true
+		}
+	}
+	switch filepath.Ext(lower) {
+	case ".bak", ".conf", ".env", ".ini", ".json", ".log", ".map", ".php", ".sql", ".txt", ".xml", ".yaml", ".yml", ".zip":
+		return true
+	default:
+		return false
 	}
 }
 
